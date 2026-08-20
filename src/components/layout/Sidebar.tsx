@@ -2,6 +2,7 @@
 
 import { Moon, Sun, Banknote } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { navItems } from './navItems';
@@ -9,6 +10,7 @@ import { navItems } from './navItems';
 export function Sidebar() {
   const darkMode = usePebbleStore((s) => s.darkMode);
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
+  const { name, email, initials } = useCurrentUser();
 
   return (
     <aside className="pebble-sidebar">
@@ -31,11 +33,11 @@ export function Sidebar() {
         <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}>
-            ZZ
+            {initials}
           </div>
           <div style={{ fontSize: '0.85rem', minWidth: 0 }}>
-            <div style={{ fontWeight: 500 }}>Zihao Zheng</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>zhengzihao2002@gmail.com</div>
+            <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>
           </div>
         </div>
       </div>
