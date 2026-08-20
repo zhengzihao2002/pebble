@@ -1,30 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Moon, Sun, Banknote, LogOut } from 'lucide-react';
+import { Moon, Sun, Banknote } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import { authClient } from '@/lib/auth/client';
 import { NavButton } from './NavButton';
+import { SignOutButton } from './SignOutButton';
 import { navItems } from './navItems';
 
 export function Sidebar() {
   const darkMode = usePebbleStore((s) => s.darkMode);
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
-  const router = useRouter();
-  const [signingOut, setSigningOut] = useState(false);
-
-  const handleSignOut = async () => {
-    setSigningOut(true);
-    try {
-      await authClient.signOut();
-    } catch (err) {
-      console.error('Sign out failed:', err);
-    } finally {
-      router.push('/auth/sign-in');
-      router.refresh();
-    }
-  };
 
   return (
     <aside className="pebble-sidebar">
@@ -44,10 +28,7 @@ export function Sidebar() {
           {darkMode ? <Moon size={18} /> : <Sun size={18} />}
           {darkMode ? 'Dark Mode' : 'Light Mode'}
         </button>
-        <button onClick={handleSignOut} className="nav-btn" disabled={signingOut}>
-          <LogOut size={18} />
-          {signingOut ? 'Signing out…' : 'Sign Out'}
-        </button>
+        <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}>
             ZZ
