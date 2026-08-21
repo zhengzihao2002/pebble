@@ -2,7 +2,6 @@
 
 import { usePathname } from 'next/navigation';
 import { Plus, Bell } from 'lucide-react';
-import { usePebbleStore } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { getGreeting } from '@/lib/format';
 
@@ -19,7 +18,6 @@ interface PageMeta {
 
 export function Header({ onAddTransactionClick, onModifyBudgetClick }: HeaderProps) {
   const pathname = usePathname();
-  const goalsCount = usePebbleStore((s) => s.goals.length);
   const { name, isPending } = useCurrentUser();
 
   const firstName = !isPending && name ? name.trim().split(/\s+/)[0] : '';
@@ -27,13 +25,18 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick }: HeaderPro
 
   // Same shape as the original's pageMeta/headerActions objects, just
   // keyed by route instead of activeView string. Recomputed every render
-  // so getGreeting()/goalsCount stay live, same as the original.
+  // so getGreeting() stays live, same as the original.
   const pageMeta: Record<string, PageMeta> = {
     '/dashboard': { title: 'Dashboard', subtitle: greeting, action: { label: 'Add transaction', kind: 'addTransaction' } },
     '/transactions': { title: 'Transactions', subtitle: 'Checking & Cash statements', action: { label: 'Add transaction', kind: 'addTransaction' } },
     '/reports': { title: 'Reports', subtitle: 'Filter and group your expenses and income' },
     '/budgets': { title: 'Budgets', subtitle: 'This year', action: { label: 'Modify Budget', kind: 'modifyBudget' } },
-    '/goals': { title: 'Goals', subtitle: `${goalsCount} goals in progress` },
+    // The goal count is intentionally not shown. Header is rendered inside
+    // AppShell (the layout), so reading it would mean a database query on
+    // every page navigation - to label a page that is gated behind a
+    // Coming Soon overlay and has no way to create a goal. Wire this up
+    // when the Goals feature actually ships.
+    '/goals': { title: 'Goals', subtitle: 'Coming soon' },
     '/settings': { title: 'Settings', subtitle: 'Manage your preferences' },
   };
 

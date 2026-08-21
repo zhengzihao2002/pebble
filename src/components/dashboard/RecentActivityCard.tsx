@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { usePebbleStore, useTransactions } from '@/store/usePebbleStore';
+import type { CategoryMeta, Transaction } from '@/types';
 import { TransactionRow } from '@/components/shared/TransactionRow';
 
-export function RecentActivityCard() {
-  const categoryMeta = usePebbleStore((s) => s.categoryMeta);
-  const transactions = useTransactions();
+interface RecentActivityCardProps {
+  transactions: Transaction[];
+  categoryMeta: CategoryMeta;
+}
 
+export function RecentActivityCard({ transactions, categoryMeta }: RecentActivityCardProps) {
   return (
     <div className="card" style={{ padding: '1.5rem 0', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', padding: '0 1.5rem' }}>

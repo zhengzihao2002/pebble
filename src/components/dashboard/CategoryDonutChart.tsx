@@ -2,15 +2,17 @@
 
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { usePebbleStore, useTransactions } from '@/store/usePebbleStore';
+import type { CategoryMeta, Transaction } from '@/types';
 import { buildCategoryBreakdown, getAvailablePeriods, lightenColor, darkenColor } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
 
-export function CategoryDonutChart() {
-  const categoryMeta = usePebbleStore((s) => s.categoryMeta);
-  const transactions = useTransactions();
+interface CategoryDonutChartProps {
+  transactions: Transaction[];
+  categoryMeta: CategoryMeta;
+}
 
+export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
   const [breakdownMode, setBreakdownMode] = useState('last6');
   const [breakdownPeriod, setBreakdownPeriod] = useState<string | null>(null);
   const needsSubPeriod = breakdownMode === 'month' || breakdownMode === 'quarter' || breakdownMode === 'year';

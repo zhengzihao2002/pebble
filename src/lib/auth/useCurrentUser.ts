@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { authClient } from './client';
 
 export interface CurrentUser {
@@ -18,8 +19,22 @@ function deriveInitials(name: string): string {
 }
 
 export function useCurrentUser(): CurrentUser {
-  const { data, isPending } = authClient.useSession();
-  const user = data?.user;
+  const { data, isPending: sessionPending } = authClient.useSession();
+
+  // Neon Auth caches session data in a cookie, so on the client this hook
+  // can resolve synchronously on the very first render - while the server
+  // render has no resolved user and emits the placeholder. React then sees
+  // different text on the server and the client and throws a hydration
+  // mismatch.
+  //
+  // Staying "pending" until after mount makes the first client render
+  // identical to the server's. The real name appears on the next render,
+  // once hydration has completed.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const isPending = sessionPending || !mounted;
+  const user = mounted ? data?.user : undefined;
 
   const name = user?.name ?? '';
   const email = user?.email ?? '';

@@ -2,22 +2,25 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { usePebbleStore } from '@/store/usePebbleStore';
+import { addTransactionAction } from '@/lib/actions/pebble';
+import { initialCategoryMeta } from '@/data/seed';
 import { todayDateString } from '@/lib/format';
+
+const CATEGORY_NAMES = Object.keys(initialCategoryMeta);
 
 interface AddTransactionModalProps {
   onClose: () => void;
 }
 
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
-  const categoryMeta = usePebbleStore((s) => s.categoryMeta);
-  const addTransaction = usePebbleStore((s) => s.addTransaction);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayDateString());
   const [paymentMethod, setPaymentMethod] = useState<'Checking' | 'Cash'>('Checking');
-  const [category, setCategory] = useState(Object.keys(categoryMeta)[0] ?? '');
+  const [category, setCategory] = useState(CATEGORY_NAMES[0] ?? '');
   const [tag, setTag] = useState('');
   const [amount, setAmount] = useState('');
   const [incomeCategory, setIncomeCategory] = useState<'Standard Income' | 'Side Cash'>('Standard Income');
@@ -27,17 +30,25 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !date) return;
+    if (!description.trim() || !date || saving) return;
+
+    let result;
+    setSaving(true);
+    setSaveError(null);
+
     if (type === 'expense') {
-      if (!amount || Number(amount) <= 0) return;
-      addTransaction({ type, description, date, paymentMethod, category, tag: tag.trim(), amount: Number(amount) });
+      if (!amount || Number(amount) <= 0) { setSaving(false); return; }
+      result = await addTransactionAction({ type, description, date, paymentMethod, category, tag: tag.trim(), amount: Number(amount) });
     } else {
-      if (!netPay || Number(netPay) <= 0) return;
+      if (!netPay || Number(netPay) <= 0) { setSaving(false); return; }
       const gross = grossPay ? Number(grossPay) : Number(netPay);
-      addTransaction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) });
+      result = await addTransactionAction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) });
     }
+
+    setSaving(false);
+    if (!result.ok) { setSaveError(result.error); return; }
     onClose();
   };
 
@@ -78,7 +89,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               <label style={labelStyle}>
                 Category
                 <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                  {Object.keys(categoryMeta).map((c) => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
               <label style={labelStyle}>
@@ -155,8 +166,12 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             </div>
           </label>
 
-          <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem' }}>
-            Add transaction
+          {saveError && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>
+          )}
+
+          <button type="submit" disabled={saving} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : 'Add transaction'}
           </button>
         </form>
       </div>

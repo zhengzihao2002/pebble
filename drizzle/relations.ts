@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { organizationInNeonAuth, invitationInNeonAuth, userInNeonAuth, sessionInNeonAuth, accountInNeonAuth, memberInNeonAuth } from "./schema";
+import { organizationInNeonAuth, invitationInNeonAuth, userInNeonAuth, sessionInNeonAuth, accountInNeonAuth, memberInNeonAuth, expense, income, goal, userAccount, budget } from "./schema";
 
 export const invitationInNeonAuthRelations = relations(invitationInNeonAuth, ({one}) => ({
 	organizationInNeonAuth: one(organizationInNeonAuth, {
@@ -22,6 +22,11 @@ export const userInNeonAuthRelations = relations(userInNeonAuth, ({many}) => ({
 	sessionInNeonAuths: many(sessionInNeonAuth),
 	accountInNeonAuths: many(accountInNeonAuth),
 	memberInNeonAuths: many(memberInNeonAuth),
+	expenses: many(expense),
+	incomes: many(income),
+	goals: many(goal),
+	userAccounts: many(userAccount),
+	budgets: many(budget),
 }));
 
 export const sessionInNeonAuthRelations = relations(sessionInNeonAuth, ({one}) => ({
@@ -45,6 +50,41 @@ export const memberInNeonAuthRelations = relations(memberInNeonAuth, ({one}) => 
 	}),
 	userInNeonAuth: one(userInNeonAuth, {
 		fields: [memberInNeonAuth.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const expenseRelations = relations(expense, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [expense.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const incomeRelations = relations(income, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [income.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const goalRelations = relations(goal, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [goal.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const userAccountRelations = relations(userAccount, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [userAccount.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const budgetRelations = relations(budget, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [budget.userId],
 		references: [userInNeonAuth.id]
 	}),
 }));

@@ -4,13 +4,12 @@ import { useState } from 'react';
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
-import { useTransactions } from '@/store/usePebbleStore';
+import type { Transaction } from '@/types';
 import { buildTrendData } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
 
-export function IncomeSpendingChart() {
-  const transactions = useTransactions();
+export function IncomeSpendingChart({ transactions }: { transactions: Transaction[] }) {
   const [trendMode, setTrendMode] = useState('last6');
   const trendData = buildTrendData(transactions, trendMode);
 

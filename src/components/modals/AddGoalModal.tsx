@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { usePebbleStore } from '@/store/usePebbleStore';
+import { addGoalAction } from '@/lib/actions/pebble';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
 
 interface AddGoalModalProps {
@@ -14,7 +14,8 @@ interface AddGoalModalProps {
 // calls the open-state setter. Kept as-is per the port's ground rules
 // rather than inventing a trigger that wasn't there.
 export function AddGoalModal({ onClose }: AddGoalModalProps) {
-  const addGoal = usePebbleStore((s) => s.addGoal);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
@@ -26,14 +27,17 @@ export function AddGoalModal({ onClose }: AddGoalModalProps) {
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !target || Number(target) <= 0 || !date.trim()) return;
-    const iconMatch = GOAL_ICON_OPTIONS.find((o) => o.key === iconKey) || GOAL_ICON_OPTIONS[0];
-    addGoal({
+    if (!name.trim() || !target || Number(target) <= 0 || !date.trim() || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    const result = await addGoalAction({
       name: name.trim(), target: Number(target), current: current ? Number(current) : 0,
-      date: date.trim(), icon: iconMatch.icon, color,
+      date: date.trim(), iconKey, color,
     });
+    setSaving(false);
+    if (!result.ok) { setSaveError(result.error); return; }
     onClose();
   };
 
@@ -113,8 +117,12 @@ export function AddGoalModal({ onClose }: AddGoalModalProps) {
             </div>
           </label>
 
-          <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem' }}>
-            Add goal
+          {saveError && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>
+          )}
+
+          <button type="submit" disabled={saving} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : 'Add goal'}
           </button>
         </form>
       </div>

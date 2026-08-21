@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, index, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, jsonb, check, date, numeric } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, jsonb, check, date, numeric, primaryKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const neonAuth = pgSchema("neon_auth");
@@ -159,7 +159,7 @@ export const projectConfigInNeonAuth = neonAuth.table("project_config", {
 
 export const expense = pgTable("expense", {
 	id: text().primaryKey().notNull(),
-	userId: uuid("user_id").default(sql`'53ef0de4-f52c-4a78-a48a-cc190e5652e4'`).notNull(),
+	userId: uuid("user_id").notNull(),
 	description: text().default(').notNull(),
 	category: text().default(').notNull(),
 	tag: text().default(').notNull(),
@@ -169,15 +169,20 @@ export const expense = pgTable("expense", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("expense_user_date_idx").using("btree", table.userId.asc().nullsLast().op("date_ops"), table.transactionDate.desc().nullsFirst().op("date_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "expense_user_id_fkey"
+		}).onDelete("cascade"),
 	check("expense_amount_check", sql`amount <= (0)::numeric`),
+	check("expense_payment_method_check", sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`),
 ]);
 
 export const income = pgTable("income", {
 	id: text().primaryKey().notNull(),
-	userId: uuid("user_id").default(sql`'53ef0de4-f52c-4a78-a48a-cc190e5652e4'`).notNull(),
+	userId: uuid("user_id").notNull(),
 	description: text().default(').notNull(),
 	category: text().default(').notNull(),
-	tag: text().default(').notNull(),
 	transactionDate: date("transaction_date").notNull(),
 	paymentMethod: text("payment_method").default('Checking').notNull(),
 	grossAmount: numeric("gross_amount", { precision: 12, scale:  2 }).notNull(),
@@ -185,4 +190,59 @@ export const income = pgTable("income", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("income_user_date_idx").using("btree", table.userId.asc().nullsLast().op("date_ops"), table.transactionDate.desc().nullsFirst().op("date_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "income_user_id_fkey"
+		}).onDelete("cascade"),
+	check("income_amounts_check", sql`(gross_amount >= (0)::numeric) AND (net_amount >= (0)::numeric)`),
+	check("income_payment_method_check", sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`),
+]);
+
+export const goal = pgTable("goal", {
+	id: text().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	name: text().notNull(),
+	currentAmount: numeric("current_amount", { precision: 12, scale:  2 }).default('0').notNull(),
+	targetAmount: numeric("target_amount", { precision: 12, scale:  2 }).notNull(),
+	targetDate: text("target_date").default(').notNull(),
+	iconKey: text("icon_key").default('Shield').notNull(),
+	color: text().default('#1F5A45').notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("goal_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "goal_user_id_fkey"
+		}).onDelete("cascade"),
+	check("goal_amounts_check", sql`(current_amount >= (0)::numeric) AND (target_amount > (0)::numeric)`),
+]);
+
+export const userAccount = pgTable("user_account", {
+	userId: uuid("user_id").primaryKey().notNull(),
+	checkingOpening: numeric("checking_opening", { precision: 12, scale:  2 }).default('0').notNull(),
+	cashOpening: numeric("cash_opening", { precision: 12, scale:  2 }).default('0').notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "user_account_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const budget = pgTable("budget", {
+	userId: uuid("user_id").notNull(),
+	category: text().notNull(),
+	annualAmount: numeric("annual_amount", { precision: 12, scale:  2 }).default('0').notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "budget_user_id_fkey"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.userId, table.category], name: "budget_pkey"}),
+	check("budget_amount_check", sql`annual_amount >= (0)::numeric`),
 ]);

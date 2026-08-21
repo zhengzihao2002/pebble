@@ -1,5 +1,6 @@
 import type { Goal } from '@/types';
 import { formatCurrency } from '@/lib/format';
+import { resolveGoalIcon } from '@/lib/data/icons';
 
 interface GoalCardProps {
   goal: Goal;
@@ -7,7 +8,7 @@ interface GoalCardProps {
 
 export function GoalCard({ goal }: GoalCardProps) {
   const pct = (goal.current / goal.target) * 100;
-  const Icon = goal.icon;
+  const Icon = resolveGoalIcon(goal.iconKey);
 
   return (
     <div className="card" style={{ padding: '1.5rem' }}>

@@ -2,14 +2,17 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { usePebbleStore, useTransactions } from '@/store/usePebbleStore';
+import type { CategoryMeta, Transaction } from '@/types';
 import { computeCategorySpent } from '@/lib/stats';
 import { BudgetRow } from '@/components/shared/BudgetRow';
 import { TODAY } from '@/data/seed';
 
-export function NeedsAttentionCard() {
-  const categoryMeta = usePebbleStore((s) => s.categoryMeta);
-  const transactions = useTransactions();
+interface NeedsAttentionCardProps {
+  transactions: Transaction[];
+  categoryMeta: CategoryMeta;
+}
+
+export function NeedsAttentionCard({ transactions, categoryMeta }: NeedsAttentionCardProps) {
   const categorySpent = computeCategorySpent(transactions, TODAY.getFullYear());
 
   const topBudgets = Object.entries(categoryMeta)

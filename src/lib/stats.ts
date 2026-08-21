@@ -2,6 +2,16 @@ import type { CategoryMeta, ExpenseTransaction, IncomeTransaction, Transaction }
 import { TODAY } from '@/data/seed';
 import { atMidnight, parseLocalDate } from './format';
 
+// Merges the two permanent histories into one newest-first list. Replaces
+// the useTransactions() store selector now that data arrives from the server.
+export function mergeTransactions(
+  expenses: ExpenseTransaction[], income: IncomeTransaction[]
+): Transaction[] {
+  return [...expenses, ...income].sort(
+    (a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
+  );
+}
+
 export interface TrendPoint {
   month: string;
   income: number;
@@ -130,11 +140,14 @@ export interface LedgerEntry {
 
 // Walks all expense+income records chronologically once, tracking TWO
 // independent running balances (Checking and Cash), and returns a
-// lightweight newest-first ledger. Derived fresh from the permanent
-// expense/income history + both current balances every time either
-// changes — never stored separately.
+// lightweight newest-first ledger.
+//
+// Starts from the OPENING balances (the balance before any recorded
+// transaction) and walks FORWARD. Opening balances are stored; current
+// balances are derived. Storing the current balance instead would mean two
+// sources of truth that can silently drift apart — unacceptable for money.
 export function computeRecentTransactions(
-  expenses: ExpenseTransaction[], income: IncomeTransaction[], checkingBalance: number, cashBalance: number
+  expenses: ExpenseTransaction[], income: IncomeTransaction[], checkingOpening: number, cashOpening: number
 ): LedgerEntry[] {
   const all: Transaction[] = [...expenses, ...income].sort((a, b) => {
     const dateDiff = parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
@@ -142,11 +155,8 @@ export function computeRecentTransactions(
     return a.id.localeCompare(b.id); // same-day tiebreak, via the date/time-based id
   });
 
-  const checkingDelta = all.reduce((s, t) => s + (t.paymentMethod === 'Checking' ? t.amount : 0), 0);
-  const cashDelta = all.reduce((s, t) => s + (t.paymentMethod === 'Cash' ? t.amount : 0), 0);
-
-  let runningChecking = checkingBalance - checkingDelta;
-  let runningCash = cashBalance - cashDelta;
+  let runningChecking = checkingOpening;
+  let runningCash = cashOpening;
 
   const ledger: LedgerEntry[] = all.map((t) => {
     if (t.paymentMethod === 'Checking') runningChecking += t.amount;
@@ -160,6 +170,27 @@ export function computeRecentTransactions(
   });
 
   return ledger.reverse(); // newest first, matching the statement display order
+}
+
+export interface CurrentBalances {
+  checking: number;
+  cash: number;
+  total: number;
+}
+
+// Current balance is DERIVED, never stored: opening + the sum of every
+// transaction against that payment method. Expense amounts are negative and
+// income amounts positive, so a single sum handles both directions.
+export function computeCurrentBalances(
+  transactions: Transaction[], checkingOpening: number, cashOpening: number
+): CurrentBalances {
+  let checking = checkingOpening;
+  let cash = cashOpening;
+  transactions.forEach((t) => {
+    if (t.paymentMethod === 'Checking') checking += t.amount;
+    else cash += t.amount;
+  });
+  return { checking, cash, total: checking + cash };
 }
 
 export interface MonthOption {

@@ -42,7 +42,7 @@ export interface Goal {
   current: number;
   target: number;
   date: string; // free text, e.g. 'Dec 2026'
-  icon: LucideIcon;
+  iconKey: string; // key into GOAL_ICON_OPTIONS; resolved to a component client-side
   color: string;
 }
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { usePebbleStore, useTransactions } from '@/store/usePebbleStore';
-import { estimateAnnualIncome } from '@/lib/stats';
+import { getBudgetModalDataAction, modifyBudgetsAction } from '@/lib/actions/pebble';
+import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency } from '@/lib/format';
 
 interface ModifyBudgetModalProps {
@@ -11,27 +11,46 @@ interface ModifyBudgetModalProps {
 }
 
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
-  const categoryMeta = usePebbleStore((s) => s.categoryMeta);
-  const modifyBudgets = usePebbleStore((s) => s.modifyBudgets);
-  const transactions = useTransactions();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [annualIncome, setAnnualIncome] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
-    Object.entries(categoryMeta).forEach(([name, meta]) => {
-      initial[name] = meta.budget > 0 ? String(meta.budget) : '';
+  // Budgets are loaded on open rather than fetched by the layout: this modal
+  // is mounted in AppShell, so a layout-level fetch would run on every page
+  // navigation for data that is usually never displayed.
+  useEffect(() => {
+    let active = true;
+    getBudgetModalDataAction().then((result) => {
+      if (!active) return;
+      if (!result.ok) { setError(result.error); setLoading(false); return; }
+      const meta = buildCategoryMeta(result.budgets);
+      const initial: Record<string, string> = {};
+      Object.entries(meta).forEach(([name, entry]) => {
+        initial[name] = entry.budget > 0 ? String(entry.budget) : '';
+      });
+      setValues(initial);
+      setAnnualIncome(result.annualIncome);
+      setLoading(false);
     });
-    return initial;
-  });
+    return () => { active = false; };
+  }, []);
 
-  const annualIncome = estimateAnnualIncome(transactions);
+  const categoryMeta = buildCategoryMeta({});
   const categoryNames = Object.keys(categoryMeta);
   const totalBudgeted = categoryNames.reduce((s, name) => s + (Number(values[name]) || 0), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving || loading) return;
     const budgets: Record<string, number> = {};
     categoryNames.forEach((name) => { budgets[name] = Number(values[name]) || 0; });
-    modifyBudgets(budgets);
+    setSaving(true);
+    setError(null);
+    const result = await modifyBudgetsAction(budgets);
+    setSaving(false);
+    if (!result.ok) { setError(result.error); return; }
     onClose();
   };
 
@@ -76,7 +95,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                   <div className="budget-modify-input-wrap">
                     <span style={{ color: 'var(--ink-soft)', fontSize: '0.85rem' }}>$</span>
                     <input
-                      type="number" min="0" step="1" placeholder="0" value={values[name]}
+                      type="number" min="0" step="1" placeholder="0" value={values[name] ?? ''} disabled={loading}
                       onChange={(e) => setValues((prev) => ({ ...prev, [name]: e.target.value }))}
                       className="font-mono-tab"
                       style={{ width: '100%', padding: '0.5rem 0.6rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.87rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' }}
@@ -88,8 +107,12 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
             })}
           </div>
 
-          <button type="submit" className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.75rem', width: '100%' }}>
-            Save budgets
+          {error && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginTop: '0.9rem', marginBottom: 0 }}>{error}</p>
+          )}
+
+          <button type="submit" disabled={loading || saving} className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.75rem', width: '100%', opacity: loading || saving ? 0.6 : 1 }}>
+            {loading ? 'Loading…' : saving ? 'Saving…' : 'Save budgets'}
           </button>
         </form>
       </div>

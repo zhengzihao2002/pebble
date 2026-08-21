@@ -1,23 +1,32 @@
-'use client';
+import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
+import { SettingsClient } from './SettingsClient';
 
-import { usePebbleStore } from '@/store/usePebbleStore';
-import { TextSizeControl } from '@/components/settings/TextSizeControl';
-import { AppearanceControl } from '@/components/settings/AppearanceControl';
-import { NotificationsCard } from '@/components/settings/NotificationsCard';
-import { AccountCard } from '@/components/settings/AccountCard';
+export const dynamic = 'force-dynamic';
 
-export default function SettingsPage() {
-  const textSize = usePebbleStore((s) => s.textSize);
-  const setTextSize = usePebbleStore((s) => s.setTextSize);
-  const darkMode = usePebbleStore((s) => s.darkMode);
-  const setDarkMode = usePebbleStore((s) => s.setDarkMode);
+export default async function SettingsPage() {
+  const userId = await getSessionUserIdOrRedirect();
+
+  const [expenses, income, openingBalances] = await Promise.all([
+    getExpenses(userId),
+    getIncome(userId),
+    getUserAccount(userId),
+  ]);
+
+  const transactions = mergeTransactions(expenses, income);
+
+  // The transaction-only totals, obtained by computing current balances from
+  // a zero opening. This lets the settings card show a live projected balance
+  // as the opening values are edited, without re-querying.
+  const fromZero = computeCurrentBalances(transactions, 0, 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: 560 }}>
-      <TextSizeControl textSize={textSize} onChange={setTextSize} />
-      <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
-      <NotificationsCard />
-      <AccountCard />
-    </div>
+    <SettingsClient
+      checkingOpening={openingBalances.checkingOpening}
+      cashOpening={openingBalances.cashOpening}
+      checkingTransactionTotal={fromZero.checking}
+      cashTransactionTotal={fromZero.cash}
+    />
   );
 }
