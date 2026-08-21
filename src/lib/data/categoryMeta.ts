@@ -1,22 +1,31 @@
 import type { CategoryMeta } from '@/types';
-import { initialCategoryMeta } from '@/data/seed';
+import type { CategoryItem } from './mappers';
+import { resolveCategoryIcon } from './icons';
 
 /**
- * Rebuilds the CategoryMeta map from static app metadata plus DB budgets.
+ * Builds the CategoryMeta map from the user's own categories plus their
+ * budgets.
  *
- * CLIENT-SIDE ONLY. initialCategoryMeta holds LucideIcon values, which are
- * functions and cannot cross the Server -> Client Component boundary. Server
- * Components pass the plain Record<string, number> of budgets; the client
- * shell calls this to reassemble the icon-bearing map.
+ * CLIENT-SIDE ONLY. Category icons are LucideIcon values - functions, which
+ * cannot cross the Server -> Client Component boundary. Server Components
+ * pass the serializable CategoryItem[] (carrying iconKey as a string) and the
+ * plain budgets map; this reassembles the icon-bearing structure here.
  *
- * Icons and colors are fixed app metadata and never come from the database.
- * Categories absent from `budgets` keep their seed default of 0.
+ * Ordering follows sortOrder from the query, so Object.keys() preserves the
+ * order the user sees in settings.
  */
-export function buildCategoryMeta(budgets: Record<string, number>): CategoryMeta {
+export function buildCategoryMeta(
+  categories: CategoryItem[],
+  budgets: Record<string, number>,
+): CategoryMeta {
   const merged: CategoryMeta = {};
 
-  for (const [name, meta] of Object.entries(initialCategoryMeta)) {
-    merged[name] = { ...meta, budget: budgets[name] ?? 0 };
+  for (const item of categories) {
+    merged[item.name] = {
+      icon: resolveCategoryIcon(item.iconKey),
+      color: item.color,
+      budget: budgets[item.name] ?? 0,
+    };
   }
 
   return merged;

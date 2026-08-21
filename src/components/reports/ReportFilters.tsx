@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight, Search } from 'lucide-react';
-import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir } from './types';
+import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField } from './types';
 
 interface ReportFiltersProps {
   expanded: boolean;
@@ -24,6 +24,9 @@ interface ReportFiltersProps {
 
   sortDir: SortDir;
   onSortDirChange: (v: SortDir) => void;
+
+  sortField: SortField;
+  onSortFieldChange: (v: SortField) => void;
 
   descQuery: string;
   onDescQueryChange: (v: string) => void;
@@ -49,6 +52,7 @@ export function ReportFilters({
   subPeriod, onSubPeriodChange, subPeriodOptions, subPeriodLabel,
   categoryGroup, onCategoryGroupChange,
   sortDir, onSortDirChange,
+  sortField, onSortFieldChange,
   descQuery, onDescQueryChange,
   availableCats, selectedCategories, allSelected, onToggleCategory, onToggleAllCategories,
   showTagFilter, singleSelectedCategory, availableTags, selectedTags, onToggleTag, onClearTags,
@@ -123,9 +127,20 @@ export function ReportFilters({
               </div>
               <div>
                 <p className="filter-label">Sort</p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {([['desc', 'Highest first'], ['asc', 'Lowest first']] as [SortDir, string][]).map(([v, l]) => (
-                    <button key={v} onClick={() => onSortDirChange(v)} className={`pill ${sortDir === v ? 'active' : ''}`}>{l}</button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {([
+                    ['amount', 'desc', 'Highest first'],
+                    ['amount', 'asc', 'Lowest first'],
+                    ['date', 'desc', 'Newest first'],
+                    ['date', 'asc', 'Oldest first'],
+                  ] as [SortField, SortDir, string][]).map(([f, d, l]) => (
+                    <button
+                      key={`${f}-${d}`}
+                      onClick={() => { onSortFieldChange(f); onSortDirChange(d); }}
+                      className={`pill ${sortField === f && sortDir === d ? 'active' : ''}`}
+                    >
+                      {l}
+                    </button>
                   ))}
                 </div>
               </div>

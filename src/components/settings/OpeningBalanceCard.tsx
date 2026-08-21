@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { setOpeningBalancesAction } from '@/lib/actions/pebble';
 import { formatCurrency } from '@/lib/format';
+import { LoadingOverlay } from '@/components/shared/Spinner';
 
 interface OpeningBalanceCardProps {
   checkingOpening: number;
@@ -62,7 +63,8 @@ export function OpeningBalanceCard({
   };
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
+    <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
+      {saving && <LoadingOverlay label="Saving balances…" />}
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Starting balances</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
         What each account held before your first recorded transaction. Your balance today is worked out

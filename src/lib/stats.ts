@@ -1,6 +1,32 @@
-import type { CategoryMeta, ExpenseTransaction, IncomeTransaction, Transaction } from '@/types';
+import type {
+  BalanceAdjustment,
+  CategoryMeta,
+  ExpenseTransaction,
+  IncomeTransaction,
+  LedgerRecord,
+  Transaction,
+} from '@/types';
 import { TODAY } from '@/data/seed';
 import { atMidnight, parseLocalDate } from './format';
+
+// Side Cash is real money and counts toward the balance, but it is not
+// earnings: cash back, a gift, a gambling win. It is deliberately excluded
+// from every "income" figure so the income, savings rate and trend numbers
+// reflect actual earning power. It remains fully visible in Reports.
+export function isSideCash(t: Transaction): boolean {
+  return t.type === 'income' && t.category === 'Side Cash';
+}
+
+// Merges transactions and adjustments into one newest-first list for the
+// statement ledger. Adjustments are deliberately absent from mergeTransactions
+// below: that feeds Reports, which must never see them.
+export function mergeLedgerRecords(
+  transactions: Transaction[], adjustments: BalanceAdjustment[]
+): LedgerRecord[] {
+  return [...transactions, ...adjustments].sort(
+    (a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
+  );
+}
 
 // Merges the two permanent histories into one newest-first list. Replaces
 // the useTransactions() store selector now that data arrives from the server.
@@ -42,7 +68,11 @@ export function buildTrendData(transactions: Transaction[], mode: string): Trend
     }
     if (!buckets.has(key)) buckets.set(key, { sortKey, label, income: 0, spending: 0 });
     const bucket = buckets.get(key)!;
-    if (t.amount > 0) bucket.income += t.amount; else bucket.spending += Math.abs(t.amount);
+    if (t.amount > 0) {
+      if (!isSideCash(t)) bucket.income += t.amount;
+    } else {
+      bucket.spending += Math.abs(t.amount);
+    }
   });
 
   let arr = [...buckets.values()].sort((a, b) => a.sortKey - b.sortKey);
@@ -147,9 +177,10 @@ export interface LedgerEntry {
 // balances are derived. Storing the current balance instead would mean two
 // sources of truth that can silently drift apart — unacceptable for money.
 export function computeRecentTransactions(
-  expenses: ExpenseTransaction[], income: IncomeTransaction[], checkingOpening: number, cashOpening: number
+  expenses: ExpenseTransaction[], income: IncomeTransaction[], checkingOpening: number, cashOpening: number,
+  adjustments: BalanceAdjustment[] = []
 ): LedgerEntry[] {
-  const all: Transaction[] = [...expenses, ...income].sort((a, b) => {
+  const all: LedgerRecord[] = [...expenses, ...income, ...adjustments].sort((a, b) => {
     const dateDiff = parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
     if (dateDiff !== 0) return dateDiff;
     return a.id.localeCompare(b.id); // same-day tiebreak, via the date/time-based id
@@ -182,11 +213,13 @@ export interface CurrentBalances {
 // transaction against that payment method. Expense amounts are negative and
 // income amounts positive, so a single sum handles both directions.
 export function computeCurrentBalances(
-  transactions: Transaction[], checkingOpening: number, cashOpening: number
+  transactions: Transaction[], checkingOpening: number, cashOpening: number,
+  adjustments: BalanceAdjustment[] = []
 ): CurrentBalances {
   let checking = checkingOpening;
   let cash = cashOpening;
-  transactions.forEach((t) => {
+  const all: LedgerRecord[] = [...transactions, ...adjustments];
+  all.forEach((t) => {
     if (t.paymentMethod === 'Checking') checking += t.amount;
     else cash += t.amount;
   });
@@ -229,7 +262,11 @@ export function computeStatsForPeriod(transactions: Transaction[], mode: string,
   let spending = 0;
   transactions.forEach((t) => {
     if (inWindow(parseLocalDate(t.date))) {
-      if (t.amount > 0) income += t.amount; else spending += Math.abs(t.amount);
+      if (t.amount > 0) {
+        if (!isSideCash(t)) income += t.amount;
+      } else {
+        spending += Math.abs(t.amount);
+      }
     }
   });
   // Math.floor (not round) to 2 decimal places: rounding to a whole number

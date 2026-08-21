@@ -1,4 +1,4 @@
-import { pgTable, pgSchema, index, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, jsonb, check, date, numeric, primaryKey } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, foreignKey, uuid, text, timestamp, unique, boolean, uniqueIndex, jsonb, check, integer, date, numeric, primaryKey } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const neonAuth = pgSchema("neon_auth");
@@ -155,6 +155,44 @@ export const projectConfigInNeonAuth = neonAuth.table("project_config", {
 	webhookConfig: jsonb("webhook_config"),
 }, (table) => [
 	unique("project_config_endpoint_id_key").on(table.endpointId),
+]);
+
+export const category = pgTable("category", {
+	id: text().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	name: text().notNull(),
+	iconKey: text("icon_key").default('Home').notNull(),
+	color: text().default('#1F5A45').notNull(),
+	isSystem: boolean("is_system").default(false).notNull(),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("category_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "category_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("category_user_name_unique").on(table.userId, table.name),
+	check("category_name_not_blank", sql`btrim(name) <> ''::text`),
+]);
+
+export const balanceAdjustment = pgTable("balance_adjustment", {
+	id: text().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	description: text().default(').notNull(),
+	transactionDate: date("transaction_date").notNull(),
+	paymentMethod: text("payment_method").default('Checking').notNull(),
+	amount: numeric({ precision: 12, scale:  2 }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("balance_adjustment_user_date_idx").using("btree", table.userId.asc().nullsLast().op("date_ops"), table.transactionDate.desc().nullsFirst().op("date_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userInNeonAuth.id],
+			name: "balance_adjustment_user_id_fkey"
+		}).onDelete("cascade"),
+	check("balance_adjustment_payment_method_check", sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`),
 ]);
 
 export const expense = pgTable("expense", {

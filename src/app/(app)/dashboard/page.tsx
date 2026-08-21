@@ -1,5 +1,5 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
-import { getBudgets, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { DashboardClient } from './DashboardClient';
 
@@ -10,11 +10,13 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   const userId = await getSessionUserIdOrRedirect();
 
-  const [expenses, income, budgets, openingBalances] = await Promise.all([
+  const [expenses, income, budgets, categories, openingBalances, adjustments] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
+    getCategories(userId),
     getUserAccount(userId),
+    getBalanceAdjustments(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -25,11 +27,13 @@ export default async function DashboardPage() {
     transactions,
     openingBalances.checkingOpening,
     openingBalances.cashOpening,
+    adjustments,
   );
 
   return (
     <DashboardClient
       transactions={transactions}
+      categories={categories}
       budgets={budgets}
       totalBalance={balances.total}
     />

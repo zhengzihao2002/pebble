@@ -4,8 +4,11 @@ import type {
   BudgetRow,
   UserAccountRow,
   GoalRow,
+  CategoryRow,
+  BalanceAdjustmentRow,
 } from '@/db/schema';
 import type {
+  BalanceAdjustment,
   ExpenseTransaction,
   IncomeTransaction,
   PaymentMethod,
@@ -139,5 +142,41 @@ export function mapGoalRow(row: GoalRow): Goal {
     date: row.targetDate,
     iconKey: row.iconKey,
     color: row.color,
+  };
+}
+
+/**
+ * Serializable category shape crossing the server/client boundary.
+ * iconKey stays a string; resolveCategoryIcon() turns it into a component
+ * inside the client component that renders it.
+ */
+export interface CategoryItem {
+  id: string;
+  name: string;
+  iconKey: string;
+  color: string;
+  isSystem: boolean;
+  sortOrder: number;
+}
+
+export function mapCategoryRow(row: CategoryRow): CategoryItem {
+  return {
+    id: row.id,
+    name: row.name,
+    iconKey: row.iconKey,
+    color: row.color,
+    isSystem: row.isSystem,
+    sortOrder: row.sortOrder,
+  };
+}
+
+export function mapBalanceAdjustmentRow(row: BalanceAdjustmentRow): BalanceAdjustment {
+  return {
+    id: row.id,
+    type: 'adjustment',
+    description: row.description,
+    date: row.transactionDate,
+    paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    amount: row.amount,
   };
 }

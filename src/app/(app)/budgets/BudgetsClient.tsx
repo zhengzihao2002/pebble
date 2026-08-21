@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import type { Transaction } from '@/types';
+import type { CategoryItem } from '@/lib/data/mappers';
 import { computeCategorySpent } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { BudgetSummaryCard } from '@/components/budgets/BudgetSummaryCard';
@@ -10,11 +11,12 @@ import type { BudgetEntry } from '@/components/budgets/types';
 
 interface BudgetsClientProps {
   transactions: Transaction[];
+  categories: CategoryItem[];
   budgets: Record<string, number>;
 }
 
-export function BudgetsClient({ transactions, budgets }: BudgetsClientProps) {
-  const categoryMeta = useMemo(() => buildCategoryMeta(budgets), [budgets]);
+export function BudgetsClient({ transactions, categories, budgets }: BudgetsClientProps) {
+  const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Budgets are annual and reset each year, so this must be the viewer's
   // current year. Evaluated here rather than read from the TODAY constant

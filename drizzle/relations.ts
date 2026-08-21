@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { organizationInNeonAuth, invitationInNeonAuth, userInNeonAuth, sessionInNeonAuth, accountInNeonAuth, memberInNeonAuth, expense, income, goal, userAccount, budget } from "./schema";
+import { organizationInNeonAuth, invitationInNeonAuth, userInNeonAuth, sessionInNeonAuth, accountInNeonAuth, memberInNeonAuth, category, balanceAdjustment, expense, income, goal, userAccount, budget } from "./schema";
 
 export const invitationInNeonAuthRelations = relations(invitationInNeonAuth, ({one}) => ({
 	organizationInNeonAuth: one(organizationInNeonAuth, {
@@ -22,6 +22,8 @@ export const userInNeonAuthRelations = relations(userInNeonAuth, ({many}) => ({
 	sessionInNeonAuths: many(sessionInNeonAuth),
 	accountInNeonAuths: many(accountInNeonAuth),
 	memberInNeonAuths: many(memberInNeonAuth),
+	categories: many(category),
+	balanceAdjustments: many(balanceAdjustment),
 	expenses: many(expense),
 	incomes: many(income),
 	goals: many(goal),
@@ -50,6 +52,20 @@ export const memberInNeonAuthRelations = relations(memberInNeonAuth, ({one}) => 
 	}),
 	userInNeonAuth: one(userInNeonAuth, {
 		fields: [memberInNeonAuth.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const categoryRelations = relations(category, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [category.userId],
+		references: [userInNeonAuth.id]
+	}),
+}));
+
+export const balanceAdjustmentRelations = relations(balanceAdjustment, ({one}) => ({
+	userInNeonAuth: one(userInNeonAuth, {
+		fields: [balanceAdjustment.userId],
 		references: [userInNeonAuth.id]
 	}),
 }));

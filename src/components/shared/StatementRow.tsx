@@ -1,27 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { Banknote } from 'lucide-react';
-import type { CategoryMeta, Transaction } from '@/types';
+import { Banknote, SlidersHorizontal } from 'lucide-react';
+import type { CategoryMeta, LedgerRecord } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useLongPress } from '@/lib/hooks/useLongPress';
 
 interface StatementRowProps {
-  txn: Transaction;
+  txn: LedgerRecord;
   checkingBalanceAfter: number;
   cashBalanceAfter: number;
   totalBalanceAfter: number;
-  onOpenDetail: (txn: Transaction) => void;
+  onOpenDetail: (txn: LedgerRecord) => void;
   categoryMeta: CategoryMeta;
 }
 
 export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, totalBalanceAfter, onOpenDetail, categoryMeta }: StatementRowProps) {
-  const meta = categoryMeta[txn.category];
-  const Icon = meta ? meta.icon : Banknote;
-  const isIncome = txn.amount > 0;
-  const subtitleParts = [txn.category];
+  // Adjustments have no category. They are manual balance corrections, so
+  // they get their own icon and a neutral treatment rather than being coloured
+  // as income or spending.
+  const isAdjustment = txn.type === 'adjustment';
+  const meta = isAdjustment ? undefined : categoryMeta[txn.category];
+  const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
+  const isIncome = !isAdjustment && txn.amount > 0;
+
+  const subtitleParts = isAdjustment ? ['Balance adjustment'] : [txn.category];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
   subtitleParts.push(formatDate(txn.date));
+
+  const accentColor = isAdjustment
+    ? 'var(--ink-soft)'
+    : (isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)'));
+  const accentBg = isAdjustment
+    ? 'var(--mist)'
+    : (isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`);
+  const amountColor = isAdjustment
+    ? 'var(--ink-soft)'
+    : (isIncome ? 'var(--pine)' : 'var(--ink)');
+  const amountPrefix = isAdjustment ? (txn.amount > 0 ? '+' : '') : (isIncome ? '+' : '');
 
   const longPress = useLongPress(() => onOpenDetail(txn));
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
@@ -53,13 +69,13 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
       <div style={{
         width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`,
+        backgroundColor: accentBg,
       }}>
-        <Icon size={16} style={{ color: isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)') }} />
+        <Icon size={16} style={{ color: accentColor }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {txn.description.split('\n')[0]}
+          {txn.description.split('\n')[0] || (isAdjustment ? 'Balance adjustment' : '')}
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {subtitleParts.join(' · ')}
@@ -71,8 +87,8 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
         onMouseMove={updateHoverPos}
         onMouseLeave={() => setHoverPos(null)}
       >
-        <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--ink)', whiteSpace: 'nowrap' }}>
-          {isIncome ? '+' : ''}{formatCurrency(txn.amount)}
+        <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
+          {amountPrefix}{formatCurrency(txn.amount)}
         </div>
         <div className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
           Bal {formatCurrency(totalBalanceAfter)}

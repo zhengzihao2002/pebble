@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { getBudgetModalDataAction, modifyBudgetsAction } from '@/lib/actions/pebble';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
+import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
 
 interface ModifyBudgetModalProps {
@@ -12,6 +14,7 @@ interface ModifyBudgetModalProps {
 
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
   const [annualIncome, setAnnualIncome] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +28,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     getBudgetModalDataAction().then((result) => {
       if (!active) return;
       if (!result.ok) { setError(result.error); setLoading(false); return; }
-      const meta = buildCategoryMeta(result.budgets);
+      const meta = buildCategoryMeta(result.categories, result.budgets);
+      setCategoryMeta(meta);
       const initial: Record<string, string> = {};
       Object.entries(meta).forEach(([name, entry]) => {
         initial[name] = entry.budget > 0 ? String(entry.budget) : '';
@@ -37,7 +41,6 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     return () => { active = false; };
   }, []);
 
-  const categoryMeta = buildCategoryMeta({});
   const categoryNames = Object.keys(categoryMeta);
   const totalBudgeted = categoryNames.reduce((s, name) => s + (Number(values[name]) || 0), 0);
 
@@ -59,7 +62,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
       onClick={onClose}
     >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 680, boxSizing: 'border-box', margin: '1rem 0' }} onClick={(e) => e.stopPropagation()}>
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 680, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        {saving && <LoadingOverlay label="Saving budgets…" />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h2 className="font-display" style={{ fontSize: '1.3rem', fontWeight: 600 }}>Modify budget</h2>
           <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0 }}><X size={18} /></button>
@@ -83,7 +87,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="themed-scroll" style={{ maxHeight: '48vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+          {loading && <LoadingBlock label="Loading your budgets…" minHeight={160} />}
+          <div className="themed-scroll" style={{ maxHeight: '48vh', overflowY: 'auto', paddingRight: '0.25rem', display: loading ? 'none' : undefined }}>
             {categoryNames.map((name) => {
               const meta = categoryMeta[name];
               return (

@@ -31,6 +31,7 @@ import {
   uuid,
   text,
   boolean,
+  integer,
   date,
   numeric,
   timestamp,
@@ -219,6 +220,89 @@ export const userAccount = pgTable(
   ],
 );
 
+/**
+ * Per-user expense category taxonomy. Replaces the hardcoded
+ * initialCategoryMeta map in seed.ts, which gave every user the same fixed 15.
+ *
+ * `name` is the join key: expense.category and budget.category both store the
+ * category NAME as text, not an id. A rename therefore has to cascade an
+ * UPDATE across those tables inside the same action. UNIQUE (user_id, name)
+ * makes that safe - a rename that would collide errors instead of silently
+ * merging two categories together.
+ *
+ * `isSystem` marks the undeletable fallback category (Miscellaneous). It is
+ * enforced in the action layer rather than by a database constraint, so the
+ * row stays removable by hand if it ever needs to be.
+ */
+export const category = pgTable(
+  'category',
+  {
+    id: text().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    name: text().notNull(),
+    iconKey: text('icon_key').default('Home').notNull(),
+    color: text().default('#1F5A45').notNull(),
+    isSystem: boolean('is_system').default(false).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('category_user_idx').using('btree', table.userId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [userInNeonAuth.id],
+      name: 'category_user_id_fkey',
+    }).onDelete('cascade'),
+    unique('category_user_name_unique').on(table.userId, table.name),
+    check('category_name_not_blank', sql`btrim(name) <> ''::text`),
+  ],
+);
+
+/**
+ * Manual balance corrections - "my bank says 1,240 but Pebble says 1,190".
+ *
+ * Deliberately a SEPARATE table from expense/income, not a flagged row in
+ * them. Adjustments must appear in the statement ledger but never in Reports,
+ * and Reports classifies with a catch-all else branch: anything that is not an
+ * expense is treated as income. A flag would eventually be forgotten by some
+ * filter; a separate table cannot reach Reports at all, because it is never in
+ * the array Reports receives.
+ *
+ * amount is signed and has NO check constraint - corrections go both ways.
+ */
+export const balanceAdjustment = pgTable(
+  'balance_adjustment',
+  {
+    id: text().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    description: text().default('').notNull(),
+    transactionDate: date('transaction_date').notNull(),
+    paymentMethod: text('payment_method').default('Checking').notNull(),
+    amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('balance_adjustment_user_date_idx').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops'),
+      table.transactionDate.desc().nullsFirst().op('date_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [userInNeonAuth.id],
+      name: 'balance_adjustment_user_id_fkey',
+    }).onDelete('cascade'),
+    check(
+      'balance_adjustment_payment_method_check',
+      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
+    ),
+  ],
+);
+
 // Row types for the Phase 2 mapping layer.
 export type ExpenseRow = typeof expense.$inferSelect;
 export type ExpenseInsert = typeof expense.$inferInsert;
@@ -230,3 +314,7 @@ export type BudgetRow = typeof budget.$inferSelect;
 export type BudgetInsert = typeof budget.$inferInsert;
 export type UserAccountRow = typeof userAccount.$inferSelect;
 export type UserAccountInsert = typeof userAccount.$inferInsert;
+export type CategoryRow = typeof category.$inferSelect;
+export type CategoryInsert = typeof category.$inferInsert;
+export type BalanceAdjustmentRow = typeof balanceAdjustment.$inferSelect;
+export type BalanceAdjustmentInsert = typeof balanceAdjustment.$inferInsert;

@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
+import type { CategoryItem } from '@/lib/data/mappers';
 import { parseLocalDate } from '@/lib/format';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { ReportResults } from '@/components/reports/ReportResults';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { ExpenseTransaction, Transaction } from '@/types';
-import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, ReportPeriodGroup } from '@/components/reports/types';
+import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField, ReportPeriodGroup } from '@/components/reports/types';
 
 function isExpense(t: Transaction): t is ExpenseTransaction {
   return t.type === 'expense';
@@ -16,11 +17,12 @@ function isExpense(t: Transaction): t is ExpenseTransaction {
 
 interface ReportsClientProps {
   transactions: Transaction[];
+  categories: CategoryItem[];
   budgets: Record<string, number>;
 }
 
-export function ReportsClient({ transactions, budgets }: ReportsClientProps) {
-  const categoryMeta = useMemo(() => buildCategoryMeta(budgets), [budgets]);
+export function ReportsClient({ transactions, categories, budgets }: ReportsClientProps) {
+  const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [reportType, setReportType] = useState<ReportType>('expense');
@@ -28,6 +30,7 @@ export function ReportsClient({ transactions, budgets }: ReportsClientProps) {
   const [subPeriod, setSubPeriod] = useState('All');
   const [categoryGroup, setCategoryGroup] = useState<CategoryGroupMode>('none');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortField, setSortField] = useState<SortField>('amount');
   const [descQuery, setDescQuery] = useState('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -119,8 +122,18 @@ export function ReportsClient({ transactions, budgets }: ReportsClientProps) {
 
   const showPeriodHeaders = periodGroup !== 'all' && subPeriod === 'All';
 
-  const sortFn = (a: Transaction, b: Transaction) =>
-    sortDir === 'desc' ? Math.abs(b.amount) - Math.abs(a.amount) : Math.abs(a.amount) - Math.abs(b.amount);
+  // Date sorting falls back to the id as a same-day tiebreak, matching how
+  // the statement orders entries added on the same day.
+  const sortFn = (a: Transaction, b: Transaction) => {
+    if (sortField === 'date') {
+      const diff = parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+        || a.id.localeCompare(b.id);
+      return sortDir === 'desc' ? -diff : diff;
+    }
+    return sortDir === 'desc'
+      ? Math.abs(b.amount) - Math.abs(a.amount)
+      : Math.abs(a.amount) - Math.abs(b.amount);
+  };
 
   const periodBuckets = new Map<string, { sortKey: number; items: Transaction[] }>();
   if (showPeriodHeaders) {
@@ -195,6 +208,8 @@ export function ReportsClient({ transactions, budgets }: ReportsClientProps) {
         onCategoryGroupChange={setCategoryGroup}
         sortDir={sortDir}
         onSortDirChange={setSortDir}
+        sortField={sortField}
+        onSortFieldChange={setSortField}
         descQuery={descQuery}
         onDescQueryChange={setDescQuery}
         availableCats={availableCats}

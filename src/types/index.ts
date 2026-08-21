@@ -28,6 +28,23 @@ export interface IncomeTransaction {
 
 export type Transaction = ExpenseTransaction | IncomeTransaction;
 
+/**
+ * A manual balance correction. Deliberately NOT part of the Transaction union:
+ * it must never reach the Reports page, which classifies anything that is not
+ * an expense as income.
+ */
+export interface BalanceAdjustment {
+  id: string;
+  type: 'adjustment';
+  description: string;
+  date: string; // 'YYYY-MM-DD'
+  paymentMethod: PaymentMethod;
+  amount: number; // signed - corrections go both ways
+}
+
+/** Anything that can appear as a row in the statement ledger. */
+export type LedgerRecord = Transaction | BalanceAdjustment;
+
 export interface CategoryMetaEntry {
   icon: LucideIcon;
   color: string;

@@ -1,5 +1,5 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
-import { getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { SettingsClient } from './SettingsClient';
 
@@ -8,10 +8,11 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage() {
   const userId = await getSessionUserIdOrRedirect();
 
-  const [expenses, income, openingBalances] = await Promise.all([
+  const [expenses, income, openingBalances, adjustments] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getUserAccount(userId),
+    getBalanceAdjustments(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
   // The transaction-only totals, obtained by computing current balances from
   // a zero opening. This lets the settings card show a live projected balance
   // as the opening values are edited, without re-querying.
-  const fromZero = computeCurrentBalances(transactions, 0, 0);
+  const fromZero = computeCurrentBalances(transactions, 0, 0, adjustments);
 
   return (
     <SettingsClient
@@ -27,6 +28,7 @@ export default async function SettingsPage() {
       cashOpening={openingBalances.cashOpening}
       checkingTransactionTotal={fromZero.checking}
       cashTransactionTotal={fromZero.cash}
+      hasTransactions={expenses.length > 0 || income.length > 0}
     />
   );
 }

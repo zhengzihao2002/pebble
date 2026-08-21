@@ -1,6 +1,6 @@
 'use client';
 
-import type { CategoryMeta, Transaction } from '@/types';
+import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { LedgerEntry } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { StatementRow } from '@/components/shared/StatementRow';
@@ -9,14 +9,14 @@ import { StatementRow } from '@/components/shared/StatementRow';
 // entries are deliberately lightweight (just balances + an id), so the page
 // resolves each back to its full record before handing entries down here.
 export interface StatementEntry extends LedgerEntry {
-  record: Transaction;
+  record: LedgerRecord;
 }
 
 interface StatementListProps {
   entries: StatementEntry[];
   openingBalance: number;
   categoryMeta: CategoryMeta;
-  onOpenDetail: (txn: Transaction) => void;
+  onOpenDetail: (txn: LedgerRecord) => void;
 }
 
 export function StatementList({ entries, openingBalance, categoryMeta, onOpenDetail }: StatementListProps) {

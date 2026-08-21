@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, Percent, Wallet } from 'lucide-react';
 import type { Transaction } from '@/types';
+import type { CategoryItem } from '@/lib/data/mappers';
 import { StatTab } from '@/components/shared/StatTab';
 import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
@@ -15,14 +16,15 @@ import { STATS_MODES } from '@/data/seed';
 
 interface DashboardClientProps {
   transactions: Transaction[];
+  categories: CategoryItem[];
   budgets: Record<string, number>;
   totalBalance: number;
 }
 
-export function DashboardClient({ transactions, budgets, totalBalance }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance }: DashboardClientProps) {
   // Icons are functions and cannot cross the server/client boundary, so the
   // icon-bearing map is reassembled here from serializable budget numbers.
-  const categoryMeta = useMemo(() => buildCategoryMeta(budgets), [budgets]);
+  const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [statsMode, setStatsMode] = useState('30d');
   const [statsPeriod, setStatsPeriod] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function DashboardClient({ transactions, budgets, totalBalance }: Dashboa
           )}
         </div>
         <div className="stat-tabs">
-          <StatTab icon={ArrowUpRight} label="Income" value={formatCurrency(periodStats.income)} sublabel={statsSublabel} color="var(--pine)" />
+          <StatTab icon={ArrowUpRight} label="Income" value={formatCurrency(periodStats.income)} sublabel={statsSublabel ? `${statsSublabel} · Standard income only` : 'Standard income only'} color="var(--pine)" />
           <StatTab icon={ArrowDownRight} label="Spending" value={formatCurrency(periodStats.spending)} sublabel={statsSublabel} color="var(--wine)" />
           <StatTab icon={Percent} label="Savings rate" value={`${periodStats.savingsRate.toFixed(2)}%`} sublabel={statsSublabel} color="var(--gold)" />
           <StatTab icon={Wallet} label="Saved" value={formatCurrency(periodStats.saved)} sublabel={statsSublabel} color="var(--pine)" />

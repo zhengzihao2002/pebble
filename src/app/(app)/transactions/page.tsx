@@ -1,5 +1,5 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
-import { getBudgets, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, computeRecentTransactions, mergeTransactions } from '@/lib/stats';
 import { TransactionsClient } from './TransactionsClient';
 
@@ -8,11 +8,13 @@ export const dynamic = 'force-dynamic';
 export default async function TransactionsPage() {
   const userId = await getSessionUserIdOrRedirect();
 
-  const [expenses, income, budgets, openingBalances] = await Promise.all([
+  const [expenses, income, budgets, categories, openingBalances, adjustments] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
+    getCategories(userId),
     getUserAccount(userId),
+    getBalanceAdjustments(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -25,18 +27,22 @@ export default async function TransactionsPage() {
     income,
     openingBalances.checkingOpening,
     openingBalances.cashOpening,
+    adjustments,
   );
 
   const balances = computeCurrentBalances(
     transactions,
     openingBalances.checkingOpening,
     openingBalances.cashOpening,
+    adjustments,
   );
 
   return (
     <TransactionsClient
       transactions={transactions}
+      adjustments={adjustments}
       ledger={ledger}
+      categories={categories}
       budgets={budgets}
       accountOpeningTotal={openingBalances.checkingOpening + openingBalances.cashOpening}
       currentBalance={balances.total}

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import type { Transaction } from '@/types';
+import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
+import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
 import { getLastNMonths } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
@@ -14,19 +15,21 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 
 interface TransactionsClientProps {
   transactions: Transaction[];
+  adjustments: BalanceAdjustment[];
   ledger: LedgerEntry[];
+  categories: CategoryItem[];
   budgets: Record<string, number>;
   accountOpeningTotal: number;
   currentBalance: number;
 }
 
 export function TransactionsClient({
-  transactions, ledger, budgets, accountOpeningTotal, currentBalance,
+  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance,
 }: TransactionsClientProps) {
-  const categoryMeta = useMemo(() => buildCategoryMeta(budgets), [budgets]);
+  const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<LedgerRecord | null>(null);
 
   // 13, not 12: the navigator must reach the same month one year back
   // (from August 2026 that is August 2025, which is 13 entries inclusive).
@@ -42,10 +45,11 @@ export function TransactionsClient({
   const selectedMonthInfo = monthOptions[selectedMonthIndex];
 
   const recordsById = useMemo(() => {
-    const map = new Map<string, Transaction>();
+    const map = new Map<string, LedgerRecord>();
     transactions.forEach((t) => map.set(t.id, t));
+    adjustments.forEach((a) => map.set(a.id, a));
     return map;
-  }, [transactions]);
+  }, [transactions, adjustments]);
 
   // ledger entries are lightweight - resolve each back to its full record here.
   const entriesWithRecords = useMemo(() => {
