@@ -3,6 +3,17 @@ export function atMidnight(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
+// The current date and time, evaluated fresh on every call.
+//
+// Deliberately a function, not a constant. A module-scope `const TODAY =
+// new Date()` is captured once when the module first loads, so on a warm
+// server container it goes stale past midnight and every "last 30 days"
+// window silently shifts. Callers that need a stable value across a loop
+// should snapshot it into a local once, rather than calling this per item.
+export function getToday(): Date {
+  return new Date();
+}
+
 // Today's date as a local 'YYYY-MM-DD' string, for date-input defaults.
 // (Deliberately not toISOString().slice(0,10) — that converts to UTC first,
 // which can silently shift the date by one day depending on the user's

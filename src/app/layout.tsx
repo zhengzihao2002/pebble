@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${workSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NeonAuthUIProvider authClient={authClient} emailOTP social={{ providers: ["google"] }}>
+        <NeonAuthUIProvider authClient={authClient} emailOTP>
           {children}
         </NeonAuthUIProvider>
       </body>

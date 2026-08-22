@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# drizzle-kit pull output — snapshots go stale against the
+# hand-edited src/db/schema.ts. Migrations are hand-written SQL
+# run in the Neon SQL Editor, never through Drizzle.
+/drizzle

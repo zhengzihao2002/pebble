@@ -6,8 +6,7 @@ import type {
   LedgerRecord,
   Transaction,
 } from '@/types';
-import { TODAY } from '@/data/seed';
-import { atMidnight, parseLocalDate } from './format';
+import { atMidnight, getToday, parseLocalDate } from './format';
 
 // Side Cash is real money and counts toward the balance, but it is not
 // earnings: cash back, a gift, a gambling win. It is deliberately excluded
@@ -97,31 +96,39 @@ export function estimateAnnualIncome(transactions: Transaction[]): number {
 
 // Shared "is this date within the selected window" logic, used by every
 // period-aware dashboard widget.
+//
+// `now` is snapshotted ONCE here, at predicate-construction time, and closed
+// over by the returned predicates. Calling getToday() inside a predicate
+// instead would re-read the clock for every transaction in a filter pass -
+// and a pass that straddled midnight would apply two different upper bounds
+// to different rows of the same list.
 export function getWindowPredicate(mode: string, periodKey?: string | null): (d: Date) => boolean {
+  const now = getToday();
+
   if (mode === '30d' || mode === '90d') {
     const days = mode === '30d' ? 30 : 90;
-    const cutoff = atMidnight(TODAY);
+    const cutoff = atMidnight(now);
     cutoff.setDate(cutoff.getDate() - days + 1);
-    return (d) => d >= cutoff && d <= TODAY;
+    return (d) => d >= cutoff && d <= now;
   }
   if (mode === 'last6' || mode === 'last12') {
     const monthsBack = mode === 'last6' ? 6 : 12;
-    const cutoff = new Date(TODAY.getFullYear(), TODAY.getMonth() - monthsBack + 1, 1);
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
     return (d) => d >= cutoff;
   }
   if (mode === 'month') {
     return periodKey
       ? (d) => `${d.getFullYear()}-${d.getMonth()}` === periodKey
-      : (d) => d.getFullYear() === TODAY.getFullYear() && d.getMonth() === TODAY.getMonth();
+      : (d) => d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }
   if (mode === 'quarter') {
     return periodKey
       ? (d) => `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}` === periodKey
-      : (d) => { const q = Math.floor(TODAY.getMonth() / 3); return d.getFullYear() === TODAY.getFullYear() && Math.floor(d.getMonth() / 3) === q; };
+      : (d) => { const q = Math.floor(now.getMonth() / 3); return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === q; };
   }
   return periodKey
     ? (d) => `${d.getFullYear()}` === periodKey
-    : (d) => d.getFullYear() === TODAY.getFullYear();
+    : (d) => d.getFullYear() === now.getFullYear();
 }
 
 export interface CategoryBreakdownEntry {

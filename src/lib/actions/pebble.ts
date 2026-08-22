@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import { balanceAdjustment, budget, category, expense, goal, income, userAccount } from '@/db/schema';
-import { getSessionUserId } from '@/lib/auth/getSessionUser';
+import { withSessionUser } from '@/lib/actions/withSessionUser';
 import { getBudgets, getCategories, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
 import { estimateAnnualIncome } from '@/lib/stats';
 import { generateId, generateTransId } from '@/lib/ids';
@@ -16,11 +16,17 @@ import type { CategoryItem } from '@/lib/data/mappers';
  *
  * SECURITY: src/proxy.ts returns early for any request carrying the
  * Next-Action header, so Server Actions are NOT covered by auth middleware.
- * The getSessionUserId() call inside each action is the ONLY thing standing
- * between an unauthenticated POST and a write.
+ * withSessionUser() is the ONLY thing standing between an unauthenticated
+ * POST and a write.
  *
- * Consequently no action accepts a userId parameter. It is always resolved
- * from the session here. Do not add one.
+ * Every action is therefore exported wrapped in withSessionUser(), in the
+ * block at the bottom of this file. The wrapper resolves the session and
+ * passes userId into the handler, so a handler cannot run - or be written -
+ * without a session check. An export that is not a withSessionUser() call is
+ * an unauthenticated write endpoint. Do not add one.
+ *
+ * No action accepts a userId parameter. It is always resolved from the
+ * session. Do not add one.
  *
  * Actions return a result object rather than throwing: an uncaught throw in a
  * Server Action surfaces in production as an opaque error digest, which helps
@@ -85,12 +91,11 @@ export type AddTransactionActionInput = AddExpenseActionInput | AddIncomeActionI
  * computeRecentTransactions() relies on their timestamp ordering to break
  * ties between same-day entries.
  */
-export async function addTransactionAction(
+async function addTransaction(
+  userId: string,
   input: AddTransactionActionInput,
 ): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     if (!DATE_PATTERN.test(input.date)) {
       return fail('Date must be in YYYY-MM-DD format.');
     }
@@ -160,10 +165,8 @@ export interface AddGoalActionInput {
   color: string;
 }
 
-export async function addGoalAction(input: AddGoalActionInput): Promise<ActionResult> {
+async function addGoal(userId: string, input: AddGoalActionInput): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     if (!input.name.trim()) {
       return fail('A goal needs a name.');
     }
@@ -197,12 +200,11 @@ export async function addGoalAction(input: AddGoalActionInput): Promise<ActionRe
  * stored, keeping "unset" and "explicitly zero" from accumulating as
  * indistinguishable rows.
  */
-export async function modifyBudgetsAction(
+async function modifyBudgets(
+  userId: string,
   budgets: Record<string, number>,
 ): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const entries = Object.entries(budgets);
     for (const [category, amount] of entries) {
       if (!category.trim()) {
@@ -241,13 +243,11 @@ export async function modifyBudgetsAction(
  * Sets OPENING balances - the balance before any recorded transaction.
  * Current balances are derived and must never be written here.
  */
-export async function setOpeningBalancesAction(input: {
-  checkingOpening: number;
-  cashOpening: number;
-}): Promise<ActionResult> {
+async function setOpeningBalances(
+  userId: string,
+  input: { checkingOpening: number; cashOpening: number },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     if (!isFiniteNumber(input.checkingOpening)) {
       return fail('Checking opening balance must be a number.');
     }
@@ -292,9 +292,8 @@ export type BudgetModalData =
  * annualIncome is computed server-side so the full income history never
  * crosses the wire - the client only needs the resulting number.
  */
-export async function getBudgetModalDataAction(): Promise<BudgetModalData> {
+async function loadBudgetModalData(userId: string): Promise<BudgetModalData> {
   try {
-    const userId = await getSessionUserId();
     const [budgets, income, categories] = await Promise.all([
       getBudgets(userId),
       getIncome(userId),
@@ -324,9 +323,8 @@ export type CategoriesResult =
   | { ok: true; categories: CategoryItem[] }
   | { ok: false; error: string };
 
-export async function getCategoriesAction(): Promise<CategoriesResult> {
+async function loadCategories(userId: string): Promise<CategoriesResult> {
   try {
-    const userId = await getSessionUserId();
     return { ok: true, categories: await getCategories(userId) };
   } catch (error) {
     console.error('[pebble action] getCategoriesAction', error);
@@ -334,14 +332,11 @@ export async function getCategoriesAction(): Promise<CategoriesResult> {
   }
 }
 
-export async function createCategoryAction(input: {
-  name: string;
-  iconKey: string;
-  color: string;
-}): Promise<ActionResult> {
+async function createCategory(
+  userId: string,
+  input: { name: string; iconKey: string; color: string },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const nameError = validateCategoryName(input.name);
     if (nameError) return fail(nameError);
 
@@ -377,15 +372,11 @@ export async function createCategoryAction(input: {
  * so a partial failure leaves the old name intact and the whole operation
  * safely retryable rather than half-applied.
  */
-export async function updateCategoryAction(input: {
-  id: string;
-  name: string;
-  iconKey: string;
-  color: string;
-}): Promise<ActionResult> {
+async function updateCategory(
+  userId: string,
+  input: { id: string; name: string; iconKey: string; color: string },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const nameError = validateCategoryName(input.name);
     if (nameError) return fail(nameError);
 
@@ -463,9 +454,11 @@ export type CategoryDeletePlan = BulkReassignPlan | IndividualReassignPlan | nul
  * transactions the category can be removed outright, otherwise the user has
  * to say where those transactions should go.
  */
-export async function getCategoryUsageAction(categoryId: string): Promise<CategoryUsageResult> {
+async function loadCategoryUsage(
+  userId: string,
+  categoryId: string,
+): Promise<CategoryUsageResult> {
   try {
-    const userId = await getSessionUserId();
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === categoryId);
     if (!target) return { ok: false, error: 'That category no longer exists.' };
@@ -504,13 +497,11 @@ export async function getCategoryUsageAction(categoryId: string): Promise<Catego
  *
  * The system fallback category can never be deleted.
  */
-export async function deleteCategoryAction(input: {
-  id: string;
-  plan: CategoryDeletePlan;
-}): Promise<ActionResult> {
+async function deleteCategory(
+  userId: string,
+  input: { id: string; plan: CategoryDeletePlan },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === input.id);
     if (!target) return fail('That category no longer exists.');
@@ -615,12 +606,11 @@ export interface UpdateTransactionInput {
   netAmount?: number;
 }
 
-export async function updateTransactionAction(
+async function updateTransaction(
+  userId: string,
   input: UpdateTransactionInput,
 ): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const table = input.type === 'expense' ? expense : income;
     const rows = await db
       .select({ id: table.id, date: table.transactionDate, paymentMethod: table.paymentMethod })
@@ -713,13 +703,11 @@ export async function updateTransactionAction(
  * balance after this one corrects itself automatically. Nothing is stored
  * that could go stale.
  */
-export async function deleteTransactionAction(input: {
-  id: string;
-  type: 'expense' | 'income';
-}): Promise<ActionResult> {
+async function deleteTransaction(
+  userId: string,
+  input: { id: string; type: 'expense' | 'income' },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const table = input.type === 'expense' ? expense : income;
     const rows = await db
       .select({ id: table.id })
@@ -748,15 +736,16 @@ export async function deleteTransactionAction(input: {
  * `delta` is the signed change. The caller decides whether the user entered a
  * target balance (delta = target - current) or a direct amount.
  */
-export async function createBalanceAdjustmentAction(input: {
-  paymentMethod: PaymentMethod;
-  delta: number;
-  description: string;
-  date: string;
-}): Promise<ActionResult> {
+async function createBalanceAdjustment(
+  userId: string,
+  input: {
+    paymentMethod: PaymentMethod;
+    delta: number;
+    description: string;
+    date: string;
+  },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
       return fail('Payment method must be Cash or Checking.');
     }
@@ -783,10 +772,11 @@ export async function createBalanceAdjustmentAction(input: {
   }
 }
 
-export async function deleteBalanceAdjustmentAction(input: { id: string }): Promise<ActionResult> {
+async function deleteBalanceAdjustment(
+  userId: string,
+  input: { id: string },
+): Promise<ActionResult> {
   try {
-    const userId = await getSessionUserId();
-
     const rows = await db
       .select({ id: balanceAdjustment.id, date: balanceAdjustment.transactionDate })
       .from(balanceAdjustment)
@@ -814,9 +804,8 @@ export type BalanceModeResult =
  * Tells the settings screen which balance UI to show: opening balances for a
  * brand-new account, manual adjustments once any transaction exists.
  */
-export async function getBalanceModeAction(): Promise<BalanceModeResult> {
+async function loadBalanceMode(userId: string): Promise<BalanceModeResult> {
   try {
-    const userId = await getSessionUserId();
     const [hasTransactions, account] = await Promise.all([
       hasAnyTransactions(userId),
       getUserAccount(userId),
@@ -832,3 +821,31 @@ export async function getBalanceModeAction(): Promise<BalanceModeResult> {
     return { ok: false, error: 'Could not load your balance settings.' };
   }
 }
+
+/* -------------------------------------------------------------------------
+ * Exported actions
+ *
+ * Every action is exported from here, and only from here, wrapped in
+ * withSessionUser(). The wrapper resolves the session and hands userId to the
+ * handler, so a handler cannot run - or be written - without a session check.
+ *
+ * This list is the audit surface for that invariant: an export that is not a
+ * withSessionUser() call is a bug, and is visible at a glance.
+ *
+ * ---------------------------------------------------------------------- */
+
+export const addTransactionAction = withSessionUser(addTransaction);
+export const addGoalAction = withSessionUser(addGoal);
+export const setOpeningBalancesAction = withSessionUser(setOpeningBalances);
+export const getCategoriesAction = withSessionUser(loadCategories);
+export const updateTransactionAction = withSessionUser(updateTransaction);
+export const deleteTransactionAction = withSessionUser(deleteTransaction);
+export const createBalanceAdjustmentAction = withSessionUser(createBalanceAdjustment);
+export const deleteBalanceAdjustmentAction = withSessionUser(deleteBalanceAdjustment);
+export const modifyBudgetsAction = withSessionUser(modifyBudgets);
+export const getBudgetModalDataAction = withSessionUser(loadBudgetModalData);
+export const createCategoryAction = withSessionUser(createCategory);
+export const updateCategoryAction = withSessionUser(updateCategory);
+export const getCategoryUsageAction = withSessionUser(loadCategoryUsage);
+export const deleteCategoryAction = withSessionUser(deleteCategory);
+export const getBalanceModeAction = withSessionUser(loadBalanceMode);

@@ -5,7 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { computeCategorySpent } from '@/lib/stats';
 import { BudgetRow } from '@/components/shared/BudgetRow';
-import { TODAY } from '@/data/seed';
+import { getToday } from '@/lib/format';
 
 interface NeedsAttentionCardProps {
   transactions: Transaction[];
@@ -13,7 +13,10 @@ interface NeedsAttentionCardProps {
 }
 
 export function NeedsAttentionCard({ transactions, categoryMeta }: NeedsAttentionCardProps) {
-  const categorySpent = computeCategorySpent(transactions, TODAY.getFullYear());
+  // Budgets are annual, so "spent" is always the CURRENT year - read per
+  // render rather than from a module-load constant, which would keep showing
+  // last year's totals for as long as the container stayed warm into January.
+  const categorySpent = computeCategorySpent(transactions, getToday().getFullYear());
 
   const topBudgets = Object.entries(categoryMeta)
     .map(([name, meta]) => {

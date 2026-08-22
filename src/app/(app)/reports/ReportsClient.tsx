@@ -135,6 +135,17 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
       : Math.abs(a.amount) - Math.abs(b.amount);
   };
 
+  // Applies the selected direction to a comparator written in descending
+  // order. One place, so direction can never be flipped at one nesting level
+  // and forgotten at another.
+  const directed = (descDiff: number) => (sortDir === 'desc' ? descDiff : -descDiff);
+
+  // A group's leading date. items[] is already sorted by sortFn before this
+  // runs, so items[0] IS the leading date in the chosen direction - no extra
+  // min/max scan needed.
+  const leadingTime = (items: Transaction[]): number =>
+    items.length === 0 ? 0 : parseLocalDate(items[0].date).getTime();
+
   const periodBuckets = new Map<string, { sortKey: number; items: Transaction[] }>();
   if (showPeriodHeaders) {
     periodFiltered.forEach((t) => {
@@ -143,10 +154,15 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
       if (periodGroup === 'month') {
         key = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         sortKey = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      } else {
+      } else if (periodGroup === 'quarter') {
         const q = Math.floor(d.getMonth() / 3) + 1;
         key = `Q${q} ${d.getFullYear()}`;
         sortKey = new Date(d.getFullYear(), (q - 1) * 3, 1).getTime();
+      } else {
+        // periodGroup === 'year'. Previously fell through to the quarter
+        // branch, so selecting Year silently grouped and labelled by quarter.
+        key = `${d.getFullYear()}`;
+        sortKey = new Date(d.getFullYear(), 0, 1).getTime();
       }
       if (!periodBuckets.has(key)) periodBuckets.set(key, { sortKey, items: [] });
       periodBuckets.get(key)!.items.push(t);
@@ -155,6 +171,14 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     periodBuckets.set('__flat__', { sortKey: 0, items: periodFiltered });
   }
 
+  // Groups and subgroups order on the SAME axis as the rows inside them, so
+  // each sort button means one consistent thing at every level: 'date' orders
+  // periods chronologically and categories by their leading transaction,
+  // 'amount' orders both by total. Ordering groups by total while rows sorted
+  // by date (the previous behaviour) made "Oldest first" look broken.
+  //
+  // The key comparison is a stable tiebreak: without it, two groups with equal
+  // totals could swap places between renders.
   const periodGroups: ReportPeriodGroup[] = [...periodBuckets.entries()]
     .map(([key, v]) => {
       const total = v.items.reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -166,12 +190,20 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
         });
         const subGroups = [...catBuckets.entries()]
           .map(([cat, items]) => ({ key: cat, total: items.reduce((s, t) => s + Math.abs(t.amount), 0), items: [...items].sort(sortFn) }))
-          .sort((a, b) => sortDir === 'desc' ? b.total - a.total : a.total - b.total);
+          .sort((a, b) =>
+            directed(
+              sortField === 'date'
+                ? leadingTime(b.items) - leadingTime(a.items)
+                : b.total - a.total,
+            ) || a.key.localeCompare(b.key));
         return { key, sortKey: v.sortKey, total, subGroups };
       }
       return { key, sortKey: v.sortKey, total, items: [...v.items].sort(sortFn) };
     })
-    .sort((a, b) => b.sortKey - a.sortKey);
+    .sort((a, b) =>
+      directed(
+        sortField === 'date' ? b.sortKey - a.sortKey : b.total - a.total,
+      ) || a.key.localeCompare(b.key));
 
   const grandTotal = periodFiltered.reduce((s, t) => s + Math.abs(t.amount), 0);
   const accent = reportType === 'expense' ? 'var(--wine)' : 'var(--pine)';

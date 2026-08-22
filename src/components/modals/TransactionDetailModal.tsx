@@ -77,6 +77,11 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const categoryNames = Object.keys(categoryMeta);
   const editingSideCash = txn.type === 'income' && category === 'Side Cash';
 
+  // Reads the PERSISTED category, not the edit form's draft `category` state.
+  // Keying the view rows off the draft would make them change while someone
+  // was mid-edit, and revert on cancel.
+  const isSideCash = txn.type === 'income' && txn.category === 'Side Cash';
+
   const handleSave = async () => {
     // Adjustments have no edit mode - the Edit button is not rendered for
     // them - but this narrows txn.type for the action call below.
@@ -128,10 +133,15 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     ...(txn.type === 'expense' && txn.tag ? [{ label: 'Tag / sub-category', value: txn.tag }] : []),
     { label: 'Date', value: parseLocalDate(txn.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) },
     { label: 'Payment method', value: txn.paymentMethod || '—' },
-    ...(txn.type === 'income' ? [
+    // Side cash is untaxed, so the actions store gross = net. Showing both
+    // rows would print the same number twice under two labels that imply a
+    // deduction happened. One "Amount" row, matching the edit form's label.
+    ...(txn.type === 'income' ? (isSideCash ? [
+      { label: 'Amount', value: formatCurrency(txn.netAmount) },
+    ] : [
       { label: 'Pay before deductions', value: formatCurrency(txn.grossAmount) },
       { label: 'Pay after deductions', value: formatCurrency(txn.netAmount) },
-    ] : []),
+    ]) : []),
   ];
 
   const descLines = txn.description.split('\n');

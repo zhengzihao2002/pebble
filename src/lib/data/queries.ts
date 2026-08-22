@@ -34,6 +34,10 @@ import {
  *
  * userId is always resolved from the session by the caller via
  * getSessionUserId() - never accepted from client input.
+ *
+ * EXCEPTION: getCategories() writes as well as reads. Every other function
+ * in this file is pure. See the warning on that function before calling it
+ * from anywhere new.
  */
 
 export async function getExpenses(userId: string): Promise<ExpenseTransaction[]> {
@@ -132,6 +136,29 @@ export async function getAllPebbleData(userId: string): Promise<PebbleData> {
  * onConflictDoNothing makes a concurrent double-seed harmless: the
  * UNIQUE (user_id, name) constraint absorbs the duplicate rather than
  * erroring or creating two of everything.
+ *
+ * ---------------------------------------------------------------------------
+ * WARNING: THIS READ FUNCTION WRITES. It is the only one in this file that
+ * does.
+ *
+ * It must NEVER be called from a statically-rendered Server Component. A
+ * static render would execute the seeding once at BUILD time instead of
+ * per-user at request time, baking one account's categories into HTML served
+ * to everyone.
+ *
+ * Any Server Component reaching this - directly or through a page's data
+ * fetch - MUST declare `export const dynamic = 'force-dynamic'`. As of this
+ * writing all six pages under (app)/ do, and the Neon Auth SDK requires it of
+ * them independently, so the constraint is satisfied twice over. Calling it
+ * from a Server Action is always safe: actions are never statically rendered.
+ *
+ * The alternative - splitting this into a pure getCategories() plus an
+ * explicit ensureCategories() - was considered and rejected. It trades this
+ * latent constraint for an active failure mode: any read path that forgot to
+ * ensure first would show a real user zero categories and break the expense
+ * form. Seeding here is idempotent and self-healing, including for accounts
+ * created before categories existed.
+ * ---------------------------------------------------------------------------
  */
 export async function getCategories(userId: string): Promise<CategoryItem[]> {
   const rows = await db
