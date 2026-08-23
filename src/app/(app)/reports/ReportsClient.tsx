@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryItem } from '@/lib/data/mappers';
 import { parseLocalDate } from '@/lib/format';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
+import { compareSameDayIds } from '@/lib/stats';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { ReportResults } from '@/components/reports/ReportResults';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
@@ -25,12 +27,19 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // These initial values are deliberately static and date-free so the server
+  // render and the first client render are identical. The real defaults depend
+  // on today's date and on localStorage, neither of which exists on the server,
+  // so both are applied in a mount effect below instead.
   const [reportType, setReportType] = useState<ReportType>('expense');
   const [periodGroup, setPeriodGroup] = useState<PeriodGroup>('month');
   const [subPeriod, setSubPeriod] = useState('All');
-  const [categoryGroup, setCategoryGroup] = useState<CategoryGroupMode>('none');
+  const [subYear, setSubYear] = useState('All');
+  const [categoryGroup, setCategoryGroup] = useState<CategoryGroupMode>('category');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [sortField, setSortField] = useState<SortField>('amount');
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
+  const [restored, setRestored] = useState(false);
   const [descQuery, setDescQuery] = useState('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -55,6 +64,51 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
   useEffect(() => {
     setSelectedTags(new Set());
   }, [selectedCategories]);
+
+  // Restore once on mount. Runs client-side only, so reading localStorage and
+  // the local clock here cannot desync from the server render.
+  //
+  // A ref rather than the `restored` flag guards re-entry: state updates are
+  // async, so a second pass could start before the flag lands.
+  const restoreRef = useRef(false);
+  useEffect(() => {
+    if (restoreRef.current) return;
+    restoreRef.current = true;
+
+    const saved = usePebbleStore.getState().reportFilters;
+    if (saved) {
+      setReportType(saved.reportType);
+      setPeriodGroup(saved.periodGroup);
+      setSubYear(saved.subYear);
+      setSubPeriod(saved.subPeriod);
+      setCategoryGroup(saved.categoryGroup);
+      setSortField(saved.sortField);
+      setSortDir(saved.sortDir);
+      setFiltersExpanded(saved.filtersExpanded);
+      setGroupsExpanded(saved.groupsExpanded);
+      // Category selection is not persisted, so it has to follow the restored
+      // type rather than the 'expense' default the state was seeded with.
+      if (saved.reportType === 'income') setSelectedCategories(new Set(incomeCats));
+    } else {
+      // First visit on this device: this month, this year.
+      const now = new Date();
+      setSubYear(String(now.getFullYear()));
+      setSubPeriod(MONTH_NAMES[now.getMonth()]);
+    }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Write back on every change, but only after the restore pass - otherwise the
+  // static seed values would overwrite the stored ones before they were read.
+  useEffect(() => {
+    if (!restored) return;
+    usePebbleStore.getState().setReportFilters({
+      reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+      filtersExpanded, groupsExpanded,
+    });
+  }, [restored, reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+      filtersExpanded, groupsExpanded]);
 
   const handleTypeChange = (t: ReportType) => {
     setReportType(t);
@@ -98,9 +152,23 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     return true;
   });
 
+  // Years actually present under the current type/category/search filters,
+  // newest first.
   const yearOptions = Array.from(new Set(baseFiltered.map((t) => parseLocalDate(t.date).getFullYear())))
     .sort((a, b) => b - a)
     .map(String);
+
+  // Month and quarter names carry no year, so selecting "August" used to match
+  // every August in the data at once — with 2023-2026 loaded, that silently
+  // merged four years into one total. The year selector scopes them.
+  //
+  // Falls back to the newest year present when the selected year has no rows
+  // under the current filters, rather than rendering an empty report the user
+  // has to reason about.
+  const showYearSelector = periodGroup === 'month' || periodGroup === 'quarter';
+  const effectiveSubYear =
+    subYear === 'All' || yearOptions.includes(subYear) ? subYear : (yearOptions[0] ?? 'All');
+
   const subPeriodOptions =
     periodGroup === 'month' ? MONTH_NAMES
     : periodGroup === 'quarter' ? QUARTER_NAMES
@@ -111,23 +179,31 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     : periodGroup === 'quarter' ? 'Which quarter'
     : 'Which year';
 
+  const yearScoped = (showYearSelector && effectiveSubYear !== 'All')
+    ? baseFiltered.filter((t) => parseLocalDate(t.date).getFullYear() === Number(effectiveSubYear))
+    : baseFiltered;
+
   const periodFiltered = (subPeriodOptions && subPeriod !== 'All')
-    ? baseFiltered.filter((t) => {
+    ? yearScoped.filter((t) => {
         const d = parseLocalDate(t.date);
         if (periodGroup === 'month') return MONTH_NAMES[d.getMonth()] === subPeriod;
         if (periodGroup === 'quarter') return QUARTER_NAMES[Math.floor(d.getMonth() / 3)] === subPeriod;
         return String(d.getFullYear()) === subPeriod;
       })
-    : baseFiltered;
+    : yearScoped;
 
-  const showPeriodHeaders = periodGroup !== 'all' && subPeriod === 'All';
+  // Period headers render whenever a period grouping is active, including for a
+  // single selected period. Previously also required subPeriod === 'All', so
+  // choosing a specific month/quarter/year skipped bucketing entirely and the
+  // rows fell into one untitled flat group.
+  const showPeriodHeaders = periodGroup !== 'all';
 
   // Date sorting falls back to the id as a same-day tiebreak, matching how
   // the statement orders entries added on the same day.
   const sortFn = (a: Transaction, b: Transaction) => {
     if (sortField === 'date') {
       const diff = parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
-        || a.id.localeCompare(b.id);
+        || compareSameDayIds(a.id, b.id);
       return sortDir === 'desc' ? -diff : diff;
     }
     return sortDir === 'desc'
@@ -213,10 +289,31 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     : [];
   const anyGroupsExpanded = allGroupKeys.some((k) => expandedCategoryGroups.has(k));
   const handleToggleAllGroups = () => {
-    setExpandedCategoryGroups(anyGroupsExpanded ? new Set() : new Set(allGroupKeys));
+    const next = !anyGroupsExpanded;
+    setGroupsExpanded(next);
+    setExpandedCategoryGroups(next ? new Set(allGroupKeys) : new Set());
   };
 
-  const periodSummary = periodGroup === 'all' ? 'All time' : subPeriod === 'All' ? `By ${periodGroup}` : subPeriod;
+  // Re-applies the stored bulk choice whenever the visible group set changes -
+  // on mount, and whenever a filter produces different groups. Keyed on a joined
+  // signature rather than the array itself, which is a new reference every
+  // render and would loop.
+  //
+  // Individual group toggles are untouched: they change neither the signature
+  // nor the bulk preference, so this effect does not run and does not undo them.
+  const groupKeySignature = allGroupKeys.join('|');
+  useEffect(() => {
+    if (!restored) return;
+    setExpandedCategoryGroups(groupsExpanded ? new Set(allGroupKeys) : new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored, groupsExpanded, groupKeySignature]);
+
+  const periodSummary =
+    periodGroup === 'all' ? 'All time'
+    : periodGroup === 'year' ? (subPeriod === 'All' ? 'By year' : subPeriod)
+    : subPeriod === 'All'
+      ? `By ${periodGroup} · ${effectiveSubYear === 'All' ? 'all years' : effectiveSubYear}`
+      : `${subPeriod}${effectiveSubYear === 'All' ? ' · all years' : ` ${effectiveSubYear}`}`;
   const filterSummaryParts = [reportType === 'expense' ? 'Expenses' : 'Income', periodSummary];
   if (categoryGroup === 'category') filterSummaryParts.push('grouped by category');
   if (!allSelected) filterSummaryParts.push(`${selectedCategories.size} categor${selectedCategories.size === 1 ? 'y' : 'ies'}`);
@@ -236,6 +333,10 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
         onSubPeriodChange={setSubPeriod}
         subPeriodOptions={subPeriodOptions}
         subPeriodLabel={subPeriodLabel}
+        subYear={effectiveSubYear}
+        onSubYearChange={setSubYear}
+        yearOptions={yearOptions}
+        showYearSelector={showYearSelector}
         categoryGroup={categoryGroup}
         onCategoryGroupChange={setCategoryGroup}
         sortDir={sortDir}

@@ -5,7 +5,8 @@ import { Banknote, Pencil, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import type { CategoryMeta, LedgerRecord, PaymentMethod } from '@/types';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
-import { deleteBalanceAdjustmentAction, deleteTransactionAction, updateTransactionAction } from '@/lib/actions/pebble';
+import { deductionPct } from '@/lib/stats';
+import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction } from '@/lib/actions/pebble';
 
 interface TransactionDetailModalProps {
   txn: LedgerRecord | null;
@@ -23,12 +24,13 @@ const labelStyle: React.CSSProperties = {
   fontSize: '0.78rem', color: 'var(--ink-soft)',
 };
 
-type Mode = 'view' | 'edit' | 'confirmDelete';
+type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 
 export function TransactionDetailModal({ txn, onClose, categoryMeta }: TransactionDetailModalProps) {
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shortfall, setShortfall] = useState(0);
 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -82,9 +84,49 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   // was mid-edit, and revert on cancel.
   const isSideCash = txn.type === 'income' && txn.category === 'Side Cash';
 
-  const handleSave = async () => {
-    // Adjustments have no edit mode - the Edit button is not rendered for
-    // them - but this narrows txn.type for the action call below.
+  // Live draft figures for the edit form. Net above gross would mean more money
+  // arrived than was earned, so it is refused rather than silently clamped -
+  // rewriting a typed amount on a money form hides the correction from the
+  // person making it.
+  //
+  // A blank or half-typed field is not an error: both values must parse before
+  // the comparison is meaningful, otherwise the form flashes red mid-keystroke.
+  const draftGross = Number(grossPay);
+  const draftNet = Number(netPay);
+  const draftAmountsParse =
+    grossPay.trim() !== '' && netPay.trim() !== ''
+    && Number.isFinite(draftGross) && Number.isFinite(draftNet);
+  const netExceedsGross = txn.type === 'income' && !editingSideCash && draftAmountsParse && draftNet > draftGross;
+
+  // Saving an unchanged record would issue an UPDATE that writes the same
+  // values back, then revalidate every route and re-run the whole query set
+  // for nothing. Compared against the persisted record, not a snapshot taken
+  // when edit mode opened, so typing a change and undoing it disables the
+  // button again rather than leaving the form permanently "dirty".
+  //
+  // Amounts compare as numbers: the form holds strings, so "1600.00" and
+  // "1600" are the same value and must not read as an edit.
+  const hasChanges = (() => {
+    if (txn.type === 'adjustment') return false;
+    if (description.trim() !== txn.description.trim()) return true;
+    if (category !== txn.category) return true;
+    if (paymentMethod !== txn.paymentMethod) return true;
+    if (date !== txn.date) return true;
+    if (txn.type === 'expense') {
+      if (tag.trim() !== (txn.tag ?? '').trim()) return true;
+      return Number(amount) !== Math.abs(txn.amount);
+    }
+    // Side Cash stores gross = net, so the effective gross follows the net
+    // field rather than the hidden gross input.
+    const nextNet = Number(netPay);
+    const nextGross = editingSideCash ? nextNet : Number(grossPay);
+    return nextNet !== txn.netAmount || nextGross !== txn.grossAmount;
+  })();
+
+  // Split from handleSave so the confirm dialog can call it directly. The edit
+  // form stays mounted behind the dialog, so this re-derives its payload from
+  // the same state rather than from a copy taken before the check.
+  const performSave = async () => {
     if (busy || txn.type === 'adjustment') return;
     setBusy(true);
     setError(null);
@@ -109,6 +151,42 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     setBusy(false);
     if (!result.ok) { setError(result.error); return; }
     onClose();
+  };
+
+  const handleSave = async () => {
+    if (busy || txn.type === 'adjustment') return;
+
+    // An edit moves the balance by the CHANGE in amount, not by the amount.
+    // Transaction.amount is signed - expenses negative, income positive - so
+    // one subtraction covers both: raising an expense and lowering an income
+    // both come out negative. Unlike the add path this cannot skip income,
+    // since cutting a recorded payment reduces the balance too.
+    const nextSigned = txn.type === 'expense' ? -Math.abs(Number(amount)) : Number(netPay);
+    const delta = nextSigned - txn.amount;
+
+    if (delta < 0) {
+      setBusy(true);
+      setError(null);
+      const summary = await getAllocationSummaryAction();
+      setBusy(false);
+
+      if (summary.ok) {
+        const unallocatedNow = summary.totalBalance - summary.allocated;
+        const unallocatedAfter = unallocatedNow + delta;
+        // Warns on the crossing only, matching the add path: a dialog that
+        // fires on every edit while already over-allocated gets dismissed
+        // unread.
+        if (unallocatedNow >= 0 && unallocatedAfter < 0) {
+          setShortfall(Math.abs(unallocatedAfter));
+          setMode('confirmOverspend');
+          return;
+        }
+      }
+      // A failed lookup does not block the save. The check is advisory, and
+      // refusing to record a real correction over it would be worse.
+    }
+
+    await performSave();
   };
 
   const handleDelete = async () => {
@@ -141,6 +219,20 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     ] : [
       { label: 'Pay before deductions', value: formatCurrency(txn.grossAmount) },
       { label: 'Pay after deductions', value: formatCurrency(txn.netAmount) },
+      // Derived at render, never stored. The imported data had a
+      // tax_percentage column, dropped deliberately because gross and net
+      // already determine it - storing it would be a second source of truth
+      // that can drift when either amount is edited.
+      //
+      // Labelled "deductions" to match the two rows above: the gap between
+      // gross and net also covers insurance and retirement, not just tax.
+      // Only reached in the non-Side-Cash branch, where gross and net are
+      // genuinely distinct; Side Cash stores gross = net and shows a single
+      // Amount row, so a permanent 0.0% row there would be noise.
+      {
+        label: 'Deductions',
+        value: `${deductionPct(txn.grossAmount, txn.netAmount).toFixed(1)}%`,
+      },
     ]) : []),
   ];
 
@@ -155,6 +247,8 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         {busy && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting…' : 'Saving changes…'} />}
+        {/* mode drives which panel shows; 'confirmOverspend' pauses a save
+            without unmounting the edit form behind it. */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
           <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
         </div>
@@ -261,8 +355,27 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     )}
                     <label style={labelStyle}>
                       {editingSideCash ? 'Amount' : 'Pay after deductions'}
-                      <input type="number" min="0" step="0.01" value={netPay} onChange={(e) => setNetPay(e.target.value)} className="font-mono-tab" style={inputStyle} />
+                      <input
+                        type="number" min="0" step="0.01" value={netPay}
+                        onChange={(e) => setNetPay(e.target.value)}
+                        className="font-mono-tab"
+                        style={{ ...inputStyle, border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
+                      />
                     </label>
+                    {!editingSideCash && (
+                      netExceedsGross ? (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
+                          Pay after deductions cannot be more than pay before deductions.
+                        </p>
+                      ) : draftAmountsParse && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                          <span>Deductions</span>
+                          <span className="font-mono-tab" style={{ fontWeight: 500 }}>
+                            {deductionPct(draftGross, draftNet).toFixed(1)}%
+                          </span>
+                        </div>
+                      )
+                    )}
                   </>
                 )}
               </>
@@ -293,8 +406,34 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Cancel</button>
-              <button type="button" onClick={handleSave} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: busy ? 0.6 : 1 }}>
+              <button
+                type="button" onClick={handleSave}
+                disabled={busy || netExceedsGross || !hasChanges}
+                className="btn-primary"
+                style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges ? 0.6 : 1 }}
+              >
                 {busy ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {mode === 'confirmOverspend' && (
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.15rem' }}>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>This dips into your goals</p>
+            <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
+              This change spends{' '}
+              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(shortfall)}</span>{' '}
+              you had set aside for goals. That is fine to do — your goals will just be counting on money
+              that is not there yet.
+            </p>
+
+            {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{error}</p>}
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Go back</button>
+              <button type="button" onClick={performSave} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: busy ? 0.6 : 1 }}>
+                {busy ? 'Saving…' : 'Continue'}
               </button>
             </div>
           </div>

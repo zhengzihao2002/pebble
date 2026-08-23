@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { ReportFilterPrefs } from '@/components/reports/types';
 
 /**
  * UI state only.
@@ -17,8 +18,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 interface PebbleUIState {
   darkMode: boolean;
   textSize: number;
+  // null means never set on this device: the Reports screen then resolves its
+  // own date-based defaults rather than falling back to a stored month that
+  // could be years old. Filter choices qualify as device preferences - they
+  // describe how you like to look at the data, not the data itself.
+  reportFilters: ReportFilterPrefs | null;
   setDarkMode: (value: boolean) => void;
   setTextSize: (value: number) => void;
+  setReportFilters: (value: ReportFilterPrefs) => void;
 }
 
 const noopStorage = {
@@ -32,8 +39,10 @@ export const usePebbleStore = create<PebbleUIState>()(
     (set) => ({
       darkMode: false,
       textSize: 100,
+      reportFilters: null,
       setDarkMode: (value) => set({ darkMode: value }),
       setTextSize: (value) => set({ textSize: value }),
+      setReportFilters: (value) => set({ reportFilters: value }),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -42,7 +51,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       // than merging stale financial state into the new shape.
       name: 'pebble-ui',
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : noopStorage)),
-      partialize: (state) => ({ darkMode: state.darkMode, textSize: state.textSize }),
+      partialize: (state) => ({ darkMode: state.darkMode, textSize: state.textSize, reportFilters: state.reportFilters }),
     }
   )
 );

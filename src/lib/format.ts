@@ -41,8 +41,26 @@ export function formatCurrency(n: number): string {
     : `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Formats a 'YYYY-MM-DD' as 'Aug 21', adding the year ('Aug 21, 2025') only
+// when the date falls outside the current year. The comparison year is read
+// fresh on every call rather than captured at module load, so a long-lived
+// tab or a warm server container can't keep formatting against a stale year.
 export function formatDate(dateStr: string): string {
-  return parseLocalDate(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const d = parseLocalDate(dateStr);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
+// Goal target dates are stored as 'YYYY-MM-DD' text. The field accepted free
+// text before it became a date picker, so any value that doesn't match is
+// passed through unchanged rather than rendered as 'Invalid Date'.
+export function formatGoalDate(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return parseLocalDate(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function getGreeting(): string {

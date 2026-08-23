@@ -36,7 +36,6 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
   const [mode, setMode] = useState<Mode>('setTo');
   const [value, setValue] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(todayDateString());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -53,11 +52,14 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
     setError(null);
     setSaved(false);
 
+    // Read at submit time, not held in state. An adjustment is always dated
+    // today, and a value captured at mount would still be yesterday's on a
+    // card left open past midnight.
     const result = await createBalanceAdjustmentAction({
       paymentMethod: account,
       delta,
       description,
-      date,
+      date: todayDateString(),
     });
 
     setSaving(false);
@@ -105,14 +107,6 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
             type="number" step="0.01" value={value}
             onChange={(e) => { setValue(e.target.value); setSaved(false); }}
             placeholder="0.00" className="font-mono-tab" style={inputStyle}
-          />
-        </label>
-        <label style={{ ...labelStyle, flex: 1, minWidth: 150 }}>
-          Date
-          <input
-            type="date" value={date}
-            onChange={(e) => { setDate(e.target.value); setSaved(false); }}
-            style={{ ...inputStyle, textAlign: 'left' }}
           />
         </label>
       </div>

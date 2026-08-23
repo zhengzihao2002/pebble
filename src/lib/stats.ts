@@ -8,6 +8,31 @@ import type {
 } from '@/types';
 import { atMidnight, getToday, parseLocalDate } from './format';
 
+// Same-day tiebreak for records sorted ascending by date.
+//
+// Two id formats coexist after the data import: legacy 'YYYYMMDD_NNNNNNNNN'
+// (underscore) and app-generated 'YYYYMMDDHHMMSSmmm-rrrr' (hyphen). Both open
+// with the same eight date digits, so a plain string compare falls through to
+// position 9 - a digit for app ids, '_' for imported ones. Digits sort below
+// '_', so EVERY app-entered record sorted before EVERY imported one on a
+// shared day, and after the newest-first reverse it appeared below them.
+//
+// Imported rows are backfilled history and app rows are entered live, so
+// imported sorts as earlier within a day. Inside one format the plain string
+// compare is already correct: both are zero-padded and most-significant-first.
+//
+// Known limitation: generateTransId stamps the CURRENT time, not the
+// transaction's date, so a back-dated entry carries an id from the day it was
+// typed. Its position among records on the date it was assigned to is
+// therefore arbitrary. Fixing that means changing id generation and cannot
+// repair existing rows; tracked separately.
+export function compareSameDayIds(aId: string, bId: string): number {
+  const aImported = aId.includes('_');
+  const bImported = bId.includes('_');
+  if (aImported !== bImported) return aImported ? -1 : 1;
+  return aId.localeCompare(bId);
+}
+
 // Side Cash is real money and counts toward the balance, but it is not
 // earnings: cash back, a gift, a gambling win. It is deliberately excluded
 // from every "income" figure so the income, savings rate and trend numbers
@@ -45,10 +70,25 @@ export interface TrendPoint {
 
 // Builds income/spending totals bucketed by month, quarter, or year for the
 // "Income vs. spending" dashboard chart.
-export function buildTrendData(transactions: Transaction[], mode: string): TrendPoint[] {
+export function buildTrendData(transactions: Transaction[], mode: string, yearKey?: string | null): TrendPoint[] {
   const granularity = mode === 'quarter' ? 'quarter' : mode === 'year' ? 'year' : 'month';
+
+  // 'month' and 'quarter' bucket by granularity WITHOUT a window (unlike
+  // last6/last12, which slice below), so across several years of history they
+  // plot every month ever recorded - dozens of points crushed into one small
+  // chart. yearKey scopes them to a single year: 12 monthly or 4 quarterly
+  // points, which is what a trend line can actually show.
+  //
+  // Deliberately not a single-period pin like the donut and stat tiles use:
+  // those display one aggregate, so pinning one month is meaningful, whereas
+  // pinning a series chart to one month leaves a single unconnected point.
+  // 'year' mode ignores yearKey - the years themselves are the series.
+  const scoped = (yearKey && (granularity === 'month' || granularity === 'quarter'))
+    ? transactions.filter((t) => `${parseLocalDate(t.date).getFullYear()}` === yearKey)
+    : transactions;
+
   const buckets = new Map<string, { sortKey: number; label: string; income: number; spending: number }>();
-  transactions.forEach((t) => {
+  scoped.forEach((t) => {
     const d = parseLocalDate(t.date);
     let key: string, sortKey: number, label: string;
     if (granularity === 'month') {
@@ -190,7 +230,7 @@ export function computeRecentTransactions(
   const all: LedgerRecord[] = [...expenses, ...income, ...adjustments].sort((a, b) => {
     const dateDiff = parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
     if (dateDiff !== 0) return dateDiff;
-    return a.id.localeCompare(b.id); // same-day tiebreak, via the date/time-based id
+    return compareSameDayIds(a.id, b.id);
   });
 
   let runningChecking = checkingOpening;
@@ -314,6 +354,17 @@ export function getAvailablePeriods(transactions: Transaction[], granularity: 'm
     if (!map.has(key)) map.set(key, { key, sortKey, label });
   });
   return [...map.values()].sort((a, b) => b.sortKey - a.sortKey);
+}
+
+// The share of gross pay withheld before it landed. Derived from the two
+// stored amounts rather than persisted: the imported data carried a
+// tax_percentage column, dropped on import because gross and net already
+// determine it and a stored copy can drift when either is edited.
+//
+// Named for deductions, not tax: the gap also covers insurance and retirement
+// contributions. Returns 0 for a zero gross rather than dividing by it.
+export function deductionPct(gross: number, net: number): number {
+  return gross > 0 ? ((gross - net) / gross) * 100 : 0;
 }
 
 // Blends a hex color toward white by `amount` (0-1), for gradient-shaded pie slices.

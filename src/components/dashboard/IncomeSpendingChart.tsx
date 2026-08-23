@@ -5,24 +5,52 @@ import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import type { Transaction } from '@/types';
-import { buildTrendData } from '@/lib/stats';
+import { buildTrendData, getAvailablePeriods } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
 
 export function IncomeSpendingChart({ transactions }: { transactions: Transaction[] }) {
   const [trendMode, setTrendMode] = useState('last6');
-  const trendData = buildTrendData(transactions, trendMode);
+  const [trendYear, setTrendYear] = useState<string | null>(null);
+
+  // Same mode + sub-period shape as the stat tiles and the "Where it went"
+  // donut: the second control appears only for the modes that need scoping,
+  // and its options come from periods actually present in the data rather
+  // than a generated range.
+  const needsYear = trendMode === 'month' || trendMode === 'quarter';
+  const availableYears = needsYear ? getAvailablePeriods(transactions, 'year') : [];
+
+  const handleTrendModeChange = (mode: string) => {
+    setTrendMode(mode);
+    setTrendYear(
+      mode === 'month' || mode === 'quarter'
+        ? getAvailablePeriods(transactions, 'year')[0]?.key ?? null
+        : null,
+    );
+  };
+
+  const trendData = buildTrendData(transactions, trendMode, trendYear);
 
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>Income vs. spending</h3>
-        <select
-          value={trendMode} onChange={(e) => setTrendMode(e.target.value)}
-          style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
-        >
-          {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <select
+            value={trendMode} onChange={(e) => handleTrendModeChange(e.target.value)}
+            style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
+          >
+            {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          {needsYear && availableYears.length > 0 && (
+            <select
+              value={trendYear || ''} onChange={(e) => setTrendYear(e.target.value)}
+              style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
+            >
+              {availableYears.map((y) => <option key={y.key} value={y.key}>{y.label}</option>)}
+            </select>
+          )}
+        </div>
       </div>
       {trendData.length === 0 ? (
         <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>

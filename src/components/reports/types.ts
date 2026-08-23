@@ -9,6 +9,23 @@ export type SortDir = 'desc' | 'asc';
 // 'highest first' are one field plus one direction, not four enum values.
 export type SortField = 'amount' | 'date';
 
+// Persisted in the pebble-ui store. Filter choices are device preferences,
+// not financial data - nothing here identifies a transaction or an amount.
+export interface ReportFilterPrefs {
+  reportType: ReportType;
+  periodGroup: PeriodGroup;
+  subYear: string;
+  subPeriod: string;
+  categoryGroup: CategoryGroupMode;
+  sortField: SortField;
+  sortDir: SortDir;
+  filtersExpanded: boolean;
+  // The last Expand all / Collapse all choice, not the individual group keys.
+  // Those keys are built from the period label and category name, so any filter
+  // or rename would orphan them; a boolean survives both.
+  groupsExpanded: boolean;
+}
+
 export interface ReportCategorySubGroup {
   key: string;
   total: number;

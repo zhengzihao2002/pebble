@@ -5,8 +5,8 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import { balanceAdjustment, budget, category, expense, goal, income, userAccount } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
-import { getBudgets, getCategories, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
-import { estimateAnnualIncome } from '@/lib/stats';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
+import { computeCurrentBalances, estimateAnnualIncome, mergeTransactions } from '@/lib/stats';
 import { generateId, generateTransId } from '@/lib/ids';
 import type { PaymentMethod } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -131,6 +131,13 @@ async function addTransaction(
       if (!isFiniteNumber(input.netAmount) || input.netAmount < 0) {
         return fail('Net amount must be zero or greater.');
       }
+      // Net above gross would mean more money arrived than was earned. The
+      // column checks only constrain each amount independently, so this
+      // cross-column rule has to live here. Skipped for Side Cash, where the
+      // two columns are deliberately set equal below.
+      if (input.category !== 'Side Cash' && input.netAmount > input.grossAmount) {
+        return fail('Pay after deductions cannot be more than pay before deductions.');
+      }
 
       // Side cash has no gross/net split - it is not taxed, so one amount
       // fills both columns.
@@ -176,6 +183,12 @@ async function addGoal(userId: string, input: AddGoalActionInput): Promise<Actio
     if (!isFiniteNumber(input.current) || input.current < 0) {
       return fail('Saved amount cannot be negative.');
     }
+    // target_date is a text column, so nothing at the database level stops a
+    // free-text value landing in it. The same pattern guard the transaction
+    // actions use is the only thing keeping it a real date.
+    if (!DATE_PATTERN.test(input.date.trim())) {
+      return fail('Target date must be a valid date.');
+    }
 
     await db.insert(goal).values({
       id: generateId(),
@@ -192,6 +205,92 @@ async function addGoal(userId: string, input: AddGoalActionInput): Promise<Actio
     return { ok: true };
   } catch (error) {
     return handleUnexpected('addGoalAction', error);
+  }
+}
+
+export interface UpdateGoalActionInput extends AddGoalActionInput {
+  id: string;
+}
+
+/**
+ * Edits a goal, including how much of the balance it has set aside.
+ *
+ * current_amount is set directly rather than accumulated through a
+ * contribution history: a goal holds no real money, it records a share of the
+ * one real balance that has been mentally set aside. There is nothing to
+ * reconcile, so there is nothing to keep a ledger of.
+ *
+ * Deliberately imposes no ceiling on current. Allocating past the target is
+ * normal (people overshoot), and allocating past the account balance is
+ * allowed too - the goals page surfaces that as a negative "unallocated"
+ * figure rather than refusing the edit. Warn, never block.
+ */
+async function updateGoal(userId: string, input: UpdateGoalActionInput): Promise<ActionResult> {
+  try {
+    // Ownership check before the write: the id arrives from the client, and
+    // withSessionUser only guarantees WHO is asking, not WHAT they own.
+    const rows = await db
+      .select({ id: goal.id })
+      .from(goal)
+      .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
+      .limit(1);
+
+    if (!rows[0]) return fail('That goal no longer exists.');
+
+    // Same guards as addGoal, kept in step so an edit cannot store a shape the
+    // add path would have rejected.
+    if (!input.name.trim()) {
+      return fail('A goal needs a name.');
+    }
+    if (!isFiniteNumber(input.target) || input.target <= 0) {
+      return fail('Target amount must be greater than zero.');
+    }
+    if (!isFiniteNumber(input.current) || input.current < 0) {
+      return fail('Saved amount cannot be negative.');
+    }
+    if (!DATE_PATTERN.test(input.date.trim())) {
+      return fail('Target date must be a valid date.');
+    }
+
+    await db.update(goal).set({
+      name: input.name.trim(),
+      currentAmount: input.current,
+      targetAmount: input.target,
+      targetDate: input.date.trim(),
+      iconKey: input.iconKey,
+      color: input.color,
+    }).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('updateGoalAction', error);
+  }
+}
+
+/**
+ * Deletes a goal outright.
+ *
+ * No balance repair is needed and no money moves: the goal only ever recorded
+ * a soft claim on the existing balance, so removing it just returns that
+ * amount to the unallocated figure.
+ */
+async function deleteGoal(userId: string, input: { id: string }): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: goal.id })
+      .from(goal)
+      .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
+      .limit(1);
+
+    if (!rows[0]) return fail('That goal no longer exists.');
+
+    await db.delete(goal).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('deleteGoalAction', error);
   }
 }
 
@@ -303,6 +402,52 @@ async function loadBudgetModalData(userId: string): Promise<BudgetModalData> {
   } catch (error) {
     console.error('[pebble action] getBudgetModalDataAction', error);
     return { ok: false, error: 'Could not load your budgets. Please try again.' };
+  }
+}
+
+export type AllocationSummaryResult =
+  | { ok: true; totalBalance: number; allocated: number }
+  | { ok: false; error: string };
+
+/**
+ * Current total balance and the amount goals have claimed against it, for the
+ * overspend check on the transaction save paths.
+ *
+ * Fetched at save time rather than passed down as props. The transaction
+ * modals mount in AppShell, above any page that loads goals, so props would
+ * mean new plumbing regardless - and a value read when the modal opened could
+ * be stale by the time it is submitted. One extra round trip on a save that
+ * already makes one is the cheaper trade.
+ *
+ * Returns the two raw figures rather than a verdict: the caller knows the
+ * transaction's delta, and keeping the arithmetic there means this action does
+ * not need to understand adds versus edits.
+ */
+async function loadAllocationSummary(userId: string): Promise<AllocationSummaryResult> {
+  try {
+    const [expenses, incomeRows, openingBalances, adjustments, goals] = await Promise.all([
+      getExpenses(userId),
+      getIncome(userId),
+      getUserAccount(userId),
+      getBalanceAdjustments(userId),
+      getGoals(userId),
+    ]);
+
+    const balances = computeCurrentBalances(
+      mergeTransactions(expenses, incomeRows),
+      openingBalances.checkingOpening,
+      openingBalances.cashOpening,
+      adjustments,
+    );
+
+    return {
+      ok: true,
+      totalBalance: balances.total,
+      allocated: goals.reduce((sum, g) => sum + g.current, 0),
+    };
+  } catch (error) {
+    console.error('[pebble action] getAllocationSummaryAction', error);
+    return { ok: false, error: 'Could not check your goal allocations. Please try again.' };
   }
 }
 
@@ -676,6 +821,13 @@ async function updateTransaction(
         if (!isFiniteNumber(input.netAmount) || input.netAmount < 0) {
           return fail('Net amount must be zero or greater.');
         }
+        // Net above gross would mean more money arrived than was earned. The
+        // column checks constrain each amount independently, so this
+        // cross-column rule has to live here. Skipped for Side Cash, where the
+        // two columns are deliberately set equal just below.
+        if (input.category !== 'Side Cash' && input.netAmount > input.grossAmount) {
+          return fail('Pay after deductions cannot be more than pay before deductions.');
+        }
         // Side cash is untaxed, so there is no gross/net split: one amount
         // fills both columns. Enforced here rather than trusting the client,
         // where a stale gross from a form switch could persist.
@@ -836,6 +988,9 @@ async function loadBalanceMode(userId: string): Promise<BalanceModeResult> {
 
 export const addTransactionAction = withSessionUser(addTransaction);
 export const addGoalAction = withSessionUser(addGoal);
+export const updateGoalAction = withSessionUser(updateGoal);
+export const deleteGoalAction = withSessionUser(deleteGoal);
+export const getAllocationSummaryAction = withSessionUser(loadAllocationSummary);
 export const setOpeningBalancesAction = withSessionUser(setOpeningBalances);
 export const getCategoriesAction = withSessionUser(loadCategories);
 export const updateTransactionAction = withSessionUser(updateTransaction);

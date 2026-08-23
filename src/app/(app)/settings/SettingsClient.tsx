@@ -29,7 +29,10 @@ export function SettingsClient({
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: 560 }}>
+    // Card order matters here: the two tall cards (balance, categories) lead so
+    // they pair with each other in a two-column layout, leaving the four short
+    // preference cards to pair off below. Reordering can open a large gap.
+    <div className="settings-grid">
       {/* Opening balances are only settable on a fresh account. Once any
           transaction exists, changing them would silently rewrite every
           historical running balance, so corrections are recorded as dated

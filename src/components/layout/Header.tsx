@@ -8,15 +8,16 @@ import { getGreeting } from '@/lib/format';
 interface HeaderProps {
   onAddTransactionClick: () => void;
   onModifyBudgetClick: () => void;
+  onAddGoalClick: () => void;
 }
 
 interface PageMeta {
   title: string;
   subtitle: string;
-  action?: { label: string; kind: 'addTransaction' | 'modifyBudget' };
+  action?: { label: string; kind: 'addTransaction' | 'modifyBudget' | 'addGoal' };
 }
 
-export function Header({ onAddTransactionClick, onModifyBudgetClick }: HeaderProps) {
+export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick }: HeaderProps) {
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
 
@@ -31,18 +32,18 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick }: HeaderPro
     '/transactions': { title: 'Transactions', subtitle: 'Checking & Cash statements', action: { label: 'Add transaction', kind: 'addTransaction' } },
     '/reports': { title: 'Reports', subtitle: 'Filter and group your expenses and income' },
     '/budgets': { title: 'Budgets', subtitle: 'This year', action: { label: 'Modify Budget', kind: 'modifyBudget' } },
-    // The goal count is intentionally not shown. Header is rendered inside
-    // AppShell (the layout), so reading it would mean a database query on
-    // every page navigation - to label a page that is gated behind a
-    // Coming Soon overlay and has no way to create a goal. Wire this up
-    // when the Goals feature actually ships.
-    '/goals': { title: 'Goals', subtitle: 'Coming soon' },
+    // The goal count is still not shown, and the original reason stands now
+    // that the feature has shipped: Header renders inside AppShell, so reading
+    // it would cost a database query on EVERY page navigation, not just this
+    // page's. The goals page itself shows the counts that matter.
+    '/goals': { title: 'Goals', subtitle: 'Money set aside for what is next', action: { label: 'Add goal', kind: 'addGoal' } },
     '/settings': { title: 'Settings', subtitle: 'Manage your preferences' },
   };
 
   const current = pageMeta[pathname] ?? pageMeta['/dashboard'];
   const handleActionClick = current.action?.kind === 'addTransaction' ? onAddTransactionClick
     : current.action?.kind === 'modifyBudget' ? onModifyBudgetClick
+    : current.action?.kind === 'addGoal' ? onAddGoalClick
     : undefined;
 
   return (

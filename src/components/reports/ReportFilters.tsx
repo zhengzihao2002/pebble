@@ -1,6 +1,16 @@
 'use client';
 
 import { ChevronRight, Search } from 'lucide-react';
+
+// Matches the compact selects on the dashboard charts. Grows to fill its
+// track so a row of filters spreads across the available width instead of
+// leaving it empty.
+const filterSelectStyle: React.CSSProperties = {
+  width: '100%', fontSize: '0.83rem', padding: '0.45rem 0.6rem',
+  borderRadius: '0.6rem', border: '1px solid var(--line)',
+  color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box',
+};
+const filterFieldStyle: React.CSSProperties = { flex: '1 1 150px', minWidth: 0 };
 import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField } from './types';
 
 interface ReportFiltersProps {
@@ -18,6 +28,11 @@ interface ReportFiltersProps {
   onSubPeriodChange: (v: string) => void;
   subPeriodOptions: string[] | null;
   subPeriodLabel: string;
+
+  subYear: string;
+  onSubYearChange: (v: string) => void;
+  yearOptions: string[];
+  showYearSelector: boolean;
 
   categoryGroup: CategoryGroupMode;
   onCategoryGroupChange: (v: CategoryGroupMode) => void;
@@ -50,6 +65,7 @@ export function ReportFilters({
   reportType, onTypeChange,
   periodGroup, onPeriodGroupChange,
   subPeriod, onSubPeriodChange, subPeriodOptions, subPeriodLabel,
+  subYear, onSubYearChange, yearOptions, showYearSelector,
   categoryGroup, onCategoryGroupChange,
   sortDir, onSortDirChange,
   sortField, onSortFieldChange,
@@ -77,7 +93,16 @@ export function ReportFilters({
 
       <div className={`collapsible-rows ${expanded ? 'expanded' : ''}`}>
         <div className="collapsible-rows-inner">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem', paddingTop: '1.15rem' }}>
+          {/* 4px of horizontal and bottom padding, not for visual spacing but so
+              focus rings have room to draw. .collapsible-rows-inner sets
+              overflow: hidden - required for the 0fr/1fr grid animation - and the
+              focus ring is a 2px outline at a 2px offset, so any control touching
+              the container edge lost its ring on that side. The leftmost and
+              rightmost selects in the filter row were the visible casualties.
+              Applied here rather than on .collapsible-rows-inner because that
+              class is shared with the report's category groups and the settings
+              delete dialog. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem', padding: '1.15rem 4px 4px' }}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {(['expense', 'income'] as const).map((t) => (
                 <button
@@ -89,60 +114,80 @@ export function ReportFilters({
               ))}
             </div>
 
-            <div>
-              <p className="filter-label">Time period</p>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {([['month', 'Month'], ['quarter', 'Quarter'], ['year', 'Year'], ['all', 'All']] as [PeriodGroup, string][]).map(([v, l]) => (
-                  <button key={v} onClick={() => onPeriodGroupChange(v)} className={`pill ${periodGroup === v ? 'active' : ''}`}>{l}</button>
-                ))}
+            {/* One wrapping row of equal-width selects rather than five stacked
+                blocks of pills. Pill rows grew with the data - a month picker is
+                13 pills and the year list gains one every January - so the panel
+                got taller the longer the app was used. A select is a fixed-height
+                control whatever its option count.
+                Each field is flex: 1 1 150px, so they spread across the available
+                width and drop to another line only when they genuinely cannot
+                fit, rather than at a fixed breakpoint. */}
+            <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+              <div style={filterFieldStyle}>
+                <p className="filter-label">Time period</p>
+                <select
+                  value={periodGroup}
+                  onChange={(e) => onPeriodGroupChange(e.target.value as PeriodGroup)}
+                  style={filterSelectStyle}
+                >
+                  <option value="month">Month</option>
+                  <option value="quarter">Quarter</option>
+                  <option value="year">Year</option>
+                  <option value="all">All time</option>
+                </select>
               </div>
-            </div>
 
-            {subPeriodOptions && (
-              <div>
-                <p className="filter-label">{subPeriodLabel}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button onClick={() => onSubPeriodChange('All')} className={`pill ${subPeriod === 'All' ? 'active' : ''}`}>
-                    All {periodGroup}s
-                  </button>
-                  {subPeriodOptions.length === 0 ? (
-                    <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', alignSelf: 'center' }}>No data yet</span>
-                  ) : (
-                    subPeriodOptions.map((opt) => (
-                      <button key={opt} onClick={() => onSubPeriodChange(opt)} className={`pill ${subPeriod === opt ? 'active' : ''}`}>{opt}</button>
-                    ))
-                  )}
+              {showYearSelector && (
+                <div style={filterFieldStyle}>
+                  <p className="filter-label">Which year</p>
+                  <select value={subYear} onChange={(e) => onSubYearChange(e.target.value)} style={filterSelectStyle}>
+                    <option value="All">All years</option>
+                    {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-              <div>
+              {subPeriodOptions && (
+                <div style={filterFieldStyle}>
+                  <p className="filter-label">{subPeriodLabel}</p>
+                  <select value={subPeriod} onChange={(e) => onSubPeriodChange(e.target.value)} style={filterSelectStyle}>
+                    <option value="All">All {periodGroup}s</option>
+                    {subPeriodOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div style={filterFieldStyle}>
                 <p className="filter-label">Group by</p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {([['category', 'Category'], ['none', 'None']] as [CategoryGroupMode, string][]).map(([v, l]) => (
-                    <button key={v} onClick={() => onCategoryGroupChange(v)} className={`pill ${categoryGroup === v ? 'active' : ''}`}>{l}</button>
-                  ))}
-                </div>
+                <select
+                  value={categoryGroup}
+                  onChange={(e) => onCategoryGroupChange(e.target.value as CategoryGroupMode)}
+                  style={filterSelectStyle}
+                >
+                  <option value="category">Category</option>
+                  <option value="none">None</option>
+                </select>
               </div>
-              <div>
+
+              {/* Field and direction are one control here because they read as one
+                  choice ("Newest first"), while staying two pieces of state so the
+                  group and row comparators can share a direction. */}
+              <div style={filterFieldStyle}>
                 <p className="filter-label">Sort</p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {([
-                    ['amount', 'desc', 'Highest first'],
-                    ['amount', 'asc', 'Lowest first'],
-                    ['date', 'desc', 'Newest first'],
-                    ['date', 'asc', 'Oldest first'],
-                  ] as [SortField, SortDir, string][]).map(([f, d, l]) => (
-                    <button
-                      key={`${f}-${d}`}
-                      onClick={() => { onSortFieldChange(f); onSortDirChange(d); }}
-                      className={`pill ${sortField === f && sortDir === d ? 'active' : ''}`}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
+                <select
+                  value={`${sortField}-${sortDir}`}
+                  onChange={(e) => {
+                    const [f, d] = e.target.value.split('-') as [SortField, SortDir];
+                    onSortFieldChange(f);
+                    onSortDirChange(d);
+                  }}
+                  style={filterSelectStyle}
+                >
+                  <option value="amount-desc">Highest first</option>
+                  <option value="amount-asc">Lowest first</option>
+                  <option value="date-desc">Newest first</option>
+                  <option value="date-asc">Oldest first</option>
+                </select>
               </div>
             </div>
 

@@ -204,6 +204,22 @@
 
 html, body { max-width: 100%; overflow-x: hidden; }
 
+/* Painted before React mounts, so the very first frame is already the right
+   colour rather than the browser's default white. Values are duplicated from
+   the palettes below deliberately: nothing that reads var(--paper) exists yet
+   at this point in the load. */
+html { background-color: #F1F3EE; }
+html.dark { background-color: #121C18; }
+
+/* The colour transitions below are for the settings toggle, where a 300ms fade
+   is the point. On load they would animate the involuntary light-to-dark
+   correction instead, turning a single frame into a slow wash. This class is
+   set by the same pre-paint script and removed once mounted. */
+html.no-theme-transition,
+html.no-theme-transition * {
+  transition: none !important;
+}
+
 .pebble-root {
   --paper: #F1F3EE; --mist: #FFFFFF; --ink: #17241F; --ink-soft: #5B6660;
   --pine: #1F5A45; --pine-soft: #E3EDE8; --gold: #AD7B2E; --gold-soft: #F4E8D4;
@@ -234,7 +250,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .pebble-root .themed-scroll::-webkit-scrollbar-thumb { background-color: var(--line); border-radius: 99px; }
 .pebble-root.themed-scroll::-webkit-scrollbar-thumb:hover,
 .pebble-root .themed-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--ink-soft); }
-.pebble-root.dark {
+/* Two selectors, one palette. .pebble-root.dark is set by AppShell after
+   hydration; .dark .pebble-root lets the pre-paint script in layout.tsx put the
+   class on <html> before React exists, which is the only way to avoid a light
+   frame on load. */
+.pebble-root.dark,
+.dark .pebble-root {
   --paper: #121C18; --mist: #1A2621; --ink: #ECEFEA; --ink-soft: #8FA097;
   --pine: #57A487; --pine-soft: #1E362C; --gold: #DFA657; --gold-soft: #382C1A;
   --wine: #D48A8F; --wine-soft: #3A2426; --line: #2A3830;
@@ -295,6 +316,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .budgets-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; min-width: 0; }
 
 .goals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; min-width: 0; }
+
+/* Settings cards vary enormously in height - a dark-mode toggle beside the
+   category manager - so this is multi-column rather than grid. A grid row is
+   as tall as its tallest cell, which would leave dead space under every short
+   card; multi-column lets each column flow independently so cards pack tight
+   against one another.
+   The trade is reading order: content flows down column one, then down column
+   two. Acceptable here because these are independent preference cards with no
+   narrative sequence.
+   `columns: 320px` sets a target width and lets the browser pick the count,
+   mirroring how repeat(auto-fit, minmax(...)) behaves in the other grids.
+   Row spacing comes from each child's margin, not gap - multi-column has no
+   row gap of its own. */
+.settings-grid { columns: 320px; column-gap: 1.25rem; min-width: 0; }
+.settings-grid > * { break-inside: avoid; margin-bottom: 1.25rem; }
 
 .divider-vert { display: none; }
 @container content (min-width: 480px) { .divider-vert { display: block; } }
