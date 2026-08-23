@@ -1,14 +1,31 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '@/db';
-import { balanceAdjustment, budget, category, expense, goal, income, userAccount } from '@/db/schema';
+import {
+  balanceAdjustment,
+  budget,
+  category,
+  expense,
+  goal,
+  income,
+  recurringRule,
+  userAccount,
+} from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
 import { computeCurrentBalances, estimateAnnualIncome, mergeTransactions } from '@/lib/stats';
 import { generateId, generateTransId } from '@/lib/ids';
-import type { PaymentMethod } from '@/types';
+import type {
+  PaymentMethod,
+  RecurringEndMode,
+  RecurringFrequency,
+  RecurringKind,
+} from '@/types';
+import { addDays, todayInZone } from '@/lib/recurring/occurrences';
+import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
+import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
 
 /**
@@ -39,7 +56,7 @@ const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const MUTATED_ROUTES = ['/dashboard', '/transactions', '/reports', '/budgets', '/goals', '/settings'];
+const MUTATED_ROUTES = ['/dashboard', '/transactions', '/reports', '/budgets', '/goals', '/scheduled', '/settings'];
 
 function revalidateAll(): void {
   for (const route of MUTATED_ROUTES) {
@@ -549,6 +566,17 @@ async function updateCategory(
         .update(budget)
         .set({ category: trimmed })
         .where(and(eq(budget.userId, userId), eq(budget.category, target.name)));
+
+      // recurring_rule.category stores the NAME too, so it has to cascade with
+      // the others. Without this a rule keeps stamping the OLD name onto every
+      // transaction it materializes - and those rows then vanish from the
+      // category breakdown chart while still counting in totals. Silent, and
+      // only visible weeks later. Soft-deleted rules are included so a later
+      // undelete cannot resurrect a stale name.
+      await db
+        .update(recurringRule)
+        .set({ category: trimmed })
+        .where(and(eq(recurringRule.userId, userId), eq(recurringRule.category, target.name)));
     }
 
     await db
@@ -703,6 +731,52 @@ async function deleteCategory(
             .set({ category: destination })
             .where(and(eq(expense.userId, userId), inArray(expense.id, ids)));
         }
+      }
+    }
+
+    // Recurring rules are forward-looking instructions, not history, so they
+    // cannot be left pointing at a category that is about to disappear.
+    //
+    // Bulk reassign: the user has already named one destination for everything
+    // in this category, so applying it to rules matches their intent.
+    // Otherwise: refuse. Silently repointing a rule at the fallback category
+    // would misfile every FUTURE payment it creates, indefinitely and
+    // invisibly - much worse than making the user decide now.
+    const referencingRules = await db
+      .select({ id: recurringRule.id, description: recurringRule.description })
+      .from(recurringRule)
+      .where(
+        and(
+          eq(recurringRule.userId, userId),
+          eq(recurringRule.category, target.name),
+          ne(recurringRule.status, 'deleted'),
+        ),
+      );
+
+    if (referencingRules.length > 0) {
+      const plan = input.plan;
+
+      if (plan && plan.mode === 'bulk') {
+        const stillValid = existing.some(
+          (c) => c.id !== target.id && c.name === plan.reassignToName,
+        );
+        if (!stillValid) return fail('That destination category no longer exists.');
+
+        await db
+          .update(recurringRule)
+          .set({ category: plan.reassignToName })
+          .where(
+            and(
+              eq(recurringRule.userId, userId),
+              eq(recurringRule.category, target.name),
+              ne(recurringRule.status, 'deleted'),
+            ),
+          );
+      } else {
+        const names = referencingRules.map((r) => r.description).join(', ');
+        return fail(
+          `These scheduled payments still use this category: ${names}. Update or remove them first.`,
+        );
       }
     }
 
@@ -952,6 +1026,371 @@ export type BalanceModeResult =
   | { ok: true; hasTransactions: boolean; checkingOpening: number; cashOpening: number }
   | { ok: false; error: string };
 
+
+/* ---------------------------------------------------------------------------
+ * Scheduled & recurring payment rules
+ *
+ * A rule is a TEMPLATE. The transactions it produces are ordinary expense /
+ * income rows, materialized by runRecurringCatchUp() on page load.
+ *
+ * These handlers NEVER write materializedThrough. That is the high-water mark
+ * catch-up uses, and it only ever moves forward - which is precisely what makes
+ * "editing a rule affects future occurrences only" structural rather than
+ * remembered. There is no code path here that can rewrite history.
+ * ------------------------------------------------------------------------- */
+
+const RECURRING_FREQUENCIES: readonly string[] = ['once', 'weekly', 'biweekly', 'monthly', 'yearly'];
+const RECURRING_END_MODES: readonly string[] = ['never', 'after', 'on'];
+
+/** Guard against a typo like 5000 occurrences of a weekly rule. */
+const MAX_END_COUNT = 1000;
+
+export interface RecurringRuleActionInput {
+  kind: RecurringKind;
+  description: string;
+  /** Expense: a category name owned by the user. Income: Standard Income | Side Cash. */
+  category: string;
+  /** Expense only - the income table has no tag column. */
+  tag?: string;
+  paymentMethod: PaymentMethod;
+  /**
+   * POSITIVE MAGNITUDE, always. Expense amounts are negated here so the form
+   * never has to reason about sign. For income this is the NET amount.
+   */
+  amount: number;
+  /** Income only, and required there. */
+  grossAmount?: number;
+  frequency: RecurringFrequency;
+  startDate: string;
+  endMode: RecurringEndMode;
+  endCount?: number | null;
+  endDate?: string | null;
+  /**
+   * CREATE ONLY. False (default) starts the rule from today, ignoring past
+   * occurrences - the safe default, since a rule with a start date years back
+   * would otherwise materialize history the user most likely already imported.
+   * True materializes every occurrence since startDate.
+   */
+  backfill?: boolean;
+}
+
+export interface UpdateRecurringRuleActionInput extends RecurringRuleActionInput {
+  id: string;
+}
+
+interface NormalizedRule {
+  kind: RecurringKind;
+  description: string;
+  category: string;
+  tag: string | null;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  grossAmount: number | null;
+  frequency: RecurringFrequency;
+  startDate: string;
+  endMode: RecurringEndMode;
+  endCount: number | null;
+  endDate: string | null;
+}
+
+/**
+ * Validates and normalizes rule input.
+ *
+ * Mirrors every database CHECK on recurring_rule so a bad shape is reported as
+ * a readable message rather than a raw constraint violation. The CHECKs remain
+ * the real guarantee; this is the friendly layer in front of them.
+ */
+async function normalizeRuleInput(
+  userId: string,
+  input: RecurringRuleActionInput,
+): Promise<{ ok: true; values: NormalizedRule } | { ok: false; error: string }> {
+  const description = input.description.trim();
+  if (!description) return { ok: false, error: 'A scheduled payment needs a description.' };
+
+  if (input.kind !== 'expense' && input.kind !== 'income') {
+    return { ok: false, error: 'Select whether this is an expense or income.' };
+  }
+  if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
+    return { ok: false, error: 'Select a valid payment method.' };
+  }
+  if (!RECURRING_FREQUENCIES.includes(input.frequency)) {
+    return { ok: false, error: 'Select a valid frequency.' };
+  }
+  if (!RECURRING_END_MODES.includes(input.endMode)) {
+    return { ok: false, error: 'Select a valid end condition.' };
+  }
+  if (!DATE_PATTERN.test(input.startDate)) {
+    return { ok: false, error: 'Start date must be in YYYY-MM-DD format.' };
+  }
+  if (!isFiniteNumber(input.amount) || input.amount <= 0) {
+    return { ok: false, error: 'Amount must be greater than zero.' };
+  }
+
+  // End condition: exactly one shape, fully specified.
+  let endCount: number | null = null;
+  let endDate: string | null = null;
+
+  if (input.endMode === 'after') {
+    const count = input.endCount;
+    if (!isFiniteNumber(count) || !Number.isInteger(count) || count < 1) {
+      return { ok: false, error: 'Number of payments must be a whole number of at least 1.' };
+    }
+    if (count > MAX_END_COUNT) {
+      return { ok: false, error: `Number of payments cannot exceed ${MAX_END_COUNT}.` };
+    }
+    endCount = count;
+  } else if (input.endMode === 'on') {
+    const date = input.endDate?.trim() ?? '';
+    if (!DATE_PATTERN.test(date)) {
+      return { ok: false, error: 'End date must be in YYYY-MM-DD format.' };
+    }
+    if (date < input.startDate) {
+      return { ok: false, error: 'End date cannot be before the start date.' };
+    }
+    endDate = date;
+  }
+
+  // 'once' is stored as a one-shot so the occurrence generator has exactly one
+  // code path. Enforced by CHECK too; normalized here so the form need not know.
+  let frequency = input.frequency;
+  let endMode = input.endMode;
+  if (frequency === 'once') {
+    endMode = 'after';
+    endCount = 1;
+    endDate = null;
+  }
+
+  if (input.kind === 'income') {
+    if (!INCOME_CATEGORIES.includes(input.category)) {
+      return { ok: false, error: 'Income must be Standard Income or Side Cash.' };
+    }
+    const gross = input.grossAmount;
+    if (!isFiniteNumber(gross) || gross <= 0) {
+      return { ok: false, error: 'Gross amount must be greater than zero.' };
+    }
+    if (input.amount > gross) {
+      return { ok: false, error: 'Net amount cannot be more than the gross amount.' };
+    }
+    return {
+      ok: true,
+      values: {
+        kind: 'income',
+        description,
+        category: input.category,
+        // The income table has no tag column, and a CHECK enforces NULL here.
+        tag: null,
+        paymentMethod: input.paymentMethod,
+        amount: input.amount,
+        grossAmount: gross,
+        frequency,
+        startDate: input.startDate,
+        endMode,
+        endCount,
+        endDate,
+      },
+    };
+  }
+
+  // Expense: the category must actually belong to this user. expense.category
+  // stores the NAME as text, so an unrecognised name would silently drop the
+  // transaction out of the category breakdown chart while still counting in
+  // totals - a bug that is very hard to spot after the fact.
+  const categoryName = input.category.trim();
+  const owned = await db
+    .select({ name: category.name })
+    .from(category)
+    .where(and(eq(category.userId, userId), eq(category.name, categoryName)))
+    .limit(1);
+
+  if (!owned[0]) return { ok: false, error: 'Select a valid category.' };
+
+  return {
+    ok: true,
+    values: {
+      kind: 'expense',
+      description,
+      category: categoryName,
+      tag: input.tag?.trim() || null,
+      paymentMethod: input.paymentMethod,
+      // Stored negative, matching expense.amount and its CHECK (amount <= 0).
+      amount: -Math.abs(input.amount),
+      grossAmount: null,
+      frequency,
+      startDate: input.startDate,
+      endMode,
+      endCount,
+      endDate,
+    },
+  };
+}
+
+async function createRecurringRule(
+  userId: string,
+  input: RecurringRuleActionInput,
+): Promise<ActionResult> {
+  try {
+    const normalized = await normalizeRuleInput(userId, input);
+    if (!normalized.ok) return fail(normalized.error);
+
+    // A start date in the past would otherwise backfill on the next page load.
+    // Setting the mark to yesterday starts the rule from today instead. Because
+    // the mark only ever moves forward, this is a create-time decision that a
+    // later edit cannot accidentally reverse.
+    // Falls back only if the cookie is somehow absent during an action, which
+    // should not happen - the user has the app open by definition. Worst case
+    // the rule starts a day off, not a wrongly dated transaction.
+    const today = todayInZone((await resolveUserTimeZone()) ?? FALLBACK_TIME_ZONE);
+    const materializedThrough =
+      input.backfill === true || normalized.values.startDate >= today
+        ? null
+        : addDays(today, -1);
+
+    await db.insert(recurringRule).values({
+      id: generateId(),
+      userId,
+      ...normalized.values,
+      materializedThrough,
+    });
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('createRecurringRuleAction', error);
+  }
+}
+
+/**
+ * Edits a rule. Future occurrences only - already-materialized transactions are
+ * historical fact and are never rewritten.
+ *
+ * Changing the schedule can produce occurrence dates that collide with rows
+ * already materialized for this rule. That is safe: catch-up inserts with
+ * ON CONFLICT (recurring_rule_id, occurrence_date) DO NOTHING, so a collision
+ * is skipped rather than duplicated or overwritten.
+ */
+async function updateRecurringRule(
+  userId: string,
+  input: UpdateRecurringRuleActionInput,
+): Promise<ActionResult> {
+  try {
+    // Ownership check before the write: the id arrives from the client, and
+    // withSessionUser only guarantees WHO is asking, not WHAT they own.
+    const rows = await db
+      .select({ id: recurringRule.id, kind: recurringRule.kind, status: recurringRule.status })
+      .from(recurringRule)
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)))
+      .limit(1);
+
+    const existing = rows[0];
+    if (!existing || existing.status === 'deleted') {
+      return fail('That scheduled payment no longer exists.');
+    }
+
+    // Expense history lives in `expense`, income history in `income`. Switching
+    // kind would orphan every row already materialized from this rule.
+    if (existing.kind !== input.kind) {
+      return fail('A scheduled payment cannot be switched between expense and income. Delete it and create a new one.');
+    }
+
+    const normalized = await normalizeRuleInput(userId, input);
+    if (!normalized.ok) return fail(normalized.error);
+
+    // materializedThrough is deliberately absent from this SET clause.
+    await db
+      .update(recurringRule)
+      .set({ ...normalized.values, updatedAt: new Date().toISOString() })
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('updateRecurringRuleAction', error);
+  }
+}
+
+/**
+ * Pause or resume. Pausing removes the rule from catch-up while preserving
+ * materializedThrough, so resuming does NOT fill in the paused period - it
+ * simply carries on from today.
+ */
+async function setRecurringRuleStatus(
+  userId: string,
+  input: { id: string; status: 'active' | 'paused' },
+): Promise<ActionResult> {
+  try {
+    if (input.status !== 'active' && input.status !== 'paused') {
+      return fail('Invalid status.');
+    }
+
+    const rows = await db
+      .select({ id: recurringRule.id, status: recurringRule.status })
+      .from(recurringRule)
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)))
+      .limit(1);
+
+    if (!rows[0] || rows[0].status === 'deleted') {
+      return fail('That scheduled payment no longer exists.');
+    }
+
+    // Resuming after a long pause must not backfill the gap. The mark is left
+    // alone, then advanced to today so catch-up skips the paused period.
+    const patch =
+      input.status === 'active'
+        ? {
+            status: 'active',
+            materializedThrough: todayInZone((await resolveUserTimeZone()) ?? FALLBACK_TIME_ZONE),
+            updatedAt: new Date().toISOString(),
+          }
+        : { status: 'paused', updatedAt: new Date().toISOString() };
+
+    await db
+      .update(recurringRule)
+      .set(patch)
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('setRecurringRuleStatusAction', error);
+  }
+}
+
+/**
+ * SOFT delete. The row stays, hidden everywhere and excluded from catch-up.
+ *
+ * A hard delete would fire ON DELETE SET NULL and strip the rule link off real
+ * historical transactions, and recreating an identical rule afterwards would
+ * re-materialize its entire past from a null high-water mark. Neither is
+ * possible this way. Transactions already created are always left in place -
+ * they are historical fact, not a pending schedule.
+ */
+async function deleteRecurringRule(
+  userId: string,
+  input: { id: string },
+): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: recurringRule.id, status: recurringRule.status })
+      .from(recurringRule)
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)))
+      .limit(1);
+
+    if (!rows[0] || rows[0].status === 'deleted') {
+      return fail('That scheduled payment no longer exists.');
+    }
+
+    await db
+      .update(recurringRule)
+      .set({ status: 'deleted', updatedAt: new Date().toISOString() })
+      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('deleteRecurringRuleAction', error);
+  }
+}
+
 /**
  * Tells the settings screen which balance UI to show: opening balances for a
  * brand-new account, manual adjustments once any transaction exists.
@@ -1004,3 +1443,7 @@ export const updateCategoryAction = withSessionUser(updateCategory);
 export const getCategoryUsageAction = withSessionUser(loadCategoryUsage);
 export const deleteCategoryAction = withSessionUser(deleteCategory);
 export const getBalanceModeAction = withSessionUser(loadBalanceMode);
+export const createRecurringRuleAction = withSessionUser(createRecurringRule);
+export const updateRecurringRuleAction = withSessionUser(updateRecurringRule);
+export const setRecurringRuleStatusAction = withSessionUser(setRecurringRuleStatus);
+export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);

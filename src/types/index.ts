@@ -12,6 +12,8 @@ export interface ExpenseTransaction {
   date: string; // 'YYYY-MM-DD'
   paymentMethod: PaymentMethod;
   amount: number; // always negative
+  /** Set when this row was materialized from a recurring rule. */
+  recurringRuleId?: string;
 }
 
 export interface IncomeTransaction {
@@ -24,6 +26,8 @@ export interface IncomeTransaction {
   grossAmount: number;
   netAmount: number;
   amount: number; // = netAmount, always positive
+  /** Set when this row was materialized from a recurring rule. */
+  recurringRuleId?: string;
 }
 
 export type Transaction = ExpenseTransaction | IncomeTransaction;
@@ -58,7 +62,7 @@ export interface Goal {
   name: string;
   current: number;
   target: number;
-  date: string; // free text, e.g. 'Dec 2026'
+  date: string; // 'YYYY-MM-DD' — GoalModal uses <input type="date">
   iconKey: string; // key into GOAL_ICON_OPTIONS; resolved to a component client-side
   color: string;
 }
@@ -66,4 +70,53 @@ export interface Goal {
 export interface GoalIconOption {
   key: string;
   icon: LucideIcon;
+}
+
+/**
+ * Scheduled & recurring payment rule.
+ *
+ * Nullable fields use `| null` rather than `?`, matching the database exactly,
+ * so a row maps across with no optional/undefined conversion layer.
+ *
+ * The three unions below are duplicated in src/lib/recurring/occurrences.ts,
+ * which is deliberately dependency-free. They are structurally identical, so
+ * RecurringRule is assignable to RecurrenceSpec with no adapter. If you change
+ * a member here, change it there.
+ */
+export type RecurringKind = 'expense' | 'income';
+export type RecurringFrequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+export type RecurringEndMode = 'never' | 'after' | 'on';
+export type RecurringStatus = 'active' | 'paused' | 'deleted';
+
+export interface RecurringRule {
+  id: string;
+  kind: RecurringKind;
+  description: string;
+  category: string;
+  /** expense only - income has no tag column */
+  tag: string | null;
+  paymentMethod: PaymentMethod;
+  /** expense: <= 0. income: NET, >= 0. */
+  amount: number;
+  /** income only */
+  grossAmount: number | null;
+  frequency: RecurringFrequency;
+  startDate: string; // 'YYYY-MM-DD'
+  endMode: RecurringEndMode;
+  endCount: number | null;
+  endDate: string | null; // 'YYYY-MM-DD'
+  status: RecurringStatus;
+  /** Last date materialized. Catch-up never looks at or below this. */
+  materializedThrough: string | null;
+}
+
+/** A future occurrence, computed on the fly - never stored. */
+export interface UpcomingOccurrence {
+  ruleId: string;
+  description: string;
+  category: string;
+  kind: RecurringKind;
+  paymentMethod: PaymentMethod;
+  amount: number;
+  date: string; // 'YYYY-MM-DD'
 }

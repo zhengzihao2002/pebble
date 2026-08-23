@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
+import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
 
 /**
  * UI state only.
@@ -69,8 +70,13 @@ export const usePebbleStore = create<PebbleUIState>()(
       // transactions and balances from before the database migration;
       // pointing at a fresh key leaves that data untouched on disk rather
       // than merging stale financial state into the new shape.
-      name: 'pebble-ui',
+      // Imported, not literal: the pre-paint theme script in layout.tsx reads
+      // this exact key, and a rename that missed it would silently restore the
+      // dark-mode flash.
+      name: PEBBLE_UI_STORAGE_KEY,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : noopStorage)),
+      // darkMode MUST stay here - the pre-paint script reads it from the
+      // persisted envelope (see DARK_MODE_FIELD in storageKeys.ts).
       partialize: (state) => ({
         darkMode: state.darkMode,
         textSize: state.textSize,

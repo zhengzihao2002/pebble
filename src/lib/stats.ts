@@ -41,16 +41,11 @@ export function isSideCash(t: Transaction): boolean {
   return t.type === 'income' && t.category === 'Side Cash';
 }
 
-// Merges transactions and adjustments into one newest-first list for the
-// statement ledger. Adjustments are deliberately absent from mergeTransactions
-// below: that feeds Reports, which must never see them.
-export function mergeLedgerRecords(
-  transactions: Transaction[], adjustments: BalanceAdjustment[]
-): LedgerRecord[] {
-  return [...transactions, ...adjustments].sort(
-    (a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
-  );
-}
+// NOTE: mergeLedgerRecords() was removed here. It was exported but never
+// imported, and it sorted by date with NO compareSameDayIds tiebreak - so any
+// future caller would have inherited the exact same-day ordering bug that
+// comparator exists to prevent. computeRecentTransactions() below is the
+// correct way to combine transactions with adjustments.
 
 // Merges the two permanent histories into one newest-first list. Replaces
 // the useTransactions() store selector now that data arrives from the server.
@@ -171,6 +166,9 @@ export function getWindowPredicate(mode: string, periodKey?: string | null): (d:
     : (d) => d.getFullYear() === now.getFullYear();
 }
 
+/** Bucket for spending whose category name matches no category row. */
+export const UNCATEGORISED_LABEL = 'Uncategorised';
+
 export interface CategoryBreakdownEntry {
   name: string;
   value: number;
@@ -185,15 +183,38 @@ export function buildCategoryBreakdown(
 ): CategoryBreakdownEntry[] {
   const inWindow = getWindowPredicate(mode, periodKey);
   const sums: Record<string, number> = {};
+
+  // Spending whose category name matches no category row. Previously these
+  // were skipped outright, so the money vanished from this chart while still
+  // counting in every total - the chart and the stat tiles disagreed, with
+  // nothing to indicate why. Bucketed rather than dropped: a visible
+  // "Uncategorised" slice is a question the user can answer.
+  //
+  // Happens when a category is renamed or deleted outside the actions that
+  // cascade it, or when imported history used a name that was never created.
+  let unmatched = 0;
+
   transactions.forEach((t) => {
-    if (t.amount < 0 && categoryMeta[t.category] && inWindow(parseLocalDate(t.date))) {
+    if (t.amount >= 0 || !inWindow(parseLocalDate(t.date))) return;
+    if (categoryMeta[t.category]) {
       sums[t.category] = (sums[t.category] || 0) + Math.abs(t.amount);
+    } else {
+      unmatched += Math.abs(t.amount);
     }
   });
-  return Object.entries(categoryMeta)
+
+  const entries = Object.entries(categoryMeta)
     .map(([name, meta]) => ({ name, value: sums[name] || 0, color: meta.color }))
-    .filter((d) => d.value > 0)
-    .sort((a, b) => b.value - a.value);
+    .filter((d) => d.value > 0);
+
+  if (unmatched > 0) {
+    // Literal hex rather than FALLBACK_CATEGORY_COLOR from @/data/seed: that
+    // module pulls in lucide-react icon components, and stats.ts is imported
+    // by server actions where dragging a UI dependency in would be wrong.
+    entries.push({ name: UNCATEGORISED_LABEL, value: unmatched, color: '#8A8F8B' });
+  }
+
+  return entries.sort((a, b) => b.value - a.value);
 }
 
 // Derives per-category spend directly from transactions, filtered to a

@@ -1,4 +1,5 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getGoals, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
@@ -18,6 +19,11 @@ export const dynamic = 'force-dynamic';
 // is moved between accounts and no goal balance is ever stored separately.
 export default async function GoalsPage() {
   const userId = await getSessionUserIdOrRedirect();
+
+  // Materialize any recurring occurrences that came due since the last visit.
+  // MUST complete before the reads below, or new rows surface one load late.
+  // Never throws - a failure is logged and retried on the next load.
+  await runRecurringCatchUp(userId);
 
   const [goals, expenses, income, openingBalances, adjustments] = await Promise.all([
     getGoals(userId),

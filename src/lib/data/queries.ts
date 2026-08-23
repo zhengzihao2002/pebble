@@ -1,9 +1,24 @@
 import 'server-only';
 
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, ne, or, lt } from 'drizzle-orm';
 import { db } from '@/db';
-import { balanceAdjustment, budget, category, expense, goal, income, userAccount } from '@/db/schema';
-import type { BalanceAdjustment, ExpenseTransaction, Goal, IncomeTransaction } from '@/types';
+import {
+  balanceAdjustment,
+  budget,
+  category,
+  expense,
+  goal,
+  income,
+  recurringRule,
+  userAccount,
+} from '@/db/schema';
+import type {
+  BalanceAdjustment,
+  ExpenseTransaction,
+  Goal,
+  IncomeTransaction,
+  RecurringRule,
+} from '@/types';
 import {
   DEFAULT_CATEGORY_SEED,
   FALLBACK_CATEGORY_COLOR,
@@ -19,6 +34,7 @@ import {
   mapExpenseRow,
   mapGoalRow,
   mapIncomeRow,
+  mapRecurringRuleRow,
   mapUserAccountRow,
   type OpeningBalances,
 } from './mappers';
@@ -224,4 +240,75 @@ export async function hasAnyTransactions(userId: string): Promise<boolean> {
     db.select({ id: income.id }).from(income).where(eq(income.userId, userId)).limit(1),
   ]);
   return expenseRows.length > 0 || incomeRows.length > 0;
+}
+
+/**
+ * All rules the user can see. Excludes soft-deleted rows.
+ *
+ * Ordered active-first (status ascending puts 'active' before 'paused'), then
+ * by start date, so the management list leads with what is actually running.
+ */
+export async function getRecurringRules(userId: string): Promise<RecurringRule[]> {
+  const rows = await db
+    .select()
+    .from(recurringRule)
+    .where(and(eq(recurringRule.userId, userId), ne(recurringRule.status, 'deleted')))
+    .orderBy(asc(recurringRule.status), asc(recurringRule.startDate), asc(recurringRule.id));
+
+  return rows.map(mapRecurringRuleRow);
+}
+
+/**
+ * Rules that MIGHT owe an occurrence as of `today`. Read-only.
+ *
+ * This is the cheap gate on every page load: with no rules, or with every rule
+ * already caught up, it is one indexed query returning zero rows and catch-up
+ * exits immediately. Deliberately does not compute occurrences - that is the
+ * caller's job - because a rule can pass this filter and still owe nothing
+ * (an exhausted endCount, or an end date already passed).
+ *
+ * `today` must come from todayInAppZone(), never getToday(): getToday() returns
+ * UTC on Vercel, so a New Jersey evening is already tomorrow server-side and a
+ * rule would materialize a day early.
+ */
+export async function getRulesDueForCatchUp(
+  userId: string,
+  today: string,
+): Promise<RecurringRule[]> {
+  const rows = await db
+    .select()
+    .from(recurringRule)
+    .where(
+      and(
+        eq(recurringRule.userId, userId),
+        eq(recurringRule.status, 'active'),
+        or(
+          isNull(recurringRule.materializedThrough),
+          lt(recurringRule.materializedThrough, today),
+        ),
+      ),
+    )
+    .orderBy(asc(recurringRule.startDate), asc(recurringRule.id));
+
+  return rows.map(mapRecurringRuleRow);
+}
+
+/**
+ * A single rule, scoped to its owner.
+ *
+ * The userId filter is the ownership check for actions that take a rule id
+ * from the client. withSessionUser proves WHO is asking; it does not prove
+ * WHAT they own. A rule id belonging to another user returns undefined here.
+ */
+export async function getRecurringRuleById(
+  userId: string,
+  ruleId: string,
+): Promise<RecurringRule | undefined> {
+  const rows = await db
+    .select()
+    .from(recurringRule)
+    .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, ruleId)))
+    .limit(1);
+
+  return rows[0] ? mapRecurringRuleRow(rows[0]) : undefined;
 }

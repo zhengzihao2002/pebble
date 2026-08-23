@@ -7,10 +7,19 @@ export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// Expense/income records specifically use a date/time-based id instead of a
-// random UUID: it's directly sortable as a plain string (zero-padded,
-// most-significant-first), which computeRecentTransactions relies on to
-// break ties between same-day entries by actual creation order.
+// Expense/income records use a date/time-based id instead of a random UUID so
+// that same-day entries can be ordered by actual creation time.
+//
+// NOT directly sortable, despite the shape. Imported legacy rows use
+// YYYYMMDD_ + 9 digits, where '_' (0x5F) sorts ABOVE every digit, so a plain
+// string comparison puts them wrong against app-generated ids. Ordering goes
+// through compareSameDayIds() in stats.ts, which handles both formats. Any
+// third format has to be handled there too.
+//
+// Also stamps the CURRENT time, not the transaction's date: a back-dated entry
+// carries an id from the day it was typed. Recurring occurrences materialized
+// for past dates use this same generator, so several may share a millisecond -
+// catchUp.ts checks generated ids for collisions before inserting.
 export function generateTransId(): string {
   const d = new Date();
   const pad = (n: number, len = 2) => String(n).padStart(len, '0');

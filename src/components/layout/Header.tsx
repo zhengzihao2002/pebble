@@ -9,15 +9,16 @@ interface HeaderProps {
   onAddTransactionClick: () => void;
   onModifyBudgetClick: () => void;
   onAddGoalClick: () => void;
+  onAddScheduleClick: () => void;
 }
 
 interface PageMeta {
   title: string;
   subtitle: string;
-  action?: { label: string; kind: 'addTransaction' | 'modifyBudget' | 'addGoal' };
+  action?: { label: string; kind: 'addTransaction' | 'modifyBudget' | 'addGoal' | 'addSchedule' };
 }
 
-export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick }: HeaderProps) {
+export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick }: HeaderProps) {
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
 
@@ -37,6 +38,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
     // it would cost a database query on EVERY page navigation, not just this
     // page's. The goals page itself shows the counts that matter.
     '/goals': { title: 'Goals', subtitle: 'Money set aside for what is next', action: { label: 'Add goal', kind: 'addGoal' } },
+    '/scheduled': { title: 'Scheduled', subtitle: 'Recurring payments and income', action: { label: 'Add schedule', kind: 'addSchedule' } },
     '/settings': { title: 'Settings', subtitle: 'Manage your preferences' },
   };
 
@@ -44,6 +46,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
   const handleActionClick = current.action?.kind === 'addTransaction' ? onAddTransactionClick
     : current.action?.kind === 'modifyBudget' ? onModifyBudgetClick
     : current.action?.kind === 'addGoal' ? onAddGoalClick
+    : current.action?.kind === 'addSchedule' ? onAddScheduleClick
     : undefined;
 
   return (

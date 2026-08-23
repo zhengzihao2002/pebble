@@ -10,6 +10,8 @@ import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart'
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
+import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice';
+import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency } from '@/lib/format';
 import { computeStatsForPeriod, getAvailablePeriods } from '@/lib/stats';
@@ -20,9 +22,12 @@ interface DashboardClientProps {
   categories: CategoryItem[];
   budgets: Record<string, number>;
   totalBalance: number;
+  /** Sum of every goal's set-aside amount, for the overspend notice. */
+  allocated: number;
+  catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; error?: string };
 }
 
-export function DashboardClient({ transactions, categories, budgets, totalBalance }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance, allocated, catchUp }: DashboardClientProps) {
   // Icons are functions and cannot cross the server/client boundary, so the
   // icon-bearing map is reassembled here from serializable budget numbers.
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
@@ -87,6 +92,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Both render nothing in the common case. */}
+      <CatchUpNotice {...catchUp} />
+      <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
+
       <section>
         <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: '0.6rem' }}>
           Your balance, today

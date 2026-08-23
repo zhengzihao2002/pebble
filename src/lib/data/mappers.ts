@@ -6,6 +6,7 @@ import type {
   GoalRow,
   CategoryRow,
   BalanceAdjustmentRow,
+  RecurringRuleRow,
 } from '@/db/schema';
 import type {
   BalanceAdjustment,
@@ -13,6 +14,11 @@ import type {
   IncomeTransaction,
   PaymentMethod,
   Goal,
+  RecurringRule,
+  RecurringKind,
+  RecurringFrequency,
+  RecurringEndMode,
+  RecurringStatus,
 } from '@/types';
 
 /**
@@ -75,6 +81,7 @@ export function mapExpenseRow(row: ExpenseRow): ExpenseTransaction {
     date: row.transactionDate,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
     amount: row.amount,
+    recurringRuleId: row.recurringRuleId ?? undefined,
   };
 }
 
@@ -94,6 +101,7 @@ export function mapIncomeRow(row: IncomeRow): IncomeTransaction {
     grossAmount: row.grossAmount,
     netAmount: row.netAmount,
     amount: row.netAmount,
+    recurringRuleId: row.recurringRuleId ?? undefined,
   };
 }
 
@@ -178,5 +186,59 @@ export function mapBalanceAdjustmentRow(row: BalanceAdjustmentRow): BalanceAdjus
     date: row.transactionDate,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
     amount: row.amount,
+  };
+}
+
+/**
+ * Generic narrowing for the recurring_rule text unions.
+ *
+ * Throws rather than defaulting, following toIncomeCategory: every one of these
+ * columns has a database CHECK behind it, so an unexpected value means the
+ * constraint was dropped or a migration diverged. Coercing it to a plausible
+ * default would let a rule silently fire on the wrong schedule - the failure
+ * mode is money moving, so it must be loud.
+ */
+function toUnion<T extends string>(
+  allowed: readonly T[],
+  value: string,
+  rowId: string,
+  column: string,
+): T {
+  if ((allowed as readonly string[]).includes(value)) {
+    return value as T;
+  }
+  throw new Error(
+    `Invalid ${column} "${value}" on recurring_rule ${rowId}. Expected one of: ${allowed.join(', ')}.`,
+  );
+}
+
+const RECURRING_KINDS: readonly RecurringKind[] = ['expense', 'income'];
+const RECURRING_FREQUENCIES: readonly RecurringFrequency[] = [
+  'once',
+  'weekly',
+  'biweekly',
+  'monthly',
+  'yearly',
+];
+const RECURRING_END_MODES: readonly RecurringEndMode[] = ['never', 'after', 'on'];
+const RECURRING_STATUSES: readonly RecurringStatus[] = ['active', 'paused', 'deleted'];
+
+export function mapRecurringRuleRow(row: RecurringRuleRow): RecurringRule {
+  return {
+    id: row.id,
+    kind: toUnion(RECURRING_KINDS, row.kind, row.id, 'kind'),
+    description: row.description,
+    category: row.category,
+    tag: row.tag,
+    paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    amount: row.amount,
+    grossAmount: row.grossAmount,
+    frequency: toUnion(RECURRING_FREQUENCIES, row.frequency, row.id, 'frequency'),
+    startDate: row.startDate,
+    endMode: toUnion(RECURRING_END_MODES, row.endMode, row.id, 'end_mode'),
+    endCount: row.endCount,
+    endDate: row.endDate,
+    status: toUnion(RECURRING_STATUSES, row.status, row.id, 'status'),
+    materializedThrough: row.materializedThrough,
   };
 }

@@ -1,5 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { DashboardClient } from './DashboardClient';
 
@@ -10,13 +11,19 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   const userId = await getSessionUserIdOrRedirect();
 
-  const [expenses, income, budgets, categories, openingBalances, adjustments] = await Promise.all([
+  // Materialize any recurring occurrences that came due since the last visit.
+  // MUST complete before the reads below, or new rows surface one load late.
+  // Never throws - a failure is logged and retried on the next load.
+  const catchUp = await runRecurringCatchUp(userId);
+
+  const [expenses, income, budgets, categories, openingBalances, adjustments, goals] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
     getCategories(userId),
     getUserAccount(userId),
     getBalanceAdjustments(userId),
+    getGoals(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -30,12 +37,24 @@ export default async function DashboardPage() {
     adjustments,
   );
 
+  // Summed in JS from mapped rows, deliberately not with a SQL sum(): an
+  // aggregate returns a STRING regardless of the column's mode: 'number'.
+  // getGoals() already maps current_amount to a real number.
+  const allocated = goals.reduce((total, g) => total + g.current, 0);
+
   return (
     <DashboardClient
       transactions={transactions}
       categories={categories}
       budgets={budgets}
       totalBalance={balances.total}
+      allocated={allocated}
+      catchUp={{
+        expensesCreated: catchUp.expensesCreated,
+        incomeCreated: catchUp.incomeCreated,
+        truncated: catchUp.truncated,
+        error: catchUp.error,
+      }}
     />
   );
 }

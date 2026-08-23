@@ -1,4 +1,5 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { SettingsClient } from './SettingsClient';
@@ -7,6 +8,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const userId = await getSessionUserIdOrRedirect();
+
+  // Materialize any recurring occurrences that came due since the last visit.
+  // MUST complete before the reads below, or new rows surface one load late.
+  // Never throws - a failure is logged and retried on the next load.
+  await runRecurringCatchUp(userId);
 
   const [expenses, income, openingBalances, adjustments] = await Promise.all([
     getExpenses(userId),

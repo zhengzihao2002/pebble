@@ -63,6 +63,110 @@ export const userInNeonAuth = neonAuth.table(
   (table) => [unique('user_email_key').on(table.email)],
 );
 
+/**
+ * Scheduled & recurring payment rules. A rule is a TEMPLATE; the transactions
+ * it produces are ordinary expense/income rows that carry recurringRuleId +
+ * occurrenceDate back to here.
+ *
+ * NO DEFAULTS except status and the timestamps - those are the only ones that
+ * exist in the database. Declaring a .default() Drizzle-side that Postgres does
+ * not have would make the column optional in $inferInsert and produce a NOT
+ * NULL violation at runtime.
+ *
+ * `once` is stored as frequency 'once' + endMode 'after' + endCount 1 so the
+ * occurrence generator has exactly one code path instead of a special case.
+ *
+ * Deletion is SOFT (status 'deleted'). A hard delete would strip the rule link
+ * off real historical transactions, and recreating an identical rule afterwards
+ * would re-materialize its whole past as duplicates from a null high-water mark.
+ */
+export const recurringRule = pgTable(
+  'recurring_rule',
+  {
+    id: text().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    /** 'expense' | 'income' */
+    kind: text().notNull(),
+    description: text().notNull(),
+    category: text().notNull(),
+    /** expense only - the income table has no tag column */
+    tag: text(),
+    paymentMethod: text('payment_method').notNull(),
+    /** expense: <= 0. income: the NET amount, >= 0. Mirrors the target table. */
+    amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
+    /** income only, and required there */
+    grossAmount: numeric('gross_amount', { precision: 12, scale: 2, mode: 'number' }),
+    /** 'once' | 'weekly' | 'biweekly' | 'monthly' | 'yearly' */
+    frequency: text().notNull(),
+    /** First occurrence AND the anchor: weekday, day-of-month, or month+day. */
+    startDate: date('start_date').notNull(),
+    /** 'never' | 'after' | 'on' */
+    endMode: text('end_mode').notNull(),
+    endCount: integer('end_count'),
+    endDate: date('end_date'),
+    /** 'active' | 'paused' | 'deleted' */
+    status: text().default('active').notNull(),
+    /**
+     * High-water mark. Catch-up only ever examines (materializedThrough, today],
+     * so deleting an unwanted materialized transaction is permanent - nothing
+     * resurrects it - and no code path can write below the mark, which is what
+     * structurally enforces "edits affect future occurrences only".
+     */
+    materializedThrough: date('materialized_through'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('recurring_rule_user_id_idx').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [userInNeonAuth.id],
+      name: 'recurring_rule_user_id_fkey',
+    }).onDelete('cascade'),
+    check('recurring_rule_kind_check', sql`kind = ANY (ARRAY['expense'::text, 'income'::text])`),
+    check(
+      'recurring_rule_payment_method_check',
+      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
+    ),
+    check(
+      'recurring_rule_frequency_check',
+      sql`frequency = ANY (ARRAY['once'::text, 'weekly'::text, 'biweekly'::text, 'monthly'::text, 'yearly'::text])`,
+    ),
+    check(
+      'recurring_rule_end_mode_check',
+      sql`end_mode = ANY (ARRAY['never'::text, 'after'::text, 'on'::text])`,
+    ),
+    check(
+      'recurring_rule_status_check',
+      sql`status = ANY (ARRAY['active'::text, 'paused'::text, 'deleted'::text])`,
+    ),
+    check(
+      'recurring_rule_kind_shape_check',
+      sql`((kind = 'expense'::text) AND (amount <= (0)::numeric) AND (gross_amount IS NULL))
+          OR ((kind = 'income'::text) AND (amount >= (0)::numeric)
+              AND (gross_amount IS NOT NULL) AND (gross_amount >= (0)::numeric)
+              AND (tag IS NULL))`,
+    ),
+    check(
+      'recurring_rule_end_shape_check',
+      sql`((end_mode = 'never'::text) AND (end_count IS NULL) AND (end_date IS NULL))
+          OR ((end_mode = 'after'::text) AND (end_count IS NOT NULL) AND (end_count > 0) AND (end_date IS NULL))
+          OR ((end_mode = 'on'::text) AND (end_count IS NULL) AND (end_date IS NOT NULL) AND (end_date >= start_date))`,
+    ),
+    check(
+      'recurring_rule_once_check',
+      sql`(frequency <> 'once'::text) OR ((end_mode = 'after'::text) AND (end_count = 1))`,
+    ),
+  ],
+);
+
 /** Expenses. `amount` is always <= 0 (enforced by CHECK). */
 export const expense = pgTable(
   'expense',
@@ -78,6 +182,14 @@ export const expense = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
       .notNull(),
+    /** Set only on rows materialized from a recurring rule. NULL for hand entry. */
+    recurringRuleId: text('recurring_rule_id'),
+    /**
+     * The rule occurrence this row represents. Immutable identity - distinct from
+     * transactionDate, which the user may edit afterwards. (rule, occurrence) is
+     * UNIQUE, which is the sole idempotency guard against double materialization.
+     */
+    occurrenceDate: date('occurrence_date'),
   },
   (table) => [
     index('expense_user_date_idx').using(
@@ -94,6 +206,20 @@ export const expense = pgTable(
     check(
       'expense_payment_method_check',
       sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
+    ),
+    foreignKey({
+      columns: [table.recurringRuleId],
+      foreignColumns: [recurringRule.id],
+      name: 'expense_recurring_rule_id_fkey',
+    }).onDelete('set null'),
+    /**
+     * Postgres treats NULLs as DISTINCT by default, so every hand-entered row
+     * is (NULL, NULL) and none of them collide - now or ever.
+     */
+    unique('expense_recurring_occurrence_uniq').on(table.recurringRuleId, table.occurrenceDate),
+    check(
+      'expense_recurring_pair_check',
+      sql`(recurring_rule_id IS NULL) OR (occurrence_date IS NOT NULL)`,
     ),
   ],
 );
@@ -113,6 +239,9 @@ export const income = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
       .notNull(),
+    /** See the matching columns on `expense`. */
+    recurringRuleId: text('recurring_rule_id'),
+    occurrenceDate: date('occurrence_date'),
   },
   (table) => [
     index('income_user_date_idx').using(
@@ -132,6 +261,16 @@ export const income = pgTable(
     check(
       'income_payment_method_check',
       sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
+    ),
+    foreignKey({
+      columns: [table.recurringRuleId],
+      foreignColumns: [recurringRule.id],
+      name: 'income_recurring_rule_id_fkey',
+    }).onDelete('set null'),
+    unique('income_recurring_occurrence_uniq').on(table.recurringRuleId, table.occurrenceDate),
+    check(
+      'income_recurring_pair_check',
+      sql`(recurring_rule_id IS NULL) OR (occurrence_date IS NOT NULL)`,
     ),
   ],
 );
@@ -318,3 +457,5 @@ export type CategoryRow = typeof category.$inferSelect;
 export type CategoryInsert = typeof category.$inferInsert;
 export type BalanceAdjustmentRow = typeof balanceAdjustment.$inferSelect;
 export type BalanceAdjustmentInsert = typeof balanceAdjustment.$inferInsert;
+export type RecurringRuleRow = typeof recurringRule.$inferSelect;
+export type RecurringRuleInsert = typeof recurringRule.$inferInsert;

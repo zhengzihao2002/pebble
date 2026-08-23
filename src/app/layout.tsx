@@ -3,6 +3,7 @@ import { Fraunces, Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { authClient } from "@/lib/auth/client";
 import { NeonAuthUIProvider } from "@neondatabase/auth-ui";
+import { DARK_MODE_FIELD, PEBBLE_UI_STORAGE_KEY } from "@/store/storageKeys";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -39,9 +40,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           renders light, the browser paints light, and hydration then corrects
           it - a visible flash on every load.
 
-          Reads the same 'pebble-ui' key the Zustand persist store writes, and
-          knows its {state:{...}} envelope. That coupling is the cost of the
-          fix; if the store's key or shape changes, this must change with it.
+          The key and field name are IMPORTED from storageKeys.ts, which the
+          store also imports, so renaming either propagates here instead of
+          silently restoring the flash. The remaining coupling is
+          zustand-persist's {state:{...}} envelope - that shape belongs to the
+          library, so it cannot be derived from anything we control.
 
           Wrapped in try/catch because localStorage throws outright in some
           privacy modes, and a theme preference is never worth breaking the
@@ -50,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var s=localStorage.getItem('pebble-ui');var d=s&&JSON.parse(s).state.darkMode;var c=document.documentElement.classList;c.add('no-theme-transition');if(d)c.add('dark');}catch(e){}`,
+            __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var d=s&&JSON.parse(s).state[${JSON.stringify(DARK_MODE_FIELD)}];var c=document.documentElement.classList;c.add('no-theme-transition');if(d)c.add('dark');}catch(e){}`,
           }}
         />
       </head>

@@ -1,0 +1,316 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Trash2, X } from 'lucide-react';
+import {
+  createRecurringRuleAction,
+  deleteRecurringRuleAction,
+  getCategoriesAction,
+  updateRecurringRuleAction,
+} from '@/lib/actions/pebble';
+import { todayInZone } from '@/lib/recurring/occurrences';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import type { CategoryItem } from '@/lib/data/mappers';
+import type {
+  PaymentMethod,
+  RecurringEndMode,
+  RecurringFrequency,
+  RecurringKind,
+  RecurringRule,
+} from '@/types';
+
+interface RecurringRuleModalProps {
+  onClose: () => void;
+  /** Absent means "add"; present means "edit that rule". One form, as GoalModal does. */
+  rule?: RecurringRule;
+}
+
+type Mode = 'form' | 'confirmDelete';
+
+const FREQUENCY_OPTIONS: { value: RecurringFrequency; label: string }[] = [
+  { value: 'once', label: 'Once (a single future payment)' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+];
+
+const END_MODE_OPTIONS: { value: RecurringEndMode; label: string }[] = [
+  { value: 'never', label: 'Never' },
+  { value: 'after', label: 'After a number of payments' },
+  { value: 'on', label: 'On a date' },
+];
+
+export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
+  const isEdit = rule !== undefined;
+  // Runs in the browser, so the zone is known directly - no cookie needed.
+  const today = todayInZone(resolveBrowserTimeZone());
+
+  const [mode, setMode] = useState<Mode>('form');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+
+  const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? 'expense');
+  const [description, setDescription] = useState(rule?.description ?? '');
+  const [category, setCategory] = useState(rule?.category ?? '');
+  const [tag, setTag] = useState(rule?.tag ?? '');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(rule?.paymentMethod ?? 'Checking');
+  // Stored negative for expenses; the form always works in positive magnitude
+  // and the action re-applies the sign.
+  const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : '');
+  const [grossAmount, setGrossAmount] = useState(rule?.grossAmount != null ? String(rule.grossAmount) : '');
+  const [frequency, setFrequency] = useState<RecurringFrequency>(rule?.frequency ?? 'monthly');
+  const [startDate, setStartDate] = useState(rule?.startDate ?? today);
+  const [endMode, setEndMode] = useState<RecurringEndMode>(rule?.endMode ?? 'never');
+  const [endCount, setEndCount] = useState(rule?.endCount != null ? String(rule.endCount) : '');
+  const [endDate, setEndDate] = useState(rule?.endDate ?? '');
+  const [backfill, setBackfill] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCategoriesAction().then((result) => {
+      if (cancelled || !result.ok) return;
+      setCategories(result.categories);
+      // Only default the picker when adding - never overwrite an edited rule's
+      // category, and never clobber a choice the user has already made.
+      setCategory((current) => current || result.categories[0]?.name || '');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%' };
+  const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
+  const hintStyle: React.CSSProperties = { fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 };
+
+  const noun = kind === 'income' ? 'income' : 'payment';
+  const isPastStart = startDate < today;
+  const showBackfill = !isEdit && isPastStart && frequency !== 'once';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const payload = {
+      kind,
+      description: description.trim(),
+      category,
+      tag: kind === 'expense' ? tag.trim() || undefined : undefined,
+      paymentMethod,
+      amount: Number(amount),
+      grossAmount: kind === 'income' ? Number(grossAmount) : undefined,
+      frequency,
+      startDate,
+      endMode,
+      endCount: endMode === 'after' ? Number(endCount) : null,
+      endDate: endMode === 'on' ? endDate : null,
+    };
+
+    const result = rule
+      ? await updateRecurringRuleAction({ ...payload, id: rule.id })
+      : await createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill });
+
+    setSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error);
+      return;
+    }
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!rule || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    const result = await deleteRecurringRuleAction({ id: rule.id });
+    setSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error);
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
+      onClick={onClose}
+    >
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0' }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
+          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>
+            {isEdit ? `Edit scheduled ${noun}` : `New scheduled ${noun}`}
+          </h2>
+          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
+        </div>
+
+        {mode === 'confirmDelete' ? (
+          <div>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Delete this scheduled {noun}?</p>
+            <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
+              <strong style={{ color: 'var(--ink)' }}>{rule?.description}</strong> will stop creating new
+              transactions. Everything it has already created stays exactly where it is — those are real
+              transactions that have happened.
+            </p>
+            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{saveError}</p>}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
+              <button type="button" onClick={handleDelete} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <label style={labelStyle}>
+              Type
+              <select
+                value={kind}
+                // Expense history lives in `expense`, income in `income`.
+                // Switching would orphan every row already created, so the
+                // action rejects it and the control is locked when editing.
+                disabled={isEdit}
+                onChange={(e) => {
+                  const next = e.target.value as RecurringKind;
+                  setKind(next);
+                  setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
+                }}
+                style={{ ...inputStyle, opacity: isEdit ? 0.6 : 1 }}
+              >
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+              {isEdit && <p style={hintStyle}>Type cannot be changed. Delete this and create a new one instead.</p>}
+            </label>
+
+            <label style={labelStyle}>
+              Description
+              <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={kind === 'income' ? 'e.g. Salary' : 'e.g. Car loan'} required style={inputStyle} />
+            </label>
+
+            <label style={labelStyle}>
+              Category
+              <select value={category} onChange={(e) => setCategory(e.target.value)} required style={inputStyle}>
+                {kind === 'income' ? (
+                  <>
+                    <option value="Standard Income">Standard Income</option>
+                    <option value="Side Cash">Side Cash</option>
+                  </>
+                ) : (
+                  categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)
+                )}
+              </select>
+            </label>
+
+            {kind === 'expense' && (
+              <label style={labelStyle}>
+                Tag <span style={{ opacity: 0.7 }}>(optional)</span>
+                <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Fixed" style={inputStyle} />
+              </label>
+            )}
+
+            <label style={labelStyle}>
+              Paid from
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
+                <option value="Checking">Checking</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </label>
+
+            {kind === 'income' && (
+              <label style={labelStyle}>
+                Gross amount
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
+                  <input type="number" min="0" step="0.01" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+                </div>
+              </label>
+            )}
+
+            <label style={labelStyle}>
+              {kind === 'income' ? 'Net amount (what actually lands)' : 'Amount'}
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
+                <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+              </div>
+              {kind === 'income' && <p style={hintStyle}>Only the net amount affects your balance. Gross is recorded for reference.</p>}
+            </label>
+
+            <label style={labelStyle}>
+              Frequency
+              <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)} style={inputStyle}>
+                {FREQUENCY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+
+            <label style={labelStyle}>
+              {frequency === 'once' ? 'Date' : 'Starts on'}
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={inputStyle} />
+              {(frequency === 'monthly' || frequency === 'yearly') && (
+                <p style={hintStyle}>
+                  Months shorter than this date use their last day — the 31st becomes the 28th in
+                  February, then returns to the 31st in March.
+                </p>
+              )}
+            </label>
+
+            {frequency !== 'once' && (
+              <label style={labelStyle}>
+                Ends
+                <select value={endMode} onChange={(e) => setEndMode(e.target.value as RecurringEndMode)} style={inputStyle}>
+                  {END_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+            )}
+
+            {frequency !== 'once' && endMode === 'after' && (
+              <label style={labelStyle}>
+                Number of payments
+                <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder="e.g. 48" required className="font-mono-tab" style={inputStyle} />
+              </label>
+            )}
+
+            {frequency !== 'once' && endMode === 'on' && (
+              <label style={labelStyle}>
+                Last payment on or before
+                <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} required style={inputStyle} />
+              </label>
+            )}
+
+            {showBackfill && (
+              <div style={{ border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.8rem' }}>
+                <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={backfill} onChange={(e) => setBackfill(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <span>
+                    Also create the payments that already happened
+                    <p style={{ ...hintStyle, marginTop: 3 }}>
+                      This start date is in the past. By default only future payments are created —
+                      tick this only if these transactions are not already in Pebble.
+                    </p>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>}
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {isEdit && (
+                <button type="button" onClick={() => { setMode('confirmDelete'); setSaveError(null); }} className="pill" style={{ padding: '0.72rem 1rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Trash2 size={14} />Delete
+                </button>
+              )}
+              <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
+                {saving ? 'Saving…' : isEdit ? 'Save changes' : kind === 'income' ? 'Add income schedule' : 'Add payment schedule'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}

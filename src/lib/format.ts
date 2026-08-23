@@ -5,6 +5,15 @@ export function atMidnight(date: Date): Date {
 
 // The current date and time, evaluated fresh on every call.
 //
+// ⚠️ CLIENT-SIDE ONLY. Returns the CONTAINER's timezone on the server, which is
+// UTC on Vercel - so a user on the US East Coast at 8pm is already "tomorrow"
+// server-side. Every current caller is a client component, where this is
+// correct. Do NOT introduce a server-side caller.
+//
+// Server code that needs today's calendar date must use todayInZone(tz) from
+// @/lib/recurring/occurrences with the zone from resolveUserTimeZone(), which
+// reads the zone the user's own browser reported. See src/lib/time/.
+//
 // Deliberately a function, not a constant. A module-scope `const TODAY =
 // new Date()` is captured once when the module first loads, so on a warm
 // server container it goes stale past midnight and every "last 30 days"
@@ -15,6 +24,7 @@ export function getToday(): Date {
 }
 
 // Today's date as a local 'YYYY-MM-DD' string, for date-input defaults.
+// ⚠️ CLIENT-SIDE ONLY - same UTC caveat as getToday() above.
 // (Deliberately not toISOString().slice(0,10) — that converts to UTC first,
 // which can silently shift the date by one day depending on the user's
 // timezone.)
@@ -63,6 +73,7 @@ export function formatGoalDate(value: string): string {
   return parseLocalDate(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// ⚠️ CLIENT-SIDE ONLY - reads the local hour, which is UTC on the server.
 export function getGreeting(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
