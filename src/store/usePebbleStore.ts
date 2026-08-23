@@ -15,6 +15,22 @@ import type { ReportFilterPrefs } from '@/components/reports/types';
  * the right text size on a phone is not the right one on a desktop, and
  * neither is worth a database round trip on every page load.
  */
+// Dashboard selector state. Three separate widgets write into one object, so
+// the setter merges a patch rather than replacing - otherwise whichever
+// component wrote last would clear the other two.
+//
+// The sub-period fields are nullable: null means "not chosen on this device
+// yet", and each widget then resolves its own default from the periods
+// actually present in the data.
+export interface DashboardPrefs {
+  statsMode: string;
+  statsPeriod: string | null;
+  breakdownMode: string;
+  breakdownPeriod: string | null;
+  trendMode: string;
+  trendYear: string | null;
+}
+
 interface PebbleUIState {
   darkMode: boolean;
   textSize: number;
@@ -23,9 +39,11 @@ interface PebbleUIState {
   // could be years old. Filter choices qualify as device preferences - they
   // describe how you like to look at the data, not the data itself.
   reportFilters: ReportFilterPrefs | null;
+  dashboardPrefs: Partial<DashboardPrefs> | null;
   setDarkMode: (value: boolean) => void;
   setTextSize: (value: number) => void;
   setReportFilters: (value: ReportFilterPrefs) => void;
+  setDashboardPrefs: (patch: Partial<DashboardPrefs>) => void;
 }
 
 const noopStorage = {
@@ -40,9 +58,11 @@ export const usePebbleStore = create<PebbleUIState>()(
       darkMode: false,
       textSize: 100,
       reportFilters: null,
+      dashboardPrefs: null,
       setDarkMode: (value) => set({ darkMode: value }),
       setTextSize: (value) => set({ textSize: value }),
       setReportFilters: (value) => set({ reportFilters: value }),
+      setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -51,7 +71,12 @@ export const usePebbleStore = create<PebbleUIState>()(
       // than merging stale financial state into the new shape.
       name: 'pebble-ui',
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : noopStorage)),
-      partialize: (state) => ({ darkMode: state.darkMode, textSize: state.textSize, reportFilters: state.reportFilters }),
+      partialize: (state) => ({
+        darkMode: state.darkMode,
+        textSize: state.textSize,
+        reportFilters: state.reportFilters,
+        dashboardPrefs: state.dashboardPrefs,
+      }),
     }
   )
 );

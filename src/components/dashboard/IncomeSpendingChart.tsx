@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
@@ -28,6 +29,32 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
         : null,
     );
   };
+
+  // No latestYearOnly here: this selector picks the year itself, so trimming
+  // it to one option would defeat the purpose.
+  const restoreRef = useRef(false);
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (restoreRef.current) return;
+    restoreRef.current = true;
+    const saved = usePebbleStore.getState().dashboardPrefs;
+    const mode = saved?.trendMode ?? 'last6';
+    const years = getAvailablePeriods(transactions, 'year');
+    const savedYear = saved?.trendYear ?? null;
+    setTrendMode(mode);
+    setTrendYear(
+      mode === 'month' || mode === 'quarter'
+        ? (years.some((y) => y.key === savedYear) ? savedYear : (years[0]?.key ?? null))
+        : null,
+    );
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    usePebbleStore.getState().setDashboardPrefs({ trendMode, trendYear });
+  }, [restored, trendMode, trendYear]);
 
   const trendData = buildTrendData(transactions, trendMode, trendYear);
 

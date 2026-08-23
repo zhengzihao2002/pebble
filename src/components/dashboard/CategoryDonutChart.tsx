@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { CategoryMeta, Transaction } from '@/types';
 import { buildCategoryBreakdown, getAvailablePeriods, lightenColor, darkenColor } from '@/lib/stats';
@@ -15,20 +16,41 @@ interface CategoryDonutChartProps {
 export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
   const [breakdownMode, setBreakdownMode] = useState('last6');
   const [breakdownPeriod, setBreakdownPeriod] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
+
+  // latestYearOnly, matching the stat tiles above: this year's months, not
+  // every month on record.
+  const periodsForMode = (mode: string) =>
+    (mode === 'month' || mode === 'quarter' || mode === 'year')
+      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true)
+      : [];
+
   const needsSubPeriod = breakdownMode === 'month' || breakdownMode === 'quarter' || breakdownMode === 'year';
-  const availablePeriods = needsSubPeriod
-    ? getAvailablePeriods(transactions, breakdownMode as 'month' | 'quarter' | 'year')
-    : [];
+  const availablePeriods = needsSubPeriod ? periodsForMode(breakdownMode) : [];
 
   const handleBreakdownModeChange = (mode: string) => {
     setBreakdownMode(mode);
-    if (mode === 'month' || mode === 'quarter' || mode === 'year') {
-      const avail = getAvailablePeriods(transactions, mode);
-      setBreakdownPeriod(avail[0]?.key || null);
-    } else {
-      setBreakdownPeriod(null);
-    }
+    setBreakdownPeriod(periodsForMode(mode)[0]?.key ?? null);
   };
+
+  const restoreRef = useRef(false);
+  useEffect(() => {
+    if (restoreRef.current) return;
+    restoreRef.current = true;
+    const saved = usePebbleStore.getState().dashboardPrefs;
+    const mode = saved?.breakdownMode ?? 'last6';
+    const avail = periodsForMode(mode);
+    const savedPeriod = saved?.breakdownPeriod ?? null;
+    setBreakdownMode(mode);
+    setBreakdownPeriod(avail.some((p) => p.key === savedPeriod) ? savedPeriod : (avail[0]?.key ?? null));
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    usePebbleStore.getState().setDashboardPrefs({ breakdownMode, breakdownPeriod });
+  }, [restored, breakdownMode, breakdownPeriod]);
 
   const donutData = buildCategoryBreakdown(transactions, breakdownMode, categoryMeta, breakdownPeriod);
   const donutTotal = donutData.reduce((s, d) => s + d.value, 0);

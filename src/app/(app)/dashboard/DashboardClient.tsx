@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { ArrowUpRight, ArrowDownRight, Percent, Wallet } from 'lucide-react';
 import type { Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -26,22 +27,54 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // icon-bearing map is reassembled here from serializable budget numbers.
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
-  const [statsMode, setStatsMode] = useState('30d');
+  // Defaults to the current month rather than a rolling 30 days: a calendar
+  // month is the unit a budget is actually kept in, and the rolling window
+  // straddled two of them. Both are static values, so the server render and
+  // the first client render agree; the stored preference is applied in a
+  // mount effect below.
+  const [statsMode, setStatsMode] = useState('month');
   const [statsPeriod, setStatsPeriod] = useState<string | null>(null);
+  const [statsRestored, setStatsRestored] = useState(false);
+
+  // latestYearOnly: the selector lists this year's months, not every month
+  // ever recorded. Looking further back is what Reports is for.
+  const periodsForStatsMode = (mode: string) =>
+    (mode === 'month' || mode === 'quarter' || mode === 'year')
+      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true)
+      : [];
+
   const needsStatsSubPeriod = statsMode === 'month' || statsMode === 'quarter' || statsMode === 'year';
-  const availableStatsPeriods = needsStatsSubPeriod
-    ? getAvailablePeriods(transactions, statsMode as 'month' | 'quarter' | 'year')
-    : [];
+  const availableStatsPeriods = needsStatsSubPeriod ? periodsForStatsMode(statsMode) : [];
 
   const handleStatsModeChange = (mode: string) => {
     setStatsMode(mode);
-    if (mode === 'month' || mode === 'quarter' || mode === 'year') {
-      const avail = getAvailablePeriods(transactions, mode);
-      setStatsPeriod(avail[0]?.key || null);
-    } else {
-      setStatsPeriod(null);
-    }
+    setStatsPeriod(periodsForStatsMode(mode)[0]?.key ?? null);
   };
+
+  // Restore once on mount. Client-only, so reading localStorage here cannot
+  // desync from the server render. A stored period that no longer appears in
+  // the list - a month from a year now out of scope - falls back to the newest
+  // available rather than leaving the selector pointing at nothing.
+  const statsRestoreRef = useRef(false);
+  useEffect(() => {
+    if (statsRestoreRef.current) return;
+    statsRestoreRef.current = true;
+    const saved = usePebbleStore.getState().dashboardPrefs;
+    const mode = saved?.statsMode ?? 'month';
+    const avail = periodsForStatsMode(mode);
+    const savedPeriod = saved?.statsPeriod ?? null;
+    setStatsMode(mode);
+    setStatsPeriod(avail.some((p) => p.key === savedPeriod) ? savedPeriod : (avail[0]?.key ?? null));
+    setStatsRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Write back only after restoring, or the static seed values would overwrite
+  // the stored ones before they were read.
+  useEffect(() => {
+    if (!statsRestored) return;
+    usePebbleStore.getState().setDashboardPrefs({ statsMode, statsPeriod });
+  }, [statsRestored, statsMode, statsPeriod]);
 
   const periodStats = computeStatsForPeriod(transactions, statsMode, statsPeriod);
   const statsSublabel = statsMode === '30d' ? 'Last 30 days'

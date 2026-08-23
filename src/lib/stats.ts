@@ -332,7 +332,11 @@ export interface PeriodOption {
 // Lists the specific months/quarters/years actually present in the data,
 // newest first — powers the "which month/quarter/year" sub-selector next to
 // the breakdown mode dropdown.
-export function getAvailablePeriods(transactions: Transaction[], granularity: 'month' | 'quarter' | 'year'): PeriodOption[] {
+export function getAvailablePeriods(
+  transactions: Transaction[],
+  granularity: 'month' | 'quarter' | 'year',
+  latestYearOnly = false,
+): PeriodOption[] {
   const map = new Map<string, PeriodOption>();
   transactions.forEach((t) => {
     const d = parseLocalDate(t.date);
@@ -353,7 +357,24 @@ export function getAvailablePeriods(transactions: Transaction[], granularity: 'm
     }
     if (!map.has(key)) map.set(key, { key, sortKey, label });
   });
-  return [...map.values()].sort((a, b) => b.sortKey - a.sortKey);
+  const all = [...map.values()].sort((a, b) => b.sortKey - a.sortKey);
+
+  // latestYearOnly trims the dashboard selectors to one year's worth of
+  // periods. Several years of history turns "By month" into a list of dozens,
+  // which is a Reports-shaped job, not a dashboard one.
+  //
+  // Scoped to the newest year PRESENT IN THE DATA rather than the current
+  // calendar year, deliberately. Reading the clock here would make the option
+  // list differ between the server render (UTC on Vercel) and the client at
+  // year boundaries - a hydration mismatch. The data-derived year is
+  // deterministic, matches the calendar year whenever there is recent
+  // activity, and still shows the most recent months in January before that
+  // year has any transactions, where a clock-derived list would be empty.
+  //
+  // Never applied to 'year': one option is not a selector.
+  if (!latestYearOnly || granularity === 'year' || all.length === 0) return all;
+  const latestYear = new Date(all[0].sortKey).getFullYear();
+  return all.filter((p) => new Date(p.sortKey).getFullYear() === latestYear);
 }
 
 // The share of gross pay withheld before it landed. Derived from the two
