@@ -1,12 +1,18 @@
 'use client';
 
-import { AlertTriangle, CalendarClock } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, CalendarClock, X } from 'lucide-react';
 
 interface CatchUpNoticeProps {
   expensesCreated: number;
   incomeCreated: number;
   truncated: boolean;
-  error?: string;
+  /**
+   * Whether the run failed - NOT the message. The underlying error string can
+   * echo Postgres query fragments, and pebble.ts's policy is that those never
+   * reach the client. The full error is logged server-side in catchUp.ts.
+   */
+  failed?: boolean;
 }
 
 /**
@@ -24,12 +30,22 @@ interface CatchUpNoticeProps {
  * awaitingTimeZone is deliberately NOT surfaced: it self-corrects within the
  * same load - AppShell writes the cookie and refreshes - so showing it would
  * be a warning about a state the user can never actually observe.
+ *
+ * PASSIVE AND NON-BLOCKING. Catch-up is idempotent and retries on the next
+ * load, so this is information, never an obstacle. Dismissal is per-load
+ * state, not persisted: if the failure is still happening on the next load,
+ * the notice comes back, which is correct. Persisting a dismissal would let
+ * someone permanently silence a warning about transactions that are still
+ * not appearing.
  */
-export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, error }: CatchUpNoticeProps) {
-  const created = expensesCreated + incomeCreated;
-  if (!error && !truncated && created === 0) return null;
+export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, failed }: CatchUpNoticeProps) {
+  const [dismissed, setDismissed] = useState(false);
 
-  const isProblem = Boolean(error) || truncated;
+  const created = expensesCreated + incomeCreated;
+  if (dismissed) return null;
+  if (!failed && !truncated && created === 0) return null;
+
+  const isProblem = Boolean(failed) || truncated;
 
   return (
     <div
@@ -40,7 +56,7 @@ export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, error
         ? <AlertTriangle size={16} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
         : <CalendarClock size={16} style={{ color: 'var(--pine)', flexShrink: 0, marginTop: 2 }} />}
       <div style={{ flex: 1, minWidth: 0, fontSize: '0.83rem', lineHeight: 1.5 }}>
-        {error ? (
+        {failed ? (
           <>
             <strong>Some scheduled payments could not be added.</strong> They will be retried next
             time you open Pebble — nothing has been duplicated or lost. If it keeps happening, the
@@ -58,6 +74,13 @@ export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, error
           </>
         )}
       </div>
+      <button
+        type="button" onClick={() => setDismissed(true)} className="icon-btn"
+        aria-label="Dismiss"
+        style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', flexShrink: 0, marginTop: -2 }}
+      >
+        <X size={14} />
+      </button>
     </div>
   );
 }

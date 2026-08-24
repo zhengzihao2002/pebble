@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import {
@@ -9,6 +9,9 @@ import {
   type CategoryDeletePlan,
   type CategoryUsage,
 } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import type { CategoryItem } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
 
@@ -37,15 +40,36 @@ export function CategoryDeleteDialog({
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
+  // Which call failed, so Try again repeats that one and not the other.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [mode, setMode] = useState<Mode>('bulk');
   const [bulkTarget, setBulkTarget] = useState(fallback?.name ?? '');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let active = true;
-    getCategoryUsageAction(target.id).then((result) => {
-      if (!active) return;
-      if (!result.ok) { setError(result.error); setLoading(false); return; }
+  // Was a per-effect-run `active` local. A manual retry is not tied to an
+  // effect run, so the unmount guard has to outlive one.
+  const aliveRef = useRef(true);
+  useEffect(() => () => { aliveRef.current = false; }, []);
+
+  // Wrapped: a rejection here used to leave `loading` true forever, since
+  // setLoading(false) only ran inside the .then().
+  const loadUsage = () => {
+    setLoading(true);
+    setError(null);
+    setLoadFailed(false);
+    callAction(
+      () => getCategoryUsageAction(target.id),
+      "Couldn't check what uses this category.",
+    ).then((result) => {
+      if (!aliveRef.current) return;
+      if (!result.ok) {
+        setError(result.error);
+        setErrorKind(result.kind);
+        setLoadFailed(true);
+        setLoading(false);
+        return;
+      }
       setUsage(result.usage);
       // Default every transaction to the fallback so the individual mode is
       // immediately valid; the user only changes the ones they care about.
@@ -54,8 +78,16 @@ export function CategoryDeleteDialog({
       setAssignments(defaults);
       setLoading(false);
     });
-    return () => { active = false; };
-  }, [target.id, fallback?.name]);
+  };
+
+  useEffect(() => { loadUsage(); }, [target.id, fallback?.name]);
+
+  // A delete in flight must not be cancellable. It reassigns transactions and
+  // then removes the category; closing mid-write would read as success for
+  // something unresolved and leave any error with nowhere to land.
+  // LoadingOverlay covers the card only, so the backdrop, the X and the Cancel
+  // button each need this guard.
+  const requestClose = () => { if (deleting) return; onClose(); };
 
   const handleDelete = async () => {
     if (deleting) return;
@@ -69,9 +101,9 @@ export function CategoryDeleteDialog({
         : { mode: 'individual', assignments };
     }
 
-    const result = await deleteCategoryAction({ id: target.id, plan });
+    const result = await callAction(() => deleteCategoryAction({ id: target.id, plan }));
     setDeleting(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); setLoadFailed(false); return; }
     onDeleted();
   };
 
@@ -80,13 +112,13 @@ export function CategoryDeleteDialog({
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 60, overflowY: 'auto' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 520, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         {deleting && <LoadingOverlay label="Deleting category…" />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>Delete {target.name}</h2>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0 }}><X size={18} /></button>
+          <button onClick={requestClose} disabled={deleting} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0, opacity: deleting ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         {loading && <LoadingBlock label="Checking what uses this category…" />}
@@ -148,10 +180,15 @@ export function CategoryDeleteDialog({
           </>
         )}
 
-        {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{error}</p>}
+        <ActionError
+          message={error} kind={errorKind}
+          onRetry={loadFailed ? loadUsage : handleDelete}
+          busy={deleting || loading}
+          style={{ marginBottom: '0.9rem' }}
+        />
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" onClick={onClose} className="pill" style={{ flex: 1, padding: '0.65rem' }}>
+          <button type="button" onClick={requestClose} disabled={deleting} className="pill" style={{ flex: 1, padding: '0.65rem', opacity: deleting ? 0.6 : 1 }}>
             Cancel
           </button>
           <button

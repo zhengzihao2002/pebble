@@ -7,6 +7,9 @@ import {
   getCategoriesAction,
   updateCategoryAction,
 } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import type { CategoryItem } from '@/lib/data/mappers';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from '@/data/seed';
@@ -66,16 +69,34 @@ export function CategoryManagerCard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
+  // Which call failed, so Try again repeats that one rather than the other.
+  // A failed initial load leaves nothing to save, so retrying the save would
+  // be meaningless there.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ name: '', iconKey: 'Shapes', color: CATEGORY_COLOR_OPTIONS[0] });
   const [adding, setAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CategoryItem | null>(null);
 
+  // Wrapped: previously a rejected call left `loading` true forever, since
+  // setLoading(false) only ran on the resolved paths. The card would sit under
+  // "Loading your categories…" with no error and no way out but a page reload -
+  // precisely the DB-outage case this work exists to make visible.
   const load = async () => {
-    const result = await getCategoriesAction();
-    if (!result.ok) { setError(result.error); setLoading(false); return; }
+    setLoading(true);
+    const result = await callAction(getCategoriesAction, "Couldn't load your categories.");
+    if (!result.ok) {
+      setError(result.error);
+      setErrorKind(result.kind);
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
     setCategories(result.categories);
+    setError(null);
+    setLoadFailed(false);
     setLoading(false);
   };
 
@@ -102,10 +123,10 @@ export function CategoryManagerCard() {
     setBusy(true);
     setError(null);
     const result = adding
-      ? await createCategoryAction(draft)
-      : await updateCategoryAction({ id: editingId!, ...draft });
+      ? await callAction(() => createCategoryAction(draft))
+      : await callAction(() => updateCategoryAction({ id: editingId!, ...draft }));
     setBusy(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); setLoadFailed(false); return; }
     cancel();
     await load();
   };
@@ -197,7 +218,12 @@ export function CategoryManagerCard() {
             </div>
           )}
 
-          {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.8rem' }}>{error}</p>}
+          <ActionError
+            message={error} kind={errorKind}
+            onRetry={loadFailed ? () => void load() : submit}
+            busy={busy || loading}
+            style={{ marginBottom: '0.8rem' }}
+          />
 
           {!adding && !editingId && (
             <button type="button" onClick={startAdd} className="pill" style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>

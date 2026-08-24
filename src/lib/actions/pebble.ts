@@ -27,6 +27,7 @@ import { addDays, todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
+import type { FailureKind } from '@/lib/actions/failureKind';
 
 /**
  * Mutation layer.
@@ -50,7 +51,7 @@ import type { CategoryItem } from '@/lib/data/mappers';
  * nobody. Errors are logged server-side and returned as a message.
  */
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult = { ok: true } | { ok: false; error: string; kind?: FailureKind };
 
 const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
@@ -64,8 +65,13 @@ function revalidateAll(): void {
   }
 }
 
-function fail(message: string): ActionResult {
-  return { ok: false, error: message };
+/**
+ * Defaults to 'validation' because that is what every current call site is:
+ * a rejected input, reported with the specific field problem. A retry of the
+ * same input would fail identically, so these must NOT offer "Try again".
+ */
+function fail(message: string, kind: FailureKind = 'validation'): ActionResult {
+  return { ok: false, error: message, kind };
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -73,12 +79,54 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 /**
- * Logs the real error server-side and returns a generic message. Raw Postgres
- * errors can echo query fragments, so they are not sent to the client.
+ * Distinguishes "could not reach the database" from "the database refused
+ * this", which the user experiences as two completely different events.
+ *
+ * The discriminator is NeonDbError.code, the SQLSTATE. A statement the server
+ * actually processed and rejected carries one; a connection that never
+ * completed - Neon suspended and slow to wake, network gone, fetch rejected -
+ * does not. Matched on `name` rather than instanceof: a duplicate copy of the
+ * driver in the module graph would break identity, and misclassifying a real
+ * outage as an unknown bug is the failure mode worth guarding against.
+ *
+ * SQLSTATE class 08 is connection exception, 53 insufficient resources, 57
+ * operator intervention (includes admin shutdown). All are "the database is
+ * not currently able to serve you", not "your data was wrong".
+ */
+function classifyError(error: unknown): FailureKind {
+  const name = (error as { name?: unknown } | null)?.name;
+
+  if (name === 'NeonDbError') {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string') return 'database';
+    const sqlStateClass = code.slice(0, 2);
+    if (sqlStateClass === '08' || sqlStateClass === '53' || sqlStateClass === '57') return 'database';
+    return 'unknown';
+  }
+
+  // A rejected fetch surfaces as TypeError before the driver ever sees it.
+  if (name === 'TypeError' || name === 'AbortError') return 'database';
+
+  return 'unknown';
+}
+
+/**
+ * Logs the real error server-side and returns a safe message. Raw Postgres
+ * errors can echo query fragments, so they are never sent to the client -
+ * only the classification is.
+ *
+ * The 'database' wording states plainly that nothing was saved. That claim is
+ * only honest here, where the error was caught server-side: the request
+ * reached this process and the write did not complete. The client-side
+ * transport case in callAction.ts cannot claim as much, and does not.
  */
 function handleUnexpected(context: string, error: unknown): ActionResult {
-  console.error(`[pebble action] ${context}`, error);
-  return fail('Something went wrong saving your changes. Please try again.');
+  const kind = classifyError(error);
+  console.error(`[pebble action] ${context} (${kind})`, error);
+
+  return kind === 'database'
+    ? fail("Couldn't reach the database. Your change was not saved.", 'database')
+    : fail('Something went wrong saving your changes. Please try again.', 'unknown');
 }
 
 export interface AddExpenseActionInput {
@@ -396,7 +444,7 @@ async function setOpeningBalances(
 
 export type BudgetModalData =
   | { ok: true; budgets: Record<string, number>; annualIncome: number; categories: CategoryItem[] }
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind?: FailureKind };
 
 /**
  * Loads exactly what ModifyBudgetModal needs, on open.
@@ -418,13 +466,13 @@ async function loadBudgetModalData(userId: string): Promise<BudgetModalData> {
     return { ok: true, budgets, annualIncome: estimateAnnualIncome(income), categories };
   } catch (error) {
     console.error('[pebble action] getBudgetModalDataAction', error);
-    return { ok: false, error: 'Could not load your budgets. Please try again.' };
+    return { ok: false, error: "Couldn't reach the database to load your budgets.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
   }
 }
 
 export type AllocationSummaryResult =
   | { ok: true; totalBalance: number; allocated: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind?: FailureKind };
 
 /**
  * Current total balance and the amount goals have claimed against it, for the
@@ -464,7 +512,7 @@ async function loadAllocationSummary(userId: string): Promise<AllocationSummaryR
     };
   } catch (error) {
     console.error('[pebble action] getAllocationSummaryAction', error);
-    return { ok: false, error: 'Could not check your goal allocations. Please try again.' };
+    return { ok: false, error: "Couldn't check your goal allocations.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
   }
 }
 
@@ -483,14 +531,14 @@ function validateCategoryName(name: string): string | null {
  */
 export type CategoriesResult =
   | { ok: true; categories: CategoryItem[] }
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind?: FailureKind };
 
 async function loadCategories(userId: string): Promise<CategoriesResult> {
   try {
     return { ok: true, categories: await getCategories(userId) };
   } catch (error) {
     console.error('[pebble action] getCategoriesAction', error);
-    return { ok: false, error: 'Could not load your categories. Please try again.' };
+    return { ok: false, error: "Couldn't reach the database to load your categories.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
   }
 }
 
@@ -606,7 +654,7 @@ export interface CategoryUsage {
 
 export type CategoryUsageResult =
   | { ok: true; usage: CategoryUsage }
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind?: FailureKind };
 
 /** Move every affected transaction to one destination category. */
 export interface BulkReassignPlan {
@@ -634,7 +682,7 @@ async function loadCategoryUsage(
   try {
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === categoryId);
-    if (!target) return { ok: false, error: 'That category no longer exists.' };
+    if (!target) return { ok: false, error: 'That category no longer exists.', kind: 'notFound' };
 
     const rows = await db
       .select({
@@ -657,7 +705,7 @@ async function loadCategoryUsage(
     };
   } catch (error) {
     console.error('[pebble action] getCategoryUsageAction', error);
-    return { ok: false, error: 'Could not check that category. Please try again.' };
+    return { ok: false, error: "Couldn't check that category.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
   }
 }
 
@@ -1024,7 +1072,7 @@ async function deleteBalanceAdjustment(
 
 export type BalanceModeResult =
   | { ok: true; hasTransactions: boolean; checkingOpening: number; cashOpening: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind?: FailureKind };
 
 
 /* ---------------------------------------------------------------------------
@@ -1103,7 +1151,7 @@ interface NormalizedRule {
 async function normalizeRuleInput(
   userId: string,
   input: RecurringRuleActionInput,
-): Promise<{ ok: true; values: NormalizedRule } | { ok: false; error: string }> {
+): Promise<{ ok: true; values: NormalizedRule } | { ok: false; error: string; kind?: FailureKind }> {
   const description = input.description.trim();
   if (!description) return { ok: false, error: 'A scheduled payment needs a description.' };
 
@@ -1409,7 +1457,7 @@ async function loadBalanceMode(userId: string): Promise<BalanceModeResult> {
     };
   } catch (error) {
     console.error('[pebble action] getBalanceModeAction', error);
-    return { ok: false, error: 'Could not load your balance settings.' };
+    return { ok: false, error: "Couldn't reach the database to load your balance settings.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
   }
 }
 

@@ -5,13 +5,14 @@ import {
   AuthUnavailableError,
   getSessionUserId,
 } from '@/lib/auth/getSessionUser';
+import type { FailureKind } from '@/lib/actions/failureKind';
 
 /**
  * Shared failure shape. Every action result type in pebble.ts already
  * includes exactly this member, so the wrapper's return union collapses
  * cleanly at call sites and `if (!result.ok)` keeps narrowing correctly.
  */
-type AuthFailure = { ok: false; error: string };
+type AuthFailure = { ok: false; error: string; kind?: FailureKind };
 
 /**
  * Makes session resolution structural instead of remembered.
@@ -42,17 +43,18 @@ export function withSessionUser<TArgs extends unknown[], TResult>(
       userId = await getSessionUserId();
     } catch (error) {
       if (error instanceof AuthRequiredError) {
-        return { ok: false, error: 'Your session has expired. Please sign in again.' };
+        return { ok: false, error: 'Your session has expired. Please sign in again.', kind: 'session' };
       }
       if (error instanceof AuthUnavailableError) {
         console.error('[pebble auth] auth service unavailable', error);
         return {
           ok: false,
           error: "We couldn't verify your session right now. Please try again in a moment.",
+          kind: 'auth',
         };
       }
       console.error('[pebble auth] unexpected session resolution failure', error);
-      return { ok: false, error: 'Something went wrong. Please try again.' };
+      return { ok: false, error: 'Something went wrong. Please try again.', kind: 'unknown' };
     }
 
     // Deliberately outside the try above: a failure inside the handler is the

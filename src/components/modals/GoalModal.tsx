@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { addGoalAction, deleteGoalAction, updateGoalAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
+import { LoadingOverlay } from '@/components/shared/Spinner';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
 import type { Goal } from '@/types';
 
@@ -21,6 +25,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
   const [mode, setMode] = useState<Mode>('form');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
 
   const [name, setName] = useState(goal?.name ?? '');
   const [target, setTarget] = useState(goal ? String(goal.target) : '');
@@ -32,8 +37,11 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // A write in flight must not be cancellable - see AddTransactionModal.
+  const requestClose = () => { if (saving) return; onClose(); };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!name.trim() || !target || Number(target) <= 0 || !date.trim() || saving) return;
     setSaving(true);
     setSaveError(null);
@@ -43,11 +51,11 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       date: date.trim(), iconKey, color,
     };
     const result = goal
-      ? await updateGoalAction({ ...payload, id: goal.id })
-      : await addGoalAction(payload);
+      ? await callAction(() => updateGoalAction({ ...payload, id: goal.id }))
+      : await callAction(() => addGoalAction(payload));
 
     setSaving(false);
-    if (!result.ok) { setSaveError(result.error); return; }
+    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -55,21 +63,25 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     if (!goal || saving) return;
     setSaving(true);
     setSaveError(null);
-    const result = await deleteGoalAction({ id: goal.id });
+    const result = await callAction(() => deleteGoalAction({ id: goal.id }));
     setSaving(false);
-    if (!result.ok) { setSaveError(result.error); return; }
+    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
     onClose();
   };
 
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0' }} onClick={(e) => e.stopPropagation()}>
+      {/* position: relative added so LoadingOverlay - which pins to its nearest
+          positioned ancestor - covers this card and blocks the form beneath it.
+          Without it the overlay would escape to the viewport. */}
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting goal…' : 'Saving goal…'} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{isEdit ? 'Edit goal' : 'Add goal'}</h2>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
+          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         {mode === 'confirmDelete' ? (
@@ -80,7 +92,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
               a goal only ever recorded a share of your balance you had set aside, so that amount simply
               goes back to unallocated.
             </p>
-            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{saveError}</p>}
+            <ActionError message={saveError} kind={saveErrorKind} onRetry={handleDelete} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
               <button type="button" onClick={handleDelete} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
@@ -155,9 +167,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
               </div>
             </label>
 
-            {saveError && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>
-            )}
+            <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleSubmit()} busy={saving} />
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
               {isEdit && (

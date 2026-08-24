@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { CalendarClock, Pause, Pencil, Play } from 'lucide-react';
 import { setRecurringRuleStatusAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { isExhausted } from '@/lib/recurring/occurrences';
@@ -13,7 +16,7 @@ interface ScheduledClientProps {
   rules: RecurringRule[];
   upcoming: UpcomingOccurrence[];
   previewDays: number;
-  catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; error?: string };
+  catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
 }
 
 const FREQUENCY_LABEL: Record<RecurringRule['frequency'], string> = {
@@ -36,6 +39,10 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
   const [editing, setEditing] = useState<RecurringRule | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
+  // The rule whose toggle failed, so Try again repeats that exact call rather
+  // than whichever rule happens to be first.
+  const [failedRule, setFailedRule] = useState<RecurringRule | null>(null);
 
   // No local state update and no router.refresh(): the action calls
   // revalidatePath(route, 'layout'), which re-renders this route's server
@@ -44,12 +51,20 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
     if (busyId) return;
     setBusyId(rule.id);
     setError(null);
-    const result = await setRecurringRuleStatusAction({
+    setFailedRule(null);
+    const result = await callAction(() => setRecurringRuleStatusAction({
       id: rule.id,
       status: rule.status === 'active' ? 'paused' : 'active',
-    });
+    }));
     setBusyId(null);
-    if (!result.ok) setError(result.error);
+    if (!result.ok) {
+      setError(result.error);
+      setErrorKind(result.kind);
+      // Held so Try again repeats this rule's toggle. The status is re-read
+      // from `rule` at retry time rather than captured, so a retry always
+      // requests the flip from whatever the current state is.
+      setFailedRule(rule);
+    }
   };
 
   const cardStyle: React.CSSProperties = { padding: '1.5rem' };
@@ -58,9 +73,11 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <CatchUpNotice {...catchUp} />
 
-      {error && (
-        <p style={{ fontSize: '0.83rem', color: 'var(--wine)', margin: 0 }}>{error}</p>
-      )}
+      <ActionError
+        message={error} kind={errorKind}
+        onRetry={failedRule ? () => void toggleStatus(failedRule) : undefined}
+        busy={busyId !== null}
+      />
 
       <div className="card" style={cardStyle}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Your schedules</h3>

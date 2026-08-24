@@ -24,7 +24,7 @@ interface DashboardClientProps {
   totalBalance: number;
   /** Sum of every goal's set-aside amount, for the overspend notice. */
   allocated: number;
-  catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; error?: string };
+  catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
 }
 
 export function DashboardClient({ transactions, categories, budgets, totalBalance, allocated, catchUp }: DashboardClientProps) {

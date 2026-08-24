@@ -7,6 +7,9 @@ import type { CategoryMeta, LedgerRecord, PaymentMethod } from '@/types';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 
 interface TransactionDetailModalProps {
   txn: LedgerRecord | null;
@@ -30,7 +33,13 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   const [shortfall, setShortfall] = useState(0);
+
+  // A write in flight must not be cancellable - see AddTransactionModal.
+  // LoadingOverlay covers the card only, so the backdrop, the X and the
+  // Escape key each need their own guard.
+  const requestClose = () => { if (busy) return; onClose(); };
 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -58,10 +67,10 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   }, [txn]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, busy]);
 
   if (!txn) return null;
 
@@ -131,7 +140,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     setBusy(true);
     setError(null);
 
-    const result = await updateTransactionAction({
+    const result = await callAction(() => updateTransactionAction({
       id: txn.id,
       type: txn.type,
       description,
@@ -146,10 +155,10 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             netAmount: Number(netPay),
           }
         : {}),
-    });
+    }));
 
     setBusy(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -167,7 +176,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     if (delta < 0) {
       setBusy(true);
       setError(null);
-      const summary = await getAllocationSummaryAction();
+      const summary = await callAction(getAllocationSummaryAction);
       setBusy(false);
 
       if (summary.ok) {
@@ -194,10 +203,10 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     setBusy(true);
     setError(null);
     const result = txn.type === 'adjustment'
-      ? await deleteBalanceAdjustmentAction({ id: txn.id })
-      : await deleteTransactionAction({ id: txn.id, type: txn.type });
+      ? await callAction(() => deleteBalanceAdjustmentAction({ id: txn.id }))
+      : await callAction(() => deleteTransactionAction({ id: txn.id, type: txn.type }));
     setBusy(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -243,14 +252,14 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         {busy && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting…' : 'Saving changes…'} />}
         {/* mode drives which panel shows; 'confirmOverspend' pauses a save
             without unmounting the edit form behind it. */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
+          <button onClick={requestClose} disabled={busy} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: busy ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
@@ -284,7 +293,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
               </p>
             )}
 
-            {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginTop: '0.9rem' }}>{error}</p>}
+            <ActionError message={error} kind={errorKind} style={{ marginTop: '0.9rem' }} />
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.35rem' }}>
               {!isAdjustment && (
@@ -402,7 +411,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
               />
             </label>
 
-            {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{error}</p>}
+            <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={busy} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Cancel</button>
@@ -428,7 +437,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
               that is not there yet.
             </p>
 
-            {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{error}</p>}
+            <ActionError message={error} kind={errorKind} onRetry={performSave} busy={busy} style={{ marginBottom: '0.9rem' }} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Go back</button>
@@ -449,7 +458,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
               {' '}will be removed as if it had never been recorded. Your balances will adjust. This cannot be undone.
             </p>
 
-            {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{error}</p>}
+            <ActionError message={error} kind={errorKind} onRetry={handleDelete} busy={busy} style={{ marginBottom: '0.9rem' }} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>

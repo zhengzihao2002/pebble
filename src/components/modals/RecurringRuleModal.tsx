@@ -8,6 +8,10 @@ import {
   getCategoriesAction,
   updateRecurringRuleAction,
 } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
+import { LoadingOverlay } from '@/components/shared/Spinner';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -49,7 +53,9 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const [mode, setMode] = useState<Mode>('form');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? 'expense');
   const [description, setDescription] = useState(rule?.description ?? '');
@@ -69,9 +75,13 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
   useEffect(() => {
     let cancelled = false;
-    getCategoriesAction().then((result) => {
-      if (cancelled || !result.ok) return;
+    // A failure here used to return silently, leaving an empty category
+    // dropdown with no explanation. Surfaced instead.
+    callAction(getCategoriesAction, "Couldn't load your categories.").then((result) => {
+      if (cancelled) return;
+      if (!result.ok) { setCategoryError(result.error); return; }
       setCategories(result.categories);
+      setCategoryError(null);
       // Only default the picker when adding - never overwrite an edited rule's
       // category, and never clobber a choice the user has already made.
       setCategory((current) => current || result.categories[0]?.name || '');
@@ -89,8 +99,11 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const isPastStart = startDate < today;
   const showBackfill = !isEdit && isPastStart && frequency !== 'once';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // A write in flight must not be cancellable - see AddTransactionModal.
+  const requestClose = () => { if (saving) return; onClose(); };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (saving) return;
     setSaving(true);
     setSaveError(null);
@@ -111,12 +124,13 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     };
 
     const result = rule
-      ? await updateRecurringRuleAction({ ...payload, id: rule.id })
-      : await createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill });
+      ? await callAction(() => updateRecurringRuleAction({ ...payload, id: rule.id }))
+      : await callAction(() => createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill }));
 
     setSaving(false);
     if (!result.ok) {
       setSaveError(result.error);
+      setSaveErrorKind(result.kind);
       return;
     }
     onClose();
@@ -126,10 +140,11 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     if (!rule || saving) return;
     setSaving(true);
     setSaveError(null);
-    const result = await deleteRecurringRuleAction({ id: rule.id });
+    const result = await callAction(() => deleteRecurringRuleAction({ id: rule.id }));
     setSaving(false);
     if (!result.ok) {
       setSaveError(result.error);
+      setSaveErrorKind(result.kind);
       return;
     }
     onClose();
@@ -138,14 +153,18 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0' }} onClick={(e) => e.stopPropagation()}>
+      {/* position: relative added so LoadingOverlay - which pins to its nearest
+          positioned ancestor - covers this card rather than escaping to the
+          viewport. */}
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting schedule…' : 'Saving schedule…'} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>
             {isEdit ? `Edit scheduled ${noun}` : `New scheduled ${noun}`}
           </h2>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
+          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         {mode === 'confirmDelete' ? (
@@ -156,7 +175,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
               transactions. Everything it has already created stays exactly where it is — those are real
               transactions that have happened.
             </p>
-            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{saveError}</p>}
+            <ActionError message={saveError} kind={saveErrorKind} onRetry={handleDelete} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
               <button type="button" onClick={handleDelete} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
@@ -204,6 +223,9 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                   categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)
                 )}
               </select>
+              {kind === 'expense' && categoryError && (
+                <p style={{ ...hintStyle, color: 'var(--wine)' }}>{categoryError}</p>
+              )}
             </label>
 
             {kind === 'expense' && (
@@ -296,7 +318,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
               </div>
             )}
 
-            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>}
+            <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleSubmit()} busy={saving} />
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
               {isEdit && (

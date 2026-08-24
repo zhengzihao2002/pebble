@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { setOpeningBalancesAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import { formatCurrency } from '@/lib/format';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 
@@ -39,6 +42,7 @@ export function OpeningBalanceCard({
   const [cash, setCash] = useState(String(cashOpening));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   const [saved, setSaved] = useState(false);
 
   const checkingNum = Number(checking) || 0;
@@ -53,12 +57,12 @@ export function OpeningBalanceCard({
     setSaving(true);
     setError(null);
     setSaved(false);
-    const result = await setOpeningBalancesAction({
+    const result = await callAction(() => setOpeningBalancesAction({
       checkingOpening: checkingNum,
       cashOpening: cashNum,
-    });
+    }));
     setSaving(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
     setSaved(true);
   };
 
@@ -97,9 +101,7 @@ export function OpeningBalanceCard({
         </span>
       </div>
 
-      {error && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.8rem' }}>{error}</p>
-      )}
+      <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginBottom: '0.8rem' }} />
       {saved && !dirty && (
         <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>Saved.</p>
       )}

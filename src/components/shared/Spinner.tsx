@@ -78,11 +78,19 @@ export function LoadingOverlay({ label = 'Working…' }: { label?: string }) {
 }
 
 /** Centred spinner for a region whose content has not arrived yet. */
-export function LoadingBlock({ label = 'Loading…', minHeight = 120 }: { label?: string; minHeight?: number }) {
+export function LoadingBlock({
+  label = 'Loading…',
+  minHeight = 120,
+  // 22 suits a region inside a card. A full page body needs considerably
+  // more before it reads as "working" rather than as decoration, so the
+  // (app) route fallback passes its own value.
+  size = 22,
+  labelSize = '0.8rem',
+}: { label?: string; minHeight?: number; size?: number; labelSize?: string }) {
   return (
-    <div style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.6rem' }}>
-      <Spinner size={22} color="var(--pine)" />
-      <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{label}</span>
+    <div style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem' }}>
+      <Spinner size={size} color="var(--pine)" />
+      <span style={{ fontSize: labelSize, color: 'var(--ink-soft)' }}>{label}</span>
     </div>
   );
 }

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 
@@ -14,20 +17,27 @@ interface AddTransactionModalProps {
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
   // Set when a save is paused awaiting confirmation. Holds the shortfall only -
   // the form stays mounted behind the confirm, so the write re-derives its
   // payload from the same state rather than from a copy taken earlier.
   const [pendingShortfall, setPendingShortfall] = useState<number | null>(null);
   const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
   // so a layout fetch would run on every page navigation.
   useEffect(() => {
     let active = true;
-    getCategoriesAction().then((result) => {
-      if (!active || !result.ok) return;
+    // A failure here used to return silently, leaving an empty dropdown with
+    // no explanation - and the expense form could still be submitted with an
+    // empty category. Surfaced instead.
+    callAction(getCategoriesAction, "Couldn't load your categories.").then((result) => {
+      if (!active) return;
+      if (!result.ok) { setCategoryError(result.error); return; }
       const names = result.categories.map((c) => c.name);
       setCategoryNames(names);
+      setCategoryError(null);
       setCategory((current) => current || names[0] || '');
     });
     return () => { active = false; };
@@ -63,24 +73,30 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
 
+  // A save in flight must not be cancellable. The write continues regardless,
+  // so closing here would read as success for something still unresolved and
+  // would leave any error with nowhere to land. LoadingOverlay covers the card
+  // only - the backdrop and the X sit outside it, so they need their own guard.
+  const requestClose = () => { if (saving) return; onClose(); };
+
   const performSave = async () => {
     setSaving(true);
     setSaveError(null);
 
     let result;
     if (type === 'expense') {
-      result = await addTransactionAction({ type, description, date, paymentMethod, category, tag: tag.trim(), amount: Number(amount) });
+      result = await callAction(() => addTransactionAction({ type, description, date, paymentMethod, category, tag: tag.trim(), amount: Number(amount) }));
     } else {
       // Side cash is untaxed: one amount fills both gross and net.
       const gross = isSideCashSelected
         ? Number(netPay)
         : (grossPay ? Number(grossPay) : Number(netPay));
-      result = await addTransactionAction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) });
+      result = await callAction(() => addTransactionAction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
     }
 
     setSaving(false);
     setPendingShortfall(null);
-    if (!result.ok) { setSaveError(result.error); return; }
+    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -94,6 +110,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       if (!netPay || Number(netPay) <= 0) return;
       if (netExceedsGross) {
         setSaveError('Pay after deductions cannot be more than pay before deductions.');
+        setSaveErrorKind('validation');
         return;
       }
     }
@@ -106,7 +123,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     if (type === 'expense') {
       setSaving(true);
       setSaveError(null);
-      const summary = await getAllocationSummaryAction();
+      const summary = await callAction(getAllocationSummaryAction);
       setSaving(false);
 
       if (summary.ok) {
@@ -129,13 +146,13 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         {saving && <LoadingOverlay label="Saving transaction…" />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>Add transaction</h2>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none' }}><X size={18} /></button>
+          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
         {pendingShortfall !== null ? (
           <div>
@@ -146,7 +163,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               you had set aside for goals. That is fine to do — your goals will just be counting on money
               that is not there yet.
             </p>
-            {saveError && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.9rem' }}>{saveError}</p>}
+            <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => setPendingShortfall(null)} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Go back</button>
               <button type="button" onClick={performSave} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: saving ? 0.6 : 1 }}>
@@ -184,6 +201,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
                   {categoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
+                {categoryError && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>{categoryError}</span>
+                )}
               </label>
               <label style={labelStyle}>
                 Tag <span style={{ opacity: 0.7 }}>(sub-category, optional)</span>
@@ -280,9 +300,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             </div>
           </label>
 
-          {saveError && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{saveError}</p>
-          )}
+          <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
 
           <button type="submit" disabled={saving || netExceedsGross} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {saving ? <><Spinner size={14} /> Saving…</> : 'Add transaction'}

@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import type { PaymentMethod } from '@/types';
 import { createBalanceAdjustmentAction } from '@/lib/actions/pebble';
+import { callAction } from '@/lib/actions/callAction';
+import type { FailureKind } from '@/lib/actions/failureKind';
+import { ActionError } from '@/components/shared/ActionError';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 
@@ -38,6 +41,7 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   const [saved, setSaved] = useState(false);
 
   const currentBalance = account === 'Checking' ? checkingBalance : cashBalance;
@@ -55,15 +59,15 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
     // Read at submit time, not held in state. An adjustment is always dated
     // today, and a value captured at mount would still be yesterday's on a
     // card left open past midnight.
-    const result = await createBalanceAdjustmentAction({
+    const result = await callAction(() => createBalanceAdjustmentAction({
       paymentMethod: account,
       delta,
       description,
       date: todayDateString(),
-    });
+    }));
 
     setSaving(false);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
     setValue('');
     setDescription('');
     setSaved(true);
@@ -130,7 +134,7 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
         </div>
       )}
 
-      {error && <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginBottom: '0.8rem' }}>{error}</p>}
+      <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginBottom: '0.8rem' }} />
       {saved && <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>Adjustment recorded.</p>}
 
       <button

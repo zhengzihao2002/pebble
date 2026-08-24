@@ -68,7 +68,9 @@ export default async function ScheduledPage() {
         expensesCreated: catchUp.expensesCreated,
         incomeCreated: catchUp.incomeCreated,
         truncated: catchUp.truncated,
-        error: catchUp.error,
+        // The flag, not the message: the raw error can echo query fragments,
+        // and it is already logged server-side in catchUp.ts.
+        failed: catchUp.error !== undefined,
       }}
     />
   );
