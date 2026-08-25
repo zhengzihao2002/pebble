@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
 import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
+import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 
 /**
  * UI state only.
@@ -41,10 +42,19 @@ interface PebbleUIState {
   // describe how you like to look at the data, not the data itself.
   reportFilters: ReportFilterPrefs | null;
   dashboardPrefs: Partial<DashboardPrefs> | null;
+  // Event -> sound file id, or null for silence. Always present rather than
+  // nullable like the two above: those use null for "never set on this
+  // device" because they resolve their own date-based defaults, whereas sound
+  // has one universal default (silence) and needs no such distinction.
+  //
+  // A stored id whose file was later renamed or deleted resolves to nothing in
+  // findSoundFile() and plays silence - no error, no cleanup needed.
+  soundPrefs: Record<SoundEvent, string | null>;
   setDarkMode: (value: boolean) => void;
   setTextSize: (value: number) => void;
   setReportFilters: (value: ReportFilterPrefs) => void;
   setDashboardPrefs: (patch: Partial<DashboardPrefs>) => void;
+  setSoundPref: (event: SoundEvent, soundId: string | null) => void;
 }
 
 const noopStorage = {
@@ -60,10 +70,16 @@ export const usePebbleStore = create<PebbleUIState>()(
       textSize: 100,
       reportFilters: null,
       dashboardPrefs: null,
+      // Static and date-free, matching the pattern used throughout: server and
+      // first client render must agree exactly, and persist rehydrates after.
+      soundPrefs: emptySoundPrefs(),
       setDarkMode: (value) => set({ darkMode: value }),
       setTextSize: (value) => set({ textSize: value }),
       setReportFilters: (value) => set({ reportFilters: value }),
       setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),
+      // Merges, as setDashboardPrefs does: several dropdowns write into one
+      // object, and a replacing setter would let the last one clear the rest.
+      setSoundPref: (event, soundId) => set((state) => ({ soundPrefs: { ...state.soundPrefs, [event]: soundId } })),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -82,6 +98,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         textSize: state.textSize,
         reportFilters: state.reportFilters,
         dashboardPrefs: state.dashboardPrefs,
+        soundPrefs: state.soundPrefs,
       }),
     }
   )

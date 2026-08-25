@@ -7,6 +7,7 @@ import { OpeningBalanceCard } from '@/components/settings/OpeningBalanceCard';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { NotificationsCard } from '@/components/settings/NotificationsCard';
+import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { AccountCard } from '@/components/settings/AccountCard';
 
 interface SettingsClientProps {
@@ -53,6 +54,9 @@ export function SettingsClient({
       <CategoryManagerCard />
       <TextSizeControl textSize={textSize} onChange={setTextSize} />
       <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
+      {/* Grouped with the other device preferences, and short enough not to
+          disturb the tall/short pairing described above. */}
+      <SoundSettingsCard />
       <NotificationsCard />
       <AccountCard />
     </div>

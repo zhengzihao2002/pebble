@@ -7,6 +7,7 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
+import { playEventSound } from '@/lib/sound/useSound';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
 import type { Goal } from '@/types';
 
@@ -55,7 +56,24 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       : await callAction(() => addGoalAction(payload));
 
     setSaving(false);
-    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
+    if (!result.ok) {
+      setSaveError(result.error);
+      setSaveErrorKind(result.kind);
+      playEventSound('saveFailed');
+      return;
+    }
+
+    // Fires on the CROSSING, not the state: checking only whether the goal is
+    // now complete would replay the sound on every later edit of an already
+    // finished goal. Same reasoning as the overspend warning elsewhere.
+    //
+    // A new goal created already at target counts - the previous amount is 0,
+    // so that is a genuine crossing.
+    const before = goal ? goal.current : 0;
+    const wasIncomplete = !goal || before < goal.target;
+    const nowComplete = payload.target > 0 && payload.current >= payload.target;
+    // Instead of the generic save sound, not on top of it.
+    playEventSound(wasIncomplete && nowComplete ? 'goalReached' : 'expenseSaved');
     onClose();
   };
 

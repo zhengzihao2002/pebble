@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { resolveCategoryIcon } from '@/lib/data/icons';
+import type { CategoryItem } from '@/lib/data/mappers';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { playEventSound } from '@/lib/sound/useSound';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 
@@ -22,7 +26,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // the form stays mounted behind the confirm, so the write re-derives its
   // payload from the same state rather than from a copy taken earlier.
   const [pendingShortfall, setPendingShortfall] = useState<number | null>(null);
-  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  // Full items, not just names: the combobox shows each category's icon and
+  // colour, and those live on CategoryItem. Icons are resolved here on the
+  // client from iconKey - they cannot cross the RSC boundary.
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
@@ -35,10 +42,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     callAction(getCategoriesAction, "Couldn't load your categories.").then((result) => {
       if (!active) return;
       if (!result.ok) { setCategoryError(result.error); return; }
-      const names = result.categories.map((c) => c.name);
-      setCategoryNames(names);
+      setCategories(result.categories);
       setCategoryError(null);
-      setCategory((current) => current || names[0] || '');
+      setCategory((current) => current || result.categories[0]?.name || '');
     });
     return () => { active = false; };
   }, []);
@@ -55,6 +61,16 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [netPay, setNetPay] = useState('');
 
   const isSideCashSelected = incomeCategory === 'Side Cash';
+
+  const categoryOptions = useMemo<SearchableSelectOption[]>(
+    () => categories.map((c) => ({
+      value: c.name,
+      label: c.name,
+      icon: resolveCategoryIcon(c.iconKey),
+      color: c.color,
+    })),
+    [categories],
+  );
 
   // Gross is optional here: left blank it means no deductions, and the submit
   // handler below falls back to net. So an empty gross is valid, NOT an error -
@@ -96,7 +112,15 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
     setSaving(false);
     setPendingShortfall(null);
-    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
+    if (!result.ok) {
+      setSaveError(result.error);
+      setSaveErrorKind(result.kind);
+      playEventSound('saveFailed');
+      return;
+    }
+    // Below the failure return, so a failed write can never play a success
+    // sound. Fire-and-forget - playback cannot delay the close.
+    playEventSound(type === 'expense' ? 'expenseSaved' : 'incomeSaved');
     onClose();
   };
 
@@ -196,15 +220,30 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
           {type === 'expense' ? (
             <>
-              <label style={labelStyle}>
-                Category
-                <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                  {categoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+              {/* A div, not a label: <label> forwards clicks to its control, and
+                  the dropdown renders inside this block - clicking an option
+                  would fire the option AND a forwarded click on the input,
+                  reopening the list. Native <select> escapes this because the
+                  browser draws its popup outside the DOM. */}
+              <div style={labelStyle}>
+                {/* Not a <label htmlFor>: clicking a label dispatches a synthetic
+                    click on its control, which would open the dropdown from a
+                    click on the word "Category". The input carries its own
+                    accessible name via aria-label. */}
+                <span>Category</span>
+                <SearchableSelect
+                  id="add-txn-category"
+                  value={category}
+                  onChange={setCategory}
+                  options={categoryOptions}
+                  placeholder={categoryError ? 'Unavailable' : 'Search categories…'}
+                  disabled={categoryOptions.length === 0}
+                  ariaLabel="Category"
+                />
                 {categoryError && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>{categoryError}</span>
                 )}
-              </label>
+              </div>
               <label style={labelStyle}>
                 Tag <span style={{ opacity: 0.7 }}>(sub-category, optional)</span>
                 <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Groceries" style={inputStyle} />

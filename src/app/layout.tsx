@@ -53,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var d=s&&JSON.parse(s).state[${JSON.stringify(DARK_MODE_FIELD)}];var c=document.documentElement.classList;c.add('no-theme-transition');if(d)c.add('dark');}catch(e){}`,
+            __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var d=s&&JSON.parse(s).state[${JSON.stringify(DARK_MODE_FIELD)}];var c=document.documentElement.classList;c.add('no-theme-transition');if(d)c.add('pebble-dark');}catch(e){}`,
           }}
         />
       </head>

@@ -10,6 +10,7 @@ import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSu
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
 
 interface TransactionDetailModalProps {
   txn: LedgerRecord | null;
@@ -83,9 +84,32 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const iconColor = isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)');
   const iconBg = isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`;
 
+  // balance_adjustment.amount has no sign CHECK - corrections go both ways -
+  // so the figure is coloured by sign rather than always red, matching how
+  // income renders. The sign is written explicitly against Math.abs so there
+  // is exactly one sign glyph however formatCurrency treats negatives, and a
+  // zero shows neither sign nor a verdict colour.
+  const amountSign = isAdjustment
+    ? (txn.amount > 0 ? '+' : txn.amount < 0 ? '-' : '')
+    : (isIncome ? '+' : '');
+  const amountColor = isAdjustment
+    ? (txn.amount > 0 ? 'var(--pine)' : txn.amount < 0 ? 'var(--wine)' : 'var(--ink-soft)')
+    : (isIncome ? 'var(--pine)' : 'var(--wine)');
+  const amountText = isAdjustment
+    ? formatCurrency(Math.abs(txn.amount))
+    : formatCurrency(txn.amount);
+
   // Amount, gross/net and payment method are locked outside the window: they
   // change money. Description, category and tag never are.
   const categoryNames = Object.keys(categoryMeta);
+  // categoryMeta already carries a resolved icon and colour per name, so no
+  // resolveCategoryIcon() call is needed here.
+  const categoryOptions: SearchableSelectOption[] = categoryNames.map((name) => ({
+    value: name,
+    label: name,
+    icon: categoryMeta[name]?.icon,
+    color: categoryMeta[name]?.color,
+  }));
   const editingSideCash = txn.type === 'income' && category === 'Side Cash';
 
   // Reads the PERSISTED category, not the edit form's draft `category` state.
@@ -270,8 +294,8 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
           {descRest && (
             <p style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--ink-soft)', marginBottom: '0.35rem', whiteSpace: 'pre-line' }}>{descRest}</p>
           )}
-          <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--wine)', marginTop: '0.3rem' }}>
-            {isIncome ? '+' : ''}{formatCurrency(txn.amount)}
+          <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, color: amountColor, marginTop: '0.3rem' }}>
+            {amountSign}{amountText}
           </p>
         </div>
 
@@ -320,12 +344,19 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
             {txn.type === 'expense' ? (
               <>
-                <label style={labelStyle}>
-                  Category
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                    {categoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </label>
+                {/* A div, not a label: <label> forwards clicks to its control, so
+                    clicking the word "Category" would open the dropdown. The input
+                    carries its own accessible name via ariaLabel. */}
+                <div style={labelStyle}>
+                  <span>Category</span>
+                  <SearchableSelect
+                    value={category}
+                    onChange={setCategory}
+                    options={categoryOptions}
+                    placeholder="Search categories…"
+                    ariaLabel="Category"
+                  />
+                </div>
                 <label style={labelStyle}>
                   Tag <span style={{ opacity: 0.7 }}>(optional)</span>
                   <input value={tag} onChange={(e) => setTag(e.target.value)} style={inputStyle} />

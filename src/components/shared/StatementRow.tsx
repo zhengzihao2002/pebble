@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { Banknote, SlidersHorizontal } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { useLongPress } from '@/lib/hooks/useLongPress';
+
+// Rows are selectable text now that long-press is gone, so a drag that ends
+// inside the row would otherwise fire onClick and open the modal mid-selection.
+const hasTextSelection = () =>
+  typeof window !== 'undefined' && (window.getSelection()?.toString().length ?? 0) > 0;
 
 interface StatementRowProps {
   txn: LedgerRecord;
@@ -39,7 +43,6 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
     : (isIncome ? 'var(--pine)' : 'var(--ink)');
   const amountPrefix = isAdjustment ? (txn.amount > 0 ? '+' : '') : (isIncome ? '+' : '');
 
-  const longPress = useLongPress(() => onOpenDetail(txn));
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // "Near the mouse," offset so the tooltip doesn't sit directly under the
@@ -57,13 +60,12 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
 
   return (
     <div
-      onDoubleClick={() => onOpenDetail(txn)}
-      {...longPress}
+      onClick={() => { if (!hasTextSelection()) onOpenDetail(txn); }}
       className="txn-row-interactive"
       style={{
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: '0.85rem 1.5rem', borderBottom: '1px solid var(--line)',
-        cursor: 'pointer', userSelect: 'none',
+        cursor: 'pointer',
       }}
     >
       <div style={{

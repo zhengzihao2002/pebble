@@ -30,7 +30,15 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   // is mounted in AppShell, so a layout-level fetch would run on every page
   // navigation for data that is usually never displayed.
   const aliveRef = useRef(true);
-  useEffect(() => () => { aliveRef.current = false; }, []);
+  // Set to true on mount, not just false on unmount: Strict Mode's dev
+  // double-invoke unmounts and remounts, and a ref that is only ever
+  // cleared stays false forever afterwards - every setState below the
+  // guard is then skipped and the modal spins on 'Loading your budgets'
+  // with no error, because the failure path is behind the same guard.
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
 
   const load = () => {
     setLoading(true);

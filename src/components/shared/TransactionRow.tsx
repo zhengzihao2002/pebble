@@ -3,7 +3,11 @@
 import { Banknote } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { useLongPress } from '@/lib/hooks/useLongPress';
+
+// Rows are selectable text now that long-press is gone, so a drag that ends
+// inside the row would otherwise fire onClick and open the modal mid-selection.
+const hasTextSelection = () =>
+  typeof window !== 'undefined' && (window.getSelection()?.toString().length ?? 0) > 0;
 
 interface TransactionRowProps {
   txn: Transaction;
@@ -21,9 +25,11 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
   subtitleParts.push(formatDate(txn.date));
   if (!compact && txn.paymentMethod) subtitleParts.push(txn.paymentMethod);
 
-  const longPress = useLongPress(() => onOpenDetail && onOpenDetail(txn));
   const interactiveProps = onOpenDetail
-    ? { onDoubleClick: () => onOpenDetail(txn), ...longPress, className: 'txn-row-interactive' }
+    ? {
+        onClick: () => { if (!hasTextSelection()) onOpenDetail(txn); },
+        className: 'txn-row-interactive',
+      }
     : {};
 
   return (
@@ -32,7 +38,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
       style={{
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: compact ? '0.55rem 1.5rem' : '0.85rem 1.5rem', borderBottom: '1px solid var(--line)',
-        cursor: onOpenDetail ? 'pointer' : 'default', userSelect: onOpenDetail ? 'none' : 'auto',
+        cursor: onOpenDetail ? 'pointer' : 'default',
       }}
     >
       <div style={{

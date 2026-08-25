@@ -209,7 +209,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
    the palettes below deliberately: nothing that reads var(--paper) exists yet
    at this point in the load. */
 html { background-color: #F1F3EE; }
-html.dark { background-color: #121C18; }
+html.pebble-dark { background-color: #121C18; }
 
 /* The colour transitions below are for the settings toggle, where a 300ms fade
    is the point. On load they would animate the involuntary light-to-dark
@@ -251,11 +251,21 @@ html.no-theme-transition * {
 .pebble-root.themed-scroll::-webkit-scrollbar-thumb:hover,
 .pebble-root .themed-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--ink-soft); }
 /* Two selectors, one palette. .pebble-root.dark is set by AppShell after
-   hydration; .dark .pebble-root lets the pre-paint script in layout.tsx put the
+   hydration; .pebble-dark .pebble-root lets the pre-paint script in layout.tsx
+   put the class on <html> before React exists.
+
+   The html-level class is namespaced rather than plain 'dark' deliberately.
+   This is a DESCENDANT selector, so any 'dark' class above .pebble-root would
+   drive the whole palette - and 'dark' is the standard theme class for
+   next-themes, shadcn and Tailwind, so a provider setting it from the system
+   preference would silently override the user's stored choice. Namespacing it
+   means only Pebble can set Pebble's theme.
+
+   (original note) lets the pre-paint script in layout.tsx put the
    class on <html> before React exists, which is the only way to avoid a light
    frame on load. */
 .pebble-root.dark,
-.dark .pebble-root {
+.pebble-dark .pebble-root {
   --paper: #121C18; --mist: #1A2621; --ink: #ECEFEA; --ink-soft: #8FA097;
   --pine: #57A487; --pine-soft: #1E362C; --gold: #DFA657; --gold-soft: #382C1A;
   --wine: #D48A8F; --wine-soft: #3A2426; --line: #2A3830;

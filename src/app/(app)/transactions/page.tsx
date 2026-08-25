@@ -52,6 +52,8 @@ export default async function TransactionsPage() {
       budgets={budgets}
       accountOpeningTotal={openingBalances.checkingOpening + openingBalances.cashOpening}
       currentBalance={balances.total}
+      currentChecking={balances.checking}
+      currentCash={balances.cash}
     />
   );
 }

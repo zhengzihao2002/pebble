@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
@@ -38,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // truthful after a toggle. .pebble-root also carries it (see globals.css) -
   // this keeps the two in step rather than replacing either.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
+    document.documentElement.classList.toggle('pebble-dark', darkMode);
   }, [darkMode]);
 
   // Tells the server what timezone the user is actually in.
@@ -55,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // On the very first load of a session the cookie does not exist yet, so
   // recurring catch-up skipped rather than guessing. One refresh, guarded by a
   // ref so it can never loop, re-runs that render with the zone known.
+  const rootRef = useRef<HTMLDivElement>(null);
   const tzRef = useRef(false);
   useEffect(() => {
     if (tzRef.current) return;
@@ -75,6 +77,36 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.refresh();
   }, [router]);
 
+  // Click feedback, delegated from one listener rather than wired into every
+  // button. Scoped to interactive elements: clicking blank space and hearing a
+  // confirmation makes the sound meaningless.
+  //
+  // Capture phase, so a handler calling stopPropagation() (the modal cards do)
+  // cannot suppress it. pointerdown rather than click, so it fires at press and
+  // feels immediate. Bound to the root div, not document: everything lives
+  // inside it, including SearchableSelect's dropdown, which portals into
+  // .pebble-root - this same element.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const INTERACTIVE = 'button, a[href], select, summary, [role="button"], [role="option"], [role="tab"], input[type="checkbox"], input[type="radio"]';
+    const handle = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest) return;
+      const hit = target.closest(INTERACTIVE) as HTMLElement | null;
+      if (!hit) return;
+      // Disabled controls do nothing, so they should sound like nothing.
+      if (hit.hasAttribute('disabled') || hit.getAttribute('aria-disabled') === 'true') return;
+      // Controls that produce their own sound opt out, or pressing them
+      // plays the click AND their own - the Settings preview buttons being
+      // the case this exists for.
+      if (hit.closest('[data-no-click-sound]')) return;
+      playEventSound('click');
+    };
+    root.addEventListener('pointerdown', handle, true);
+    return () => root.removeEventListener('pointerdown', handle, true);
+  }, []);
+
   // Releases the transition freeze one frame after mount. Waiting for a frame
   // rather than clearing it immediately means any hydration-time class change
   // has already painted, so nothing left to animate is still pending.
@@ -86,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className={`pebble-root themed-scroll ${darkMode ? 'dark' : ''}`}>
+    <div ref={rootRef} className={`pebble-root themed-scroll ${darkMode ? 'dark' : ''}`}>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">

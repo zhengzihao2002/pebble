@@ -12,6 +12,8 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { resolveCategoryIcon } from '@/lib/data/icons';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -95,6 +97,15 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
   const hintStyle: React.CSSProperties = { fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 };
 
+  // Icons resolved here on the client from iconKey - they cannot cross the
+  // RSC boundary.
+  const categoryOptions: SearchableSelectOption[] = categories.map((c) => ({
+    value: c.name,
+    label: c.name,
+    icon: resolveCategoryIcon(c.iconKey),
+    color: c.color,
+  }));
+
   const noun = kind === 'income' ? 'income' : 'payment';
   const isPastStart = startDate < today;
   const showBackfill = !isEdit && isPastStart && frequency !== 'once';
@@ -155,12 +166,15 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
       onClick={requestClose}
     >
-      {/* position: relative added so LoadingOverlay - which pins to its nearest
+      {/* position: relative so LoadingOverlay - which pins to its nearest
           positioned ancestor - covers this card rather than escaping to the
-          viewport. */}
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          viewport. Capped at the viewport with the fields scrolling INSIDE, so
+          the card itself never scrolls: a scrolling card would slide the
+          overlay away from the visible region, since it pins with inset: 0.
+          dvh, not vh: mobile browser chrome makes vh overshoot. */}
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 4rem)' }} onClick={(e) => e.stopPropagation()}>
         {saving && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting schedule…' : 'Saving schedule…'} />}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem', flexShrink: 0 }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>
             {isEdit ? `Edit scheduled ${noun}` : `New scheduled ${noun}`}
           </h2>
@@ -168,7 +182,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
         </div>
 
         {mode === 'confirmDelete' ? (
-          <div>
+          <div style={{ minHeight: 0, overflowY: 'auto' }}>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Delete this scheduled {noun}?</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
               <strong style={{ color: 'var(--ink)' }}>{rule?.description}</strong> will stop creating new
@@ -184,151 +198,175 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label style={labelStyle}>
-              Type
-              <select
-                value={kind}
-                // Expense history lives in `expense`, income in `income`.
-                // Switching would orphan every row already created, so the
-                // action rejects it and the control is locked when editing.
-                disabled={isEdit}
-                onChange={(e) => {
-                  const next = e.target.value as RecurringKind;
-                  setKind(next);
-                  setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
-                }}
-                style={{ ...inputStyle, opacity: isEdit ? 0.6 : 1 }}
-              >
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-              </select>
-              {isEdit && <p style={hintStyle}>Type cannot be changed. Delete this and create a new one instead.</p>}
-            </label>
+          /* Plain comment, not a JSX one: this is an expression position.
+             minHeight: 0 on both the form and the scroller because a flex
+             child defaults to min-height: auto and will not shrink below its
+             content - without it the cap holds but nothing ever scrolls. */
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0 }}>
+            {/* overflowY: auto makes overflow-x compute to auto too, which clips
+                focus-visible outlines at the edges. Padded on both sides to give
+                the outline room, with matching negative margins so the fields
+                still line up with the header instead of insetting. */}
+            <div className="themed-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.35rem', paddingRight: '0.35rem', marginLeft: '-0.35rem', marginRight: '-0.35rem' }}>
+              <label style={labelStyle}>
+                Type
+                <select
+                  value={kind}
+                  // Expense history lives in `expense`, income in `income`.
+                  // Switching would orphan every row already created, so the
+                  // action rejects it and the control is locked when editing.
+                  disabled={isEdit}
+                  onChange={(e) => {
+                    const next = e.target.value as RecurringKind;
+                    setKind(next);
+                    setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
+                  }}
+                  style={{ ...inputStyle, opacity: isEdit ? 0.6 : 1 }}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+                {isEdit && <p style={hintStyle}>Type cannot be changed. Delete this and create a new one instead.</p>}
+              </label>
 
-            <label style={labelStyle}>
-              Description
-              <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={kind === 'income' ? 'e.g. Salary' : 'e.g. Car loan'} required style={inputStyle} />
-            </label>
+              <label style={labelStyle}>
+                Description
+                <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={kind === 'income' ? 'e.g. Salary' : 'e.g. Car loan'} required style={inputStyle} />
+              </label>
 
-            <label style={labelStyle}>
-              Category
-              <select value={category} onChange={(e) => setCategory(e.target.value)} required style={inputStyle}>
+              {/* A div, not a label: <label> forwards clicks to its control, so
+                  clicking the word "Category" would open the dropdown. Income keeps
+                  a native select - a searchable combobox over two fixed options
+                  would be worse than what it replaces. */}
+              <div style={labelStyle}>
+                <span>Category</span>
                 {kind === 'income' ? (
-                  <>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} required style={inputStyle}>
                     <option value="Standard Income">Standard Income</option>
                     <option value="Side Cash">Side Cash</option>
-                  </>
+                  </select>
                 ) : (
-                  categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)
+                  <SearchableSelect
+                    value={category}
+                    onChange={setCategory}
+                    options={categoryOptions}
+                    placeholder={categoryError ? 'Unavailable' : 'Search categories…'}
+                    disabled={categoryOptions.length === 0}
+                    ariaLabel="Category"
+                  />
                 )}
-              </select>
-              {kind === 'expense' && categoryError && (
-                <p style={{ ...hintStyle, color: 'var(--wine)' }}>{categoryError}</p>
-              )}
-            </label>
-
-            {kind === 'expense' && (
-              <label style={labelStyle}>
-                Tag <span style={{ opacity: 0.7 }}>(optional)</span>
-                <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Fixed" style={inputStyle} />
-              </label>
-            )}
-
-            <label style={labelStyle}>
-              Paid from
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
-                <option value="Checking">Checking</option>
-                <option value="Cash">Cash</option>
-              </select>
-            </label>
-
-            {kind === 'income' && (
-              <label style={labelStyle}>
-                Gross amount
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
-                  <input type="number" min="0" step="0.01" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
-                </div>
-              </label>
-            )}
-
-            <label style={labelStyle}>
-              {kind === 'income' ? 'Net amount (what actually lands)' : 'Amount'}
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
-                <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+                {kind === 'expense' && categoryError && (
+                  <p style={{ ...hintStyle, color: 'var(--wine)' }}>{categoryError}</p>
+                )}
               </div>
-              {kind === 'income' && <p style={hintStyle}>Only the net amount affects your balance. Gross is recorded for reference.</p>}
-            </label>
 
-            <label style={labelStyle}>
-              Frequency
-              <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)} style={inputStyle}>
-                {FREQUENCY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </label>
-
-            <label style={labelStyle}>
-              {frequency === 'once' ? 'Date' : 'Starts on'}
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={inputStyle} />
-              {(frequency === 'monthly' || frequency === 'yearly') && (
-                <p style={hintStyle}>
-                  Months shorter than this date use their last day — the 31st becomes the 28th in
-                  February, then returns to the 31st in March.
-                </p>
+              {kind === 'expense' && (
+                <label style={labelStyle}>
+                  Tag <span style={{ opacity: 0.7 }}>(optional)</span>
+                  <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Fixed" style={inputStyle} />
+                </label>
               )}
-            </label>
 
-            {frequency !== 'once' && (
               <label style={labelStyle}>
-                Ends
-                <select value={endMode} onChange={(e) => setEndMode(e.target.value as RecurringEndMode)} style={inputStyle}>
-                  {END_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                Paid from
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
+                  <option value="Checking">Checking</option>
+                  <option value="Cash">Cash</option>
                 </select>
               </label>
-            )}
 
-            {frequency !== 'once' && endMode === 'after' && (
-              <label style={labelStyle}>
-                Number of payments
-                <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder="e.g. 48" required className="font-mono-tab" style={inputStyle} />
-              </label>
-            )}
-
-            {frequency !== 'once' && endMode === 'on' && (
-              <label style={labelStyle}>
-                Last payment on or before
-                <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} required style={inputStyle} />
-              </label>
-            )}
-
-            {showBackfill && (
-              <div style={{ border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.8rem' }}>
-                <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={backfill} onChange={(e) => setBackfill(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <span>
-                    Also create the payments that already happened
-                    <p style={{ ...hintStyle, marginTop: 3 }}>
-                      This start date is in the past. By default only future payments are created —
-                      tick this only if these transactions are not already in Pebble.
-                    </p>
-                  </span>
+              {kind === 'income' && (
+                <label style={labelStyle}>
+                  Gross amount
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
+                    <input type="number" min="0" step="0.01" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+                  </div>
                 </label>
-              </div>
-            )}
-
-            <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleSubmit()} busy={saving} />
-
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              {isEdit && (
-                <button type="button" onClick={() => { setMode('confirmDelete'); setSaveError(null); }} className="pill" style={{ padding: '0.72rem 1rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <Trash2 size={14} />Delete
-                </button>
               )}
-              <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Saving…' : isEdit ? 'Save changes' : kind === 'income' ? 'Add income schedule' : 'Add payment schedule'}
-              </button>
+
+              <label style={labelStyle}>
+                {kind === 'income' ? 'Net amount (what actually lands)' : 'Amount'}
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
+                  <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+                </div>
+                {kind === 'income' && <p style={hintStyle}>Only the net amount affects your balance. Gross is recorded for reference.</p>}
+              </label>
+
+              <label style={labelStyle}>
+                Frequency
+                <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)} style={inputStyle}>
+                  {FREQUENCY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+
+              <label style={labelStyle}>
+                {frequency === 'once' ? 'Date' : 'Starts on'}
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={inputStyle} />
+                {(frequency === 'monthly' || frequency === 'yearly') && (
+                  <p style={hintStyle}>
+                    Months shorter than this date use their last day — the 31st becomes the 28th in
+                    February, then returns to the 31st in March.
+                  </p>
+                )}
+              </label>
+
+              {frequency !== 'once' && (
+                <label style={labelStyle}>
+                  Ends
+                  <select value={endMode} onChange={(e) => setEndMode(e.target.value as RecurringEndMode)} style={inputStyle}>
+                    {END_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </label>
+              )}
+
+              {frequency !== 'once' && endMode === 'after' && (
+                <label style={labelStyle}>
+                  Number of payments
+                  <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder="e.g. 48" required className="font-mono-tab" style={inputStyle} />
+                </label>
+              )}
+
+              {frequency !== 'once' && endMode === 'on' && (
+                <label style={labelStyle}>
+                  Last payment on or before
+                  <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} required style={inputStyle} />
+                </label>
+              )}
+
+              {showBackfill && (
+                <div style={{ border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.8rem' }}>
+                  <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={backfill} onChange={(e) => setBackfill(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <span>
+                      Also create the payments that already happened
+                      <p style={{ ...hintStyle, marginTop: 3 }}>
+                        This start date is in the past. By default only future payments are created —
+                        tick this only if these transactions are not already in Pebble.
+                      </p>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+            </div>
+
+            {/* Outside the scroller: an error rendered at the bottom of a long
+                scrolled form, with its Try again button, would be unreachable. */}
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleSubmit()} busy={saving} />
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {isEdit && (
+                  <button type="button" onClick={() => { setMode('confirmDelete'); setSaveError(null); }} className="pill" style={{ padding: '0.72rem 1rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Trash2 size={14} />Delete
+                  </button>
+                )}
+                <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
+                  {saving ? 'Saving…' : isEdit ? 'Save changes' : kind === 'income' ? 'Add income schedule' : 'Add payment schedule'}
+                </button>
+              </div>
             </div>
           </form>
         )}

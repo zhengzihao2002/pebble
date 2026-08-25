@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -21,10 +21,16 @@ interface TransactionsClientProps {
   budgets: Record<string, number>;
   accountOpeningTotal: number;
   currentBalance: number;
+  // Split out of the same computeCurrentBalances() call as the total, so
+  // the parts always sum to the figure shown above them. Deriving them
+  // from the ledger instead would risk a mismatch: that walk is capped to
+  // a 13-month view window.
+  currentChecking: number;
+  currentCash: number;
 }
 
 export function TransactionsClient({
-  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance,
+  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, currentChecking, currentCash,
 }: TransactionsClientProps) {
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
@@ -89,7 +95,41 @@ export function TransactionsClient({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
         <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>Total balance, today</p>
-        <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, marginBottom: '1.25rem' }}>{formatCurrency(currentBalance)}</p>
+        {/* Baseline-aligned so the small figures sit on the big one's baseline,
+            and wrapping so they drop to their own line on a narrow phone rather
+            than squeezing the total. Same label/figure treatment as the hover
+            tooltip in StatementRow - this is that information promoted, not a
+            new pattern. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.35rem 0.9rem', marginBottom: '1.25rem' }}>
+          <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
+          {/* Chips rather than loose text: each account reads as its own object,
+              and the icon identifies it faster than the word does. Subordinate
+              to the total in size, but not weightless. Deliberately NOT StatTab
+              - that row below is month-scoped, and matching its shape would
+              imply these figures belong to the selected month too. */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {([
+              { icon: Landmark, label: 'Checking', value: currentChecking },
+              { icon: Coins, label: 'Cash', value: currentCash },
+            ] as const).map(({ icon: AccountIcon, label, value }) => (
+              <span
+                key={label}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.38rem 0.8rem', borderRadius: 99,
+                  backgroundColor: 'var(--mist)', border: '1px solid var(--line)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <AccountIcon size={15} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{label}</span>
+                <span className="font-mono-tab" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)' }}>
+                  {formatCurrency(value)}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
 
         <MonthNavigator
           label={selectedMonthInfo.label}
