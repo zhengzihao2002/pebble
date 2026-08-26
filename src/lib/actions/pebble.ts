@@ -15,7 +15,9 @@ import {
 } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
-import { computeCurrentBalances, estimateAnnualIncome, mergeTransactions } from '@/lib/stats';
+import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
+import { estimateAnnualIncomeTrailing12 } from '@/lib/analysis/annualIncome';
+import { isYmd } from '@/lib/recurring/occurrences';
 import { generateId, generateTransId } from '@/lib/ids';
 import type {
   PaymentMethod,
@@ -443,7 +445,7 @@ async function setOpeningBalances(
 }
 
 export type BudgetModalData =
-  | { ok: true; budgets: Record<string, number>; annualIncome: number; categories: CategoryItem[] }
+  | { ok: true; budgets: Record<string, number>; annualIncome: number; incomeMonths: number; categories: CategoryItem[] }
   | { ok: false; error: string; kind?: FailureKind };
 
 /**
@@ -455,15 +457,40 @@ export type BudgetModalData =
  *
  * annualIncome is computed server-side so the full income history never
  * crosses the wire - the client only needs the resulting number.
+ *
+ * `today` comes FROM THE CLIENT, resolved from the browser's own IANA zone.
+ * It is not read here: getToday() returns container-local time, which is UTC
+ * on Vercel, so a New Jersey evening is already tomorrow server-side and the
+ * trailing-12-month window would be off by a day. Untrusted input, so it is
+ * validated below; an invalid value skips the estimate rather than guessing.
+ *
+ * Expenses are fetched only to detect recording gaps: a stretch of 3+ months
+ * with no transactions of ANY kind is time the user was not recording and is
+ * excluded from the denominator. Income alone cannot distinguish "no pay that
+ * month" from "not using Pebble that month".
  */
-async function loadBudgetModalData(userId: string): Promise<BudgetModalData> {
+async function loadBudgetModalData(userId: string, today: string): Promise<BudgetModalData> {
   try {
-    const [budgets, income, categories] = await Promise.all([
+    const [budgets, income, expenses, categories] = await Promise.all([
       getBudgets(userId),
       getIncome(userId),
+      getExpenses(userId),
       getCategories(userId),
     ]);
-    return { ok: true, budgets, annualIncome: estimateAnnualIncome(income), categories };
+    // Same calculation the Analysis page uses, pinned to a trailing 12 months
+    // because this dialog has no period selector. The two agreed only by
+    // accident before: this used months CONTAINING income as the denominator,
+    // which reports double for anyone paid every other month.
+    const estimate = isYmd(today)
+      ? estimateAnnualIncomeTrailing12(mergeTransactions(expenses, income), today)
+      : { annual: null, monthlyAverage: null, recordedMonths: 0 };
+    return {
+      ok: true,
+      budgets,
+      annualIncome: estimate.annual ?? 0,
+      incomeMonths: estimate.recordedMonths,
+      categories,
+    };
   } catch (error) {
     console.error('[pebble action] getBudgetModalDataAction', error);
     return { ok: false, error: "Couldn't reach the database to load your budgets.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };

@@ -32,6 +32,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
     '/dashboard': { title: 'Dashboard', subtitle: greeting, action: { label: 'Add transaction', kind: 'addTransaction' } },
     '/transactions': { title: 'Transactions', subtitle: 'Checking & Cash statements', action: { label: 'Add transaction', kind: 'addTransaction' } },
     '/reports': { title: 'Reports', subtitle: 'Filter and group your expenses and income' },
+    '/analysis': { title: 'Analysis', subtitle: 'Trends, comparisons and projections' },
     '/budgets': { title: 'Budgets', subtitle: 'This year', action: { label: 'Modify Budget', kind: 'modifyBudget' } },
     // The goal count is still not shown, and the original reason stands now
     // that the feature has shipped: Header renders inside AppShell, so reading

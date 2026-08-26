@@ -42,6 +42,10 @@ interface PebbleUIState {
   // describe how you like to look at the data, not the data itself.
   reportFilters: ReportFilterPrefs | null;
   dashboardPrefs: Partial<DashboardPrefs> | null;
+  // Analysis page preferences. Structural and string-typed on purpose:
+  // localStorage can hold a window key written by an older or newer build,
+  // so the page validates it on restore rather than trusting the type.
+  analysisPrefs: { window?: string } | null;
   // Event -> sound file id, or null for silence. Always present rather than
   // nullable like the two above: those use null for "never set on this
   // device" because they resolve their own date-based defaults, whereas sound
@@ -54,6 +58,7 @@ interface PebbleUIState {
   setTextSize: (value: number) => void;
   setReportFilters: (value: ReportFilterPrefs) => void;
   setDashboardPrefs: (patch: Partial<DashboardPrefs>) => void;
+  setAnalysisPrefs: (patch: { window?: string }) => void;
   setSoundPref: (event: SoundEvent, soundId: string | null) => void;
 }
 
@@ -70,6 +75,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       textSize: 100,
       reportFilters: null,
       dashboardPrefs: null,
+      analysisPrefs: null,
       // Static and date-free, matching the pattern used throughout: server and
       // first client render must agree exactly, and persist rehydrates after.
       soundPrefs: emptySoundPrefs(),
@@ -77,6 +83,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setTextSize: (value) => set({ textSize: value }),
       setReportFilters: (value) => set({ reportFilters: value }),
       setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),
+      setAnalysisPrefs: (patch) => set((state) => ({ analysisPrefs: { ...state.analysisPrefs, ...patch } })),
       // Merges, as setDashboardPrefs does: several dropdowns write into one
       // object, and a replacing setter would let the last one clear the rest.
       setSoundPref: (event, soundId) => set((state) => ({ soundPrefs: { ...state.soundPrefs, [event]: soundId } })),
@@ -98,6 +105,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         textSize: state.textSize,
         reportFilters: state.reportFilters,
         dashboardPrefs: state.dashboardPrefs,
+        analysisPrefs: state.analysisPrefs,
         soundPrefs: state.soundPrefs,
       }),
     }

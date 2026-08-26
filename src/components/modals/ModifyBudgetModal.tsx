@@ -10,6 +10,8 @@ import { ActionError } from '@/components/shared/ActionError';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
+import { todayInZone } from '@/lib/recurring/occurrences';
 
 interface ModifyBudgetModalProps {
   onClose: () => void;
@@ -19,6 +21,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
   const [annualIncome, setAnnualIncome] = useState(0);
+  const [incomeMonths, setIncomeMonths] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,17 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     setLoading(true);
     setError(null);
     setLoadFailed(false);
-    callAction(getBudgetModalDataAction, "Couldn't load your budgets.").then((result) => {
+    // today is resolved HERE, in the browser, from the browser's own IANA
+    // zone: the server clock is UTC on Vercel. An unrecognized zone makes Intl
+    // throw, so an empty string is sent and the server skips the estimate
+    // rather than falling back to a wrong date.
+    let today = '';
+    try {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (zone) today = todayInZone(zone);
+    } catch { /* leave empty - the server will skip the estimate */ }
+
+    callAction(() => getBudgetModalDataAction(today), "Couldn't load your budgets.").then((result) => {
       if (!aliveRef.current) return;
       if (!result.ok) { setError(result.error); setErrorKind(result.kind); setLoadFailed(true); setLoading(false); return; }
       const meta = buildCategoryMeta(result.categories, result.budgets);
@@ -55,6 +68,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
       });
       setValues(initial);
       setAnnualIncome(result.annualIncome);
+      setIncomeMonths(result.incomeMonths);
       setLoading(false);
     });
   };
@@ -99,9 +113,27 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
 
         <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', boxShadow: 'none', backgroundColor: 'var(--paper)' }}>
           <div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>Estimated annual income</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>
+              Estimated annual income
+              <InfoTooltip label="How estimated annual income is calculated">
+                <strong>Take-home Standard Income over the last 12 months, divided by the number of
+                months you were recording, × 12.</strong>
+                {' '}Side Cash is excluded, and this is take-home (net) pay rather than salary
+                before deductions. A month where you were recording but received no pay counts as
+                zero; a stretch of 3 or more months with nothing recorded at all is skipped as time
+                you were not using Pebble. The month in progress is left out until it finishes.
+                {' '}<strong>Fixed to the last 12 months</strong> — recent enough to follow a change
+                of job, long enough to cover a full year. The Analysis page shows the same
+                calculation over whichever period you select there, so the two agree when that is
+                set to Last 12 months.
+              </InfoTooltip>
+            </p>
             <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(annualIncome)}</p>
-            <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>Based on your Standard Income history</p>
+            <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
+              {incomeMonths > 0
+                ? `Last 12 months · ${incomeMonths} recorded month${incomeMonths === 1 ? '' : 's'}`
+                : 'Based on your Standard Income history'}
+            </p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>Total budgeted</p>
