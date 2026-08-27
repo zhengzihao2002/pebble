@@ -22,6 +22,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
   const [annualIncome, setAnnualIncome] = useState(0);
   const [incomeMonths, setIncomeMonths] = useState(0);
+  const [incomeMonthsLabel, setIncomeMonthsLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
       setValues(initial);
       setAnnualIncome(result.annualIncome);
       setIncomeMonths(result.incomeMonths);
+      setIncomeMonthsLabel(result.incomeMonthsLabel);
       setLoading(false);
     });
   };
@@ -122,6 +124,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                 before deductions. A month where you were recording but received no pay counts as
                 zero; a stretch of 3 or more months with nothing recorded at all is skipped as time
                 you were not using Pebble. The month in progress is left out until it finishes.
+                {' '}<strong>Counts {incomeMonthsLabel || 'the last 12 complete months'}.</strong>
+                {' '}The month in progress is left out until it finishes.
                 {' '}<strong>Fixed to the last 12 months</strong> — recent enough to follow a change
                 of job, long enough to cover a full year. The Analysis page shows the same
                 calculation over whichever period you select there, so the two agree when that is
@@ -131,7 +135,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
             <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(annualIncome)}</p>
             <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
               {incomeMonths > 0
-                ? `Last 12 months · ${incomeMonths} recorded month${incomeMonths === 1 ? '' : 's'}`
+                ? `${incomeMonthsLabel} · ${incomeMonths} recorded month${incomeMonths === 1 ? '' : 's'}`
                 : 'Based on your Standard Income history'}
             </p>
           </div>

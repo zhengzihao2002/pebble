@@ -61,7 +61,7 @@ export function computeObservedMonths(
   window: AnalysisWindow,
 ): ObservedMonths {
   const startIdx = monthIndex(window.startYmd);
-  const endIdx = monthIndex(window.completeEndYmd);
+  const endIdx = monthIndex(window.endYmd);
   const calendarCount = Math.max(0, endIdx - startIdx + 1);
   if (calendarCount === 0) return { count: 0, calendarCount: 0, removed: 0 };
 

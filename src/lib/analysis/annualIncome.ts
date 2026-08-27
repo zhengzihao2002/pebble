@@ -37,6 +37,8 @@ export interface AnnualIncomeEstimate {
   monthlyAverage: number | null;
   /** The denominator - complete recorded months, dormant stretches removed. */
   recordedMonths: number;
+  /** Months counted, e.g. 'Aug 2025 - Jul 2026'. For the tooltip. */
+  monthsLabel: string;
 }
 
 /** Core calculation, for a window already resolved. */
@@ -54,10 +56,10 @@ export function estimateAnnualIncomeInWindow(
 
   // Complete months only - a part-finished month over a whole-month divisor
   // would understate the average.
+  // Every row here is in a complete month - the window holds nothing else.
   let net = 0;
   for (const t of inWindow) {
     if (isExpense(t) || isSideCash(t)) continue;
-    if (window.partialStartYmd && t.date >= window.partialStartYmd) continue;
     net += t.amount;
   }
 
@@ -66,6 +68,7 @@ export function estimateAnnualIncomeInWindow(
     annual: monthlyAverage === null ? null : monthlyAverage * 12,
     monthlyAverage,
     recordedMonths: observed.count,
+    monthsLabel: window.rangeLabel,
   };
 }
 

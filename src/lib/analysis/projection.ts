@@ -112,25 +112,27 @@ export function computeProjection(
     netByMonth.set(m, arr);
   }
 
+  // ADDITIVE, not multiplicative. This previously scaled by
+  // (weighted / overall), which divides by the historical average monthly
+  // flow - a figure that sits near zero whenever spending roughly matches
+  // income, making the projection explode. Taking the flat estimate and adding
+  // how much the remaining months historically DEVIATE from a typical month
+  // gives the same answer where both are well behaved, with no division.
   let seasonal: number | null = null;
   if (yearsSeen.size >= 2) {
     const yearCount = yearsSeen.size;
     const monthAvg: number[] = [];
     for (let m = 1; m <= 12; m++) {
-      const sum = (netByMonth.get(m) ?? []).reduce((s, v) => s + v, 0);
-      monthAvg[m] = sum / yearCount;
+      monthAvg[m] = (netByMonth.get(m) ?? []).reduce((s, v) => s + v, 0) / yearCount;
     }
-    const overall = monthAvg.slice(1).reduce((s, v) => s + v, 0) / 12;
+    const typical = monthAvg.slice(1).reduce((s, v) => s + v, 0) / 12;
 
-    if (overall !== 0) {
-      let weighted = 0;
-      for (let m = month + 1; m <= 12; m++) weighted += monthAvg[m];
-      // Current month, pro-rated for the days remaining.
-      weighted += monthAvg[month] * ((daysThisMonth - day) / daysThisMonth);
-      // Rescale so the seasonal shape is applied to the CURRENT average rather
-      // than to historical amounts, which may be from a different income level.
-      seasonal = totalBalance + (weighted / overall) * avgMonthlyNet;
-    }
+    let deviation = 0;
+    for (let m = month + 1; m <= 12; m++) deviation += monthAvg[m] - typical;
+    // Current month, pro-rated for the days still ahead of it.
+    deviation += (monthAvg[month] - typical) * ((daysThisMonth - day) / daysThisMonth);
+
+    seasonal = flat + deviation;
   }
 
   return { flat, seasonal, monthsRemaining, seasonalYears: yearsSeen.size };

@@ -148,8 +148,20 @@ export function getWindowPredicate(mode: string, periodKey?: string | null): (d:
   }
   if (mode === 'last6' || mode === 'last12') {
     const monthsBack = mode === 'last6' ? 6 : 12;
+    // monthsBack CALENDAR months, ending with the one in progress: for "last
+    // 12" on 26 Aug 2026 that is Sep 2025 through Aug 2026. The `+ 1` is what
+    // makes the count 12 rather than 13 - dropping it reaches back an extra
+    // month and the label stops describing the window.
+    //
+    // The final month is deliberately partial. The dashboard answers "where am
+    // I right now", so today's spending belongs in it. The Analysis page uses
+    // 12 COMPLETE months instead (Aug 2025 - Jul 2026), because an average over
+    // a half-finished month understates spending and overstates runway. Two
+    // different questions, two different windows, both labelled.
     const cutoff = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
-    return (d) => d >= cutoff;
+    // Upper bound: without it a future-dated transaction counts as money
+    // already spent. The 30d/90d branch was always bounded; these were not.
+    return (d) => d >= cutoff && d <= now;
   }
   if (mode === 'month') {
     return periodKey
@@ -164,6 +176,81 @@ export function getWindowPredicate(mode: string, periodKey?: string | null): (d:
   return periodKey
     ? (d) => `${d.getFullYear()}` === periodKey
     : (d) => d.getFullYear() === now.getFullYear();
+}
+
+const WINDOW_MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WINDOW_MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+export interface WindowDescription {
+  /** Human range, e.g. 'Aug 2025 - Aug 2026' or 'Jul 28 - Aug 26, 2026'. */
+  rangeLabel: string;
+  /** True when the window runs up to today and so contains an unfinished period. */
+  inProgress: boolean;
+}
+
+/**
+ * The same window getWindowPredicate() filters by, described in words.
+ *
+ * MUST BE KEPT IN STEP WITH getWindowPredicate ABOVE. A label that disagrees
+ * with the filter is worse than no label - it makes a correct number look
+ * wrong. Every branch here mirrors a branch there, in the same order.
+ *
+ * Exists because the predicate returns a bare boolean function with no bounds,
+ * so nothing downstream could say which months it covered. The Analysis page
+ * prints its resolved range under the period selector; this gives the
+ * dashboard the same, rather than leaving the user to infer it.
+ */
+export function describeWindow(mode: string, periodKey?: string | null): WindowDescription {
+  const now = getToday();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  if (mode === '30d' || mode === '90d') {
+    const days = mode === '30d' ? 30 : 90;
+    const start = atMidnight(now);
+    start.setDate(start.getDate() - days + 1);
+    const sameYear = start.getFullYear() === y;
+    const left = `${WINDOW_MONTH_ABBR[start.getMonth()]} ${start.getDate()}${sameYear ? '' : `, ${start.getFullYear()}`}`;
+    return { rangeLabel: `${left} - ${WINDOW_MONTH_ABBR[m]} ${d}, ${y}`, inProgress: true };
+  }
+
+  if (mode === 'last6' || mode === 'last12') {
+    const monthsBack = mode === 'last6' ? 6 : 12;
+    // Mirrors the predicate exactly, `+ 1` included.
+    const start = new Date(y, m - monthsBack + 1, 1);
+    return {
+      rangeLabel: `${WINDOW_MONTH_ABBR[start.getMonth()]} ${start.getFullYear()} - ${WINDOW_MONTH_ABBR[m]} ${y}`,
+      inProgress: true,
+    };
+  }
+
+  if (mode === 'month') {
+    // periodKey is `${year}-${monthIndex}` with a ZERO-BASED month, matching
+    // the predicate's own key construction.
+    if (periodKey) {
+      const [py, pm] = periodKey.split('-').map(Number);
+      return { rangeLabel: `${WINDOW_MONTH_FULL[pm]} ${py}`, inProgress: py === y && pm === m };
+    }
+    return { rangeLabel: `${WINDOW_MONTH_FULL[m]} ${y}`, inProgress: true };
+  }
+
+  if (mode === 'quarter') {
+    const q = Math.floor(m / 3) + 1;
+    if (periodKey) {
+      const [pyRaw, pqRaw] = periodKey.split('-Q');
+      const py = Number(pyRaw);
+      const pq = Number(pqRaw);
+      return { rangeLabel: `Q${pq} ${py}`, inProgress: py === y && pq === q };
+    }
+    return { rangeLabel: `Q${q} ${y}`, inProgress: true };
+  }
+
+  // Year, and the fallback for any unrecognised mode - mirroring the
+  // predicate, whose final branch is also year.
+  const py = periodKey ? Number(periodKey) : y;
+  return { rangeLabel: String(py), inProgress: py === y };
 }
 
 /** Bucket for spending whose category name matches no category row. */

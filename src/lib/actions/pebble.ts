@@ -16,7 +16,7 @@ import {
 import { withSessionUser } from '@/lib/actions/withSessionUser';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
-import { estimateAnnualIncomeTrailing12 } from '@/lib/analysis/annualIncome';
+import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
 import { isYmd } from '@/lib/recurring/occurrences';
 import { generateId, generateTransId } from '@/lib/ids';
 import type {
@@ -445,7 +445,7 @@ async function setOpeningBalances(
 }
 
 export type BudgetModalData =
-  | { ok: true; budgets: Record<string, number>; annualIncome: number; incomeMonths: number; categories: CategoryItem[] }
+  | { ok: true; budgets: Record<string, number>; annualIncome: number; incomeMonths: number; incomeMonthsLabel: string; categories: CategoryItem[] }
   | { ok: false; error: string; kind?: FailureKind };
 
 /**
@@ -483,12 +483,15 @@ async function loadBudgetModalData(userId: string, today: string): Promise<Budge
     // which reports double for anyone paid every other month.
     const estimate = isYmd(today)
       ? estimateAnnualIncomeTrailing12(mergeTransactions(expenses, income), today)
-      : { annual: null, monthlyAverage: null, recordedMonths: 0 };
+      // Typed explicitly so a future field on AnnualIncomeEstimate fails the
+      // build here rather than silently omitting itself from this branch.
+      : ({ annual: null, monthlyAverage: null, recordedMonths: 0, monthsLabel: '' } satisfies AnnualIncomeEstimate);
     return {
       ok: true,
       budgets,
       annualIncome: estimate.annual ?? 0,
       incomeMonths: estimate.recordedMonths,
+      incomeMonthsLabel: estimate.monthsLabel,
       categories,
     };
   } catch (error) {

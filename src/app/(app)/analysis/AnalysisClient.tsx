@@ -19,6 +19,8 @@ import {
 import { computeMonthlySpend, computeSpendingSummary } from '@/lib/analysis/spending';
 import { computeCashflow, computeCommitments } from '@/lib/analysis/cashflow';
 import { computeIncomeSummary } from '@/lib/analysis/income';
+import { estimateAnnualIncomeInWindow } from '@/lib/analysis/annualIncome';
+import { computeCurrentMonth } from '@/lib/analysis/currentMonth';
 import { computeBudgetVariance, computeProjection, computeYearOverYear, yearProgress } from '@/lib/analysis/projection';
 import { computeUpcoming } from '@/lib/analysis/upcoming';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
@@ -38,12 +40,6 @@ interface AnalysisClientProps {
   totalBalance: number;
 }
 
-// Two decimals, matching the dashboard's savings-rate tile exactly. Analysis
-// is cross-checked against the dashboard and Reports, so a figure that agrees
-// in value but differs in precision reads as a disagreement.
-//
-// Takes a 0-1 FRACTION. The dashboard's periodStats.savingsRate is already
-// 0-100 - same displayed number, different internal unit.
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
 const monthsLabel = (n: number) => `${n.toFixed(1)} month${n.toFixed(1) === '1.0' ? '' : 's'}`;
 
@@ -54,70 +50,33 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * How a metric treats the month currently in progress.
- *
- * Stated on EVERY tooltip. The distinction is the single most confusing thing
- * about this page: totals include today, per-month averages do not, and both
- * are correct. A reader comparing two figures that disagree needs to be able
- * to see why without reasoning it out.
- *
- *  included - a total or ratio spanning the period; today's data counts
- *  excluded - a rate PER MONTH; a partial month over a whole-month divisor
- *             would understate it, so it is left out and shown separately
- *  marked   - charted, with the unfinished month coloured gold
- *  shown    - charted or listed unmarked
- *  only     - the figure IS the current month
- *  na       - forward-looking; no current-month concept applies
+ * Card heading with an explanation. NOTE: no current-month prop any more.
+ * The window holds only complete months, so every metric on this page covers
+ * exactly the same span - stated once, under the period selector, instead of
+ * twenty-one times in twenty-one tooltips.
  */
-type CurrentMonthMode = 'included' | 'excluded' | 'marked' | 'shown' | 'only' | 'na';
-
-const CURRENT_MONTH_TEXT: Record<CurrentMonthMode, string | null> = {
-  included: 'Includes this month so far, even though it is unfinished.',
-  excluded: 'Leaves out this month while it is unfinished.',
-  marked: 'Includes this month, shown in gold because it is unfinished.',
-  shown: 'Includes this month, which is still unfinished.',
-  only: 'This is the current, unfinished month on its own.',
-  na: null,
-};
-
-function CurrentMonthNote({ mode }: { mode: CurrentMonthMode }) {
-  const text = CURRENT_MONTH_TEXT[mode];
-  if (!text) return null;
-  return (
-    <p style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--line)', fontWeight: 600 }}>
-      {text}
-    </p>
-  );
-}
-
-function CardHeading({ title, tooltipLabel, currentMonth, scope, children }: {
-  title: string; tooltipLabel: string; currentMonth: CurrentMonthMode; scope?: string; children: React.ReactNode;
+function CardHeading({ title, tooltipLabel, scope, children }: {
+  title: string; tooltipLabel: string; scope?: string; children: React.ReactNode;
 }) {
   return (
     <>
       <h3 style={{ fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
         {title}
-        <InfoTooltip label={tooltipLabel}>
-          {children}
-          <CurrentMonthNote mode={currentMonth} />
-        </InfoTooltip>
+        <InfoTooltip label={tooltipLabel}>{children}</InfoTooltip>
       </h3>
       {scope && <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '2px 0 0.9rem' }}>{scope}</p>}
     </>
   );
 }
 
-function Tile({ label, value, note, tooltipLabel, currentMonth, children }: {
-  label: string; value: string; note?: string; tooltipLabel: string; currentMonth: CurrentMonthMode; children: React.ReactNode;
+function Tile({ label, value, note, tooltipLabel, children }: {
+  label: string; value: string; note?: string; tooltipLabel: string; children: React.ReactNode;
 }) {
   return (
     <div className="stat-tab">
       <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>
         {label}
-        <InfoTooltip label={tooltipLabel}>
-          {children}
-          <CurrentMonthNote mode={currentMonth} />
-        </InfoTooltip>
+        <InfoTooltip label={tooltipLabel}>{children}</InfoTooltip>
       </p>
       <p className="font-display font-mono-tab" style={{ fontSize: '1.35rem', fontWeight: 600, marginTop: 4 }}>{value}</p>
       {note && <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 2 }}>{note}</p>}
@@ -125,7 +84,7 @@ function Tile({ label, value, note, tooltipLabel, currentMonth, children }: {
   );
 }
 
-/** Plain tile without a tooltip, for figures explained by their card heading. */
+/** Plain tile, for figures explained by their card heading. */
 function MiniTile({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="stat-tab">
@@ -182,7 +141,15 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     [windowKey, today, earliest],
   );
 
-  // --- window-driven ---
+  // --- the month in progress, deliberately outside every window ---
+  const current = useMemo(
+    () => (today && window
+      ? computeCurrentMonth(transactions, today, window.currentMonthStartYmd, window.currentMonthLabel)
+      : null),
+    [transactions, today, window],
+  );
+
+  // --- window-driven: all of these cover exactly the same complete months ---
   const spending = useMemo(
     () => (window ? computeSpendingSummary(transactions, window) : null),
     [transactions, window],
@@ -195,14 +162,16 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     () => (window ? computeIncomeSummary(transactions, window) : null),
     [transactions, window],
   );
+  const annualIncome = useMemo(
+    () => (window ? estimateAnnualIncomeInWindow(transactions, window) : null),
+    [transactions, window],
+  );
   const cashflow = useMemo(
     () => (window ? computeCashflow(transactions, window, totalBalance) : null),
     [transactions, window, totalBalance],
   );
 
   // --- fixed-scope: deliberately NOT driven by the period selector ---
-  // A year-over-year comparison filtered to three months is meaningless;
-  // budgets are annual; commitments and forecasts are standing figures.
   const commitments = useMemo(() => computeCommitments(rules), [rules]);
   const yoy = useMemo(
     () => (today ? computeYearOverYear(transactions, today) : []),
@@ -223,9 +192,11 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
   const pace = today ? yearProgress(today) : null;
 
   const topN = Math.min(3, spending?.categories.length ?? 0);
+  const noCompleteMonth = window !== null && !window.hasCompleteMonth;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* ---------------- Period ---------------- */}
       <section className="card" style={{ padding: '1.5rem' }}>
         <label className="filter-label" htmlFor="analysis-window">Period</label>
         <select
@@ -242,49 +213,99 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
           ))}
         </select>
         {window && (
-          <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: 8 }}>
-            {window.rangeLabel}
+          <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className="font-mono-tab">{window.rangeLabel}</span>
+            {window.hasCompleteMonth && (
+              <>
+                <span style={{ margin: '0 6px' }}>·</span>
+                <span className="font-mono-tab">{window.calendarMonths}</span>
+                <span>&nbsp;complete month{window.calendarMonths === 1 ? '' : 's'}</span>
+              </>
+            )}
+            <InfoTooltip label="What this period covers">
+              Every figure below covers <strong>exactly these months</strong>. Analysis only ever
+              uses complete calendar months, so <strong>{window.currentMonthLabel} is not included
+              anywhere</strong> — a half-finished month would drag every average down and make your
+              runway look longer than it is. It has its own card just below instead.
+              {' '}This is why these numbers differ from your dashboard: the dashboard shows where
+              you are right now, including today. This page shows your settled patterns.
+            </InfoTooltip>
           </p>
         )}
       </section>
 
+      {/* ---------------- The month in progress ---------------- */}
+      {current && (
+        <section className="card" style={{ padding: '1.5rem' }}>
+          <CardHeading
+            title={`${current.label} so far`}
+            tooltipLabel="How this month so far is calculated"
+            scope={`Day ${current.dayOfMonth} of ${current.daysInMonth} · not counted anywhere else on this page`}
+          >
+            Everything recorded from the 1st of this month up to today. Held apart from every other
+            figure on the page because the month is not finished — mixing a part-month into an
+            average understates it. Side Cash is excluded from the income figure, matching the rest
+            of the page.
+          </CardHeading>
+          <div className="stat-tabs">
+            <MiniTile label="Spent" value={formatCurrency(current.spending)} note={`${current.expenseCount} transaction${current.expenseCount === 1 ? '' : 's'}`} />
+            <MiniTile label="Earned" value={formatCurrency(current.income)} note="take-home, excludes Side Cash" />
+            <MiniTile
+              label="Net"
+              value={formatCurrency(current.net)}
+              note={current.net >= 0 ? 'putting money aside' : 'drawing down'}
+            />
+          </div>
+        </section>
+      )}
+
+      {noCompleteMonth && (
+        <section className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
+          No complete month on record yet. Analysis fills in once your first calendar month finishes
+          — until then, the card above is the whole picture.
+        </section>
+      )}
+
       {/* ---------------- Income ---------------- */}
-      {incomeSummary && (
+      {incomeSummary && window?.hasCompleteMonth && (
         <section>
           <SectionHeading>Income</SectionHeading>
           {incomeSummary.monthsWithIncome === 0 ? (
             <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-              No income recorded in this period yet.
+              No income recorded in these months.
             </div>
           ) : (
             <>
               <div className="stat-tabs">
                 <Tile
                   label="Estimated annual income"
-                  tooltipLabel="How estimated annual income is calculated" currentMonth="excluded"
-                  value={incomeSummary.annualEstimate === null ? '—' : formatCurrency(incomeSummary.annualEstimate)}
+                  tooltipLabel="How estimated annual income is calculated"
+                  value={annualIncome?.annual == null ? '—' : formatCurrency(annualIncome.annual)}
                   note="take-home, an estimate"
                 >
-                  Your average monthly take-home pay multiplied by twelve. Based on
-                  <strong> Standard Income only</strong> — Side Cash is excluded, matching your
-                  dashboard. This is take-home (net) pay, not salary before deductions, and it is
-                  projected from the period selected above rather than taken from a payslip.
+                  <strong>Take-home Standard Income ÷ months you were recording × 12.</strong>
+                  {' '}Side Cash is excluded, and this is take-home (net) pay, not salary before
+                  deductions. A month where you were recording but received no pay counts as zero;
+                  a stretch of 3 or more months with nothing recorded at all is skipped as time you
+                  were not using Pebble. The Modify Budget dialog shows this same calculation over
+                  a fixed 12 months, so the two agree when this period is set to Last 12 complete
+                  months.
                 </Tile>
 
                 <Tile
                   label="Average monthly income"
-                  tooltipLabel="How average monthly income is calculated" currentMonth="excluded"
+                  tooltipLabel="How average monthly income is calculated"
                   value={incomeSummary.avgMonthlyNet === null ? '—' : formatCurrency(incomeSummary.avgMonthlyNet)}
                   note={`over ${incomeSummary.recordedMonths} recorded month${incomeSummary.recordedMonths === 1 ? '' : 's'}`}
                 >
-                  Take-home Standard Income divided by the number of complete recorded months.
+                  Take-home Standard Income divided by the number of months you were recording.
                   Months where you were recording but received no pay count as zero, because they
                   are real. Side Cash is excluded.
                 </Tile>
 
                 <Tile
                   label="Effective deduction rate"
-                  tooltipLabel="How the deduction rate is calculated" currentMonth="excluded"
+                  tooltipLabel="How the deduction rate is calculated"
                   value={incomeSummary.deductionRate === null ? '—' : `${incomeSummary.deductionRate.toFixed(2)}%`}
                   note="of gross pay withheld"
                 >
@@ -296,9 +317,9 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
 
                 <Tile
                   label="Income stability"
-                  tooltipLabel="How income stability is calculated" currentMonth="excluded"
+                  tooltipLabel="How income stability is calculated"
                   value={incomeSummary.stability ?? '—'}
-                  note={incomeSummary.cv === null ? 'Needs two recorded months' : `variation ${(incomeSummary.cv * 100).toFixed(0)}%`}
+                  note={incomeSummary.cv === null ? 'Needs two months' : `variation ${(incomeSummary.cv * 100).toFixed(0)}%`}
                 >
                   How much your monthly take-home varies, measured as the typical distance from
                   your average as a percentage of that average. Under 10% is very steady, under
@@ -308,7 +329,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               </div>
 
               <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                <CardHeading title="Deductions over time" tooltipLabel="How the deductions over time chart is calculated" currentMonth="shown">
+                <CardHeading title="Deductions over time" tooltipLabel="How the deductions over time chart is calculated">
                   The share of gross pay withheld in each month. Gaps are months with no Standard
                   Income — the line breaks rather than dropping to zero, because no pay is not the
                   same as no deductions. A rising line means more of your pay is being withheld.
@@ -323,171 +344,150 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       )}
 
       {/* ---------------- Spending ---------------- */}
-      <section>
-        <SectionHeading>Spending</SectionHeading>
-        {!spending ? (
-          <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-            Working out your dates…
-          </div>
-        ) : spending.expenseCount === 0 ? (
-          <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-            No spending in this period yet.
-          </div>
-        ) : (
-          <>
-            <div className="stat-tabs">
-              <Tile
-                label="Average monthly spend"
-                tooltipLabel="How average monthly spend is calculated" currentMonth="excluded"
-                value={spending.monthlyAverage === null ? '—' : formatCurrency(spending.monthlyAverage)}
-                note={spending.monthlyAverage === null
-                  ? 'Needs one complete month'
-                  : `over ${spending.completeMonths} complete month${spending.completeMonths === 1 ? '' : 's'}` +
-                    (spending.dormantMonths > 0 ? `, ${spending.dormantMonths} dormant skipped` : '')}
-              >
-                Spending in <strong>complete</strong> months, divided by the number of those months.
-                The current month is left out while it is still in progress, so a part-finished
-                month cannot drag the figure down. Any stretch of 3 or more consecutive months with
-                no transactions at all is treated as time you were not recording and is skipped.
-                Balance adjustments are corrections, not spending, so they are never included.
-              </Tile>
-
-              {spending.currentMonthSpend !== null && (
+      {spending && window?.hasCompleteMonth && (
+        <section>
+          <SectionHeading>Spending</SectionHeading>
+          {spending.expenseCount === 0 ? (
+            <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
+              No spending in these months.
+            </div>
+          ) : (
+            <>
+              <div className="stat-tabs">
                 <Tile
-                  label="This month so far"
-                  tooltipLabel="How this month so far is calculated" currentMonth="only"
-                  value={formatCurrency(spending.currentMonthSpend)}
-                  note="still in progress, not in the average"
+                  label="Average monthly spend"
+                  tooltipLabel="How average monthly spend is calculated"
+                  value={spending.monthlyAverage === null ? '—' : formatCurrency(spending.monthlyAverage)}
+                  note={`over ${spending.completeMonths} recorded month${spending.completeMonths === 1 ? '' : 's'}` +
+                    (spending.dormantMonths > 0 ? `, ${spending.dormantMonths} dormant skipped` : '')}
                 >
-                  Spending from the 1st of this month up to today. Held out of the average because
-                  the month is not finished — including it would understate your typical spend.
+                  Total spending divided by the number of months you were recording. Any stretch of
+                  3 or more consecutive months with no transactions at all is treated as time you
+                  were not using Pebble and is skipped — counting those would make this look far
+                  lower than your real spending. Balance adjustments are corrections, not spending,
+                  so they are never included.
                 </Tile>
-              )}
 
-              <Tile
-                label="Total spend"
-                tooltipLabel="How total spend is calculated" currentMonth="included"
-                value={formatCurrency(spending.total)}
-                note={`${spending.expenseCount} transaction${spending.expenseCount === 1 ? '' : 's'}`}
-              >
-                Every expense dated inside the selected period, including this month so far.
-                Balance adjustments are excluded: they correct your balance rather than record
-                spending.
-              </Tile>
+                <Tile
+                  label="Total spend"
+                  tooltipLabel="How total spend is calculated"
+                  value={formatCurrency(spending.total)}
+                  note={`${spending.expenseCount} transaction${spending.expenseCount === 1 ? '' : 's'}`}
+                >
+                  Every expense in these months. Balance adjustments are excluded: they correct
+                  your balance rather than record spending.
+                </Tile>
 
-              <Tile
-                label="Top 3 concentration"
-                tooltipLabel="How top 3 concentration is calculated" currentMonth="included"
-                value={spending.top3Share === null ? '—' : pct(spending.top3Share)}
-                note={`share held by ${topN} categor${topN === 1 ? 'y' : 'ies'}`}
-              >
-                The share of your total spending held by your three largest categories. A high
-                figure means your spending is concentrated in a few places. With three or fewer
-                categories in the period this is 100% by definition.
-              </Tile>
-            </div>
-
-            <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-              <CardHeading title="Month by month" tooltipLabel="How the month by month chart is calculated" currentMonth="marked">
-                Total expenses in each calendar month of the period. Months with no spending are
-                shown as zero rather than skipped — a gap is information. The current month is
-                shown in gold because it is still in progress and will usually look lower than a
-                finished month.
-              </CardHeading>
-              <div style={{ marginTop: '0.9rem' }}>
-                <MonthlySpendChart data={monthly} />
+                <Tile
+                  label="Top 3 concentration"
+                  tooltipLabel="How top 3 concentration is calculated"
+                  value={spending.top3Share === null ? '—' : pct(spending.top3Share)}
+                  note={`share held by ${topN} categor${topN === 1 ? 'y' : 'ies'}`}
+                >
+                  The share of your total spending held by your three largest categories. A high
+                  figure means your spending is concentrated in a few places. With three or fewer
+                  categories in the period this is 100% by definition.
+                </Tile>
               </div>
-            </div>
 
-            <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-              <CardHeading title="Top categories" tooltipLabel="How top categories are calculated" currentMonth="included">
-                Every expense in the period grouped by category and ranked by total. The percentage
-                is that category&apos;s share of total spending. Colours are the ones set in your
-                category settings, so they match the rest of Pebble.
-              </CardHeading>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginTop: '0.9rem' }}>
-                {spending.categories.slice(0, 8).map((c) => (
-                  <div key={c.category}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.83rem', marginBottom: 4 }}>
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.category}</span>
-                      <span className="font-mono-tab" style={{ flexShrink: 0, color: 'var(--ink-soft)' }}>
-                        {formatCurrency(c.total)} · {pct(c.share)}
-                      </span>
-                    </div>
-                    <div style={{ height: 8, borderRadius: 99, backgroundColor: 'var(--paper)', overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${Math.max(c.share * 100, 1)}%`, height: '100%', borderRadius: 99,
-                        backgroundColor: categoryMeta[c.category]?.color ?? 'var(--pine)',
-                      }} />
-                    </div>
-                  </div>
-                ))}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
+                <CardHeading title="Month by month" tooltipLabel="How the month by month chart is calculated">
+                  Total expenses in each month of the period. Months with no spending are shown as
+                  zero rather than skipped — a gap is information.
+                </CardHeading>
+                <div style={{ marginTop: '0.9rem' }}>
+                  <MonthlySpendChart data={monthly} />
+                </div>
               </div>
-            </div>
-          </>
-        )}
-      </section>
+
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
+                <CardHeading title="Top categories" tooltipLabel="How top categories are calculated">
+                  Every expense in the period grouped by category and ranked by total. The
+                  percentage is that category&apos;s share of total spending. Colours are the ones
+                  set in your category settings, so they match the rest of Pebble.
+                </CardHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginTop: '0.9rem' }}>
+                  {spending.categories.slice(0, 8).map((c) => (
+                    <div key={c.category}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.83rem', marginBottom: 4 }}>
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.category}</span>
+                        <span className="font-mono-tab" style={{ flexShrink: 0, color: 'var(--ink-soft)' }}>
+                          {formatCurrency(c.total)} · {pct(c.share)}
+                        </span>
+                      </div>
+                      <div style={{ height: 8, borderRadius: 99, backgroundColor: 'var(--paper)', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${Math.max(c.share * 100, 1)}%`, height: '100%', borderRadius: 99,
+                          backgroundColor: categoryMeta[c.category]?.color ?? 'var(--pine)',
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {/* ---------------- Cash flow ---------------- */}
-      {cashflow && (
+      {cashflow && window?.hasCompleteMonth && (
         <section>
           <SectionHeading>Cash flow</SectionHeading>
           <div className="stat-tabs">
             <Tile
               label="Savings rate"
-              tooltipLabel="How savings rate is calculated" currentMonth="included"
+              tooltipLabel="How savings rate is calculated"
               value={cashflow.savingsRate === null ? '—' : pct(cashflow.savingsRate)}
-              note={cashflow.savingsRate === null ? 'No income recorded' : 'whole selected period, this month included'}
+              note={cashflow.savingsRate === null ? 'No income recorded' : 'income kept, not spent'}
             >
-              Income minus spending, as a share of income, across the period you selected above —
-              including this month so far, since both sides of the ratio are equally partial.
-              Months with no activity contribute nothing either way, so they neither help nor
-              hurt the figure. Unlike the monthly averages on this page, which leave the current
-              month out, this updates as soon as you add a transaction today.
-              <strong> Side Cash is excluded</strong> — only Standard Income counts, matching your
-              dashboard. Income means take-home pay, never gross. Balance adjustments are excluded.
+              Income minus spending, as a share of income, across these complete months.
+              <strong> Side Cash is excluded</strong> — only Standard Income counts. Income means
+              take-home pay, never gross, and balance adjustments are excluded.
+              {' '}Your dashboard shows a different number for the same period because it includes
+              the month in progress; this page uses only finished months.
             </Tile>
 
             <Tile
               label="Average monthly net"
-              tooltipLabel="How average monthly net is calculated" currentMonth="excluded"
+              tooltipLabel="How average monthly net is calculated"
               value={cashflow.avgMonthlyNet === null ? '—' : formatCurrency(cashflow.avgMonthlyNet)}
-              note={cashflow.avgMonthlyNet === null ? 'Needs one complete month' : cashflow.avgMonthlyNet >= 0 ? 'putting money aside' : 'drawing down'}
+              note={cashflow.avgMonthlyNet === null ? 'Needs one month' : cashflow.avgMonthlyNet >= 0 ? 'putting money aside' : 'drawing down'}
             >
-              Average income minus average spending per complete recorded month. Positive means you
-              are adding to your balance. Side Cash is excluded from the income side.
+              Average income minus average spending per recorded month. Positive means you are
+              adding to your balance. Side Cash is excluded from the income side.
             </Tile>
 
             <Tile
               label="Runway"
-              tooltipLabel="How runway is calculated" currentMonth="excluded"
+              tooltipLabel="How runway is calculated"
               value={cashflow.runwayMonths === null ? '—' : monthsLabel(cashflow.runwayMonths)}
               note={cashflow.runwayMonths === null ? 'Income covers your spending' : 'at your current net burn'}
             >
               Your current balance divided by how much more you spend than you earn each month.
               Shown only when you are spending more than you earn — when income covers spending
-              your balance is not being drawn down, so there is no runway to report.
+              your balance is not being drawn down, so there is no runway to report. Your balance
+              is today&apos;s actual balance and includes Side Cash, since that is money you have.
             </Tile>
 
             <Tile
               label="Months of expenses covered"
-              tooltipLabel="How months of expenses covered is calculated" currentMonth="excluded"
+              tooltipLabel="How months of expenses covered is calculated"
               value={cashflow.expenseCoverMonths === null ? '—' : monthsLabel(cashflow.expenseCoverMonths)}
               note="if income stopped entirely"
             >
               Your current balance divided by average monthly spending, ignoring income. A
               worst-case cushion figure: how long you could keep spending at your usual rate with
-              nothing coming in. Your balance includes <strong>all</strong> money you have,
-              Side Cash included — Side Cash is left out of income figures, but it is still money
-              in your account.
+              nothing coming in. Your balance includes <strong>all</strong> money you have, Side
+              Cash included — it is left out of income figures, but it is still money in your
+              account.
             </Tile>
           </div>
 
           <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-            <CardHeading title="Money in versus out" tooltipLabel="How the money in versus out chart is calculated" currentMonth="marked">
+            <CardHeading title="Money in versus out" tooltipLabel="How the money in versus out chart is calculated">
               Income minus spending for each month. Green months added to your balance, wine months
-              drew it down, gold is the current month still in progress. Side Cash is excluded from
-              income.
+              drew it down. Side Cash is excluded from income.
             </CardHeading>
             <div style={{ marginTop: '0.9rem' }}>
               <CashflowChart data={cashflow.months} />
@@ -496,7 +496,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: '0.9rem' }}>
                 Spending exceeded income in{' '}
                 <span className="font-mono-tab">{cashflow.overspentMonths.length}</span>{' '}
-                complete month{cashflow.overspentMonths.length === 1 ? '' : 's'}:{' '}
+                month{cashflow.overspentMonths.length === 1 ? '' : 's'}:{' '}
                 <span className="font-mono-tab">{cashflow.overspentMonths.map((m) => m.label).join(', ')}</span>
               </p>
             )}
@@ -505,7 +505,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
           <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
             <CardHeading
               title="Fixed monthly commitments"
-              tooltipLabel="How fixed monthly commitments are calculated" currentMonth="na"
+              tooltipLabel="How fixed monthly commitments are calculated"
               scope="Standing figure — not affected by the period above"
             >
               Your active scheduled rules converted to a monthly figure — weekly counts 52 times a
@@ -537,8 +537,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             <div className="card" style={{ padding: '1.5rem' }}>
               <CardHeading
                 title="Year by year"
-                tooltipLabel="How year by year is calculated" currentMonth="included"
-                scope="All years on record — not affected by the period above"
+                tooltipLabel="How year by year is calculated"
+                scope="Every year on record — not affected by the period above"
               >
                 Total income and spending for each calendar year on record. Side Cash is excluded
                 from income. The current year is marked &ldquo;so far&rdquo; because it is
@@ -562,15 +562,15 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
                 title="Projected year-end balance"
-                tooltipLabel="How the year-end projection is calculated" currentMonth="included"
+                tooltipLabel="How the year-end projection is calculated"
                 scope={`Estimate only — ${projection.monthsRemaining.toFixed(1)} months left this year`}
               >
                 Your balance today plus your average monthly net flow for each month left in the
-                year. The seasonal version weights those months by how they have typically gone in
-                past years, so an expensive December counts as one. Both are
-                <strong> estimates</strong> based on past behaviour, not predictions. The starting
-                balance includes Side Cash, since it is money you actually have; only the monthly
-                flow excludes it.
+                year. <strong>Seasonally adjusted</strong> asks whether those particular months are
+                typical for you: it looks at the same calendar months in past complete years and
+                applies how they usually differ from an average month, so a habitually expensive
+                December counts as one. The gap between the two figures is your seasonal exposure.
+                Both are <strong>estimates</strong> from past behaviour, not predictions.
               </CardHeading>
               <div className="stat-tabs">
                 <MiniTile label="Flat estimate" value={formatCurrency(projection.flat)} note="every month treated the same" />
@@ -587,13 +587,13 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
                 title="Budget pace"
-                tooltipLabel="How budget pace is calculated" currentMonth="included"
-                scope={`You are ${pct(pace)} through the year`}
+                tooltipLabel="How budget pace is calculated"
+                scope={`This calendar year — you are ${pct(pace)} through it`}
               >
                 What you have spent in each category so far this calendar year against its annual
-                budget. The vertical marker shows how far through the year you are: a bar past the
-                marker means you are ahead of pace. Uses the whole calendar year, so it is not
-                affected by the period above.
+                budget, <strong>including this month</strong> — a budget is about money actually
+                gone. The vertical marker shows how far through the year you are: a bar past the
+                marker means you are ahead of pace.
               </CardHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
                 {variance.map((v) => (
@@ -621,7 +621,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
                 title="Coming up"
-                tooltipLabel="How coming up is calculated" currentMonth="na"
+                tooltipLabel="How coming up is calculated"
                 scope={`Through ${upcoming.throughYmd} — not affected by the period above`}
               >
                 Scheduled payments and income due over the next three months, worked out from your

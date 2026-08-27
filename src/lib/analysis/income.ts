@@ -1,16 +1,18 @@
 /**
  * Group A: income, deductions, stability. Pure and clock-free.
  *
- * SIDE CASH IS EXCLUDED THROUGHOUT, matching the dashboard's Income tile and
- * this page's savings rate. For the deduction rate this is a JUDGEMENT CALL,
- * stated in the tooltip: Side Cash usually has no withholding, so including it
- * would pull the rate toward zero and describe nothing real.
+ * THE WINDOW HOLDS ONLY COMPLETE MONTHS - no partial/complete split here.
  *
- * DEDUCTIONS, NOT TAX. The gap between gross and net also covers insurance and
- * retirement contributions. Never label it tax.
+ * SIDE CASH IS EXCLUDED THROUGHOUT, matching the dashboard's Income tile and
+ * this page's savings rate. For the deduction rate and stability this is a
+ * JUDGEMENT CALL, stated in the tooltips: Side Cash usually has no
+ * withholding, so including it would pull the rate toward zero.
+ *
+ * DEDUCTIONS, NOT TAX. The gross-to-net gap also covers insurance and
+ * retirement contributions.
  *
  * INCOME MEANS NET where a single figure is used. grossAmount appears only in
- * the deduction calculation, never summed as income.
+ * the deduction calculation.
  */
 
 import { deductionPct, isSideCash } from '@/lib/stats';
@@ -33,23 +35,21 @@ export interface MonthlyDeduction {
 export type StabilityBand = 'very steady' | 'steady' | 'variable' | 'highly variable';
 
 export interface IncomeSummary {
-  /** Average monthly net income over recorded complete months. */
   avgMonthlyNet: number | null;
-  /** avgMonthlyNet x 12. An estimate, labelled as one. */
-  annualEstimate: number | null;
-  /** Ratio of sums: (gross - net) / gross, as a percentage. */
   deductionRate: number | null;
   monthlyDeductions: MonthlyDeduction[];
   /**
-   * Coefficient of variation of monthly net income: stddev / mean.
-   * Scale-free, so comparable across incomes. Null with fewer than two
-   * complete recorded months - variation needs at least two observations.
+   * Coefficient of variation of monthly net income: stddev / mean. Scale-free,
+   * so comparable across incomes. Null with fewer than two months - variation
+   * needs at least two observations.
    */
   cv: number | null;
   stability: StabilityBand | null;
   recordedMonths: number;
-  /** Complete recorded months containing any Standard Income. */
+  /** Months containing any Standard Income. */
   monthsWithIncome: number;
+  /** Months counted, e.g. 'Aug 2025 - Jul 2026'. */
+  monthsLabel: string;
 }
 
 function isStandardIncome(t: Transaction): t is IncomeTransaction {
@@ -57,9 +57,8 @@ function isStandardIncome(t: Transaction): t is IncomeTransaction {
 }
 
 function band(cv: number): StabilityBand {
-  // Thresholds are conventional, not derived. A salaried income lands near 0;
-  // 0.5 means the typical month is half again away from the mean, which is
-  // plainly variable. Stated as a rough guide in the tooltip.
+  // Conventional thresholds, not derived. A salaried income lands near 0; 0.5
+  // means the typical month is half again away from the mean.
   if (cv < 0.10) return 'very steady';
   if (cv < 0.25) return 'steady';
   if (cv < 0.50) return 'variable';
@@ -72,15 +71,13 @@ export function computeIncomeSummary(
 ): IncomeSummary {
   const inWindow = filterToWindow(window, transactions);
 
-  // Denominator from ALL transactions, Side Cash and expenses included: a
-  // month you recorded anything is a month you were recording, even if it
-  // held no Standard Income. Excluding those months would hide genuine
-  // zero-income months and overstate both the average and the stability.
+  // Denominator from ALL transactions: a month you recorded anything is a
+  // month you were recording, even if it held no Standard Income. Excluding
+  // those would hide genuine zero-income months and overstate the average.
   const observed = computeObservedMonths(inWindow.map((t) => t.date), window);
 
   const startIdx = monthIndex(window.startYmd);
   const endIdx = monthIndex(window.endYmd);
-  const partialIdx = window.partialStartYmd ? monthIndex(window.partialStartYmd) : null;
 
   const grossBy = new Map<number, number>();
   const netBy = new Map<number, number>();
@@ -92,9 +89,9 @@ export function computeIncomeSummary(
   }
 
   const monthlyDeductions: MonthlyDeduction[] = [];
-  const completeNets: number[] = [];
-  let completeGross = 0;
-  let completeNet = 0;
+  const nets: number[] = [];
+  let totalGross = 0;
+  let totalNet = 0;
   let monthsWithIncome = 0;
 
   for (let i = startIdx; i <= endIdx; i++) {
@@ -102,48 +99,46 @@ export function computeIncomeSummary(
     const m = i % 12;
     const gross = grossBy.get(i) ?? 0;
     const net = netBy.get(i) ?? 0;
-    const isPartial = partialIdx !== null && i === partialIdx;
 
     monthlyDeductions.push({
       key: `${y}-${String(m + 1).padStart(2, '0')}`,
       label: m === 0 ? `${MONTH_ABBR[m]} ${String(y).slice(2)}` : MONTH_ABBR[m],
       gross,
       net,
+      // Guarded: deductionPct returns 0 for zero gross, but a month with no pay
+      // has an UNDEFINED rate, and the chart must break rather than dip.
       rate: gross > 0 ? deductionPct(gross, net) : null,
     });
 
-    if (!isPartial) {
-      completeGross += gross;
-      completeNet += net;
-      completeNets.push(net);
-      if (gross > 0) monthsWithIncome++;
-    }
+    totalGross += gross;
+    totalNet += net;
+    nets.push(net);
+    if (gross > 0) monthsWithIncome++;
   }
 
   const n = observed.count;
-  const avgMonthlyNet = n >= 1 ? completeNet / n : null;
+  const avgMonthlyNet = n >= 1 ? totalNet / n : null;
 
-  // Variation across recorded complete months, zero-income months included:
-  // a month with no pay IS instability, and dropping it would report a gig
-  // income as steady.
+  // Variation across recorded months, zero-income months included: a month
+  // with no pay IS instability, and dropping it would report a gig income as
+  // steady.
   let cv: number | null = null;
-  if (completeNets.length >= 2 && avgMonthlyNet !== null && avgMonthlyNet > 0) {
+  if (nets.length >= 2 && avgMonthlyNet !== null && avgMonthlyNet > 0) {
     const mean = avgMonthlyNet;
-    const variance = completeNets.reduce((s, v) => s + (v - mean) ** 2, 0) / completeNets.length;
+    const variance = nets.reduce((s, v) => s + (v - mean) ** 2, 0) / nets.length;
     cv = Math.sqrt(variance) / mean;
   }
 
   return {
     avgMonthlyNet,
-    annualEstimate: avgMonthlyNet !== null ? avgMonthlyNet * 12 : null,
     // Ratio of sums, not a mean of monthly percentages: this weights by
-    // paycheck size, so a small month cannot swing the figure as much as a
-    // large one.
-    deductionRate: completeGross > 0 ? deductionPct(completeGross, completeNet) : null,
+    // paycheck size, so a small month cannot swing it as much as a large one.
+    deductionRate: totalGross > 0 ? deductionPct(totalGross, totalNet) : null,
     monthlyDeductions,
     cv,
     stability: cv !== null ? band(cv) : null,
     recordedMonths: n,
     monthsWithIncome,
+    monthsLabel: window.rangeLabel,
   };
 }

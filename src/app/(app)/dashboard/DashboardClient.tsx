@@ -14,8 +14,9 @@ import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice'
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency } from '@/lib/format';
-import { computeStatsForPeriod, getAvailablePeriods } from '@/lib/stats';
+import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
 import { STATS_MODES } from '@/data/seed';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
 
 interface DashboardClientProps {
   transactions: Transaction[];
@@ -82,6 +83,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   }, [statsRestored, statsMode, statsPeriod]);
 
   const periodStats = computeStatsForPeriod(transactions, statsMode, statsPeriod);
+  // The resolved months behind the four tiles below. Shown rather than left to
+  // be inferred, matching the Analysis page, which prints its own range under
+  // its period selector.
+  const statsWindow = describeWindow(statsMode, statsPeriod);
   const statsSublabel = statsMode === '30d' ? 'Last 30 days'
     : statsMode === '90d' ? 'Last 90 days'
     : statsMode === 'last6' ? 'Last 6 months'
@@ -99,6 +104,12 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
       <section>
         <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: '0.6rem' }}>
           Your balance, today
+          <InfoTooltip label="How your balance is calculated">
+            Your opening balances plus every transaction since — expenses, income and any manual
+            balance corrections, across both Checking and Cash. <strong>Side Cash is included
+            here</strong>: it is left out of income figures, but it is still money you have. This
+            is a live figure, not tied to the period selected below.
+          </InfoTooltip>
         </p>
         <p className="font-display hero-balance">
           {formatCurrency(totalBalance)}
@@ -113,11 +124,71 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
             </select>
           )}
         </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', textAlign: 'right', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
+          <span className="font-mono-tab">{statsWindow.rangeLabel}</span>
+          {statsWindow.inProgress && <span>&nbsp;· includes this month so far</span>}
+          <InfoTooltip label="What this period covers">
+            The four figures below cover <strong>exactly this range</strong>.
+            {statsWindow.inProgress && (
+              <>
+                {' '}It runs up to today, so the month in progress is included and these numbers
+                change as soon as you add a transaction — the dashboard shows where you are
+                <strong> right now</strong>.
+              </>
+            )}
+            {' '}The Analysis page uses only <strong>complete</strong> months, so its figures for
+            the same period will differ: an average over a half-finished month understates
+            spending and makes your runway look longer than it is.
+          </InfoTooltip>
+        </p>
         <div className="stat-tabs">
-          <StatTab icon={ArrowUpRight} label="Income" value={formatCurrency(periodStats.income)} sublabel={statsSublabel ? `${statsSublabel} · Standard income only` : 'Standard income only'} color="var(--pine)" />
-          <StatTab icon={ArrowDownRight} label="Spending" value={formatCurrency(periodStats.spending)} sublabel={statsSublabel} color="var(--wine)" />
-          <StatTab icon={Percent} label="Savings rate" value={`${periodStats.savingsRate.toFixed(2)}%`} sublabel={statsSublabel} color="var(--gold)" />
-          <StatTab icon={Wallet} label="Saved" value={formatCurrency(periodStats.saved)} sublabel={statsSublabel} color="var(--pine)" />
+          <StatTab
+            icon={ArrowUpRight} label="Income" value={formatCurrency(periodStats.income)}
+            sublabel={statsSublabel ? `${statsSublabel} · Standard income only` : 'Standard income only'}
+            color="var(--pine)"
+            info={(
+              <InfoTooltip label="How income is calculated">
+                Take-home pay received in the selected period. <strong>Side Cash is excluded</strong> —
+                only Standard Income counts. This is net pay, what actually reached your account,
+                never the gross figure before deductions.
+              </InfoTooltip>
+            )}
+          />
+          <StatTab
+            icon={ArrowDownRight} label="Spending" value={formatCurrency(periodStats.spending)}
+            sublabel={statsSublabel} color="var(--wine)"
+            info={(
+              <InfoTooltip label="How spending is calculated">
+                Every expense dated in the selected period, including this month so far. Balance
+                adjustments are excluded — they correct your balance rather than record spending.
+              </InfoTooltip>
+            )}
+          />
+          <StatTab
+            icon={Percent} label="Savings rate" value={`${periodStats.savingsRate.toFixed(2)}%`}
+            sublabel={statsSublabel} color="var(--gold)"
+            info={(
+              <InfoTooltip label="How savings rate is calculated">
+                Income minus spending, as a share of income, over the selected period. Side Cash is
+                excluded from income.
+                {' '}<strong>This includes the month in progress</strong>, so it moves as soon as
+                you add a transaction today — the dashboard shows where you are right now.
+                {' '}The Analysis page shows a different figure because it uses only complete
+                months: an average over a half-finished month understates spending.
+              </InfoTooltip>
+            )}
+          />
+          <StatTab
+            icon={Wallet} label="Saved" value={formatCurrency(periodStats.saved)}
+            sublabel={statsSublabel} color="var(--pine)"
+            info={(
+              <InfoTooltip label="How saved is calculated">
+                Income minus spending over the selected period — the money left over, in dollars
+                rather than as a percentage. Side Cash is excluded from income. A negative figure
+                means you spent more than you earned in this period.
+              </InfoTooltip>
+            )}
+          />
         </div>
       </section>
 

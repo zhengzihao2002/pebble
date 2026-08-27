@@ -57,8 +57,8 @@ export interface SpendingSummary {
   calendarMonths: number;
   /** Months dropped as dormant. Surfaced so the figure can explain itself. */
   dormantMonths: number;
-  /** Spend in the in-progress month. Null when today ends a month. */
-  currentMonthSpend: number | null;
+  /** Months counted, e.g. 'Aug 2025 - Jul 2026'. */
+  monthsLabel: string;
 }
 
 export function computeSpendingSummary(
@@ -79,14 +79,12 @@ export function computeSpendingSummary(
   // they keep matching Reports for the same range.
   const byCategory = new Map<string, number>();
   let total = 0;
-  let completeTotal = 0;
-  let partialTotal = 0;
+  // No partial/complete split any more: the window contains only complete
+  // months by construction, so every row here is in a finished month.
   for (const e of expenses) {
     const mag = Math.abs(e.amount);
     total += mag;
     byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + mag);
-    if (window.partialStartYmd && e.date >= window.partialStartYmd) partialTotal += mag;
-    else completeTotal += mag;
   }
 
   const categories: CategorySpend[] = [...byCategory.entries()]
@@ -101,14 +99,14 @@ export function computeSpendingSummary(
 
   return {
     total,
-    monthlyAverage: observedMonths >= 1 ? completeTotal / observedMonths : null,
+    monthlyAverage: observedMonths >= 1 ? total / observedMonths : null,
     categories,
     top3Share: total > 0 ? top3 / total : null,
     expenseCount: expenses.length,
     completeMonths: observedMonths,
     calendarMonths: observed.calendarCount,
     dormantMonths: observed.removed,
-    currentMonthSpend: window.partialStartYmd ? partialTotal : null,
+    monthsLabel: window.rangeLabel,
   };
 }
 
@@ -142,7 +140,6 @@ export function computeMonthlySpend(
 
   const startIdx = monthIndex(window.startYmd);
   const endIdx = monthIndex(window.endYmd);
-  const partialIdx = window.partialStartYmd ? monthIndex(window.partialStartYmd) : null;
 
   const out: MonthlySpend[] = [];
   for (let i = startIdx; i <= endIdx; i++) {
@@ -154,7 +151,9 @@ export function computeMonthlySpend(
       // Year shown only in January, so the axis stays readable at 375px.
       label: m === 0 ? `${MONTH_ABBR[m]} ${String(y).slice(2)}` : MONTH_ABBR[m],
       total: byMonth.get(key) ?? 0,
-      isPartial: partialIdx !== null && i === partialIdx,
+      // Always false now: the window holds only complete months. Kept so the
+      // chart's Cell colouring needs no change.
+      isPartial: false,
     });
   }
   return out;
