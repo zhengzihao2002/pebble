@@ -917,6 +917,8 @@ export const en = {
     importNoData: 'No income transactions to import yet',
     manualTooltip: 'This estimate comes from the amount and frequency you enter below — it does not look at your transaction history.',
     manualAnnualNote: 'Annualized from your entry — not calculated from your transaction history.',
+    estimatedSavings: 'Estimated savings',
+    estimatedDeficit: 'Estimated shortfall',
   },
 
   goals: {

@@ -35,13 +35,17 @@ const MANUAL_FREQUENCY_MULTIPLIER: Record<ManualIncomeFrequency, number> = {
 // dictionary, so a translation can never reorder it.
 const MANUAL_FREQUENCIES: ManualIncomeFrequency[] = ['weekly', 'biweekly', 'semimonthly', 'monthly', 'yearly'];
 
+// Sized a step down from the app's usual compact-select (Dashboard's period
+// picker etc.): this block already carries a lot for one card, and the mode
+// switch here is a secondary control next to the figure it affects, not a
+// primary navigation choice.
 const modeSelectStyle: React.CSSProperties = {
-  fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '0.5rem',
+  fontSize: '0.72rem', padding: '0.22rem 0.4rem', borderRadius: '0.45rem',
   border: '1px solid var(--line)', color: 'var(--ink)', backgroundColor: 'var(--paper)',
 };
 const manualFieldStyle: React.CSSProperties = {
-  padding: '0.4rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)',
-  fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%',
+  padding: '0.32rem 0.45rem', borderRadius: '0.45rem', border: '1px solid var(--line)',
+  fontSize: '0.78rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%',
 };
 
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
@@ -139,10 +143,12 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const manualAmountNum = Number(manualIncomePrefs.amount) || 0;
   const manualAnnual = manualAmountNum * MANUAL_FREQUENCY_MULTIPLIER[manualIncomePrefs.frequency];
 
-  // Whichever figure is actually in effect. Used for the over-budget colour
-  // check below, so that warning tracks whichever source the user has chosen
-  // rather than always the system estimate.
+  // Whichever figure is actually in effect. Used both for the over-budget
+  // colour check and for the new Estimated Savings figure below, so both
+  // track whichever income source the user has chosen.
   const effectiveAnnualIncome = incomeEstimateMode === 'manual' ? manualAnnual : systemAnnualIncome;
+  const estimatedSavings = effectiveAnnualIncome - totalBudgeted;
+  const isOverBudget = effectiveAnnualIncome > 0 && totalBudgeted > effectiveAnnualIncome;
 
   const handleImportLatest = () => {
     if (latestStandardIncomeNet == null) return;
@@ -185,19 +191,37 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
           {d.budgetModal.intro}
         </p>
 
-        <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', boxShadow: 'none', backgroundColor: 'var(--paper)' }}>
-          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>
+        {/*
+          A CSS GRID, not flex, and this is load-bearing, not a style choice.
+          The two big numbers (income, budgeted) need to sit on the SAME
+          visual row regardless of how much content sits above either of
+          them - a mode dropdown and note line above the income figure, just
+          a label above the budgeted figure. Flexbox with two independent
+          columns lets whichever column has more content push its number
+          down relative to the other; a shared grid ROW cannot drift like
+          that, because both cells in that row are the same row by
+          definition. The manual-entry controls (amount/frequency/import)
+          therefore live in their own row spanning both columns, BELOW the
+          number row, rather than inside the income column where they used
+          to push its number down.
+        */}
+        <div
+          className="card"
+          style={{
+            padding: '0.9rem 1.1rem', marginBottom: '1.4rem', boxShadow: 'none', backgroundColor: 'var(--paper)',
+            display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+            columnGap: '1.25rem', rowGap: '0.3rem', alignItems: 'start',
+          }}
+        >
+          {/* Row 1: headers */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>
               {d.budgetModal.estimatedIncome}
               <InfoTooltip label={d.budgetModal.tooltipLabel}>
                 {incomeEstimateMode === 'manual' ? (
                   d.budgetModal.manualTooltip
                 ) : (
                   <>
-                    {/* Broken into clause-sized keys rather than one string,
-                        because the original interleaves <strong> runs with
-                        plain prose. Each key is a complete clause, so word
-                        order inside it is free to differ between languages. */}
                     <strong>{d.budgetModal.tooltipHeadline}</strong>
                     {' '}{d.budgetModal.tooltipBody}
                     {' '}<strong>{t(d.budgetModal.tooltipCounts, { range: incomeMonthsLabel || d.budgetModal.tooltipRangeFallback })}</strong>
@@ -205,80 +229,87 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                   </>
                 )}
               </InfoTooltip>
-            </p>
-
-            {/* Mode switch. A dropdown rather than a pill pair, matching every
-                other mode selector in this app (Dashboard's period selector,
-                Reports' grouping selector). */}
+            </span>
+            {/* Mode switch, inline with its own label rather than on its own
+                row - one less line of vertical space. */}
             <select
               value={incomeEstimateMode}
               onChange={(e) => setIncomeEstimateMode(e.target.value as IncomeEstimateMode)}
-              style={{ ...modeSelectStyle, marginTop: '0.35rem', marginBottom: '0.6rem' }}
+              style={modeSelectStyle}
             >
               <option value="system">{d.budgetModal.estimateModeSystem}</option>
               <option value="manual">{d.budgetModal.estimateModeManual}</option>
             </select>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', textAlign: 'right', margin: 0 }}>{d.budgetModal.totalBudgeted}</p>
 
+          {/* Row 2: the two big numbers, LOCKED to one grid row. */}
+          <p className="font-mono-tab" style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>
+            {formatCurrency(incomeEstimateMode === 'manual' ? manualAnnual : systemAnnualIncome)}
+          </p>
+          <p className="font-mono-tab" style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0, textAlign: 'right', color: isOverBudget ? 'var(--wine)' : 'var(--ink)' }}>
+            {formatCurrency(totalBudgeted)}
+          </p>
+
+          {/* Row 3: notes, also on one shared row. */}
+          <p style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', margin: 0 }}>
             {incomeEstimateMode === 'system' ? (
-              <>
-                <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(systemAnnualIncome)}</p>
-                <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
-                  {/* Plural chosen by key, as in CatchUpNotice. incomeMonthsLabel
-                      is the server's English range - see the state declaration. */}
-                  {incomeMonths > 0
-                    ? `${incomeMonthsLabel} · ${t(incomeMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: incomeMonths })}`
-                    : d.budgetModal.incomeFallback}
-                </p>
-              </>
+              incomeMonths > 0
+                ? `${incomeMonthsLabel} · ${t(incomeMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: incomeMonths })}`
+                : d.budgetModal.incomeFallback
             ) : (
-              <>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--ink-soft)', flex: '1 1 110px', minWidth: 0 }}>
-                    {d.budgetModal.manualAmountLabel}
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.82rem' }}>$</span>
-                      <input
-                        type="number" min="0" step="0.01" placeholder="0.00"
-                        value={manualIncomePrefs.amount}
-                        onChange={(e) => setManualIncomePrefs({ amount: e.target.value })}
-                        className="font-mono-tab"
-                        style={{ ...manualFieldStyle, paddingLeft: '1.35rem' }}
-                      />
-                    </div>
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--ink-soft)', flex: '1 1 120px', minWidth: 0 }}>
-                    {d.budgetModal.manualFrequencyLabel}
-                    <select
-                      value={manualIncomePrefs.frequency}
-                      onChange={(e) => setManualIncomePrefs({ frequency: e.target.value as ManualIncomeFrequency })}
-                      style={manualFieldStyle}
-                    >
-                      {MANUAL_FREQUENCIES.map((f) => <option key={f} value={f}>{d.budgetModal.frequencies[f]}</option>)}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleImportLatest}
-                    disabled={loading || latestStandardIncomeNet == null}
-                    title={latestStandardIncomeNet == null ? d.budgetModal.importNoData : undefined}
-                    aria-label={d.budgetModal.importAria}
-                    className="pill"
-                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', alignSelf: 'flex-end', opacity: loading || latestStandardIncomeNet == null ? 0.5 : 1, whiteSpace: 'nowrap' }}
-                  >
-                    {d.budgetModal.importButton}
-                  </button>
-                </div>
-                <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(manualAnnual)}</p>
-                <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>{d.budgetModal.manualAnnualNote}</p>
-              </>
+              d.budgetModal.manualAnnualNote
             )}
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.budgetModal.totalBudgeted}</p>
-            <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600, color: effectiveAnnualIncome > 0 && totalBudgeted > effectiveAnnualIncome ? 'var(--wine)' : 'var(--ink)' }}>
-              {formatCurrency(totalBudgeted)}
-            </p>
-          </div>
+          </p>
+          {/* Estimated Savings / Shortfall - the new figure, on the same row
+              as the income note above so nothing here disturbs Row 2's
+              alignment either. */}
+          <p className="font-mono-tab" style={{ fontSize: '0.78rem', fontWeight: 600, margin: 0, textAlign: 'right', color: estimatedSavings >= 0 ? 'var(--pine)' : 'var(--wine)' }}>
+            {estimatedSavings >= 0 ? d.budgetModal.estimatedSavings : d.budgetModal.estimatedDeficit}
+            {': '}
+            {estimatedSavings >= 0 ? '+' : ''}{formatCurrency(estimatedSavings)}
+          </p>
+
+          {/* Row 4, manual mode only: amount + frequency + import, spanning
+              both columns so it never affects the two-column alignment above. */}
+          {incomeEstimateMode === 'manual' && (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.65rem', color: 'var(--ink-soft)', flex: '1 1 100px', minWidth: 0 }}>
+                {d.budgetModal.manualAmountLabel}
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.76rem' }}>$</span>
+                  <input
+                    type="number" min="0" step="0.01" placeholder="0.00"
+                    value={manualIncomePrefs.amount}
+                    onChange={(e) => setManualIncomePrefs({ amount: e.target.value })}
+                    className="font-mono-tab"
+                    style={{ ...manualFieldStyle, paddingLeft: '1.2rem' }}
+                  />
+                </div>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.65rem', color: 'var(--ink-soft)', flex: '1 1 110px', minWidth: 0 }}>
+                {d.budgetModal.manualFrequencyLabel}
+                <select
+                  value={manualIncomePrefs.frequency}
+                  onChange={(e) => setManualIncomePrefs({ frequency: e.target.value as ManualIncomeFrequency })}
+                  style={manualFieldStyle}
+                >
+                  {MANUAL_FREQUENCIES.map((f) => <option key={f} value={f}>{d.budgetModal.frequencies[f]}</option>)}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={handleImportLatest}
+                disabled={loading || latestStandardIncomeNet == null}
+                title={latestStandardIncomeNet == null ? d.budgetModal.importNoData : undefined}
+                aria-label={d.budgetModal.importAria}
+                className="pill"
+                style={{ padding: '0.32rem 0.6rem', fontSize: '0.72rem', alignSelf: 'flex-end', opacity: loading || latestStandardIncomeNet == null ? 0.5 : 1, whiteSpace: 'nowrap' }}
+              >
+                {d.budgetModal.importButton}
+              </button>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>

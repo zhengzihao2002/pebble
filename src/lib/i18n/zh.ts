@@ -825,6 +825,8 @@ export const zh: typeof en = {
     importNoData: '暂无可导入的收入记录',
     manualTooltip: '此估算基于你在下方输入的金额和频率——不会读取你的交易记录。',
     manualAnnualNote: '根据你的输入按年折算——并非来自交易记录的计算结果。',
+    estimatedSavings: '预计结余',
+    estimatedDeficit: '预计缺口',
   },
 
   goals: {
