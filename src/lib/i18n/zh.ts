@@ -183,6 +183,10 @@ export const zh: typeof en = {
     tagHint: '（可选）',
     tagPlaceholder: '例如：固定支出',
     paidFrom: '支付来源',
+    // 收款账户 rather than a literal mirror of 支付来源 - 收款去向 is not how a
+    // Chinese financial UI labels this, and 账户 matches the two options the
+    // control actually offers (支票账户 / 现金).
+    paidInto: '收款账户',
     grossAmount: '税前金额',
     netAmount: '税后金额（实际到账）',
     amount: '金额',

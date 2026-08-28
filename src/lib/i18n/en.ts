@@ -229,6 +229,10 @@ export const en = {
     tagHint: '(optional)',
     tagPlaceholder: 'e.g. Fixed',
     paidFrom: 'Paid from',
+    // Income lands IN an account rather than being paid out of one. "into",
+    // not "to": the field names the destination account, and "paid to" reads
+    // as a recipient - which for income would be the user themselves.
+    paidInto: 'Paid into',
     grossAmount: 'Gross amount',
     netAmount: 'Net amount (what actually lands)',
     amount: 'Amount',

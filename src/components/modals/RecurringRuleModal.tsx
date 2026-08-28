@@ -286,7 +286,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
               )}
 
               <label style={labelStyle}>
-                {d.recurring.paidFrom}
+                {isIncome ? d.recurring.paidInto : d.recurring.paidFrom}
                 <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
                   {/* payment_method carries a CHECK constraint - a translated
                       value would fail the insert outright. */}
