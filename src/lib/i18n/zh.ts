@@ -827,6 +827,7 @@ export const zh: typeof en = {
     manualAnnualNote: '根据你的输入按年折算——并非来自交易记录的计算结果。',
     estimatedSavings: '预计结余',
     estimatedDeficit: '预计缺口',
+    estMonthlyLabel: '月均预估：{amount}',
   },
 
   goals: {

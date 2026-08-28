@@ -919,6 +919,7 @@ export const en = {
     manualAnnualNote: 'Annualized from your entry — not calculated from your transaction history.',
     estimatedSavings: 'Estimated savings',
     estimatedDeficit: 'Estimated shortfall',
+    estMonthlyLabel: 'Est. monthly: {amount}',
   },
 
   goals: {

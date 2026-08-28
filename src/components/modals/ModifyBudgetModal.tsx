@@ -319,9 +319,29 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
               const meta = categoryMeta[name];
               return (
                 <div key={name} className="budget-modify-row">
-                  <span className="budget-modify-label">
-                    <meta.icon size={16} style={{ color: meta.color, flexShrink: 0 }} />
-                    {name}
+                  {/* Column-stacked via inline style, NOT a new CSS class or a
+                      third flex child in the row: .budget-modify-label is
+                      normally a single centered row (icon + name). Overriding
+                      flexDirection/alignItems here only ever makes this ONE
+                      column taller when an estimate is shown - it can never
+                      grow WIDER, so it carries none of the 375px overflow risk
+                      a third row-level flex item would. The row still has
+                      exactly the same two top-level children it always had. */}
+                  <span className="budget-modify-label" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <meta.icon size={16} style={{ color: meta.color, flexShrink: 0 }} />
+                      {name}
+                    </span>
+                    {/* Only when a real, positive number has been typed -
+                        matches the same values[name] state the input below
+                        reads from, so it updates live as the user types.
+                        var(--ink-soft) is legible on both --paper (light) and
+                        --mist (dark), unlike a hardcoded grey. */}
+                    {Number(values[name]) > 0 && (
+                      <span className="font-mono-tab" style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--ink-soft)' }}>
+                        {t(d.budgetModal.estMonthlyLabel, { amount: formatCurrency(Number(values[name]) / 12) })}
+                      </span>
+                    )}
                   </span>
                   <div className="budget-modify-input-wrap">
                     <span style={{ color: 'var(--ink-soft)', fontSize: '0.85rem' }}>$</span>
