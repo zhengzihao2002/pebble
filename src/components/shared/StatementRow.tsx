@@ -5,6 +5,7 @@ import { Banknote, SlidersHorizontal } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { categoryLabel } from '@/lib/i18n/enumLabels';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -31,8 +32,10 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
   const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
   const isIncome = !isAdjustment && txn.amount > 0;
 
-  // txn.category is USER DATA - passed through untranslated, always.
-  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : [txn.category];
+  // txn.category is either a real category NAME (user data) or one of the
+  // two income literals - categoryLabel() handles both, translating only
+  // the latter.
+  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
   subtitleParts.push(formatDate(txn.date, locale));
 

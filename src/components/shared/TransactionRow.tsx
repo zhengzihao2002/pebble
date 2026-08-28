@@ -4,7 +4,7 @@ import { Banknote } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { paymentMethodLabel } from '@/lib/i18n/enumLabels';
+import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -23,12 +23,16 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
   const meta = categoryMeta[txn.category];
   const Icon = meta ? meta.icon : Banknote;
   const isIncome = txn.amount > 0;
-  const subtitleParts = [txn.category];
+  // txn.category is either a real category NAME (user data, for an
+  // expense) or one of the two income literals 'Standard Income'/'Side Cash'.
+  // categoryLabel() handles both: user names pass through unchanged, the two
+  // income literals get a translated label.
+  const subtitleParts = [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
   subtitleParts.push(formatDate(txn.date, locale));
-  // txn.category and txn.tag above are USER DATA and stay exactly as stored.
-  // paymentMethod is a stored CHECK-constrained value, so only its LABEL is
-  // swapped here - txn.paymentMethod itself is never reassigned.
+  // txn.tag is USER DATA and stays exactly as stored. paymentMethod is a
+  // stored CHECK-constrained value, so only its LABEL is swapped here -
+  // txn.paymentMethod itself is never reassigned.
   if (!compact && txn.paymentMethod) subtitleParts.push(paymentMethodLabel(d, txn.paymentMethod));
 
   const interactiveProps = onOpenDetail

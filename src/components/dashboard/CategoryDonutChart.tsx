@@ -15,7 +15,7 @@ interface CategoryDonutChartProps {
 }
 
 export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
-  const { d } = useTranslation();
+  const { d, locale } = useTranslation();
   const modeLabel = (value: string, fallback: string) =>
     (d.statsModes as Record<string, string>)[value] ?? fallback;
   const [breakdownMode, setBreakdownMode] = useState('last6');
@@ -26,7 +26,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
   // every month on record.
   const periodsForMode = (mode: string) =>
     (mode === 'month' || mode === 'quarter' || mode === 'year')
-      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true)
+      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true, locale)
       : [];
 
   const needsSubPeriod = breakdownMode === 'month' || breakdownMode === 'quarter' || breakdownMode === 'year';

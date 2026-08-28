@@ -12,7 +12,7 @@ import { TREND_MODES } from '@/data/seed';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function IncomeSpendingChart({ transactions }: { transactions: Transaction[] }) {
-  const { d } = useTranslation();
+  const { d, locale } = useTranslation();
   // TREND_MODES lives in @/data/seed with English labels. Looked up by VALUE
   // against the same d.statsModes dictionary the dashboard tiles use - the
   // mode keys overlap - falling back to the seed label for anything that
@@ -28,13 +28,13 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
   // and its options come from periods actually present in the data rather
   // than a generated range.
   const needsYear = trendMode === 'month' || trendMode === 'quarter';
-  const availableYears = needsYear ? getAvailablePeriods(transactions, 'year') : [];
+  const availableYears = needsYear ? getAvailablePeriods(transactions, 'year', false, locale) : [];
 
   const handleTrendModeChange = (mode: string) => {
     setTrendMode(mode);
     setTrendYear(
       mode === 'month' || mode === 'quarter'
-        ? getAvailablePeriods(transactions, 'year')[0]?.key ?? null
+        ? getAvailablePeriods(transactions, 'year', false, locale)[0]?.key ?? null
         : null,
     );
   };
@@ -48,7 +48,7 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
     restoreRef.current = true;
     const saved = usePebbleStore.getState().dashboardPrefs;
     const mode = saved?.trendMode ?? 'last6';
-    const years = getAvailablePeriods(transactions, 'year');
+    const years = getAvailablePeriods(transactions, 'year', false, locale);
     const savedYear = saved?.trendYear ?? null;
     setTrendMode(mode);
     setTrendYear(
@@ -65,7 +65,7 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
     usePebbleStore.getState().setDashboardPrefs({ trendMode, trendYear });
   }, [restored, trendMode, trendYear]);
 
-  const trendData = buildTrendData(transactions, trendMode, trendYear);
+  const trendData = buildTrendData(transactions, trendMode, trendYear, locale);
 
   return (
     <div className="card" style={{ padding: '1.5rem' }}>

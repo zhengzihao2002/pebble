@@ -7,6 +7,7 @@ import type {
   Transaction,
 } from '@/types';
 import { atMidnight, getToday, parseLocalDate } from './format';
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
 // Same-day tiebreak for records sorted ascending by date.
 //
@@ -65,7 +66,8 @@ export interface TrendPoint {
 
 // Builds income/spending totals bucketed by month, quarter, or year for the
 // "Income vs. spending" dashboard chart.
-export function buildTrendData(transactions: Transaction[], mode: string, yearKey?: string | null): TrendPoint[] {
+export function buildTrendData(transactions: Transaction[], mode: string, yearKey?: string | null, locale: Locale = DEFAULT_LOCALE): TrendPoint[] {
+  const isZh = locale === 'zh';
   const granularity = mode === 'quarter' ? 'quarter' : mode === 'year' ? 'year' : 'month';
 
   // 'month' and 'quarter' bucket by granularity WITHOUT a window (unlike
@@ -89,12 +91,15 @@ export function buildTrendData(transactions: Transaction[], mode: string, yearKe
     if (granularity === 'month') {
       key = `${d.getFullYear()}-${d.getMonth()}`;
       sortKey = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      // Always shows the full 4-digit year now (was 2-digit) to match the
+      // convention set for the Analysis charts. isZh branch is genuinely
+      // different phrasing, not a swapped month name.
+      label = isZh ? `${d.getFullYear()}年${d.getMonth() + 1}月` : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     } else if (granularity === 'quarter') {
       const q = Math.floor(d.getMonth() / 3) + 1;
       key = `${d.getFullYear()}-Q${q}`;
       sortKey = new Date(d.getFullYear(), (q - 1) * 3, 1).getTime();
-      label = `Q${q} '${String(d.getFullYear()).slice(2)}`;
+      label = isZh ? `${d.getFullYear()}年第${q}季度` : `Q${q} ${d.getFullYear()}`;
     } else {
       key = `${d.getFullYear()}`;
       sortKey = new Date(d.getFullYear(), 0, 1).getTime();
@@ -201,17 +206,27 @@ export interface WindowDescription {
  * prints its resolved range under the period selector; this gives the
  * dashboard the same, rather than leaving the user to infer it.
  */
-export function describeWindow(mode: string, periodKey?: string | null): WindowDescription {
+export function describeWindow(mode: string, periodKey?: string | null, locale: Locale = DEFAULT_LOCALE): WindowDescription {
   const now = getToday();
   const y = now.getFullYear();
   const m = now.getMonth();
   const d = now.getDate();
+  const isZh = locale === 'zh';
+
+  // Chinese day formatter for the 30d/90d ranges. The English path below is
+  // completely untouched from the original - same arrays, same logic - to
+  // avoid any risk to a format that already worked.
+  const zhDay = (dt: Date, includeYear: boolean) =>
+    includeYear ? `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日` : `${dt.getMonth() + 1}月${dt.getDate()}日`;
 
   if (mode === '30d' || mode === '90d') {
     const days = mode === '30d' ? 30 : 90;
     const start = atMidnight(now);
     start.setDate(start.getDate() - days + 1);
     const sameYear = start.getFullYear() === y;
+    if (isZh) {
+      return { rangeLabel: `${zhDay(start, !sameYear)} 至 ${zhDay(now, true)}`, inProgress: true };
+    }
     const left = `${WINDOW_MONTH_ABBR[start.getMonth()]} ${start.getDate()}${sameYear ? '' : `, ${start.getFullYear()}`}`;
     return { rangeLabel: `${left} - ${WINDOW_MONTH_ABBR[m]} ${d}, ${y}`, inProgress: true };
   }
@@ -220,6 +235,9 @@ export function describeWindow(mode: string, periodKey?: string | null): WindowD
     const monthsBack = mode === 'last6' ? 6 : 12;
     // Mirrors the predicate exactly, `+ 1` included.
     const start = new Date(y, m - monthsBack + 1, 1);
+    if (isZh) {
+      return { rangeLabel: `${start.getFullYear()}年${start.getMonth() + 1}月 至 ${y}年${m + 1}月`, inProgress: true };
+    }
     return {
       rangeLabel: `${WINDOW_MONTH_ABBR[start.getMonth()]} ${start.getFullYear()} - ${WINDOW_MONTH_ABBR[m]} ${y}`,
       inProgress: true,
@@ -231,9 +249,10 @@ export function describeWindow(mode: string, periodKey?: string | null): WindowD
     // the predicate's own key construction.
     if (periodKey) {
       const [py, pm] = periodKey.split('-').map(Number);
-      return { rangeLabel: `${WINDOW_MONTH_FULL[pm]} ${py}`, inProgress: py === y && pm === m };
+      const rangeLabel = isZh ? `${py}年${pm + 1}月` : `${WINDOW_MONTH_FULL[pm]} ${py}`;
+      return { rangeLabel, inProgress: py === y && pm === m };
     }
-    return { rangeLabel: `${WINDOW_MONTH_FULL[m]} ${y}`, inProgress: true };
+    return { rangeLabel: isZh ? `${y}年${m + 1}月` : `${WINDOW_MONTH_FULL[m]} ${y}`, inProgress: true };
   }
 
   if (mode === 'quarter') {
@@ -242,13 +261,15 @@ export function describeWindow(mode: string, periodKey?: string | null): WindowD
       const [pyRaw, pqRaw] = periodKey.split('-Q');
       const py = Number(pyRaw);
       const pq = Number(pqRaw);
-      return { rangeLabel: `Q${pq} ${py}`, inProgress: py === y && pq === q };
+      const rangeLabel = isZh ? `${py}年第${pq}季度` : `Q${pq} ${py}`;
+      return { rangeLabel, inProgress: py === y && pq === q };
     }
-    return { rangeLabel: `Q${q} ${y}`, inProgress: true };
+    return { rangeLabel: isZh ? `${y}年第${q}季度` : `Q${q} ${y}`, inProgress: true };
   }
 
   // Year, and the fallback for any unrecognised mode - mirroring the
-  // predicate, whose final branch is also year.
+  // predicate, whose final branch is also year. A bare number, so it is
+  // already identical in both locales.
   const py = periodKey ? Number(periodKey) : y;
   return { rangeLabel: String(py), inProgress: py === y };
 }
@@ -444,7 +465,9 @@ export function getAvailablePeriods(
   transactions: Transaction[],
   granularity: 'month' | 'quarter' | 'year',
   latestYearOnly = false,
+  locale: Locale = DEFAULT_LOCALE,
 ): PeriodOption[] {
+  const isZh = locale === 'zh';
   const map = new Map<string, PeriodOption>();
   transactions.forEach((t) => {
     const d = parseLocalDate(t.date);
@@ -452,12 +475,12 @@ export function getAvailablePeriods(
     if (granularity === 'month') {
       key = `${d.getFullYear()}-${d.getMonth()}`;
       sortKey = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      label = isZh ? `${d.getFullYear()}年${d.getMonth() + 1}月` : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     } else if (granularity === 'quarter') {
       const q = Math.floor(d.getMonth() / 3) + 1;
       key = `${d.getFullYear()}-Q${q}`;
       sortKey = new Date(d.getFullYear(), (q - 1) * 3, 1).getTime();
-      label = `Q${q} ${d.getFullYear()}`;
+      label = isZh ? `${d.getFullYear()}年第${q}季度` : `Q${q} ${d.getFullYear()}`;
     } else {
       key = `${d.getFullYear()}`;
       sortKey = new Date(d.getFullYear(), 0, 1).getTime();

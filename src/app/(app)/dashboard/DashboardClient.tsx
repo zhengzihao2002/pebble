@@ -31,7 +31,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ transactions, categories, budgets, totalBalance, allocated, catchUp }: DashboardClientProps) {
-  const { d, t } = useTranslation();
+  const { d, t, locale } = useTranslation();
 
   // STATS_MODES lives in @/data/seed and carries an English label. Looked up
   // by VALUE here, falling back to that label, so seed.ts stays untouched and
@@ -56,7 +56,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // ever recorded. Looking further back is what Reports is for.
   const periodsForStatsMode = (mode: string) =>
     (mode === 'month' || mode === 'quarter' || mode === 'year')
-      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true)
+      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true, locale)
       : [];
 
   const needsStatsSubPeriod = statsMode === 'month' || statsMode === 'quarter' || statsMode === 'year';
@@ -96,12 +96,13 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // The resolved months behind the four tiles below. Shown rather than left to
   // be inferred, matching the Analysis page, which prints its own range under
   // its period selector.
-  const statsWindow = describeWindow(statsMode, statsPeriod);
-  // ⚠️ The period labels and statsWindow.rangeLabel below are built in
-  // stats.ts, which is shared with server code and cannot read the locale, so
-  // they stay English in both languages. Same gap as ActionError's message and
-  // the budget modal's incomeMonthsLabel - all three need the producing module
-  // changed, which is its own phase.
+  const statsWindow = describeWindow(statsMode, statsPeriod, locale);
+  // stats.ts is shared with server code but neither describeWindow nor
+  // getAvailablePeriods is ever called server-side (confirmed by checking
+  // every page.tsx import), so both safely take an optional locale param.
+  // ActionError's message and the budget modal's incomeMonthsLabel are a
+  // GENUINELY different case - those come from Server Actions, which really
+  // cannot read the client's locale - and remain a separate, real gap.
   const statsSublabel = (statsMode === '30d' || statsMode === '90d' || statsMode === 'last6' || statsMode === 'last12')
     ? modeLabel(statsMode, '')
     : availableStatsPeriods.find((p) => p.key === statsPeriod)?.label || '';

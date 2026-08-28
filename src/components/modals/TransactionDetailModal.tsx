@@ -13,7 +13,7 @@ import { ActionError } from '@/components/shared/ActionError';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
-import { paymentMethodLabel } from '@/lib/i18n/enumLabels';
+import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
 import { renderTemplate } from '@/lib/i18n/RichText';
 
 interface TransactionDetailModalProps {
@@ -255,7 +255,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   ] : [
     { key: 'type', label: d.txnDetail.rowType, value: isIncome ? d.enums.kind.income : d.enums.kind.expense },
     // Category and tag are USER DATA - shown exactly as stored.
-    { key: 'category', label: d.txnDetail.rowCategory, value: txn.category },
+    // txn.category is either a real category NAME (user data) or one of the
+    // two income literals - categoryLabel() handles both.
+    { key: 'category', label: d.txnDetail.rowCategory, value: categoryLabel(d, txn.category) },
     ...(txn.type === 'expense' && txn.tag ? [{ key: 'tag', label: d.txnDetail.rowTag, value: txn.tag }] : []),
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
     { key: 'method', label: d.txnDetail.rowPaymentMethod, value: paymentMethodLabel(d, txn.paymentMethod) || '—' },
