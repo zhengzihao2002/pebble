@@ -14,22 +14,64 @@ import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
+import { usePebbleStore, type ManualIncomeFrequency, type IncomeEstimateMode } from '@/store/usePebbleStore';
 
 interface ModifyBudgetModalProps {
   onClose: () => void;
 }
 
+// Multiplier to turn one paycheck into an annual figure. No 'once' - see the
+// type's own comment in usePebbleStore.ts for why semimonthly exists here
+// and nowhere else in Pebble.
+const MANUAL_FREQUENCY_MULTIPLIER: Record<ManualIncomeFrequency, number> = {
+  weekly: 52,
+  biweekly: 26,
+  semimonthly: 24,
+  monthly: 12,
+  yearly: 1,
+};
+
+// Fixed display order for the frequency dropdown - not derived from the
+// dictionary, so a translation can never reorder it.
+const MANUAL_FREQUENCIES: ManualIncomeFrequency[] = ['weekly', 'biweekly', 'semimonthly', 'monthly', 'yearly'];
+
+const modeSelectStyle: React.CSSProperties = {
+  fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: '0.5rem',
+  border: '1px solid var(--line)', color: 'var(--ink)', backgroundColor: 'var(--paper)',
+};
+const manualFieldStyle: React.CSSProperties = {
+  padding: '0.4rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)',
+  fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%',
+};
+
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const { d, t, locale } = useTranslation();
+
+  // Income-estimate mode and the manual entry itself are DEVICE preferences,
+  // not financial data - see the comments in usePebbleStore.ts. Read directly
+  // from the store with no restore-effect/mount-gate dance: this modal is
+  // only ever mounted client-side, after a button click in AppShell, so
+  // there is no server render of it to disagree with.
+  const incomeEstimateMode = usePebbleStore((s) => s.incomeEstimateMode);
+  const setIncomeEstimateMode = usePebbleStore((s) => s.setIncomeEstimateMode);
+  const manualIncomePrefs = usePebbleStore((s) => s.manualIncomePrefs);
+  const setManualIncomePrefs = usePebbleStore((s) => s.setManualIncomePrefs);
+
   const [values, setValues] = useState<Record<string, string>>({});
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
-  const [annualIncome, setAnnualIncome] = useState(0);
+  // Renamed from `annualIncome`: this is specifically the SERVER-computed
+  // trailing-12-month figure, distinguishing it from the manual entry and
+  // from `effectiveAnnualIncome` below, which is whichever is in effect.
+  const [systemAnnualIncome, setSystemAnnualIncome] = useState(0);
   const [incomeMonths, setIncomeMonths] = useState(0);
   // ⚠️ SERVER-GENERATED ENGLISH. This is a date range built in pebble.ts and
   // returned as prose, so it stays English in both locales. Localizing it
   // means changing what the action RETURNS - the same gap ActionError has -
   // and belongs in the 'use server' phase, not here.
   const [incomeMonthsLabel, setIncomeMonthsLabel] = useState('');
+  // Net amount of the most recent Standard Income transaction, for the
+  // "import latest" button. Null until loaded, or if there is none on record.
+  const [latestStandardIncomeNet, setLatestStandardIncomeNet] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +121,10 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
         initial[name] = entry.budget > 0 ? String(entry.budget) : '';
       });
       setValues(initial);
-      setAnnualIncome(result.annualIncome);
+      setSystemAnnualIncome(result.annualIncome);
       setIncomeMonths(result.incomeMonths);
       setIncomeMonthsLabel(result.incomeMonthsLabel);
+      setLatestStandardIncomeNet(result.latestStandardIncomeNet);
       setLoading(false);
     });
   };
@@ -92,6 +135,22 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   // stored name untranslated.
   const categoryNames = Object.keys(categoryMeta);
   const totalBudgeted = categoryNames.reduce((s, name) => s + (Number(values[name]) || 0), 0);
+
+  const manualAmountNum = Number(manualIncomePrefs.amount) || 0;
+  const manualAnnual = manualAmountNum * MANUAL_FREQUENCY_MULTIPLIER[manualIncomePrefs.frequency];
+
+  // Whichever figure is actually in effect. Used for the over-budget colour
+  // check below, so that warning tracks whichever source the user has chosen
+  // rather than always the system estimate.
+  const effectiveAnnualIncome = incomeEstimateMode === 'manual' ? manualAnnual : systemAnnualIncome;
+
+  const handleImportLatest = () => {
+    if (latestStandardIncomeNet == null) return;
+    // Rounded to cents: the stored value is a Postgres numeric and can carry
+    // more precision than a dollar amount ever needs here.
+    const rounded = Math.round(latestStandardIncomeNet * 100) / 100;
+    setManualIncomePrefs({ amount: String(rounded) });
+  };
 
   // A write in flight must not be cancellable - see AddTransactionModal.
   // Only `saving` blocks: closing during the initial read is harmless, since
@@ -126,37 +185,97 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
           {d.budgetModal.intro}
         </p>
 
-        <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', boxShadow: 'none', backgroundColor: 'var(--paper)' }}>
-          <div>
+        <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', boxShadow: 'none', backgroundColor: 'var(--paper)' }}>
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
             <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center' }}>
               {d.budgetModal.estimatedIncome}
               <InfoTooltip label={d.budgetModal.tooltipLabel}>
-                {/* Broken into clause-sized keys rather than one string,
-                    because the original interleaves <strong> runs with plain
-                    prose. Each key is a complete clause, so word order inside
-                    it is free to differ between languages.
-
-                    The duplicated "The month in progress is left out until it
-                    finishes." sentence from the original is dropped - it
-                    appeared twice, which was a pre-existing copy-paste. */}
-                <strong>{d.budgetModal.tooltipHeadline}</strong>
-                {' '}{d.budgetModal.tooltipBody}
-                {' '}<strong>{t(d.budgetModal.tooltipCounts, { range: incomeMonthsLabel || d.budgetModal.tooltipRangeFallback })}</strong>
-                {' '}<strong>{d.budgetModal.tooltipFixed}</strong> {d.budgetModal.tooltipFixedRest}
+                {incomeEstimateMode === 'manual' ? (
+                  d.budgetModal.manualTooltip
+                ) : (
+                  <>
+                    {/* Broken into clause-sized keys rather than one string,
+                        because the original interleaves <strong> runs with
+                        plain prose. Each key is a complete clause, so word
+                        order inside it is free to differ between languages. */}
+                    <strong>{d.budgetModal.tooltipHeadline}</strong>
+                    {' '}{d.budgetModal.tooltipBody}
+                    {' '}<strong>{t(d.budgetModal.tooltipCounts, { range: incomeMonthsLabel || d.budgetModal.tooltipRangeFallback })}</strong>
+                    {' '}<strong>{d.budgetModal.tooltipFixed}</strong> {d.budgetModal.tooltipFixedRest}
+                  </>
+                )}
               </InfoTooltip>
             </p>
-            <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(annualIncome)}</p>
-            <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
-              {/* Plural chosen by key, as in CatchUpNotice. incomeMonthsLabel
-                  is the server's English range - see the state declaration. */}
-              {incomeMonths > 0
-                ? `${incomeMonthsLabel} · ${t(incomeMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: incomeMonths })}`
-                : d.budgetModal.incomeFallback}
-            </p>
+
+            {/* Mode switch. A dropdown rather than a pill pair, matching every
+                other mode selector in this app (Dashboard's period selector,
+                Reports' grouping selector). */}
+            <select
+              value={incomeEstimateMode}
+              onChange={(e) => setIncomeEstimateMode(e.target.value as IncomeEstimateMode)}
+              style={{ ...modeSelectStyle, marginTop: '0.35rem', marginBottom: '0.6rem' }}
+            >
+              <option value="system">{d.budgetModal.estimateModeSystem}</option>
+              <option value="manual">{d.budgetModal.estimateModeManual}</option>
+            </select>
+
+            {incomeEstimateMode === 'system' ? (
+              <>
+                <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(systemAnnualIncome)}</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>
+                  {/* Plural chosen by key, as in CatchUpNotice. incomeMonthsLabel
+                      is the server's English range - see the state declaration. */}
+                  {incomeMonths > 0
+                    ? `${incomeMonthsLabel} · ${t(incomeMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: incomeMonths })}`
+                    : d.budgetModal.incomeFallback}
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--ink-soft)', flex: '1 1 110px', minWidth: 0 }}>
+                    {d.budgetModal.manualAmountLabel}
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.82rem' }}>$</span>
+                      <input
+                        type="number" min="0" step="0.01" placeholder="0.00"
+                        value={manualIncomePrefs.amount}
+                        onChange={(e) => setManualIncomePrefs({ amount: e.target.value })}
+                        className="font-mono-tab"
+                        style={{ ...manualFieldStyle, paddingLeft: '1.35rem' }}
+                      />
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--ink-soft)', flex: '1 1 120px', minWidth: 0 }}>
+                    {d.budgetModal.manualFrequencyLabel}
+                    <select
+                      value={manualIncomePrefs.frequency}
+                      onChange={(e) => setManualIncomePrefs({ frequency: e.target.value as ManualIncomeFrequency })}
+                      style={manualFieldStyle}
+                    >
+                      {MANUAL_FREQUENCIES.map((f) => <option key={f} value={f}>{d.budgetModal.frequencies[f]}</option>)}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleImportLatest}
+                    disabled={loading || latestStandardIncomeNet == null}
+                    title={latestStandardIncomeNet == null ? d.budgetModal.importNoData : undefined}
+                    aria-label={d.budgetModal.importAria}
+                    className="pill"
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', alignSelf: 'flex-end', opacity: loading || latestStandardIncomeNet == null ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                  >
+                    {d.budgetModal.importButton}
+                  </button>
+                </div>
+                <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(manualAnnual)}</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--ink-soft)' }}>{d.budgetModal.manualAnnualNote}</p>
+              </>
+            )}
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.budgetModal.totalBudgeted}</p>
-            <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600, color: annualIncome > 0 && totalBudgeted > annualIncome ? 'var(--wine)' : 'var(--ink)' }}>
+            <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600, color: effectiveAnnualIncome > 0 && totalBudgeted > effectiveAnnualIncome ? 'var(--wine)' : 'var(--ink)' }}>
               {formatCurrency(totalBudgeted)}
             </p>
           </div>

@@ -808,6 +808,23 @@ export const zh: typeof en = {
     totalBudgeted: '预算总额',
     perYear: '/ 年',
     saveBudgets: '保存预算',
+    estimateModeLabel: '收入估算方式',
+    estimateModeSystem: '系统估算（最近 12 个月）',
+    estimateModeManual: '手动输入',
+    manualAmountLabel: '单次收入金额',
+    manualFrequencyLabel: '发放频率',
+    frequencies: {
+      weekly: '每周',
+      biweekly: '每两周',
+      semimonthly: '每月两次',
+      monthly: '每月',
+      yearly: '每年',
+    },
+    importButton: '一键导入',
+    importAria: '导入你最近一笔收入的金额',
+    importNoData: '暂无可导入的收入记录',
+    manualTooltip: '此估算基于你在下方输入的金额和频率——不会读取你的交易记录。',
+    manualAnnualNote: '根据你的输入按年折算——并非来自交易记录的计算结果。',
   },
 
   goals: {

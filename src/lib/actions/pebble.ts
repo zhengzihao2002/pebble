@@ -482,7 +482,21 @@ async function setOpeningBalances(
 }
 
 export type BudgetModalData =
-  | { ok: true; budgets: Record<string, number>; annualIncome: number; incomeMonths: number; incomeMonthsLabel: string; categories: CategoryItem[] }
+  | {
+      ok: true;
+      budgets: Record<string, number>;
+      annualIncome: number;
+      incomeMonths: number;
+      incomeMonthsLabel: string;
+      categories: CategoryItem[];
+      /**
+       * Net amount of the most recent Standard Income transaction, for the
+       * client's "import latest" convenience button in the manual income
+       * estimate. Null when there is no Standard Income on record. Side Cash
+       * is excluded, matching every other income figure in this dialog.
+       */
+      latestStandardIncomeNet: number | null;
+    }
   | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 /**
@@ -523,6 +537,18 @@ async function loadBudgetModalData(userId: string, today: string): Promise<Budge
       // Typed explicitly so a future field on AnnualIncomeEstimate fails the
       // build here rather than silently omitting itself from this branch.
       : ({ annual: null, monthlyAverage: null, recordedMonths: 0, monthsLabel: '' } satisfies AnnualIncomeEstimate);
+
+    // Most recent Standard Income row, by date, for the client's manual
+    // "import latest" button. A reduce rather than a full sort: this only
+    // ever needs the single latest row, not an ordering of all of them.
+    // Same-day ties resolve to whichever row the array happens to return
+    // first - acceptable here, since this only pre-fills a field the user
+    // can still edit, unlike a figure used as a source of truth.
+    const standardIncome = income.filter((t) => t.category === 'Standard Income');
+    const latestStandardIncomeNet = standardIncome.length > 0
+      ? standardIncome.reduce((latest, t) => (t.date > latest.date ? t : latest)).netAmount
+      : null;
+
     return {
       ok: true,
       budgets,
@@ -530,6 +556,7 @@ async function loadBudgetModalData(userId: string, today: string): Promise<Budge
       incomeMonths: estimate.recordedMonths,
       incomeMonthsLabel: estimate.monthsLabel,
       categories,
+      latestStandardIncomeNet,
     };
   } catch (error) {
     console.error('[pebble action] getBudgetModalDataAction', error);

@@ -897,6 +897,26 @@ export const en = {
     totalBudgeted: 'Total budgeted',
     perYear: '/ yr',
     saveBudgets: 'Save budgets',
+    estimateModeLabel: 'Income estimate',
+    estimateModeSystem: 'System estimate (last 12 months)',
+    estimateModeManual: 'Enter manually',
+    manualAmountLabel: 'Paycheck amount',
+    manualFrequencyLabel: 'How often',
+    // Matches d.recurring.frequencies' wording for the four overlapping
+    // options; semimonthly is new and exists only here - see the type's
+    // own comment in usePebbleStore.ts.
+    frequencies: {
+      weekly: 'Weekly',
+      biweekly: 'Every 2 weeks',
+      semimonthly: 'Twice a month',
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+    },
+    importButton: 'Import latest',
+    importAria: 'Import your most recent paycheck amount',
+    importNoData: 'No income transactions to import yet',
+    manualTooltip: 'This estimate comes from the amount and frequency you enter below — it does not look at your transaction history.',
+    manualAnnualNote: 'Annualized from your entry — not calculated from your transaction history.',
   },
 
   goals: {

@@ -34,6 +34,28 @@ export interface DashboardPrefs {
   trendYear: string | null;
 }
 
+// Modify Budget's income-estimate feature. 'system' is the server-computed
+// trailing-12-month figure already fetched with the modal's other data;
+// 'manual' lets the user type a single paycheck amount and a frequency and
+// annualizes it client-side. Neither value is ever written to Postgres - it
+// only changes what number the modal shows while budgets are being set.
+export type IncomeEstimateMode = 'system' | 'manual';
+
+// No 'once', unlike RecurringRule's frequency: a one-off payment has no
+// annual rate to compute. Includes 'semimonthly' (paid twice a month, 24
+// times a year), which nothing else in Pebble needs - conflating it with
+// biweekly (26 times a year) would misstate annual income by roughly one
+// paycheck's worth for anyone paid that way.
+export type ManualIncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'yearly';
+
+export interface ManualIncomePrefs {
+  // Kept as a STRING, matching how the per-category budget inputs in
+  // ModifyBudgetModal already work: the input binds directly to this value,
+  // and Number(...) is applied only where the number is actually needed.
+  amount: string;
+  frequency: ManualIncomeFrequency;
+}
+
 interface PebbleUIState {
   darkMode: boolean;
   textSize: number;
@@ -59,6 +81,14 @@ interface PebbleUIState {
   // A stored id whose file was later renamed or deleted resolves to nothing in
   // findSoundFile() and plays silence - no error, no cleanup needed.
   soundPrefs: Record<SoundEvent, string | null>;
+  // Which of the two "estimated annual income" sources Modify Budget shows -
+  // a device preference, exactly like the prefs above: it changes nothing
+  // that is stored or sent to Postgres, only what number the modal displays
+  // while you are setting budgets.
+  incomeEstimateMode: IncomeEstimateMode;
+  // The user's own typed figure, kept even while 'system' mode is selected,
+  // so switching back to 'manual' does not lose what was entered.
+  manualIncomePrefs: ManualIncomePrefs;
   setDarkMode: (value: boolean) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -66,6 +96,8 @@ interface PebbleUIState {
   setDashboardPrefs: (patch: Partial<DashboardPrefs>) => void;
   setAnalysisPrefs: (patch: { window?: string }) => void;
   setSoundPref: (event: SoundEvent, soundId: string | null) => void;
+  setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
+  setManualIncomePrefs: (patch: Partial<ManualIncomePrefs>) => void;
 }
 
 const noopStorage = {
@@ -88,6 +120,9 @@ export const usePebbleStore = create<PebbleUIState>()(
       // Static and date-free, matching the pattern used throughout: server and
       // first client render must agree exactly, and persist rehydrates after.
       soundPrefs: emptySoundPrefs(),
+      // Static, matching every other initial value here.
+      incomeEstimateMode: 'system',
+      manualIncomePrefs: { amount: '', frequency: 'monthly' },
       setDarkMode: (value) => set({ darkMode: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
@@ -97,6 +132,11 @@ export const usePebbleStore = create<PebbleUIState>()(
       // Merges, as setDashboardPrefs does: several dropdowns write into one
       // object, and a replacing setter would let the last one clear the rest.
       setSoundPref: (event, soundId) => set((state) => ({ soundPrefs: { ...state.soundPrefs, [event]: soundId } })),
+      setIncomeEstimateMode: (value) => set({ incomeEstimateMode: value }),
+      // Merges, as setDashboardPrefs does: the amount and frequency fields are
+      // edited independently, and a replacing setter would let editing one
+      // clear the other.
+      setManualIncomePrefs: (patch) => set((state) => ({ manualIncomePrefs: { ...state.manualIncomePrefs, ...patch } })),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -120,6 +160,8 @@ export const usePebbleStore = create<PebbleUIState>()(
         dashboardPrefs: state.dashboardPrefs,
         analysisPrefs: state.analysisPrefs,
         soundPrefs: state.soundPrefs,
+        incomeEstimateMode: state.incomeEstimateMode,
+        manualIncomePrefs: state.manualIncomePrefs,
       }),
     }
   )
