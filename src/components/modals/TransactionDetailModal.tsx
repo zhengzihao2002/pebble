@@ -260,7 +260,10 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     { key: 'category', label: d.txnDetail.rowCategory, value: categoryLabel(d, txn.category) },
     ...(txn.type === 'expense' && txn.tag ? [{ key: 'tag', label: d.txnDetail.rowTag, value: txn.tag }] : []),
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
-    { key: 'method', label: d.txnDetail.rowPaymentMethod, value: paymentMethodLabel(d, txn.paymentMethod) || '—' },
+    // Income shows a different heading than expense: 'Payment method'
+    // implies the user is spending, which is backwards for a deposit. Only
+    // the label changes - the underlying value/comparison is untouched.
+    { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: paymentMethodLabel(d, txn.paymentMethod) || '—' },
     // Side cash is untaxed, so the actions store gross = net. Showing both
     // rows would print the same number twice under two labels that imply a
     // deduction happened. One "Amount" row, matching the edit form's label.
@@ -443,7 +446,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
             {(
               <label style={labelStyle}>
-                {d.txnDetail.rowPaymentMethod}
+                {txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   {/* CHECK-constrained values. setPaymentMethod always
                       receives the English literal. */}

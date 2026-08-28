@@ -227,6 +227,7 @@ export const zh: typeof en = {
     rowDate: '日期',
     rowAccount: '账户',
     rowPaymentMethod: '支付方式',
+    rowDepositedTo: '存入账户',
     rowAmount: '金额',
     rowPayBefore: '税前收入',
     rowPayAfter: '税后收入',

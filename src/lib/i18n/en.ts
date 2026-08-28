@@ -273,6 +273,9 @@ export const en = {
     rowDate: 'Date',
     rowAccount: 'Account',
     rowPaymentMethod: 'Payment method',
+    // Income uses this instead - "Payment method" implies the user is
+    // spending, which is backwards for a deposit.
+    rowDepositedTo: 'Deposited to',
     rowAmount: 'Amount',
     rowPayBefore: 'Pay before deductions',
     rowPayAfter: 'Pay after deductions',
