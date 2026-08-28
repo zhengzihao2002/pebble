@@ -82,8 +82,10 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     const before = goal ? goal.current : 0;
     const wasIncomplete = !goal || before < goal.target;
     const nowComplete = payload.target > 0 && payload.current >= payload.target;
-    // Instead of the generic save sound, not on top of it.
-    playEventSound(wasIncomplete && nowComplete ? 'goalReached' : 'expenseSaved');
+    // Only the crossing makes a sound. An ordinary goal save is silent: it is
+    // not an expense, and a generic confirmation on every edit is the kind of
+    // sound people switch off. Failures still play saveFailed above.
+    if (wasIncomplete && nowComplete) playEventSound('goalReached');
     onClose();
   };
 
