@@ -9,7 +9,6 @@ import { computeCategorySpent } from '@/lib/stats';
 import { isYmd, todayInZone } from '@/lib/recurring/occurrences';
 import {
   ANALYSIS_WINDOW_KEYS,
-  ANALYSIS_WINDOW_LABELS,
   DEFAULT_ANALYSIS_WINDOW,
   earliestDate,
   isAnalysisWindowKey,
@@ -28,6 +27,10 @@ import { MonthlySpendChart } from '@/components/analysis/MonthlySpendChart';
 import { CashflowChart } from '@/components/analysis/CashflowChart';
 import { DeductionChart } from '@/components/analysis/DeductionChart';
 import { YearOverYearChart } from '@/components/analysis/YearOverYearChart';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { renderTemplate } from '@/lib/i18n/RichText';
+import type { Dictionary } from '@/lib/i18n';
+import { t as translate } from '@/lib/i18n';
 import type { RecurringRule, Transaction } from '@/types';
 
 interface AnalysisClientProps {
@@ -41,7 +44,17 @@ interface AnalysisClientProps {
 }
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
-const monthsLabel = (n: number) => `${n.toFixed(1)} month${n.toFixed(1) === '1.0' ? '' : 's'}`;
+
+// Was a local one-off ('X.X month(s)'). Now the fourth place in this project
+// with this exact shape (Reports, the budget modal, CatchUpNotice), so it
+// reuses the shared analysis.monthsOne/Other pair instead of adding a fifth.
+const monthsLabel = (n: number, d: Dictionary, t: typeof translate) =>
+  t(n.toFixed(1) === '1.0' ? d.analysis.monthsOne : d.analysis.monthsOther, { n: n.toFixed(1) });
+
+// 'N transaction(s)' - identical wording to d.reports.transactionsOne/Other,
+// reused rather than duplicated.
+const countNote = (n: number, d: Dictionary, t: typeof translate) =>
+  t(n === 1 ? d.reports.transactionsOne : d.reports.transactionsOther, { count: n });
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -96,6 +109,7 @@ function MiniTile({ label, value, note }: { label: string; value: string; note?:
 }
 
 export function AnalysisClient({ transactions, categories, budgets, rules, totalBalance }: AnalysisClientProps) {
+  const { d, t, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Static and date-free, so the server render and the first client render are
@@ -136,9 +150,12 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
 
   const earliest = useMemo(() => earliestDate(transactions), [transactions]);
 
+  // locale threaded through: window.rangeLabel and window.currentMonthLabel
+  // are now genuinely localized in windows.ts, not just passed through
+  // English.
   const window = useMemo(
-    () => (today ? resolveAnalysisWindow(windowKey, today, earliest) : null),
-    [windowKey, today, earliest],
+    () => (today ? resolveAnalysisWindow(windowKey, today, earliest, locale) : null),
+    [windowKey, today, earliest, locale],
   );
 
   // --- the month in progress, deliberately outside every window ---
@@ -155,20 +172,20 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     [transactions, window],
   );
   const monthly = useMemo(
-    () => (window ? computeMonthlySpend(transactions, window) : []),
-    [transactions, window],
+    () => (window ? computeMonthlySpend(transactions, window, locale) : []),
+    [transactions, window, locale],
   );
   const incomeSummary = useMemo(
-    () => (window ? computeIncomeSummary(transactions, window) : null),
-    [transactions, window],
+    () => (window ? computeIncomeSummary(transactions, window, locale) : null),
+    [transactions, window, locale],
   );
   const annualIncome = useMemo(
     () => (window ? estimateAnnualIncomeInWindow(transactions, window) : null),
     [transactions, window],
   );
   const cashflow = useMemo(
-    () => (window ? computeCashflow(transactions, window, totalBalance) : null),
-    [transactions, window, totalBalance],
+    () => (window ? computeCashflow(transactions, window, totalBalance, locale) : null),
+    [transactions, window, totalBalance, locale],
   );
 
   // --- fixed-scope: deliberately NOT driven by the period selector ---
@@ -186,8 +203,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     return computeBudgetVariance(computeCategorySpent(transactions, Number(today.slice(0, 4))), budgets);
   }, [transactions, today, budgets]);
   const upcoming = useMemo(
-    () => (today ? computeUpcoming(rules, today, 3) : null),
-    [rules, today],
+    () => (today ? computeUpcoming(rules, today, 3, locale) : null),
+    [rules, today, locale],
   );
   const pace = today ? yearProgress(today) : null;
 
@@ -198,7 +215,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* ---------------- Period ---------------- */}
       <section className="card" style={{ padding: '1.5rem' }}>
-        <label className="filter-label" htmlFor="analysis-window">Period</label>
+        <label className="filter-label" htmlFor="analysis-window">{d.analysis.period.label}</label>
         <select
           id="analysis-window"
           value={windowKey}
@@ -208,27 +225,26 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             border: '1px solid var(--line)', backgroundColor: 'var(--paper)', color: 'var(--ink)', fontSize: '0.9rem',
           }}
         >
+          {/* value is the stored AnalysisWindowKey; only the text is translated. */}
           {ANALYSIS_WINDOW_KEYS.map((k) => (
-            <option key={k} value={k}>{ANALYSIS_WINDOW_LABELS[k]}</option>
+            <option key={k} value={k}>{d.analysis.windowLabels[k]}</option>
           ))}
         </select>
         {window && (
           <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="font-mono-tab">{window.rangeLabel}</span>
+            <span className="font-mono-tab">{window.rangeLabel || d.analysis.noCompleteRange}</span>
             {window.hasCompleteMonth && (
               <>
                 <span style={{ margin: '0 6px' }}>·</span>
                 <span className="font-mono-tab">{window.calendarMonths}</span>
-                <span>&nbsp;complete month{window.calendarMonths === 1 ? '' : 's'}</span>
+                <span>&nbsp;{t(window.calendarMonths === 1 ? d.analysis.completeMonthsOne : d.analysis.completeMonthsOther, { count: window.calendarMonths }).replace(String(window.calendarMonths), '').trim()}</span>
               </>
             )}
-            <InfoTooltip label="What this period covers">
-              Every figure below covers <strong>exactly these months</strong>. Analysis only ever
-              uses complete calendar months, so <strong>{window.currentMonthLabel} is not included
-              anywhere</strong> — a half-finished month would drag every average down and make your
-              runway look longer than it is. It has its own card just below instead.
-              {' '}This is why these numbers differ from your dashboard: the dashboard shows where
-              you are right now, including today. This page shows your settled patterns.
+            <InfoTooltip label={d.analysis.period.tooltipLabel}>
+              {renderTemplate(d.analysis.period.tooltip, {
+                exactly: <strong>{d.analysis.period.exactly}</strong>,
+                excluded: <strong>{t(d.analysis.period.excluded, { month: window.currentMonthLabel })}</strong>,
+              })}
             </InfoTooltip>
           </p>
         )}
@@ -238,22 +254,19 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {current && (
         <section className="card" style={{ padding: '1.5rem' }}>
           <CardHeading
-            title={`${current.label} so far`}
-            tooltipLabel="How this month so far is calculated"
-            scope={`Day ${current.dayOfMonth} of ${current.daysInMonth} · not counted anywhere else on this page`}
+            title={t(d.analysis.currentMonth.title, { month: current.label })}
+            tooltipLabel={d.analysis.currentMonth.tooltipLabel}
+            scope={t(d.analysis.currentMonth.scope, { day: current.dayOfMonth, total: current.daysInMonth })}
           >
-            Everything recorded from the 1st of this month up to today. Held apart from every other
-            figure on the page because the month is not finished — mixing a part-month into an
-            average understates it. Side Cash is excluded from the income figure, matching the rest
-            of the page.
+            {d.analysis.currentMonth.tooltip}
           </CardHeading>
           <div className="stat-tabs">
-            <MiniTile label="Spent" value={formatCurrency(current.spending)} note={`${current.expenseCount} transaction${current.expenseCount === 1 ? '' : 's'}`} />
-            <MiniTile label="Earned" value={formatCurrency(current.income)} note="take-home, excludes Side Cash" />
+            <MiniTile label={d.analysis.currentMonth.spent} value={formatCurrency(current.spending)} note={countNote(current.expenseCount, d, t)} />
+            <MiniTile label={d.analysis.currentMonth.earned} value={formatCurrency(current.income)} note={d.analysis.currentMonth.earnedNote} />
             <MiniTile
-              label="Net"
+              label={d.analysis.currentMonth.net}
               value={formatCurrency(current.net)}
-              note={current.net >= 0 ? 'putting money aside' : 'drawing down'}
+              note={current.net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}
             />
           </div>
         </section>
@@ -261,78 +274,65 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
 
       {noCompleteMonth && (
         <section className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-          No complete month on record yet. Analysis fills in once your first calendar month finishes
-          — until then, the card above is the whole picture.
+          {d.analysis.noCompleteMonth}
         </section>
       )}
 
       {/* ---------------- Income ---------------- */}
       {incomeSummary && window?.hasCompleteMonth && (
         <section>
-          <SectionHeading>Income</SectionHeading>
+          <SectionHeading>{d.analysis.income.title}</SectionHeading>
           {incomeSummary.monthsWithIncome === 0 ? (
             <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-              No income recorded in these months.
+              {d.analysis.income.empty}
             </div>
           ) : (
             <>
               <div className="stat-tabs">
                 <Tile
-                  label="Estimated annual income"
-                  tooltipLabel="How estimated annual income is calculated"
+                  label={d.analysis.income.annualLabel}
+                  tooltipLabel={d.analysis.income.annualTooltipLabel}
                   value={annualIncome?.annual == null ? '—' : formatCurrency(annualIncome.annual)}
-                  note="take-home, an estimate"
+                  note={d.analysis.income.annualNote}
                 >
-                  <strong>Take-home Standard Income ÷ months you were recording × 12.</strong>
-                  {' '}Side Cash is excluded, and this is take-home (net) pay, not salary before
-                  deductions. A month where you were recording but received no pay counts as zero;
-                  a stretch of 3 or more months with nothing recorded at all is skipped as time you
-                  were not using Pebble. The Modify Budget dialog shows this same calculation over
-                  a fixed 12 months, so the two agree when this period is set to Last 12 complete
-                  months.
+                  {renderTemplate(d.analysis.income.annualTooltip, {
+                    emphasis: <strong>{d.analysis.income.annualEmphasis}</strong>,
+                  })}
                 </Tile>
 
                 <Tile
-                  label="Average monthly income"
-                  tooltipLabel="How average monthly income is calculated"
+                  label={d.analysis.income.avgLabel}
+                  tooltipLabel={d.analysis.income.avgTooltipLabel}
                   value={incomeSummary.avgMonthlyNet === null ? '—' : formatCurrency(incomeSummary.avgMonthlyNet)}
-                  note={`over ${incomeSummary.recordedMonths} recorded month${incomeSummary.recordedMonths === 1 ? '' : 's'}`}
+                  note={t(incomeSummary.recordedMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: incomeSummary.recordedMonths })}
                 >
-                  Take-home Standard Income divided by the number of months you were recording.
-                  Months where you were recording but received no pay count as zero, because they
-                  are real. Side Cash is excluded.
+                  {d.analysis.income.avgTooltip}
                 </Tile>
 
                 <Tile
-                  label="Effective deduction rate"
-                  tooltipLabel="How the deduction rate is calculated"
+                  label={d.analysis.income.deductionLabel}
+                  tooltipLabel={d.analysis.income.deductionTooltipLabel}
                   value={incomeSummary.deductionRate === null ? '—' : `${incomeSummary.deductionRate.toFixed(2)}%`}
-                  note="of gross pay withheld"
+                  note={d.analysis.income.deductionNote}
                 >
-                  The share of your gross pay that never reaches your account: total gross minus
-                  total take-home, divided by total gross. This covers <strong>everything
-                  withheld</strong> — not just tax, but insurance and retirement contributions too.
-                  Side Cash is excluded, since it usually has nothing withheld.
+                  {renderTemplate(d.analysis.income.deductionTooltip, {
+                    emphasis: <strong>{d.analysis.income.deductionEmphasis}</strong>,
+                  })}
                 </Tile>
 
                 <Tile
-                  label="Income stability"
-                  tooltipLabel="How income stability is calculated"
-                  value={incomeSummary.stability ?? '—'}
-                  note={incomeSummary.cv === null ? 'Needs two months' : `variation ${(incomeSummary.cv * 100).toFixed(0)}%`}
+                  label={d.analysis.income.stabilityLabel}
+                  tooltipLabel={d.analysis.income.stabilityTooltipLabel}
+                  value={incomeSummary.stability ? d.analysis.stability[incomeSummary.stability] : '—'}
+                  note={incomeSummary.cv === null ? d.analysis.income.stabilityNeedsTwo : t(d.analysis.income.stabilityVariation, { pct: (incomeSummary.cv * 100).toFixed(0) })}
                 >
-                  How much your monthly take-home varies, measured as the typical distance from
-                  your average as a percentage of that average. Under 10% is very steady, under
-                  25% steady, under 50% variable, above that highly variable. Months with no pay
-                  count as zero, because a missed month is instability.
+                  {d.analysis.income.stabilityTooltip}
                 </Tile>
               </div>
 
               <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                <CardHeading title="Deductions over time" tooltipLabel="How the deductions over time chart is calculated">
-                  The share of gross pay withheld in each month. Gaps are months with no Standard
-                  Income — the line breaks rather than dropping to zero, because no pay is not the
-                  same as no deductions. A rising line means more of your pay is being withheld.
+                <CardHeading title={d.analysis.income.deductionsChartTitle} tooltipLabel={d.analysis.income.deductionsChartTooltipLabel}>
+                  {d.analysis.income.deductionsChartTooltip}
                 </CardHeading>
                 <div style={{ marginTop: '0.9rem' }}>
                   <DeductionChart data={incomeSummary.monthlyDeductions} />
@@ -346,54 +346,50 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {/* ---------------- Spending ---------------- */}
       {spending && window?.hasCompleteMonth && (
         <section>
-          <SectionHeading>Spending</SectionHeading>
+          <SectionHeading>{d.analysis.spending.title}</SectionHeading>
           {spending.expenseCount === 0 ? (
             <div className="card" style={{ padding: '1.5rem', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-              No spending in these months.
+              {d.analysis.spending.empty}
             </div>
           ) : (
             <>
               <div className="stat-tabs">
                 <Tile
-                  label="Average monthly spend"
-                  tooltipLabel="How average monthly spend is calculated"
+                  label={d.analysis.spending.avgLabel}
+                  tooltipLabel={d.analysis.spending.avgTooltipLabel}
                   value={spending.monthlyAverage === null ? '—' : formatCurrency(spending.monthlyAverage)}
-                  note={`over ${spending.completeMonths} recorded month${spending.completeMonths === 1 ? '' : 's'}` +
-                    (spending.dormantMonths > 0 ? `, ${spending.dormantMonths} dormant skipped` : '')}
+                  note={
+                    t(spending.completeMonths === 1 ? d.budgetModal.recordedMonthsOne : d.budgetModal.recordedMonthsOther, { count: spending.completeMonths })
+                    + (spending.dormantMonths > 0
+                      ? t(spending.dormantMonths === 1 ? d.analysis.dormantSkippedOne : d.analysis.dormantSkippedOther, { count: spending.dormantMonths })
+                      : '')
+                  }
                 >
-                  Total spending divided by the number of months you were recording. Any stretch of
-                  3 or more consecutive months with no transactions at all is treated as time you
-                  were not using Pebble and is skipped — counting those would make this look far
-                  lower than your real spending. Balance adjustments are corrections, not spending,
-                  so they are never included.
+                  {d.analysis.spending.avgTooltip}
                 </Tile>
 
                 <Tile
-                  label="Total spend"
-                  tooltipLabel="How total spend is calculated"
+                  label={d.analysis.spending.totalLabel}
+                  tooltipLabel={d.analysis.spending.totalTooltipLabel}
                   value={formatCurrency(spending.total)}
-                  note={`${spending.expenseCount} transaction${spending.expenseCount === 1 ? '' : 's'}`}
+                  note={countNote(spending.expenseCount, d, t)}
                 >
-                  Every expense in these months. Balance adjustments are excluded: they correct
-                  your balance rather than record spending.
+                  {d.analysis.spending.totalTooltip}
                 </Tile>
 
                 <Tile
-                  label="Top 3 concentration"
-                  tooltipLabel="How top 3 concentration is calculated"
+                  label={d.analysis.spending.top3Label}
+                  tooltipLabel={d.analysis.spending.top3TooltipLabel}
                   value={spending.top3Share === null ? '—' : pct(spending.top3Share)}
-                  note={`share held by ${topN} categor${topN === 1 ? 'y' : 'ies'}`}
+                  note={t(d.analysis.spending.top3Note, { categories: t(topN === 1 ? d.reports.categoriesOne : d.reports.categoriesOther, { count: topN }) })}
                 >
-                  The share of your total spending held by your three largest categories. A high
-                  figure means your spending is concentrated in a few places. With three or fewer
-                  categories in the period this is 100% by definition.
+                  {d.analysis.spending.top3Tooltip}
                 </Tile>
               </div>
 
               <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                <CardHeading title="Month by month" tooltipLabel="How the month by month chart is calculated">
-                  Total expenses in each month of the period. Months with no spending are shown as
-                  zero rather than skipped — a gap is information.
+                <CardHeading title={d.analysis.spending.monthlyChartTitle} tooltipLabel={d.analysis.spending.monthlyChartTooltipLabel}>
+                  {d.analysis.spending.monthlyChartTooltip}
                 </CardHeading>
                 <div style={{ marginTop: '0.9rem' }}>
                   <MonthlySpendChart data={monthly} />
@@ -401,12 +397,11 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               </div>
 
               <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                <CardHeading title="Top categories" tooltipLabel="How top categories are calculated">
-                  Every expense in the period grouped by category and ranked by total. The
-                  percentage is that category&apos;s share of total spending. Colours are the ones
-                  set in your category settings, so they match the rest of Pebble.
+                <CardHeading title={d.analysis.spending.topCategoriesTitle} tooltipLabel={d.analysis.spending.topCategoriesTooltipLabel}>
+                  {d.analysis.spending.topCategoriesTooltip}
                 </CardHeading>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginTop: '0.9rem' }}>
+                  {/* c.category is USER DATA and renders exactly as stored. */}
                   {spending.categories.slice(0, 8).map((c) => (
                     <div key={c.category}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.83rem', marginBottom: 4 }}>
@@ -433,95 +428,87 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {/* ---------------- Cash flow ---------------- */}
       {cashflow && window?.hasCompleteMonth && (
         <section>
-          <SectionHeading>Cash flow</SectionHeading>
+          <SectionHeading>{d.analysis.cashflow.title}</SectionHeading>
           <div className="stat-tabs">
             <Tile
-              label="Savings rate"
-              tooltipLabel="How savings rate is calculated"
+              label={d.analysis.cashflow.savingsLabel}
+              tooltipLabel={d.analysis.cashflow.savingsTooltipLabel}
               value={cashflow.savingsRate === null ? '—' : pct(cashflow.savingsRate)}
-              note={cashflow.savingsRate === null ? 'No income recorded' : 'income kept, not spent'}
+              note={cashflow.savingsRate === null ? d.analysis.cashflow.savingsNoIncome : d.analysis.cashflow.savingsNote}
             >
-              Income minus spending, as a share of income, across these complete months.
-              <strong> Side Cash is excluded</strong> — only Standard Income counts. Income means
-              take-home pay, never gross, and balance adjustments are excluded.
-              {' '}Your dashboard shows a different number for the same period because it includes
-              the month in progress; this page uses only finished months.
+              {renderTemplate(d.analysis.cashflow.savingsTooltip, {
+                emphasis: <strong>{d.analysis.cashflow.savingsEmphasis}</strong>,
+              })}
             </Tile>
 
             <Tile
-              label="Average monthly net"
-              tooltipLabel="How average monthly net is calculated"
+              label={d.analysis.cashflow.avgNetLabel}
+              tooltipLabel={d.analysis.cashflow.avgNetTooltipLabel}
               value={cashflow.avgMonthlyNet === null ? '—' : formatCurrency(cashflow.avgMonthlyNet)}
-              note={cashflow.avgMonthlyNet === null ? 'Needs one month' : cashflow.avgMonthlyNet >= 0 ? 'putting money aside' : 'drawing down'}
+              note={cashflow.avgMonthlyNet === null ? d.analysis.cashflow.avgNetNeedsOne : cashflow.avgMonthlyNet >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}
             >
-              Average income minus average spending per recorded month. Positive means you are
-              adding to your balance. Side Cash is excluded from the income side.
+              {d.analysis.cashflow.avgNetTooltip}
             </Tile>
 
             <Tile
-              label="Runway"
-              tooltipLabel="How runway is calculated"
-              value={cashflow.runwayMonths === null ? '—' : monthsLabel(cashflow.runwayMonths)}
-              note={cashflow.runwayMonths === null ? 'Income covers your spending' : 'at your current net burn'}
+              label={d.analysis.cashflow.runwayLabel}
+              tooltipLabel={d.analysis.cashflow.runwayTooltipLabel}
+              value={cashflow.runwayMonths === null ? '—' : monthsLabel(cashflow.runwayMonths, d, t)}
+              note={cashflow.runwayMonths === null ? d.analysis.cashflow.runwayCovered : d.analysis.cashflow.runwayNote}
             >
-              Your current balance divided by how much more you spend than you earn each month.
-              Shown only when you are spending more than you earn — when income covers spending
-              your balance is not being drawn down, so there is no runway to report. Your balance
-              is today&apos;s actual balance and includes Side Cash, since that is money you have.
+              {d.analysis.cashflow.runwayTooltip}
             </Tile>
 
             <Tile
-              label="Months of expenses covered"
-              tooltipLabel="How months of expenses covered is calculated"
-              value={cashflow.expenseCoverMonths === null ? '—' : monthsLabel(cashflow.expenseCoverMonths)}
-              note="if income stopped entirely"
+              label={d.analysis.cashflow.coverLabel}
+              tooltipLabel={d.analysis.cashflow.coverTooltipLabel}
+              value={cashflow.expenseCoverMonths === null ? '—' : monthsLabel(cashflow.expenseCoverMonths, d, t)}
+              note={d.analysis.cashflow.coverNote}
             >
-              Your current balance divided by average monthly spending, ignoring income. A
-              worst-case cushion figure: how long you could keep spending at your usual rate with
-              nothing coming in. Your balance includes <strong>all</strong> money you have, Side
-              Cash included — it is left out of income figures, but it is still money in your
-              account.
+              {renderTemplate(d.analysis.cashflow.coverTooltip, {
+                emphasis: <strong>{d.analysis.cashflow.coverEmphasis}</strong>,
+              })}
             </Tile>
           </div>
 
           <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-            <CardHeading title="Money in versus out" tooltipLabel="How the money in versus out chart is calculated">
-              Income minus spending for each month. Green months added to your balance, wine months
-              drew it down. Side Cash is excluded from income.
+            <CardHeading title={d.analysis.cashflow.chartTitle} tooltipLabel={d.analysis.cashflow.chartTooltipLabel}>
+              {d.analysis.cashflow.chartTooltip}
             </CardHeading>
             <div style={{ marginTop: '0.9rem' }}>
               <CashflowChart data={cashflow.months} />
             </div>
             {cashflow.overspentMonths.length > 0 && (
               <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: '0.9rem' }}>
-                Spending exceeded income in{' '}
-                <span className="font-mono-tab">{cashflow.overspentMonths.length}</span>{' '}
-                month{cashflow.overspentMonths.length === 1 ? '' : 's'}:{' '}
-                <span className="font-mono-tab">{cashflow.overspentMonths.map((m) => m.label).join(', ')}</span>
+                {renderTemplate(
+                  t(cashflow.overspentMonths.length === 1 ? d.analysis.overspentMonthOne : d.analysis.overspentMonthOther, {
+                    count: cashflow.overspentMonths.length,
+                    list: '{list}',
+                  }),
+                  { list: <span className="font-mono-tab">{cashflow.overspentMonths.map((m) => m.label).join(', ')}</span> },
+                )}
               </p>
             )}
           </div>
 
           <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
             <CardHeading
-              title="Fixed monthly commitments"
-              tooltipLabel="How fixed monthly commitments are calculated"
-              scope="Standing figure — not affected by the period above"
+              title={d.analysis.cashflow.commitmentsTitle}
+              tooltipLabel={d.analysis.cashflow.commitmentsTooltipLabel}
+              scope={d.analysis.cashflow.commitmentsScope}
             >
-              Your active scheduled rules converted to a monthly figure — weekly counts 52 times a
-              year, every-two-weeks 26, yearly once. Paused rules, one-off rules and rules that
-              have finished their run are all excluded.
+              {d.analysis.cashflow.commitmentsTooltip}
             </CardHeading>
             <div className="stat-tabs">
               <MiniTile
-                label="Committed out"
+                label={d.analysis.cashflow.committedOut}
                 value={formatCurrency(commitments.expenseMonthly)}
-                note={`${commitments.expenseCount} active rule${commitments.expenseCount === 1 ? '' : 's'}`}
+                note={t(commitments.expenseCount === 1 ? d.analysis.activeRuleOne : d.analysis.activeRuleOther, { count: commitments.expenseCount })}
               />
               <MiniTile
-                label="Committed in"
+                label={d.analysis.cashflow.committedIn}
                 value={formatCurrency(commitments.incomeMonthly)}
-                note={`${commitments.incomeCount} active rule${commitments.incomeCount === 1 ? '' : 's'}`}
+                note={t(commitments.incomeCount === 1 ? d.analysis.activeRuleOne : d.analysis.activeRuleOther, { count: commitments.incomeCount })}
               />
             </div>
           </div>
@@ -531,26 +518,27 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {/* ---------------- Comparison & outlook ---------------- */}
       {today && (
         <section>
-          <SectionHeading>Comparison &amp; outlook</SectionHeading>
+          <SectionHeading>{d.analysis.outlook.title}</SectionHeading>
 
           {yoy.length > 0 && (
             <div className="card" style={{ padding: '1.5rem' }}>
               <CardHeading
-                title="Year by year"
-                tooltipLabel="How year by year is calculated"
-                scope="Every year on record — not affected by the period above"
+                title={d.analysis.outlook.yoyTitle}
+                tooltipLabel={d.analysis.outlook.yoyTooltipLabel}
+                scope={d.analysis.outlook.yoyScope}
               >
-                Total income and spending for each calendar year on record. Side Cash is excluded
-                from income. The current year is marked &ldquo;so far&rdquo; because it is
-                incomplete and will look smaller than a full year.
+                {renderTemplate(d.analysis.outlook.yoyTooltip, {
+                  emphasis: d.analysis.outlook.yoyEmphasis,
+                })}
               </CardHeading>
               <YearOverYearChart data={yoy} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '1rem', fontSize: '0.8rem' }}>
+                {/* y.year is a raw number - locale-independent. */}
                 {yoy.map((y) => (
                   <div key={y.year} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-                    <span className="font-mono-tab">{y.year}{y.isCurrent ? ' (so far)' : ''}</span>
+                    <span className="font-mono-tab">{y.year}{y.isCurrent ? d.analysis.outlook.yoySoFar : ''}</span>
                     <span className="font-mono-tab" style={{ color: 'var(--ink-soft)' }}>
-                      saved {y.savingsRate === null ? '—' : pct(y.savingsRate)}
+                      {t(d.analysis.outlook.yoySaved, { pct: y.savingsRate === null ? '—' : pct(y.savingsRate) })}
                     </span>
                   </div>
                 ))}
@@ -561,23 +549,21 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
           {projection && (
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
-                title="Projected year-end balance"
-                tooltipLabel="How the year-end projection is calculated"
-                scope={`Estimate only — ${projection.monthsRemaining.toFixed(1)} months left this year`}
+                title={d.analysis.outlook.projectionTitle}
+                tooltipLabel={d.analysis.outlook.projectionTooltipLabel}
+                scope={t(d.analysis.outlook.projectionScope, { months: monthsLabel(projection.monthsRemaining, d, t) })}
               >
-                Your balance today plus your average monthly net flow for each month left in the
-                year. <strong>Seasonally adjusted</strong> asks whether those particular months are
-                typical for you: it looks at the same calendar months in past complete years and
-                applies how they usually differ from an average month, so a habitually expensive
-                December counts as one. The gap between the two figures is your seasonal exposure.
-                Both are <strong>estimates</strong> from past behaviour, not predictions.
+                {renderTemplate(d.analysis.outlook.projectionTooltip, {
+                  emphasis1: <strong>{d.analysis.outlook.projectionEmphasis1}</strong>,
+                  emphasis2: <strong>{d.analysis.outlook.projectionEmphasis2}</strong>,
+                })}
               </CardHeading>
               <div className="stat-tabs">
-                <MiniTile label="Flat estimate" value={formatCurrency(projection.flat)} note="every month treated the same" />
+                <MiniTile label={d.analysis.outlook.flatEstimate} value={formatCurrency(projection.flat)} note={d.analysis.outlook.flatNote} />
                 <MiniTile
-                  label="Seasonally adjusted"
+                  label={d.analysis.outlook.seasonalLabel}
                   value={projection.seasonal === null ? '—' : formatCurrency(projection.seasonal)}
-                  note={projection.seasonal === null ? 'needs two full years of history' : 'weighted by past years'}
+                  note={projection.seasonal === null ? d.analysis.outlook.seasonalNeedsTwo : d.analysis.outlook.seasonalNote}
                 />
               </div>
             </div>
@@ -586,16 +572,16 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
           {variance.length > 0 && pace !== null && (
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
-                title="Budget pace"
-                tooltipLabel="How budget pace is calculated"
-                scope={`This calendar year — you are ${pct(pace)} through it`}
+                title={d.analysis.outlook.paceTitle}
+                tooltipLabel={d.analysis.outlook.paceTooltipLabel}
+                scope={t(d.analysis.outlook.paceScope, { pct: pct(pace) })}
               >
-                What you have spent in each category so far this calendar year against its annual
-                budget, <strong>including this month</strong> — a budget is about money actually
-                gone. The vertical marker shows how far through the year you are: a bar past the
-                marker means you are ahead of pace.
+                {renderTemplate(d.analysis.outlook.paceTooltip, {
+                  emphasis: <strong>{d.analysis.outlook.paceEmphasis}</strong>,
+                })}
               </CardHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                {/* v.category is USER DATA and renders exactly as stored. */}
                 {variance.map((v) => (
                   <div key={v.category}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.83rem', marginBottom: 4 }}>
@@ -620,24 +606,22 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
           {upcoming && (
             <div className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
               <CardHeading
-                title="Coming up"
-                tooltipLabel="How coming up is calculated"
-                scope={`Through ${upcoming.throughYmd} — not affected by the period above`}
+                title={d.analysis.outlook.comingUpTitle}
+                tooltipLabel={d.analysis.outlook.comingUpTooltipLabel}
+                scope={t(d.analysis.outlook.comingUpScope, { date: upcoming.throughYmd })}
               >
-                Scheduled payments and income due over the next three months, worked out from your
-                active rules. Paused rules and rules that have finished their run are left out.
-                <strong> One-off scheduled items are included here</strong> — unlike the fixed
-                commitments figure above, which counts only repeating obligations. Anything already
-                added to your ledger is not shown again.
+                {renderTemplate(d.analysis.outlook.comingUpTooltip, {
+                  emphasis: <strong>{d.analysis.outlook.comingUpEmphasis}</strong>,
+                })}
               </CardHeading>
 
               {upcoming.count === 0 ? (
-                <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>Nothing scheduled in the next three months.</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{d.analysis.outlook.nothingDue}</p>
               ) : (
                 <>
                   <div className="stat-tabs" style={{ marginBottom: '1rem' }}>
-                    <MiniTile label="Due out" value={formatCurrency(upcoming.expenseTotal)} />
-                    <MiniTile label="Due in" value={formatCurrency(upcoming.incomeTotal)} />
+                    <MiniTile label={d.analysis.outlook.dueOut} value={formatCurrency(upcoming.expenseTotal)} />
+                    <MiniTile label={d.analysis.outlook.dueIn} value={formatCurrency(upcoming.incomeTotal)} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {upcoming.months.map((m) => (
@@ -651,6 +635,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                           </span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          {/* it.description is USER DATA and renders as stored. */}
                           {m.items.map((it, i) => (
                             <div key={`${it.ruleId}-${it.date}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem' }}>
                               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink-soft)' }}>

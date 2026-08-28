@@ -3,7 +3,7 @@ import { Fraunces, Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { authClient } from "@/lib/auth/client";
 import { NeonAuthUIProvider } from "@neondatabase/auth-ui";
-import { DARK_MODE_FIELD, PEBBLE_UI_STORAGE_KEY } from "@/store/storageKeys";
+import { DARK_MODE_FIELD, LOCALE_FIELD, PEBBLE_UI_STORAGE_KEY } from "@/store/storageKeys";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var d=s&&JSON.parse(s).state[${JSON.stringify(DARK_MODE_FIELD)}];var c=document.documentElement.classList;c.add('no-theme-transition');if(d)c.add('pebble-dark');}catch(e){}`,
+            __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var p=s?JSON.parse(s).state:null;var d=p&&p[${JSON.stringify(DARK_MODE_FIELD)}];var l=p&&p[${JSON.stringify(LOCALE_FIELD)}];var e=document.documentElement;e.classList.add('no-theme-transition');if(d)e.classList.add('pebble-dark');if(l==='zh')e.lang='zh-CN';}catch(err){}`,
           }}
         />
       </head>

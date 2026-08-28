@@ -8,6 +8,8 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { LoadingOverlay } from '@/components/shared/Spinner';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface ModifyBalanceCardProps {
   checkingBalance: number;
@@ -35,6 +37,10 @@ const labelStyle: React.CSSProperties = {
  * statement but never in Reports.
  */
 export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanceCardProps) {
+  const { d, t, locale } = useTranslation();
+  // 'Checking' | 'Cash' - the stored, CHECK-constrained value. It is sent
+  // straight to createBalanceAdjustmentAction below; only its label is ever
+  // translated.
   const [account, setAccount] = useState<PaymentMethod>('Checking');
   const [mode, setMode] = useState<Mode>('setTo');
   const [value, setValue] = useState('');
@@ -67,7 +73,7 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
     }));
 
     setSaving(false);
-    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     setValue('');
     setDescription('');
     setSaved(true);
@@ -75,38 +81,39 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
 
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
-      {saving && <LoadingOverlay label="Recording adjustment…" />}
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Adjust a balance</h3>
+      {saving && <LoadingOverlay label={d.modifyBalance.saving} />}
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.modifyBalance.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-        If Pebble and your real account disagree, record the difference here. It shows up in your
-        statement as an adjustment, but is left out of Reports — it is a correction, not spending or income.
+        {d.modifyBalance.blurb}
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         {(['Checking', 'Cash'] as const).map((m) => (
           <button key={m} type="button" onClick={() => { setAccount(m); setSaved(false); }} className={`pill ${account === m ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
-            {m}
+            {d.enums.paymentMethod[m]}
           </button>
         ))}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1rem' }}>
-        <span>{account} balance now</span>
+        {/* Chinese drops the space between the account name and the noun,
+            which is why this is a template rather than concatenation. */}
+        <span>{t(d.modifyBalance.balanceNow, { account: d.enums.paymentMethod[account] })}</span>
         <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(currentBalance)}</span>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button type="button" onClick={() => { setMode('setTo'); setSaved(false); }} className={`pill ${mode === 'setTo' ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem', fontSize: '0.83rem' }}>
-          Set to amount
+          {d.modifyBalance.setTo}
         </button>
         <button type="button" onClick={() => { setMode('changeBy'); setSaved(false); }} className={`pill ${mode === 'changeBy' ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem', fontSize: '0.83rem' }}>
-          Add or subtract
+          {d.modifyBalance.changeBy}
         </button>
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
         <label style={{ ...labelStyle, flex: 1, minWidth: 150 }}>
-          {mode === 'setTo' ? 'New balance' : 'Change by (use − to subtract)'}
+          {mode === 'setTo' ? d.modifyBalance.newBalance : d.modifyBalance.changeByLabel}
           <input
             type="number" step="0.01" value={value}
             onChange={(e) => { setValue(e.target.value); setSaved(false); }}
@@ -116,18 +123,18 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
       </div>
 
       <label style={{ ...labelStyle, marginBottom: '1rem' }}>
-        Note <span style={{ opacity: 0.7 }}>(optional)</span>
+        {d.modifyBalance.note} <span style={{ opacity: 0.7 }}>{d.modifyBalance.optional}</span>
         <input
           value={description}
           onChange={(e) => { setDescription(e.target.value); setSaved(false); }}
-          placeholder="e.g. Bank interest, missed cash spend"
+          placeholder={d.modifyBalance.notePlaceholder}
           style={{ ...inputStyle, textAlign: 'left' }}
         />
       </label>
 
       {hasValue && delta !== 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem' }}>
-          <span>Adjustment</span>
+          <span>{d.modifyBalance.adjustment}</span>
           <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)', fontWeight: 600 }}>
             {delta > 0 ? '+' : ''}{formatCurrency(delta)} → {formatCurrency(resulting)}
           </span>
@@ -135,14 +142,14 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
       )}
 
       <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginBottom: '0.8rem' }} />
-      {saved && <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>Adjustment recorded.</p>}
+      {saved && <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>{d.modifyBalance.recorded}</p>}
 
       <button
         onClick={handleSave} disabled={saving || !hasValue || delta === 0}
         className="btn-primary"
         style={{ padding: '0.65rem 1.1rem', opacity: saving || !hasValue || delta === 0 ? 0.6 : 1 }}
       >
-        {saving ? 'Saving…' : 'Record adjustment'}
+        {saving ? d.common.saving : d.modifyBalance.record}
       </button>
     </div>
   );

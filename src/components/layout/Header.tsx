@@ -3,7 +3,8 @@
 import { usePathname } from 'next/navigation';
 import { Plus, Bell } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
-import { getGreeting } from '@/lib/format';
+import { getGreetingKey } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface HeaderProps {
   onAddTransactionClick: () => void;
@@ -21,26 +22,34 @@ interface PageMeta {
 export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick }: HeaderProps) {
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
+  const { d, t } = useTranslation();
 
   const firstName = !isPending && name ? name.trim().split(/\s+/)[0] : '';
-  const greeting = firstName ? `${getGreeting()}, ${firstName}` : getGreeting();
+  const greetingWord = d.header.greeting[getGreetingKey()];
+  // Interpolated, not concatenated. The separator was a hardcoded ', ' and
+  // Chinese needs a fullwidth comma, so it lives in the dictionary now.
+  const greeting = firstName
+    ? t(d.header.greetingWithName, { greeting: greetingWord, name: firstName })
+    : greetingWord;
 
-  // Same shape as the original's pageMeta/headerActions objects, just
-  // keyed by route instead of activeView string. Recomputed every render
-  // so getGreeting() stays live, same as the original.
+  // Recomputed every render so the greeting stays live, same as before.
+  //
+  // Titles come from d.nav rather than a parallel header.titles block: they
+  // are the same words as the sidebar labels, and one entry means the two
+  // cannot drift apart.
   const pageMeta: Record<string, PageMeta> = {
-    '/dashboard': { title: 'Dashboard', subtitle: greeting, action: { label: 'Add transaction', kind: 'addTransaction' } },
-    '/transactions': { title: 'Transactions', subtitle: 'Checking & Cash statements', action: { label: 'Add transaction', kind: 'addTransaction' } },
-    '/reports': { title: 'Reports', subtitle: 'Filter and group your expenses and income' },
-    '/analysis': { title: 'Analysis', subtitle: 'Trends, comparisons and projections' },
-    '/budgets': { title: 'Budgets', subtitle: 'This year', action: { label: 'Modify Budget', kind: 'modifyBudget' } },
+    '/dashboard': { title: d.nav.dashboard, subtitle: greeting, action: { label: d.header.addTransaction, kind: 'addTransaction' } },
+    '/transactions': { title: d.nav.transactions, subtitle: d.header.subtitles.transactions, action: { label: d.header.addTransaction, kind: 'addTransaction' } },
+    '/reports': { title: d.nav.reports, subtitle: d.header.subtitles.reports },
+    '/analysis': { title: d.nav.analysis, subtitle: d.header.subtitles.analysis },
+    '/budgets': { title: d.nav.budgets, subtitle: d.header.subtitles.budgets, action: { label: d.header.modifyBudget, kind: 'modifyBudget' } },
     // The goal count is still not shown, and the original reason stands now
     // that the feature has shipped: Header renders inside AppShell, so reading
     // it would cost a database query on EVERY page navigation, not just this
     // page's. The goals page itself shows the counts that matter.
-    '/goals': { title: 'Goals', subtitle: 'Money set aside for what is next', action: { label: 'Add goal', kind: 'addGoal' } },
-    '/scheduled': { title: 'Scheduled', subtitle: 'Recurring payments and income', action: { label: 'Add schedule', kind: 'addSchedule' } },
-    '/settings': { title: 'Settings', subtitle: 'Manage your preferences' },
+    '/goals': { title: d.nav.goals, subtitle: d.header.subtitles.goals, action: { label: d.common.addGoal, kind: 'addGoal' } },
+    '/scheduled': { title: d.nav.scheduled, subtitle: d.header.subtitles.scheduled, action: { label: d.header.addSchedule, kind: 'addSchedule' } },
+    '/settings': { title: d.nav.settings, subtitle: d.header.subtitles.settings },
   };
 
   const current = pageMeta[pathname] ?? pageMeta['/dashboard'];
@@ -63,7 +72,11 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
               <Plus size={16} /> <span className="add-btn-label">{current.action.label}</span>
             </button>
           )}
-          <button className="icon-btn" style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0 }}>
+          {/* aria-label added: this is an icon-only button with no accessible
+              name at all. See the note in the step that introduced it - remove
+              the attribute if you would rather keep this phase to translation
+              alone. */}
+          <button className="icon-btn" aria-label={d.header.notifications} style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0 }}>
             <Bell size={16} />
           </button>
         </div>

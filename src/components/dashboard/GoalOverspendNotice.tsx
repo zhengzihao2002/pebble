@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { renderTemplate } from '@/lib/i18n/RichText';
 
 interface GoalOverspendNoticeProps {
   totalBalance: number;
@@ -28,6 +30,7 @@ interface GoalOverspendNoticeProps {
  * only hides it.
  */
 export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNoticeProps) {
+  const { d } = useTranslation();
   if (allocated <= totalBalance) return null;
 
   const shortfall = allocated - totalBalance;
@@ -40,16 +43,17 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
       <AlertTriangle size={17} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>
-          Your goals claim more than your balance
+          {d.goalOverspend.title}
         </p>
         <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0.3rem 0 0' }}>
-          You have set aside {formatCurrency(allocated)} across your goals but your balance is{' '}
-          {formatCurrency(totalBalance)} — a shortfall of{' '}
-          <strong style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>. Nothing is
-          broken; it just means some of that money is no longer there.
+          {renderTemplate(d.goalOverspend.body, {
+            allocated: formatCurrency(allocated),
+            balance: formatCurrency(totalBalance),
+            shortfall: <strong style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>,
+          })}
         </p>
         <Link href="/goals" className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
-          Review goals <ChevronRight size={14} />
+          {d.goalOverspend.reviewGoals} <ChevronRight size={14} />
         </Link>
       </div>
     </div>

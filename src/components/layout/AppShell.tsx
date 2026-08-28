@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const darkMode = usePebbleStore((s) => s.darkMode);
   const textSize = usePebbleStore((s) => s.textSize);
+  const locale = usePebbleStore((s) => s.locale);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
@@ -76,6 +78,30 @@ export function AppShell({ children }: { children: ReactNode }) {
     // needs no refresh, so the common case costs nothing.
     router.refresh();
   }, [router]);
+
+  // Tells the server which language to render the one server-rendered page in
+  // (goals), and keeps <html lang> truthful after a toggle - the pre-paint
+  // script sets it before React exists, this maintains it afterwards.
+  //
+  // NOT guarded by a run-once ref, unlike the timezone effect above: a zone is
+  // discovered once and never changes mid-session, whereas the language is a
+  // control the user can flip at any moment. The equality check is what keeps
+  // the common case free, and it cannot loop - router.refresh() re-renders
+  // Server Components without remounting this client component or touching
+  // the store, so the deps do not change and the effect does not re-run.
+  useEffect(() => {
+    document.documentElement.lang = HTML_LANG[locale];
+
+    const existing = document.cookie
+      .split('; ')
+      .find((c) => c.startsWith(`${LOCALE_COOKIE}=`))
+      ?.split('=')[1];
+
+    if (existing === locale) return;
+
+    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    router.refresh();
+  }, [locale, router]);
 
   // Click feedback, delegated from one listener rather than wired into every
   // button. Scoped to interactive elements: clicking blank space and hearing a

@@ -3,6 +3,8 @@
 import { Banknote } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { paymentMethodLabel } from '@/lib/i18n/enumLabels';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -17,13 +19,17 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: TransactionRowProps) {
+  const { d, t, locale } = useTranslation();
   const meta = categoryMeta[txn.category];
   const Icon = meta ? meta.icon : Banknote;
   const isIncome = txn.amount > 0;
   const subtitleParts = [txn.category];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
-  subtitleParts.push(formatDate(txn.date));
-  if (!compact && txn.paymentMethod) subtitleParts.push(txn.paymentMethod);
+  subtitleParts.push(formatDate(txn.date, locale));
+  // txn.category and txn.tag above are USER DATA and stay exactly as stored.
+  // paymentMethod is a stored CHECK-constrained value, so only its LABEL is
+  // swapped here - txn.paymentMethod itself is never reassigned.
+  if (!compact && txn.paymentMethod) subtitleParts.push(paymentMethodLabel(d, txn.paymentMethod));
 
   const interactiveProps = onOpenDetail
     ? {
@@ -57,7 +63,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
         </div>
         {!compact && txn.type === 'income' && txn.grossAmount !== txn.netAmount && (
           <div className="font-mono-tab" style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 1 }}>
-            Gross {formatCurrency(txn.grossAmount)}
+            {t(d.txn.gross, { amount: formatCurrency(txn.grossAmount) })}
           </div>
         )}
       </div>

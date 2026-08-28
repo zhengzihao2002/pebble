@@ -21,6 +21,8 @@
 import type { ExpenseTransaction, Transaction } from '@/types';
 import { filterToWindow, type AnalysisWindow } from './windows';
 import { computeObservedMonths, monthIndex } from './months';
+import { chartMonthLabel } from './monthLabels';
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
 export function isExpense(t: Transaction): t is ExpenseTransaction {
   return t.type === 'expense';
@@ -110,8 +112,6 @@ export function computeSpendingSummary(
   };
 }
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 export interface MonthlySpend {
   key: string; // 'YYYY-MM'
   label: string;
@@ -129,6 +129,7 @@ export interface MonthlySpend {
 export function computeMonthlySpend(
   transactions: readonly Transaction[],
   window: AnalysisWindow,
+  locale: Locale = DEFAULT_LOCALE,
 ): MonthlySpend[] {
   const expenses = filterToWindow(window, transactions).filter(isExpense);
 
@@ -148,8 +149,12 @@ export function computeMonthlySpend(
     const key = `${y}-${String(m + 1).padStart(2, '0')}`;
     out.push({
       key,
-      // Year shown only in January, so the axis stays readable at 375px.
-      label: m === 0 ? `${MONTH_ABBR[m]} ${String(y).slice(2)}` : MONTH_ABBR[m],
+      // This was the FOURTH independent copy of this exact array-plus-rule
+      // (income.ts, cashflow.ts, upcoming.ts already had it) - found only
+      // because this file was requested to check YearOverYearChart's data
+      // source. Now shares the one implementation in monthLabels.ts, which
+      // always includes the year on every tick.
+      label: chartMonthLabel(y, m, locale),
       total: byMonth.get(key) ?? 0,
       // Always false now: the window holds only complete months. Kept so the
       // chart's Cell colouring needs no change.

@@ -3,6 +3,7 @@
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
+import { LanguageControl } from '@/components/settings/LanguageControl';
 import { OpeningBalanceCard } from '@/components/settings/OpeningBalanceCard';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
@@ -28,6 +29,8 @@ export function SettingsClient({
   const setTextSize = usePebbleStore((s) => s.setTextSize);
   const darkMode = usePebbleStore((s) => s.darkMode);
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
+  const locale = usePebbleStore((s) => s.locale);
+  const setLocale = usePebbleStore((s) => s.setLocale);
 
   return (
     // Card order matters here: the two tall cards (balance, categories) lead so
@@ -54,6 +57,10 @@ export function SettingsClient({
       <CategoryManagerCard />
       <TextSizeControl textSize={textSize} onChange={setTextSize} />
       <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
+      {/* Grouped with the other device preferences. Takes the card count from
+          seven to eight, which pairs evenly in the two-column layout rather
+          than opening the gap the comment above warns about. */}
+      <LanguageControl locale={locale} onChange={setLocale} />
       {/* Grouped with the other device preferences, and short enough not to
           disturb the tall/short pairing described above. */}
       <SoundSettingsCard />

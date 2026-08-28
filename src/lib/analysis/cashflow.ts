@@ -22,8 +22,8 @@ import type { RecurringRule, Transaction } from '@/types';
 import { filterToWindow, type AnalysisWindow } from './windows';
 import { computeObservedMonths, monthIndex } from './months';
 import { isExpense } from './spending';
-
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import { chartMonthLabel } from './monthLabels';
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
 export interface MonthlyFlow {
   key: string; // 'YYYY-MM'
@@ -69,6 +69,7 @@ export function computeCashflow(
   transactions: readonly Transaction[],
   window: AnalysisWindow,
   totalBalance: number,
+  locale: Locale = DEFAULT_LOCALE,
 ): CashflowSummary {
   const inWindow = filterToWindow(window, transactions);
 
@@ -101,7 +102,7 @@ export function computeCashflow(
     totalSpend += sp;
     months.push({
       key: `${y}-${String(m + 1).padStart(2, '0')}`,
-      label: m === 0 ? `${MONTH_ABBR[m]} ${String(y).slice(2)}` : MONTH_ABBR[m],
+      label: chartMonthLabel(y, m, locale),
       income: inc,
       spending: sp,
       net: inc - sp,

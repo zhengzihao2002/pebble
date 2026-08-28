@@ -79,18 +79,33 @@ function daysIn(y: number, m: number): number {
   return new Date(y, m + 1, 0).getDate();
 }
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
+import { INTL_LOCALE, DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
-/** Shortest unambiguous span: 'Aug 2025 - Jul 2026', 'May-Jul 2026', 'Jul 2026'. */
-export function formatMonthRange(startYmd: string, endYmd: string): string {
-  if (endYmd < startYmd) return 'no complete months yet';
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Shortest unambiguous span: 'Aug 2025 - Jul 2026', 'May-Jul 2026', 'Jul 2026'.
+ *
+ * Returns '' when there is no complete month, rather than a hardcoded English
+ * sentence - that string is UI prose and belongs in the caller's dictionary,
+ * not in this pure/clock-free module. The caller checks hasCompleteMonth.
+ *
+ * Chinese is a genuinely different shape, not a month-name swap: year-before-
+ * month, and a range joins with 至 rather than a hyphen.
+ */
+export function formatMonthRange(startYmd: string, endYmd: string, locale: Locale = DEFAULT_LOCALE): string {
+  if (endYmd < startYmd) return '';
   const s = parts(startYmd);
   const e = parts(endYmd);
-  if (s.y !== e.y) return `${MONTH_ABBR[s.m]} ${s.y} - ${MONTH_ABBR[e.m]} ${e.y}`;
-  if (s.m === e.m) return `${MONTH_ABBR[s.m]} ${s.y}`;
-  return `${MONTH_ABBR[s.m]}-${MONTH_ABBR[e.m]} ${s.y}`;
+  if (locale === 'zh') {
+    if (s.y !== e.y) return `${s.y}年${s.m + 1}月至${e.y}年${e.m + 1}月`;
+    if (s.m === e.m) return `${s.y}年${s.m + 1}月`;
+    return `${s.y}年${s.m + 1}月至${e.m + 1}月`;
+  }
+  const abbr = (m: number) => new Date(2000, m, 1).toLocaleDateString(INTL_LOCALE[locale], { month: 'short' });
+  if (s.y !== e.y) return `${abbr(s.m)} ${s.y} - ${abbr(e.m)} ${e.y}`;
+  if (s.m === e.m) return `${abbr(s.m)} ${s.y}`;
+  return `${abbr(s.m)}-${abbr(e.m)} ${s.y}`;
 }
 
 export function earliestDate(rows: readonly { date: string }[]): string | null {
@@ -103,6 +118,7 @@ export function resolveAnalysisWindow(
   key: AnalysisWindowKey,
   today: string,
   earliestYmd: string | null,
+  locale: Locale = DEFAULT_LOCALE,
 ): AnalysisWindow {
   const t = parts(today);
 
@@ -145,9 +161,13 @@ export function resolveAnalysisWindow(
     startYmd,
     endYmd,
     calendarMonths,
-    rangeLabel: hasCompleteMonth ? formatMonthRange(startYmd, endYmd) : 'no complete months yet',
+    // '' when there is no complete month - the caller supplies its own
+    // localized fallback text, gated on hasCompleteMonth.
+    rangeLabel: hasCompleteMonth ? formatMonthRange(startYmd, endYmd, locale) : '',
     currentMonthStartYmd: toYmd(t.y, t.m, 1),
-    currentMonthLabel: `${MONTH_FULL[t.m]} ${t.y}`,
+    currentMonthLabel: locale === 'zh'
+      ? `${t.y}年${t.m + 1}月`
+      : new Date(t.y, t.m, 1).toLocaleDateString(INTL_LOCALE[locale], { month: 'long', year: 'numeric' }),
     hasCompleteMonth,
   };
 }

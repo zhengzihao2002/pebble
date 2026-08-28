@@ -4,6 +4,7 @@ import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { LedgerEntry } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { StatementRow } from '@/components/shared/StatementRow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // A ledger entry with its full transaction record resolved — recentTransactions
 // entries are deliberately lightweight (just balances + an id), so the page
@@ -20,12 +21,13 @@ interface StatementListProps {
 }
 
 export function StatementList({ entries, openingBalance, categoryMeta, onOpenDetail }: StatementListProps) {
+  const { d, t } = useTranslation();
   return (
     <div className="card" style={{ padding: '0.25rem 0 1rem', overflow: 'hidden' }}>
       {entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--ink-soft)' }}>
-          <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>No activity this month</p>
-          <p style={{ fontSize: '0.85rem' }}>Balance carried forward at {formatCurrency(openingBalance)}.</p>
+          <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>{d.transactions.noActivity}</p>
+          <p style={{ fontSize: '0.85rem' }}>{t(d.transactions.carriedForward, { amount: formatCurrency(openingBalance) })}</p>
         </div>
       ) : (
         <div style={{ marginTop: '0.5rem' }}>

@@ -6,11 +6,13 @@ import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { navItems } from './navItems';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function Sidebar() {
   const darkMode = usePebbleStore((s) => s.darkMode);
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
   const { name, email, initials } = useCurrentUser();
+  const { d } = useTranslation();
 
   return (
     <aside className="pebble-sidebar">
@@ -22,13 +24,13 @@ export function Sidebar() {
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
         {navItems.map((item) => (
-          <NavButton key={item.href} href={item.href} icon={item.icon} label={item.label} />
+          <NavButton key={item.href} href={item.href} icon={item.icon} label={d.nav[item.labelKey]} />
         ))}
       </nav>
       <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         <button onClick={() => setDarkMode(!darkMode)} className="nav-btn">
           {darkMode ? <Moon size={18} /> : <Sun size={18} />}
-          {darkMode ? 'Dark Mode' : 'Light Mode'}
+          {darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}
         </button>
         <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>

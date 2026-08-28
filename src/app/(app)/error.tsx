@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, DatabaseZap } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
  * Error boundary for every route in the (app) group.
@@ -32,6 +33,10 @@ export default function AppGroupError({
   reset: () => void;
 }) {
   const router = useRouter();
+  // Safe inside an error boundary: getDictionary() falls back to English on
+  // any unrecognised value and cannot itself throw, so a bad stored locale
+  // can never turn a page failure into a blank screen.
+  const { d } = useTranslation();
 
   useEffect(() => {
     console.error('[pebble] page render failed', error);
@@ -63,23 +68,22 @@ export default function AppGroupError({
         </div>
 
         <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          Couldn&apos;t load your data
+          {d.error.title}
         </h2>
         <p style={{ fontSize: '0.87rem', color: 'var(--ink-soft)', lineHeight: 1.55, marginBottom: '1.4rem' }}>
-          Pebble reached this page but could not read from the database. Nothing has been changed or
-          lost — this is a problem getting your data, not with your data.
+          {d.error.body}
         </p>
 
         <button
           type="button" onClick={retry} className="btn-primary"
           style={{ padding: '0.7rem 1.3rem', display: 'inline-flex', alignItems: 'center', gap: 7 }}
         >
-          <RefreshCw size={15} />Try again
+          <RefreshCw size={15} />{d.error.retry}
         </button>
 
         {error.digest && (
           <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginTop: '1.2rem', opacity: 0.75 }}>
-            Reference: <span className="font-mono-tab">{error.digest}</span>
+            {d.error.reference} <span className="font-mono-tab">{error.digest}</span>
           </p>
         )}
       </div>

@@ -15,6 +15,8 @@ import { resolveCategoryIcon } from '@/lib/data/icons';
 import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from '@/data/seed';
 import { CategoryDeleteDialog } from './CategoryDeleteDialog';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 
 const inputStyle: React.CSSProperties = {
   padding: '0.5rem 0.6rem', borderRadius: '0.5rem', border: '1px solid var(--line)',
@@ -65,6 +67,10 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (color: str
 }
 
 export function CategoryManagerCard() {
+  // ⚠️ Category NAMES are user data. draft.name, c.name and everything sent
+  // to createCategoryAction/updateCategoryAction pass through untranslated.
+  // iconKey and color are looked-up values, never labels.
+  const { d, t, locale } = useTranslation();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -86,9 +92,9 @@ export function CategoryManagerCard() {
   // precisely the DB-outage case this work exists to make visible.
   const load = async () => {
     setLoading(true);
-    const result = await callAction(getCategoriesAction, "Couldn't load your categories.");
+    const result = await callAction(getCategoriesAction, d.categoryManager.loadFailed);
     if (!result.ok) {
-      setError(result.error);
+      setError(translateActionError(d, locale, result));
       setErrorKind(result.kind);
       setLoadFailed(true);
       setLoading(false);
@@ -100,7 +106,7 @@ export function CategoryManagerCard() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEdit = (c: CategoryItem) => {
     setAdding(false);
@@ -126,7 +132,7 @@ export function CategoryManagerCard() {
       ? await callAction(() => createCategoryAction(draft))
       : await callAction(() => updateCategoryAction({ id: editingId!, ...draft }));
     setBusy(false);
-    if (!result.ok) { setError(result.error); setErrorKind(result.kind); setLoadFailed(false); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
     cancel();
     await load();
   };
@@ -135,14 +141,13 @@ export function CategoryManagerCard() {
 
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
-      {busy && <LoadingOverlay label="Saving…" />}
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Categories</h3>
+      {busy && <LoadingOverlay label={d.common.saving} />}
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.categoryManager.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-        Rename, restyle, add or remove your expense categories. Deleting one asks where its
-        transactions should go — they are never lost.
+        {d.categoryManager.blurb}
       </p>
 
-      {loading && <LoadingBlock label="Loading your categories…" />}
+      {loading && <LoadingBlock label={d.categoryManager.loading} />}
 
       {!loading && (
         <>
@@ -157,20 +162,20 @@ export function CategoryManagerCard() {
                     <input
                       value={draft.name} disabled={!!editingSystem}
                       onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                      placeholder="Category name" style={inputStyle}
+                      placeholder={d.categoryManager.namePlaceholder} style={inputStyle}
                     />
                     {editingSystem && (
                       <span style={{ fontSize: '0.73rem', color: 'var(--ink-soft)' }}>
-                        This is the fallback category — its name is fixed, but you can change its icon and colour.
+                        {d.categoryManager.systemHint}
                       </span>
                     )}
                     <IconPicker value={draft.iconKey} color={draft.color} onChange={(iconKey) => setDraft((d) => ({ ...d, iconKey }))} />
                     <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                       <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                        <Check size={14} />{busy ? 'Saving…' : 'Save'}
+                        <Check size={14} />{busy ? d.common.saving : d.categoryManager.save}
                       </button>
-                      <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem' }}>Cancel</button>
+                      <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem' }}>{d.categoryManager.cancel}</button>
                     </div>
                   </div>
                 );
@@ -183,13 +188,13 @@ export function CategoryManagerCard() {
                   </span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {c.name}
-                    {c.isSystem && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6 }}>fallback</span>}
+                    {c.isSystem && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6 }}>{d.categoryManager.fallbackTag}</span>}
                   </span>
-                  <button type="button" onClick={() => startEdit(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={`Edit ${c.name}`}>
+                  <button type="button" onClick={() => startEdit(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={t(d.categoryManager.editAria, { name: c.name })}>
                     <Pencil size={14} />
                   </button>
                   {!c.isSystem && (
-                    <button type="button" onClick={() => setDeleteTarget(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={`Delete ${c.name}`}>
+                    <button type="button" onClick={() => setDeleteTarget(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
                       <Trash2 size={14} />
                     </button>
                   )}
@@ -203,16 +208,16 @@ export function CategoryManagerCard() {
               <input
                 value={draft.name} autoFocus
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                placeholder="New category name" style={inputStyle}
+                placeholder={d.categoryManager.newNamePlaceholder} style={inputStyle}
               />
               <IconPicker value={draft.iconKey} color={draft.color} onChange={(iconKey) => setDraft((d) => ({ ...d, iconKey }))} />
               <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
               <div style={{ display: 'flex', gap: '0.4rem' }}>
                 <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1 }}>
-                  {busy ? 'Adding…' : 'Add category'}
+                  {busy ? d.categoryManager.adding : d.categoryManager.addCategory}
                 </button>
                 <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                  <X size={14} />Cancel
+                  <X size={14} />{d.categoryManager.cancel}
                 </button>
               </div>
             </div>
@@ -227,7 +232,7 @@ export function CategoryManagerCard() {
 
           {!adding && !editingId && (
             <button type="button" onClick={startAdd} className="pill" style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-              <Plus size={15} />New category
+              <Plus size={15} />{d.categoryManager.newCategory}
             </button>
           )}
         </>

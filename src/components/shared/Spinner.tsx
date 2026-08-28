@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/useTranslation';
+
 /**
  * Loading indicators.
  *
@@ -20,12 +22,13 @@ interface SpinnerProps {
 
 /** Small inline spinner, sized to sit next to or inside button text. */
 export function Spinner({ size = 15, color = 'currentColor' }: SpinnerProps) {
+  const { d } = useTranslation();
   return (
     <>
       <style>{KEYFRAMES}</style>
       <svg
         width={size} height={size} viewBox="0 0 24 24" fill="none"
-        role="status" aria-label="Loading"
+        role="status" aria-label={d.common.loadingAria}
         style={{ animation: 'pebble-spin 0.7s linear infinite', flexShrink: 0 }}
       >
         <circle cx="12" cy="12" r="9" stroke={color} strokeWidth="2.5" opacity="0.22" />
@@ -44,7 +47,12 @@ export function Spinner({ size = 15, color = 'currentColor' }: SpinnerProps) {
  *
  * The parent must have position: relative or fixed.
  */
-export function LoadingOverlay({ label = 'Working…' }: { label?: string }) {
+export function LoadingOverlay({ label }: { label?: string }) {
+  const { d } = useTranslation();
+  // Default resolved HERE, not in the parameter list: a default parameter
+  // cannot call a hook, and leaving English there would have made every
+  // caller that omits the prop permanently untranslatable.
+  const text = label ?? d.common.working;
   return (
     <>
       <style>{KEYFRAMES}</style>
@@ -71,7 +79,7 @@ export function LoadingOverlay({ label = 'Working…' }: { label?: string }) {
           }}
         />
         <Spinner size={26} color="var(--pine)" />
-        <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', fontWeight: 500, position: 'relative' }}>{label}</span>
+        <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', fontWeight: 500, position: 'relative' }}>{text}</span>
       </div>
     </>
   );
@@ -79,7 +87,7 @@ export function LoadingOverlay({ label = 'Working…' }: { label?: string }) {
 
 /** Centred spinner for a region whose content has not arrived yet. */
 export function LoadingBlock({
-  label = 'Loading…',
+  label,
   minHeight = 120,
   // 22 suits a region inside a card. A full page body needs considerably
   // more before it reads as "working" rather than as decoration, so the
@@ -87,10 +95,12 @@ export function LoadingBlock({
   size = 22,
   labelSize = '0.8rem',
 }: { label?: string; minHeight?: number; size?: number; labelSize?: string }) {
+  const { d } = useTranslation();
+  const text = label ?? d.common.loading;
   return (
     <div style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem' }}>
       <Spinner size={size} color="var(--pine)" />
-      <span style={{ fontSize: labelSize, color: 'var(--ink-soft)' }}>{label}</span>
+      <span style={{ fontSize: labelSize, color: 'var(--ink-soft)' }}>{text}</span>
     </div>
   );
 }

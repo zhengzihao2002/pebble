@@ -4,6 +4,8 @@ import { Banknote, ChevronRight } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { TransactionRow } from '@/components/shared/TransactionRow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { categoryLabel } from '@/lib/i18n/enumLabels';
 import type { ReportPeriodGroup, CategoryGroupMode } from './types';
 
 interface ReportResultsProps {
@@ -27,17 +29,19 @@ export function ReportResults({
   expandedCategoryGroups, onToggleCategoryGroup, hasGroupKeys, anyGroupsExpanded, onToggleAllGroups,
   categoryMeta, onOpenDetail,
 }: ReportResultsProps) {
+  // dict/tr: `t` is the transaction parameter in three map callbacks below.
+  const { d: dict, t: tr } = useTranslation();
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <p style={{ fontSize: '0.82rem', color: 'var(--ink-soft)' }}>{periodFilteredCount} transaction{periodFilteredCount === 1 ? '' : 's'}</p>
-          <p className="font-mono-tab" style={{ fontSize: '1rem', fontWeight: 600, color: accent }}>{formatCurrency(grandTotal)} total</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--ink-soft)' }}>{tr(periodFilteredCount === 1 ? dict.reports.transactionsOne : dict.reports.transactionsOther, { count: periodFilteredCount })}</p>
+          <p className="font-mono-tab" style={{ fontSize: '1rem', fontWeight: 600, color: accent }}>{tr(dict.reports.grandTotal, { amount: formatCurrency(grandTotal) })}</p>
         </div>
         {categoryGroup === 'category' && hasGroupKeys && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button onClick={onToggleAllGroups} className="pill">
-              {anyGroupsExpanded ? 'Collapse all' : 'Expand all'}
+              {anyGroupsExpanded ? dict.reports.collapseAll : dict.reports.expandAll}
             </button>
           </div>
         )}
@@ -45,15 +49,15 @@ export function ReportResults({
 
       {periodGroups.length === 0 || periodFilteredCount === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--ink-soft)' }}>
-          <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>No transactions match</p>
-          <p style={{ fontSize: '0.85rem' }}>Try adjusting your filters.</p>
+          <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>{dict.reports.noMatch}</p>
+          <p style={{ fontSize: '0.85rem' }}>{dict.reports.noMatchHint}</p>
         </div>
       ) : (
         periodGroups.map((pg) => (
           <div key={pg.key} className="card" style={{ padding: '1.25rem 0', overflow: 'hidden' }}>
             {showPeriodHeaders && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem', padding: '0 1.5rem' }}>
-                <h3 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600 }}>{pg.key}</h3>
+                <h3 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600 }}>{pg.label}</h3>
                 <span className="font-mono-tab" style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{formatCurrency(pg.total)}</span>
               </div>
             )}
@@ -76,7 +80,7 @@ export function ReportResults({
                           style={{ color: 'var(--ink-soft)', flexShrink: 0, transform: isGroupExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}
                         />
                         <SgIcon size={14} style={{ color, flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sg.key}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{categoryLabel(dict, sg.key)}</span>
                       </span>
                       <span className="font-mono-tab" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', flexShrink: 0 }}>{formatCurrency(sg.total)}</span>
                     </button>

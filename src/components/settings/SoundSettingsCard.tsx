@@ -6,8 +6,10 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { SOUND_EVENTS, emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { SOUND_FILES } from '@/lib/sound/manifest';
 import { playSound } from '@/lib/sound/play';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function SoundSettingsCard() {
+  const { d, t } = useTranslation();
   const soundPrefs = usePebbleStore((s) => s.soundPrefs);
   const setSoundPref = usePebbleStore((s) => s.setSoundPref);
 
@@ -29,15 +31,25 @@ export function SoundSettingsCard() {
 
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
-      <h2 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.35rem' }}>Sounds</h2>
+      <h2 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.35rem' }}>{d.sounds.title}</h2>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-        Optional audio feedback. Everything is off until you choose a sound.
+        {d.sounds.blurb}
       </p>
 
       {!hasFiles && (
         <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem', padding: '0.7rem 0.8rem', backgroundColor: 'var(--mist)', borderRadius: '0.6rem' }}>
-          No sound files found. Add audio to <span className="font-mono-tab">public/sounds</span> and run{' '}
-          <span className="font-mono-tab">npm run sounds</span> — see the README in that folder.
+          {/* The path and the command are rendered as elements and are
+              never translated, so the sentence is split on its placeholders
+              and each language positions them itself. */}
+          {d.sounds.noFiles
+            .split(/(\{path\}|\{command\})/g)
+            .map((part, i) =>
+              part === '{path}'
+                ? <span key={i} className="font-mono-tab">public/sounds</span>
+                : part === '{command}'
+                  ? <span key={i} className="font-mono-tab">npm run sounds</span>
+                  : <span key={i}>{part}</span>,
+            )}
         </p>
       )}
 
@@ -47,10 +59,10 @@ export function SoundSettingsCard() {
           return (
             <div key={event.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label htmlFor={`sound-${event.key}`} style={{ fontSize: '0.82rem', fontWeight: 500 }}>
-                {event.label}
+                {d.sounds.events[event.key]}
               </label>
               <p style={{ fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
-                {event.hint}
+                {d.sounds.hints[event.key]}
               </p>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.15rem' }}>
                 <select
@@ -60,7 +72,9 @@ export function SoundSettingsCard() {
                   onChange={(e) => setSoundPref(event.key as SoundEvent, e.target.value || null)}
                   style={selectStyle}
                 >
-                  <option value="">No sound</option>
+                  {/* value="" is the stored "silent" state - null in the
+                      store. Only the text is translated. */}
+                  <option value="">{d.sounds.noSound}</option>
                   {SOUND_FILES.map((f) => (
                     <option key={f.id} value={f.id}>{f.label}</option>
                   ))}
@@ -74,7 +88,7 @@ export function SoundSettingsCard() {
                   className="icon-btn"
                   disabled={!current}
                   onClick={() => playSound(current)}
-                  aria-label={`Preview ${event.label} sound`}
+                  aria-label={t(d.sounds.preview, { event: d.sounds.events[event.key] })}
                   data-no-click-sound
                   style={{
                     width: 34, height: 34, borderRadius: '0.6rem', flexShrink: 0,

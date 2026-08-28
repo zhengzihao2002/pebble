@@ -5,32 +5,22 @@
  * type all derive from this array, so nothing else needs editing.
  */
 
+// ⚠️ KEYS ONLY - the label and hint that used to live here now sit in
+// d.sounds.events / d.sounds.hints. This module is imported by the store, and
+// display text has no business there.
+//
+// `as const` is LOAD-BEARING: SoundEvent is derived from these keys below, and
+// those keys are the field names of the persisted soundPrefs object. Without
+// it the union widens to string and the store loses its type entirely.
+//
+// The ORDER here is the order of the Settings card. It is not derived from the
+// dictionary, so a translation can never reorder the list.
 export const SOUND_EVENTS = [
-  {
-    key: 'expenseSaved',
-    label: 'Expense saved',
-    hint: 'Plays after an expense is successfully recorded.',
-  },
-  {
-    key: 'incomeSaved',
-    label: 'Income saved',
-    hint: 'Plays after income is successfully recorded.',
-  },
-  {
-    key: 'saveFailed',
-    label: 'Save failed',
-    hint: 'Plays when a save could not be completed.',
-  },
-  {
-    key: 'click',
-    label: 'Button click',
-    hint: 'Plays on primary buttons. Fires often — worth trying before keeping.',
-  },
-  {
-    key: 'goalReached',
-    label: 'Goal reached',
-    hint: 'Plays when a savings goal hits its target.',
-  },
+  { key: 'expenseSaved' },
+  { key: 'incomeSaved' },
+  { key: 'saveFailed' },
+  { key: 'click' },
+  { key: 'goalReached' },
 ] as const;
 
 export type SoundEvent = (typeof SOUND_EVENTS)[number]['key'];

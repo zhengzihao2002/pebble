@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface SignOutButtonProps {
   className?: string;
@@ -14,6 +15,7 @@ interface SignOutButtonProps {
 export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: SignOutButtonProps) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+  const { d } = useTranslation();
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -30,7 +32,7 @@ export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: S
   return (
     <button onClick={handleSignOut} className={className} style={style} disabled={signingOut}>
       <LogOut size={iconSize} />
-      {signingOut ? 'Signing out…' : 'Sign Out'}
+      {signingOut ? d.auth.signingOut : d.auth.signOut}
     </button>
   );
 }

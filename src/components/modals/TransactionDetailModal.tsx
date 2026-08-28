@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react';
 import { Banknote, Pencil, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import type { CategoryMeta, LedgerRecord, PaymentMethod } from '@/types';
-import { formatCurrency, parseLocalDate } from '@/lib/format';
+import { formatCurrency, formatFullDate, formatLongDate } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
+import { paymentMethodLabel } from '@/lib/i18n/enumLabels';
+import { renderTemplate } from '@/lib/i18n/RichText';
 
 interface TransactionDetailModalProps {
   txn: LedgerRecord | null;
@@ -31,6 +35,7 @@ const labelStyle: React.CSSProperties = {
 type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 
 export function TransactionDetailModal({ txn, onClose, categoryMeta }: TransactionDetailModalProps) {
+  const { d, t, locale } = useTranslation();
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +57,8 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const [netPay, setNetPay] = useState('');
 
   // Reset whenever a different transaction is opened, so a previous edit's
-  // draft never bleeds into another record.
+  // draft never bleeds into another record. Every value seeded here comes
+  // straight off the stored row - none of it is ever a label.
   useEffect(() => {
     if (!txn) return;
     setMode('view');
@@ -103,13 +109,15 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   // change money. Description, category and tag never are.
   const categoryNames = Object.keys(categoryMeta);
   // categoryMeta already carries a resolved icon and colour per name, so no
-  // resolveCategoryIcon() call is needed here.
+  // resolveCategoryIcon() call is needed here. label === value: category
+  // names are USER DATA and are never translated.
   const categoryOptions: SearchableSelectOption[] = categoryNames.map((name) => ({
     value: name,
     label: name,
     icon: categoryMeta[name]?.icon,
     color: categoryMeta[name]?.color,
   }));
+  // Compares the DRAFT against the stored literal, never against a label.
   const editingSideCash = txn.type === 'income' && category === 'Side Cash';
 
   // Reads the PERSISTED category, not the edit form's draft `category` state.
@@ -139,6 +147,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   //
   // Amounts compare as numbers: the form holds strings, so "1600.00" and
   // "1600" are the same value and must not read as an edit.
+  //
+  // Every comparison here is value-to-value. Nothing in this block is
+  // language-dependent, so switching locale can never mark a form dirty.
   const hasChanges = (() => {
     if (txn.type === 'adjustment') return false;
     if (description.trim() !== txn.description.trim()) return true;
@@ -182,7 +193,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     }));
 
     setBusy(false);
-    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -230,28 +241,32 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
       ? await callAction(() => deleteBalanceAdjustmentAction({ id: txn.id }))
       : await callAction(() => deleteTransactionAction({ id: txn.id, type: txn.type }));
     setBusy(false);
-    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     onClose();
   };
 
-  const rows = isAdjustment ? [
-    { label: 'Type', value: 'Balance adjustment' },
-    { label: 'Date', value: parseLocalDate(txn.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) },
-    { label: 'Account', value: txn.paymentMethod },
+  // Each row carries a STABLE key alongside its label. The key was the label
+  // until this change - which meant every row remounted on a language switch,
+  // since React saw eight different keys.
+  const rows: { key: string; label: string; value: string }[] = isAdjustment ? [
+    { key: 'type', label: d.txnDetail.rowType, value: d.txn.balanceAdjustment },
+    { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
+    { key: 'account', label: d.txnDetail.rowAccount, value: paymentMethodLabel(d, txn.paymentMethod) },
   ] : [
-    { label: 'Type', value: isIncome ? 'Income' : 'Expense' },
-    { label: 'Category', value: txn.category },
-    ...(txn.type === 'expense' && txn.tag ? [{ label: 'Tag / sub-category', value: txn.tag }] : []),
-    { label: 'Date', value: parseLocalDate(txn.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) },
-    { label: 'Payment method', value: txn.paymentMethod || '—' },
+    { key: 'type', label: d.txnDetail.rowType, value: isIncome ? d.enums.kind.income : d.enums.kind.expense },
+    // Category and tag are USER DATA - shown exactly as stored.
+    { key: 'category', label: d.txnDetail.rowCategory, value: txn.category },
+    ...(txn.type === 'expense' && txn.tag ? [{ key: 'tag', label: d.txnDetail.rowTag, value: txn.tag }] : []),
+    { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
+    { key: 'method', label: d.txnDetail.rowPaymentMethod, value: paymentMethodLabel(d, txn.paymentMethod) || '—' },
     // Side cash is untaxed, so the actions store gross = net. Showing both
     // rows would print the same number twice under two labels that imply a
     // deduction happened. One "Amount" row, matching the edit form's label.
     ...(txn.type === 'income' ? (isSideCash ? [
-      { label: 'Amount', value: formatCurrency(txn.netAmount) },
+      { key: 'amount', label: d.txnDetail.rowAmount, value: formatCurrency(txn.netAmount) },
     ] : [
-      { label: 'Pay before deductions', value: formatCurrency(txn.grossAmount) },
-      { label: 'Pay after deductions', value: formatCurrency(txn.netAmount) },
+      { key: 'gross', label: d.txnDetail.rowPayBefore, value: formatCurrency(txn.grossAmount) },
+      { key: 'net', label: d.txnDetail.rowPayAfter, value: formatCurrency(txn.netAmount) },
       // Derived at render, never stored. The imported data had a
       // tax_percentage column, dropped deliberately because gross and net
       // already determine it - storing it would be a second source of truth
@@ -263,7 +278,8 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
       // genuinely distinct; Side Cash stores gross = net and shows a single
       // Amount row, so a permanent 0.0% row there would be noise.
       {
-        label: 'Deductions',
+        key: 'deductions',
+        label: d.txnDetail.rowDeductions,
         value: `${deductionPct(txn.grossAmount, txn.netAmount).toFixed(1)}%`,
       },
     ]) : []),
@@ -273,13 +289,15 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const descTitle = descLines[0];
   const descRest = descLines.slice(1).join('\n').trim();
 
+  const dipsParts = d.txnDetail.dipsBody.split('{amount}');
+
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
       onClick={requestClose}
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        {busy && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting…' : 'Saving changes…'} />}
+        {busy && <LoadingOverlay label={mode === 'confirmDelete' ? d.txnDetail.deletingOverlay : d.txnDetail.savingChanges} />}
         {/* mode drives which panel shows; 'confirmOverspend' pauses a save
             without unmounting the edit form behind it. */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
@@ -303,7 +321,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
           <>
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {rows.map((r) => (
-                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem' }}>
+                <div key={r.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--ink-soft)' }}>{r.label}</span>
                   <span className="font-mono-tab" style={{ fontWeight: 500, textAlign: 'right' }}>{r.value}</span>
                 </div>
@@ -312,8 +330,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
             {isAdjustment && (
               <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '1rem', lineHeight: 1.45 }}>
-                A manual correction to your balance. It appears here in your statement but is left out
-                of Reports, since it is not real spending or income.
+                {d.txnDetail.adjustmentNote}
               </p>
             )}
 
@@ -322,11 +339,11 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.35rem' }}>
               {!isAdjustment && (
                 <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Pencil size={14} />Edit
+                  <Pencil size={14} />{d.txnDetail.edit}
                 </button>
               )}
               <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Trash2 size={14} />Delete
+                <Trash2 size={14} />{d.txnDetail.delete}
               </button>
             </div>
           </>
@@ -335,7 +352,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
         {mode === 'edit' && (
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
             <label style={labelStyle}>
-              Description
+              {d.txnDetail.description}
               <textarea
                 value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
                 style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
@@ -348,21 +365,21 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     clicking the word "Category" would open the dropdown. The input
                     carries its own accessible name via ariaLabel. */}
                 <div style={labelStyle}>
-                  <span>Category</span>
+                  <span>{d.txnDetail.rowCategory}</span>
                   <SearchableSelect
                     value={category}
                     onChange={setCategory}
                     options={categoryOptions}
-                    placeholder="Search categories…"
-                    ariaLabel="Category"
+                    placeholder={d.select.searchCategories}
+                    ariaLabel={d.txnDetail.rowCategory}
                   />
                 </div>
                 <label style={labelStyle}>
-                  Tag <span style={{ opacity: 0.7 }}>(optional)</span>
+                  {d.txnDetail.tag} <span style={{ opacity: 0.7 }}>{d.txnDetail.optional}</span>
                   <input value={tag} onChange={(e) => setTag(e.target.value)} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  Amount
+                  {d.txnDetail.rowAmount}
                   <input
                     type="number" min="0" step="0.01" value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -373,28 +390,29 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             ) : (
               <>
                 <label style={labelStyle}>
-                  Category
+                  {d.txnDetail.rowCategory}
                   <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-                    <option value="Standard Income">Standard Income</option>
-                    <option value="Side Cash">Side Cash</option>
+                    {/* ⚠️ Matched as string literals by isSideCash() and the
+                        income filters in stats.ts. Only the text is translated. */}
+                    <option value="Standard Income">{d.enums.incomeCategory['Standard Income']}</option>
+                    <option value="Side Cash">{d.enums.incomeCategory['Side Cash']}</option>
                   </select>
                 </label>
                 {editingSideCash && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
-                    Side cash counts toward your balance and appears in Reports, but is left out of the
-                    Income and Savings rate figures on your dashboard — those track standard income only.
+                    {d.txnDetail.sideCashNote}
                   </p>
                 )}
                 {(
                   <>
                     {!editingSideCash && (
                       <label style={labelStyle}>
-                        Pay before deductions
+                        {d.txnDetail.rowPayBefore}
                         <input type="number" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} className="font-mono-tab" style={inputStyle} />
                       </label>
                     )}
                     <label style={labelStyle}>
-                      {editingSideCash ? 'Amount' : 'Pay after deductions'}
+                      {editingSideCash ? d.txnDetail.rowAmount : d.txnDetail.rowPayAfter}
                       <input
                         type="number" min="0" step="0.01" value={netPay}
                         onChange={(e) => setNetPay(e.target.value)}
@@ -405,11 +423,11 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     {!editingSideCash && (
                       netExceedsGross ? (
                         <p style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
-                          Pay after deductions cannot be more than pay before deductions.
+                          {d.txnDetail.netExceedsGross}
                         </p>
                       ) : draftAmountsParse && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-                          <span>Deductions</span>
+                          <span>{d.txnDetail.rowDeductions}</span>
                           <span className="font-mono-tab" style={{ fontWeight: 500 }}>
                             {deductionPct(draftGross, draftNet).toFixed(1)}%
                           </span>
@@ -423,11 +441,13 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
             {(
               <label style={labelStyle}>
-                Payment method
+                {d.txnDetail.rowPaymentMethod}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {/* CHECK-constrained values. setPaymentMethod always
+                      receives the English literal. */}
                   {(['Checking', 'Cash'] as const).map((m) => (
                     <button key={m} type="button" onClick={() => setPaymentMethod(m)} className={`pill ${paymentMethod === m ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
-                      {m}
+                      {d.enums.paymentMethod[m]}
                     </button>
                   ))}
                 </div>
@@ -435,7 +455,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             )}
 
             <label style={labelStyle}>
-              Date
+              {d.txnDetail.rowDate}
               <input
                 type="date" value={date}
                 onChange={(e) => setDate(e.target.value)} style={inputStyle}
@@ -445,14 +465,14 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={busy} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Cancel</button>
+              <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.cancel}</button>
               <button
                 type="button" onClick={handleSave}
                 disabled={busy || netExceedsGross || !hasChanges}
                 className="btn-primary"
                 style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges ? 0.6 : 1 }}
               >
-                {busy ? 'Saving…' : 'Save changes'}
+                {busy ? d.common.saving : d.txnDetail.saveChanges}
               </button>
             </div>
           </div>
@@ -460,20 +480,19 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
         {mode === 'confirmOverspend' && (
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.15rem' }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>This dips into your goals</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.txnDetail.dipsTitle}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              This change spends{' '}
-              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(shortfall)}</span>{' '}
-              you had set aside for goals. That is fine to do — your goals will just be counting on money
-              that is not there yet.
+              {dipsParts[0]}
+              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(shortfall)}</span>
+              {dipsParts[1]}
             </p>
 
             <ActionError message={error} kind={errorKind} onRetry={performSave} busy={busy} style={{ marginBottom: '0.9rem' }} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Go back</button>
+              <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.goBack}</button>
               <button type="button" onClick={performSave} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: busy ? 0.6 : 1 }}>
-                {busy ? 'Saving…' : 'Continue'}
+                {busy ? d.common.saving : d.txnDetail.proceed}
               </button>
             </div>
           </div>
@@ -481,20 +500,21 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
         {mode === 'confirmDelete' && (
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.15rem' }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Delete this transaction?</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.txnDetail.deleteConfirm}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              <strong style={{ color: 'var(--ink)' }}>{descTitle}</strong> for{' '}
-              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(txn.amount)}</span> on{' '}
-              {parseLocalDate(txn.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              {' '}will be removed as if it had never been recorded. Your balances will adjust. This cannot be undone.
+              {renderTemplate(d.txnDetail.deleteBody, {
+                description: <strong style={{ color: 'var(--ink)' }}>{descTitle}</strong>,
+                amount: <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(txn.amount)}</span>,
+                date: formatLongDate(txn.date, locale),
+              })}
             </p>
 
             <ActionError message={error} kind={errorKind} onRetry={handleDelete} busy={busy} style={{ marginBottom: '0.9rem' }} />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
+              <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.keepIt}</button>
               <button type="button" onClick={handleDelete} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: busy ? 0.6 : 1 }}>
-                {busy ? 'Deleting…' : 'Delete'}
+                {busy ? d.txnDetail.deleting : d.txnDetail.delete}
               </button>
             </div>
           </div>

@@ -1,6 +1,8 @@
 'use client';
 
 import { ChevronRight, Search } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { categoryLabel, periodValueLabel } from '@/lib/i18n/enumLabels';
 
 // Matches the compact selects on the dashboard charts. Grows to fill its
 // track so a row of filters spreads across the available width instead of
@@ -73,6 +75,8 @@ export function ReportFilters({
   availableCats, selectedCategories, allSelected, onToggleCategory, onToggleAllCategories,
   showTagFilter, singleSelectedCategory, availableTags, selectedTags, onToggleTag, onClearTags,
 }: ReportFiltersProps) {
+  // dict/tr, not d/t: `t` is the map parameter for a report type below.
+  const { d: dict, t: tr } = useTranslation();
   return (
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <button
@@ -80,7 +84,7 @@ export function ReportFilters({
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
       >
         <div style={{ minWidth: 0 }}>
-          <p className="filter-label" style={{ margin: 0 }}>Filters</p>
+          <p className="filter-label" style={{ margin: 0 }}>{dict.reports.filters}</p>
           <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
             {filterSummary}
           </p>
@@ -109,7 +113,7 @@ export function ReportFilters({
                   key={t} onClick={() => onTypeChange(t)} className={`pill ${reportType === t ? 'active' : ''}`}
                   style={{ flex: 1, padding: '0.62rem', fontWeight: 600 }}
                 >
-                  {t === 'expense' ? 'Expenses' : 'Income'}
+                  {t === 'expense' ? dict.reports.expenses : dict.reports.income}
                 </button>
               ))}
             </div>
@@ -124,24 +128,25 @@ export function ReportFilters({
                 fit, rather than at a fixed breakpoint. */}
             <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
               <div style={filterFieldStyle}>
-                <p className="filter-label">Time period</p>
+                <p className="filter-label">{dict.reports.timePeriod}</p>
                 <select
                   value={periodGroup}
                   onChange={(e) => onPeriodGroupChange(e.target.value as PeriodGroup)}
                   style={filterSelectStyle}
                 >
-                  <option value="month">Month</option>
-                  <option value="quarter">Quarter</option>
-                  <option value="year">Year</option>
-                  <option value="all">All time</option>
+                  {/* values are the stored PeriodGroup union members. */}
+                  <option value="month">{dict.reports.month}</option>
+                  <option value="quarter">{dict.reports.quarter}</option>
+                  <option value="year">{dict.reports.year}</option>
+                  <option value="all">{dict.reports.allTime}</option>
                 </select>
               </div>
 
               {showYearSelector && (
                 <div style={filterFieldStyle}>
-                  <p className="filter-label">Which year</p>
+                  <p className="filter-label">{dict.reports.whichYear}</p>
                   <select value={subYear} onChange={(e) => onSubYearChange(e.target.value)} style={filterSelectStyle}>
-                    <option value="All">All years</option>
+                    <option value="All">{dict.reports.allYears}</option>
                     {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
@@ -151,21 +156,30 @@ export function ReportFilters({
                 <div style={filterFieldStyle}>
                   <p className="filter-label">{subPeriodLabel}</p>
                   <select value={subPeriod} onChange={(e) => onSubPeriodChange(e.target.value)} style={filterSelectStyle}>
-                    <option value="All">All {periodGroup}s</option>
-                    {subPeriodOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    {/* Was `All {periodGroup}s` - English pluralising the raw
+                        mode value. One key per mode instead.
+                        Each option's VALUE is the MONTH_NAMES / QUARTER_NAMES
+                        string that gets persisted and compared; only the text
+                        is translated, and a year number falls through. */}
+                    <option value="All">
+                      {periodGroup === 'month' ? dict.reports.allMonths
+                        : periodGroup === 'quarter' ? dict.reports.allQuarters
+                        : dict.reports.allYears}
+                    </option>
+                    {subPeriodOptions.map((opt) => <option key={opt} value={opt}>{periodValueLabel(dict, opt)}</option>)}
                   </select>
                 </div>
               )}
 
               <div style={filterFieldStyle}>
-                <p className="filter-label">Group by</p>
+                <p className="filter-label">{dict.reports.groupBy}</p>
                 <select
                   value={categoryGroup}
                   onChange={(e) => onCategoryGroupChange(e.target.value as CategoryGroupMode)}
                   style={filterSelectStyle}
                 >
-                  <option value="category">Category</option>
-                  <option value="none">None</option>
+                  <option value="category">{dict.reports.groupCategory}</option>
+                  <option value="none">{dict.reports.groupNone}</option>
                 </select>
               </div>
 
@@ -173,7 +187,7 @@ export function ReportFilters({
                   choice ("Newest first"), while staying two pieces of state so the
                   group and row comparators can share a direction. */}
               <div style={filterFieldStyle}>
-                <p className="filter-label">Sort</p>
+                <p className="filter-label">{dict.reports.sort}</p>
                 <select
                   value={`${sortField}-${sortDir}`}
                   onChange={(e) => {
@@ -183,40 +197,46 @@ export function ReportFilters({
                   }}
                   style={filterSelectStyle}
                 >
-                  <option value="amount-desc">Highest first</option>
-                  <option value="amount-asc">Lowest first</option>
-                  <option value="date-desc">Newest first</option>
-                  <option value="date-asc">Oldest first</option>
+                  {/* value encodes `${sortField}-${sortDir}` and is split
+                      back apart above - never translated. */}
+                  <option value="amount-desc">{dict.reports.sortHighest}</option>
+                  <option value="amount-asc">{dict.reports.sortLowest}</option>
+                  <option value="date-desc">{dict.reports.sortNewest}</option>
+                  <option value="date-asc">{dict.reports.sortOldest}</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <p className="filter-label">Description</p>
+              <p className="filter-label">{dict.reports.description}</p>
               <div style={{ position: 'relative', maxWidth: 320 }}>
                 <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)' }} />
                 <input
-                  value={descQuery} onChange={(e) => onDescQueryChange(e.target.value)} placeholder="Optional — search description"
+                  value={descQuery} onChange={(e) => onDescQueryChange(e.target.value)} placeholder={dict.reports.descriptionPlaceholder}
                   style={{ width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.1rem', borderRadius: '0.7rem', border: '1px solid var(--line)', fontSize: '0.83rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' }}
                 />
               </div>
             </div>
 
             <div>
-              <p className="filter-label">Only include categories</p>
+              <p className="filter-label">{dict.reports.onlyCategories}</p>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button onClick={onToggleAllCategories} className={`pill ${allSelected ? 'active' : ''}`}>All</button>
+                <button onClick={onToggleAllCategories} className={`pill ${allSelected ? 'active' : ''}`}>{dict.reports.all}</button>
+                {/* c is the stored category name - the React key, the toggle
+                    argument and the filter all use it untranslated. Only the
+                    two income literals get a label; user categories pass
+                    through categoryLabel unchanged. */}
                 {availableCats.map((c) => (
-                  <button key={c} onClick={() => onToggleCategory(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{c}</button>
+                  <button key={c} onClick={() => onToggleCategory(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{categoryLabel(dict, c)}</button>
                 ))}
               </div>
             </div>
 
             {showTagFilter && availableTags.length > 0 && (
               <div>
-                <p className="filter-label">{singleSelectedCategory} sub-category</p>
+                <p className="filter-label">{tr(dict.reports.subCategoryOf, { category: categoryLabel(dict, singleSelectedCategory ?? '') })}</p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button onClick={onClearTags} className={`pill ${selectedTags.size === 0 ? 'active' : ''}`}>All</button>
+                  <button onClick={onClearTags} className={`pill ${selectedTags.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
                   {availableTags.map((tag) => (
                     <button key={tag} onClick={() => onToggleTag(tag)} className={`pill ${selectedTags.has(tag) ? 'active' : ''}`}>{tag}</button>
                   ))}

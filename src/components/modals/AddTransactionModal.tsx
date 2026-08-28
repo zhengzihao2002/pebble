@@ -13,12 +13,31 @@ import { ActionError } from '@/components/shared/ActionError';
 import { playEventSound } from '@/lib/sound/useSound';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface AddTransactionModalProps {
   onClose: () => void;
 }
 
+/**
+ * ⚠️ LANGUAGE MUST NOT CHANGE WHAT THIS FORM SUBMITS.
+ *
+ * Four stored values are chosen here: type ('expense'/'income'), category
+ * (user data, or 'Standard Income'/'Side Cash' for income), paymentMethod
+ * ('Checking'/'Cash', CHECK-constrained) and the date ('YYYY-MM-DD').
+ *
+ * Every one of them previously rendered its own raw value as its button
+ * label. They now render a dictionary LABEL while the state - and therefore
+ * the payload - keeps the English literal. The pattern to preserve: the
+ * `as const` arrays below hold VALUES, and the dictionary is indexed BY those
+ * values. Never map in the other direction.
+ *
+ * A transaction added in Chinese must store byte-identical values to one
+ * added in English.
+ */
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
+  const { d, t, locale } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
@@ -34,19 +53,25 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
   // so a layout fetch would run on every page navigation.
+  //
+  // The fallback message is passed WITHOUT the locale in the dependency list
+  // on purpose: re-running this effect on a language switch would refetch
+  // categories for nothing. A message already on screen stays in the language
+  // it was raised in until the next attempt.
   useEffect(() => {
     let active = true;
     // A failure here used to return silently, leaving an empty dropdown with
     // no explanation - and the expense form could still be submitted with an
     // empty category. Surfaced instead.
-    callAction(getCategoriesAction, "Couldn't load your categories.").then((result) => {
+    callAction(getCategoriesAction, d.addTxn.categoriesFailed).then((result) => {
       if (!active) return;
-      if (!result.ok) { setCategoryError(result.error); return; }
+      if (!result.ok) { setCategoryError(translateActionError(d, locale, result)); return; }
       setCategories(result.categories);
       setCategoryError(null);
       setCategory((current) => current || result.categories[0]?.name || '');
     });
     return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -60,9 +85,13 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [grossPay, setGrossPay] = useState('');
   const [netPay, setNetPay] = useState('');
 
+  // Compares against the STORED literal, never against a label.
   const isSideCashSelected = incomeCategory === 'Side Cash';
 
   const categoryOptions = useMemo<SearchableSelectOption[]>(
+    // label === value deliberately: category names are USER DATA and are
+    // never translated. The user already has Chinese category names alongside
+    // English ones, and every join is by name.
     () => categories.map((c) => ({
       value: c.name,
       label: c.name,
@@ -107,13 +136,14 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       const gross = isSideCashSelected
         ? Number(netPay)
         : (grossPay ? Number(grossPay) : Number(netPay));
+      // incomeCategory goes over the wire as the untranslated literal.
       result = await callAction(() => addTransactionAction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
     }
 
     setSaving(false);
     setPendingShortfall(null);
     if (!result.ok) {
-      setSaveError(result.error);
+      setSaveError(translateActionError(d, locale, result));
       setSaveErrorKind(result.kind);
       playEventSound('saveFailed');
       return;
@@ -133,7 +163,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     } else {
       if (!netPay || Number(netPay) <= 0) return;
       if (netExceedsGross) {
-        setSaveError('Pay after deductions cannot be more than pay before deductions.');
+        // Client-side validation, so this one CAN be localized. The messages
+        // ActionError usually shows come from pebble.ts and are still English
+        // - see the note in ActionError.tsx.
+        setSaveError(d.addTxn.netExceedsGross);
         setSaveErrorKind('validation');
         return;
       }
@@ -167,53 +200,61 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     await performSave();
   };
 
+  // Split rather than interpolated: the amount must keep .font-mono-tab, and
+  // t() returns a plain string. Splitting on the placeholder puts the element
+  // wherever that language's sentence puts it - English mid-sentence, Chinese
+  // later - which two concatenated half-strings could not do.
+  const dipsParts = d.addTxn.dipsBody.split('{amount}');
+
   return (
     <div
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
       onClick={requestClose}
     >
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        {saving && <LoadingOverlay label="Saving transaction…" />}
+        {saving && <LoadingOverlay label={d.addTxn.saving} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
-          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>Add transaction</h2>
+          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.addTxn.title}</h2>
           <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
         {pendingShortfall !== null ? (
           <div>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>This dips into your goals</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.addTxn.dipsTitle}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              This transaction spends{' '}
-              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(pendingShortfall)}</span>{' '}
-              you had set aside for goals. That is fine to do — your goals will just be counting on money
-              that is not there yet.
+              {dipsParts[0]}
+              <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(pendingShortfall)}</span>
+              {dipsParts[1]}
             </p>
             <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => setPendingShortfall(null)} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Go back</button>
+              <button type="button" onClick={() => setPendingShortfall(null)} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.addTxn.goBack}</button>
               <button type="button" onClick={performSave} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Saving…' : 'Continue'}
+                {saving ? d.common.saving : d.addTxn.proceed}
               </button>
             </div>
           </div>
         ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(['expense', 'income'] as const).map((t) => (
+            {/* The array holds the STORED values; the dictionary is indexed by
+                them. setType therefore always receives the English literal.
+                capitalize is left on for English - it is a no-op in Chinese. */}
+            {(['expense', 'income'] as const).map((k) => (
               <button
-                key={t} type="button" onClick={() => setType(t)}
-                className={`pill ${type === t ? 'active' : ''}`}
+                key={k} type="button" onClick={() => setType(k)}
+                className={`pill ${type === k ? 'active' : ''}`}
                 style={{ flex: 1, textTransform: 'capitalize', padding: '0.55rem' }}
               >
-                {t}
+                {d.enums.kind[k]}
               </button>
             ))}
           </div>
 
           <label style={labelStyle}>
-            Description
+            {d.addTxn.description}
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)} required rows={2}
-              placeholder={"e.g. Coffee shop\nOptional notes on the next line"}
+              placeholder={d.addTxn.descriptionPlaceholder}
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', minHeight: '2.6rem' }}
             />
           </label>
@@ -230,27 +271,29 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                     click on its control, which would open the dropdown from a
                     click on the word "Category". The input carries its own
                     accessible name via aria-label. */}
-                <span>Category</span>
+                <span>{d.addTxn.category}</span>
                 <SearchableSelect
                   id="add-txn-category"
                   value={category}
                   onChange={setCategory}
                   options={categoryOptions}
-                  placeholder={categoryError ? 'Unavailable' : 'Search categories…'}
+                  placeholder={categoryError ? d.select.unavailable : d.select.searchCategories}
                   disabled={categoryOptions.length === 0}
-                  ariaLabel="Category"
+                  ariaLabel={d.addTxn.category}
                 />
                 {categoryError && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>{categoryError}</span>
                 )}
               </div>
               <label style={labelStyle}>
-                Tag <span style={{ opacity: 0.7 }}>(sub-category, optional)</span>
-                <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Groceries" style={inputStyle} />
+                {d.addTxn.tag} <span style={{ opacity: 0.7 }}>{d.addTxn.tagHint}</span>
+                <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder={d.addTxn.tagPlaceholder} style={inputStyle} />
               </label>
               <label style={labelStyle}>
-                Amount
+                {d.addTxn.amount}
                 <div style={{ position: 'relative' }}>
+                  {/* Stays '$' in every locale: these are the user's real US
+                      dollars, and formatCurrency() is pinned to en-US too. */}
                   <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                   <input
                     type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required
@@ -262,28 +305,30 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
           ) : (
             <>
               <label style={labelStyle}>
-                Category
+                {d.addTxn.category}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {/* ⚠️ Same pattern, and the most important instance of it.
+                      'Standard Income' and 'Side Cash' are matched as literals
+                      by isSideCash() and by the income filters in stats.ts. */}
                   {(['Standard Income', 'Side Cash'] as const).map((c) => (
                     <button
                       key={c} type="button" onClick={() => setIncomeCategory(c)}
                       className={`pill ${incomeCategory === c ? 'active' : ''}`}
                       style={{ flex: 1, padding: '0.55rem' }}
                     >
-                      {c}
+                      {d.enums.incomeCategory[c]}
                     </button>
                   ))}
                 </div>
                 {isSideCashSelected && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45 }}>
-                    Side cash counts toward your balance and appears in Reports, but is left out of the
-                    Income and Savings rate figures on your dashboard — those track standard income only.
+                    {d.addTxn.sideCashNote}
                   </span>
                 )}
               </label>
               {!isSideCashSelected && (
                 <label style={labelStyle}>
-                  Pay before deductions
+                  {d.addTxn.payBefore}
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                     <input
@@ -294,7 +339,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 </label>
               )}
               <label style={labelStyle}>
-                {isSideCashSelected ? 'Amount' : 'Pay after deductions'}
+                {isSideCashSelected ? d.addTxn.amount : d.addTxn.payAfter}
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                   <input
@@ -306,11 +351,11 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               </label>
               {netExceedsGross ? (
                 <p style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
-                  Pay after deductions cannot be more than pay before deductions.
+                  {d.addTxn.netExceedsGross}
                 </p>
               ) : showDeductionPreview && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-                  <span>Deductions</span>
+                  <span>{d.addTxn.deductions}</span>
                   <span className="font-mono-tab" style={{ fontWeight: 500 }}>
                     {deductionPct(draftGross, draftNet).toFixed(1)}%
                   </span>
@@ -320,20 +365,24 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
           )}
 
           <label style={labelStyle}>
-            Date
+            {d.addTxn.date}
+            {/* type="date" - the browser localizes its own picker from
+                <html lang>, and the value stays 'YYYY-MM-DD' regardless.
+                That is exactly what must reach the database. */}
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
           </label>
 
           <label style={labelStyle}>
-            Payment method
+            {d.addTxn.paymentMethod}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {/* CHECK-constrained values. A translated one fails the insert. */}
               {(['Checking', 'Cash'] as const).map((m) => (
                 <button
                   key={m} type="button" onClick={() => setPaymentMethod(m)}
                   className={`pill ${paymentMethod === m ? 'active' : ''}`}
                   style={{ flex: 1, padding: '0.55rem' }}
                 >
-                  {m}
+                  {d.enums.paymentMethod[m]}
                 </button>
               ))}
             </div>
@@ -342,7 +391,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
           <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
 
           <button type="submit" disabled={saving || netExceedsGross} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {saving ? <><Spinner size={14} /> Saving…</> : 'Add transaction'}
+            {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
           </button>
         </form>
         )}

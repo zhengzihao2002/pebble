@@ -7,7 +7,8 @@ import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
 import { getLastNMonths } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatMonthYear } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { StatTab } from '@/components/shared/StatTab';
 import { MonthNavigator } from '@/components/transactions/MonthNavigator';
 import { StatementList, type StatementEntry } from '@/components/transactions/StatementList';
@@ -32,6 +33,7 @@ interface TransactionsClientProps {
 export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, currentChecking, currentCash,
 }: TransactionsClientProps) {
+  const { d, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
@@ -94,7 +96,7 @@ export function TransactionsClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
-        <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>Total balance, today</p>
+        <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
         {/* Baseline-aligned so the small figures sit on the big one's baseline,
             and wrapping so they drop to their own line on a narrow phone rather
             than squeezing the total. Same label/figure treatment as the hover
@@ -108,12 +110,16 @@ export function TransactionsClient({
               - that row below is month-scoped, and matching its shape would
               imply these figures belong to the selected month too. */}
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {/* method is the STORED value and doubles as the React key. It
+                was the English label before this change, which meant both
+                chips remounted on a language switch. Nothing here is
+                submitted - these are display figures. */}
             {([
-              { icon: Landmark, label: 'Checking', value: currentChecking },
-              { icon: Coins, label: 'Cash', value: currentCash },
-            ] as const).map(({ icon: AccountIcon, label, value }) => (
+              { icon: Landmark, method: 'Checking', value: currentChecking },
+              { icon: Coins, method: 'Cash', value: currentCash },
+            ] as const).map(({ icon: AccountIcon, method, value }) => (
               <span
-                key={label}
+                key={method}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                   padding: '0.38rem 0.8rem', borderRadius: 99,
@@ -122,7 +128,7 @@ export function TransactionsClient({
                 }}
               >
                 <AccountIcon size={15} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{label}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.enums.paymentMethod[method]}</span>
                 <span className="font-mono-tab" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)' }}>
                   {formatCurrency(value)}
                 </span>
@@ -131,8 +137,12 @@ export function TransactionsClient({
           </div>
         </div>
 
+        {/* Formatted HERE rather than read from selectedMonthInfo.label:
+            that label is built in stats.ts, which is shared with server code
+            and cannot know the locale. The year and month numbers carry the
+            same information and localize properly. */}
         <MonthNavigator
-          label={selectedMonthInfo.label}
+          label={formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
           canGoOlder={canGoOlder}
           canGoNewer={canGoNewer}
           onOlder={() => setSelectedMonthIndex((i) => i + 1)}
@@ -140,10 +150,10 @@ export function TransactionsClient({
         />
 
         <div className="stat-tabs">
-          <StatTab icon={Wallet} label="Opening balance" value={formatCurrency(openingBalance)} color="var(--ink-soft)" />
-          <StatTab icon={Wallet} label="Closing balance" value={formatCurrency(closingBalance)} color="var(--pine)" />
-          <StatTab icon={ArrowUpRight} label="Deposits" value={formatCurrency(totalDeposits)} color="var(--pine)" />
-          <StatTab icon={ArrowDownRight} label="Withdrawals" value={formatCurrency(totalWithdrawals)} color="var(--wine)" />
+          <StatTab icon={Wallet} label={d.transactions.openingBalance} value={formatCurrency(openingBalance)} color="var(--ink-soft)" />
+          <StatTab icon={Wallet} label={d.transactions.closingBalance} value={formatCurrency(closingBalance)} color="var(--pine)" />
+          <StatTab icon={ArrowUpRight} label={d.transactions.deposits} value={formatCurrency(totalDeposits)} color="var(--pine)" />
+          <StatTab icon={ArrowDownRight} label={d.transactions.withdrawals} value={formatCurrency(totalWithdrawals)} color="var(--wine)" />
         </div>
       </div>
 

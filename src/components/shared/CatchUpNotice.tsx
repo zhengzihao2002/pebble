@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle, CalendarClock, X } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface CatchUpNoticeProps {
   expensesCreated: number;
@@ -39,6 +40,7 @@ interface CatchUpNoticeProps {
  * not appearing.
  */
 export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, failed }: CatchUpNoticeProps) {
+  const { d, t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
   const created = expensesCreated + incomeCreated;
@@ -56,27 +58,28 @@ export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, faile
         ? <AlertTriangle size={16} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
         : <CalendarClock size={16} style={{ color: 'var(--pine)', flexShrink: 0, marginTop: 2 }} />}
       <div style={{ flex: 1, minWidth: 0, fontSize: '0.83rem', lineHeight: 1.5 }}>
+        {/* The singular/plural choice is made HERE, by picking one of two
+            dictionary keys, rather than by splicing a noun into a sentence.
+            Chinese maps both keys to the same string, which is correct rather
+            than a shortcut - it genuinely has no plural inflection. */}
         {failed ? (
           <>
-            <strong>Some scheduled payments could not be added.</strong> They will be retried next
-            time you open Pebble — nothing has been duplicated or lost. If it keeps happening, the
-            details are in the server logs.
+            <strong>{d.catchUp.failedTitle}</strong> {d.catchUp.failedBody}
           </>
         ) : truncated ? (
           <>
-            <strong>Added {created} scheduled {created === 1 ? 'transaction' : 'transactions'}, with more to come.</strong>{' '}
-            There were too many to create at once. Reload the page to continue where it left off.
+            <strong>{t(created === 1 ? d.catchUp.truncatedTitleOne : d.catchUp.truncatedTitleOther, { count: created })}</strong>{' '}
+            {d.catchUp.truncatedBody}
           </>
         ) : (
           <>
-            Added {created} scheduled {created === 1 ? 'transaction' : 'transactions'} that came due
-            since your last visit.
+            {t(created === 1 ? d.catchUp.addedOne : d.catchUp.addedOther, { count: created })}
           </>
         )}
       </div>
       <button
         type="button" onClick={() => setDismissed(true)} className="icon-btn"
-        aria-label="Dismiss"
+        aria-label={d.catchUp.dismiss}
         style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', flexShrink: 0, marginTop: -2 }}
       >
         <X size={14} />

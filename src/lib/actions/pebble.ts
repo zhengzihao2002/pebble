@@ -30,6 +30,7 @@ import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { FailureKind } from '@/lib/actions/failureKind';
+import type { ServerErrorCode } from '@/lib/actions/errorCodes';
 
 /**
  * Mutation layer.
@@ -53,7 +54,30 @@ import type { FailureKind } from '@/lib/actions/failureKind';
  * nobody. Errors are logged server-side and returned as a message.
  */
 
-export type ActionResult = { ok: true } | { ok: false; error: string; kind?: FailureKind };
+export type ActionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      kind?: FailureKind;
+      /**
+       * Machine-readable identifier for this failure, added incrementally
+       * (Phase 3d). Absent means "not yet converted" - the client falls back
+       * to `error`, the server's own English string, which is always present
+       * and always safe to show. Purely additive: every existing fail(...)
+       * call site keeps compiling and keeps working exactly as before.
+       */
+      code?: ServerErrorCode;
+      /**
+       * Raw, UNTRANSLATED values referenced by the code's template - a
+       * category name, a list of rule descriptions. Never pre-formatted or
+       * pre-joined here: a list is joined with a locale-appropriate
+       * separator on the CLIENT, in translateActionError(), because English
+       * and Chinese join lists differently and the server has no business
+       * deciding that.
+       */
+      params?: Record<string, string | string[]>;
+    };
 
 const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
@@ -72,8 +96,13 @@ function revalidateAll(): void {
  * a rejected input, reported with the specific field problem. A retry of the
  * same input would fail identically, so these must NOT offer "Try again".
  */
-function fail(message: string, kind: FailureKind = 'validation'): ActionResult {
-  return { ok: false, error: message, kind };
+function fail(
+  message: string,
+  kind: FailureKind = 'validation',
+  code?: ServerErrorCode,
+  params?: Record<string, string | string[]>,
+): ActionResult {
+  return { ok: false, error: message, kind, code, params };
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -127,8 +156,8 @@ function handleUnexpected(context: string, error: unknown): ActionResult {
   console.error(`[pebble action] ${context} (${kind})`, error);
 
   return kind === 'database'
-    ? fail("Couldn't reach the database. Your change was not saved.", 'database')
-    : fail('Something went wrong saving your changes. Please try again.', 'unknown');
+    ? fail("Couldn't reach the database. Your change was not saved.", 'database', 'action.databaseUnreachable')
+    : fail('Something went wrong saving your changes. Please try again.', 'unknown', 'action.unknownError');
 }
 
 export interface AddExpenseActionInput {
@@ -164,18 +193,18 @@ async function addTransaction(
 ): Promise<ActionResult> {
   try {
     if (!DATE_PATTERN.test(input.date)) {
-      return fail('Date must be in YYYY-MM-DD format.');
+      return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
     }
     if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.');
+      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
     }
 
     if (input.type === 'expense') {
       if (!isFiniteNumber(input.amount) || input.amount <= 0) {
-        return fail('Expense amount must be a positive number.');
+        return fail('Expense amount must be a positive number.', 'validation', 'validation.expenseAmountPositive');
       }
       if (!input.category.trim()) {
-        return fail('An expense needs a category.');
+        return fail('An expense needs a category.', 'validation', 'validation.expenseCategoryRequired');
       }
 
       await db.insert(expense).values({
@@ -190,20 +219,20 @@ async function addTransaction(
       });
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
-        return fail('Income category must be Standard Income or Side Cash.');
+        return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
       }
       if (!isFiniteNumber(input.grossAmount) || input.grossAmount < 0) {
-        return fail('Gross amount must be zero or greater.');
+        return fail('Gross amount must be zero or greater.', 'validation', 'validation.grossAmountNonNegative');
       }
       if (!isFiniteNumber(input.netAmount) || input.netAmount < 0) {
-        return fail('Net amount must be zero or greater.');
+        return fail('Net amount must be zero or greater.', 'validation', 'validation.netAmountNonNegative');
       }
       // Net above gross would mean more money arrived than was earned. The
       // column checks only constrain each amount independently, so this
       // cross-column rule has to live here. Skipped for Side Cash, where the
       // two columns are deliberately set equal below.
       if (input.category !== 'Side Cash' && input.netAmount > input.grossAmount) {
-        return fail('Pay after deductions cannot be more than pay before deductions.');
+        return fail('Pay after deductions cannot be more than pay before deductions.', 'validation', 'validation.netExceedsGross');
       }
 
       // Side cash has no gross/net split - it is not taxed, so one amount
@@ -242,19 +271,19 @@ export interface AddGoalActionInput {
 async function addGoal(userId: string, input: AddGoalActionInput): Promise<ActionResult> {
   try {
     if (!input.name.trim()) {
-      return fail('A goal needs a name.');
+      return fail('A goal needs a name.', 'validation', 'validation.goalNameRequired');
     }
     if (!isFiniteNumber(input.target) || input.target <= 0) {
-      return fail('Target amount must be greater than zero.');
+      return fail('Target amount must be greater than zero.', 'validation', 'validation.goalTargetPositive');
     }
     if (!isFiniteNumber(input.current) || input.current < 0) {
-      return fail('Saved amount cannot be negative.');
+      return fail('Saved amount cannot be negative.', 'validation', 'validation.goalSavedNonNegative');
     }
     // target_date is a text column, so nothing at the database level stops a
     // free-text value landing in it. The same pattern guard the transaction
     // actions use is the only thing keeping it a real date.
     if (!DATE_PATTERN.test(input.date.trim())) {
-      return fail('Target date must be a valid date.');
+      return fail('Target date must be a valid date.', 'validation', 'validation.goalDateInvalid');
     }
 
     await db.insert(goal).values({
@@ -302,21 +331,21 @@ async function updateGoal(userId: string, input: UpdateGoalActionInput): Promise
       .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That goal no longer exists.');
+    if (!rows[0]) return fail('That goal no longer exists.', 'validation', 'notFound.goal');
 
     // Same guards as addGoal, kept in step so an edit cannot store a shape the
     // add path would have rejected.
     if (!input.name.trim()) {
-      return fail('A goal needs a name.');
+      return fail('A goal needs a name.', 'validation', 'validation.goalNameRequired');
     }
     if (!isFiniteNumber(input.target) || input.target <= 0) {
-      return fail('Target amount must be greater than zero.');
+      return fail('Target amount must be greater than zero.', 'validation', 'validation.goalTargetPositive');
     }
     if (!isFiniteNumber(input.current) || input.current < 0) {
-      return fail('Saved amount cannot be negative.');
+      return fail('Saved amount cannot be negative.', 'validation', 'validation.goalSavedNonNegative');
     }
     if (!DATE_PATTERN.test(input.date.trim())) {
-      return fail('Target date must be a valid date.');
+      return fail('Target date must be a valid date.', 'validation', 'validation.goalDateInvalid');
     }
 
     await db.update(goal).set({
@@ -350,7 +379,7 @@ async function deleteGoal(userId: string, input: { id: string }): Promise<Action
       .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That goal no longer exists.');
+    if (!rows[0]) return fail('That goal no longer exists.', 'validation', 'notFound.goal');
 
     await db.delete(goal).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
 
@@ -374,10 +403,18 @@ async function modifyBudgets(
     const entries = Object.entries(budgets);
     for (const [category, amount] of entries) {
       if (!category.trim()) {
-        return fail('Budget category names cannot be empty.');
+        return fail('Budget category names cannot be empty.', 'validation', 'validation.budgetCategoryNameRequired');
       }
       if (!isFiniteNumber(amount) || amount < 0) {
-        return fail(`Budget for ${category} must be zero or greater.`);
+        // category is USER DATA - passed as a param, never baked into the
+        // template. The client interpolates it back in, untranslated, the
+        // same way categoryLabel()'s callers already treat category names.
+        return fail(
+          `Budget for ${category} must be zero or greater.`,
+          'validation',
+          'validation.budgetAmountNonNegative',
+          { category },
+        );
       }
     }
 
@@ -415,10 +452,10 @@ async function setOpeningBalances(
 ): Promise<ActionResult> {
   try {
     if (!isFiniteNumber(input.checkingOpening)) {
-      return fail('Checking opening balance must be a number.');
+      return fail('Checking opening balance must be a number.', 'validation', 'validation.checkingOpeningNumber');
     }
     if (!isFiniteNumber(input.cashOpening)) {
-      return fail('Cash opening balance must be a number.');
+      return fail('Cash opening balance must be a number.', 'validation', 'validation.cashOpeningNumber');
     }
 
     await db
@@ -446,7 +483,7 @@ async function setOpeningBalances(
 
 export type BudgetModalData =
   | { ok: true; budgets: Record<string, number>; annualIncome: number; incomeMonths: number; incomeMonthsLabel: string; categories: CategoryItem[] }
-  | { ok: false; error: string; kind?: FailureKind };
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 /**
  * Loads exactly what ModifyBudgetModal needs, on open.
@@ -496,13 +533,13 @@ async function loadBudgetModalData(userId: string, today: string): Promise<Budge
     };
   } catch (error) {
     console.error('[pebble action] getBudgetModalDataAction', error);
-    return { ok: false, error: "Couldn't reach the database to load your budgets.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
+    return { ok: false, error: "Couldn't reach the database to load your budgets.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.budgetModalFailed' };
   }
 }
 
 export type AllocationSummaryResult =
   | { ok: true; totalBalance: number; allocated: number }
-  | { ok: false; error: string; kind?: FailureKind };
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 /**
  * Current total balance and the amount goals have claimed against it, for the
@@ -542,16 +579,37 @@ async function loadAllocationSummary(userId: string): Promise<AllocationSummaryR
     };
   } catch (error) {
     console.error('[pebble action] getAllocationSummaryAction', error);
-    return { ok: false, error: "Couldn't check your goal allocations.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
+    return { ok: false, error: "Couldn't check your goal allocations.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.allocationSummaryFailed' };
   }
 }
 
 const MAX_CATEGORY_NAME = 40;
 
-function validateCategoryName(name: string): string | null {
+interface CategoryNameError {
+  error: string;
+  code: ServerErrorCode;
+  params?: Record<string, string>;
+}
+
+/**
+ * Returns an object rather than a bare string, unlike every OTHER validator
+ * in this file, so it can carry a code alongside the message. Its two call
+ * sites (createCategory, updateCategory) unpack both onto fail().
+ */
+function validateCategoryName(name: string): CategoryNameError | null {
   const trimmed = name.trim();
-  if (!trimmed) return 'A category needs a name.';
-  if (trimmed.length > MAX_CATEGORY_NAME) return `Category names are limited to ${MAX_CATEGORY_NAME} characters.`;
+  if (!trimmed) {
+    return { error: 'A category needs a name.', code: 'validation.categoryNameRequired' };
+  }
+  if (trimmed.length > MAX_CATEGORY_NAME) {
+    return {
+      error: `Category names are limited to ${MAX_CATEGORY_NAME} characters.`,
+      code: 'validation.categoryNameTooLong',
+      // MAX_CATEGORY_NAME is a CONSTANT, not user data - passed as a param
+      // anyway so a future change to the limit needs no dictionary edit.
+      params: { max: String(MAX_CATEGORY_NAME) },
+    };
+  }
   return null;
 }
 
@@ -561,14 +619,14 @@ function validateCategoryName(name: string): string | null {
  */
 export type CategoriesResult =
   | { ok: true; categories: CategoryItem[] }
-  | { ok: false; error: string; kind?: FailureKind };
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 async function loadCategories(userId: string): Promise<CategoriesResult> {
   try {
     return { ok: true, categories: await getCategories(userId) };
   } catch (error) {
     console.error('[pebble action] getCategoriesAction', error);
-    return { ok: false, error: "Couldn't reach the database to load your categories.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
+    return { ok: false, error: "Couldn't reach the database to load your categories.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.categoriesFailed' };
   }
 }
 
@@ -578,12 +636,14 @@ async function createCategory(
 ): Promise<ActionResult> {
   try {
     const nameError = validateCategoryName(input.name);
-    if (nameError) return fail(nameError);
+    if (nameError) return fail(nameError.error, 'validation', nameError.code, nameError.params);
 
     const existing = await getCategories(userId);
     const trimmed = input.name.trim();
     if (existing.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      return fail(`You already have a category called "${trimmed}".`);
+      // trimmed is USER DATA - the category name being attempted. Passed as a
+      // param, never baked into the template.
+      return fail(`You already have a category called "${trimmed}".`, 'validation', 'validation.categoryNameDuplicate', { name: trimmed });
     }
 
     await db.insert(category).values({
@@ -618,20 +678,20 @@ async function updateCategory(
 ): Promise<ActionResult> {
   try {
     const nameError = validateCategoryName(input.name);
-    if (nameError) return fail(nameError);
+    if (nameError) return fail(nameError.error, 'validation', nameError.code, nameError.params);
 
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === input.id);
-    if (!target) return fail('That category no longer exists.');
+    if (!target) return fail('That category no longer exists.', 'validation', 'notFound.category');
 
     const trimmed = input.name.trim();
     const collision = existing.find(
       (c) => c.id !== input.id && c.name.toLowerCase() === trimmed.toLowerCase(),
     );
-    if (collision) return fail(`You already have a category called "${trimmed}".`);
+    if (collision) return fail(`You already have a category called "${trimmed}".`, 'validation', 'validation.categoryNameDuplicate', { name: trimmed });
 
     if (target.isSystem && trimmed !== target.name) {
-      return fail('The fallback category cannot be renamed, but you can change its icon and colour.');
+      return fail('The fallback category cannot be renamed, but you can change its icon and colour.', 'validation', 'validation.categoryFallbackCannotRename');
     }
 
     if (trimmed !== target.name) {
@@ -684,7 +744,7 @@ export interface CategoryUsage {
 
 export type CategoryUsageResult =
   | { ok: true; usage: CategoryUsage }
-  | { ok: false; error: string; kind?: FailureKind };
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 /** Move every affected transaction to one destination category. */
 export interface BulkReassignPlan {
@@ -712,7 +772,7 @@ async function loadCategoryUsage(
   try {
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === categoryId);
-    if (!target) return { ok: false, error: 'That category no longer exists.', kind: 'notFound' };
+    if (!target) return { ok: false, error: 'That category no longer exists.', kind: 'notFound', code: 'notFound.category' };
 
     const rows = await db
       .select({
@@ -735,7 +795,7 @@ async function loadCategoryUsage(
     };
   } catch (error) {
     console.error('[pebble action] getCategoryUsageAction', error);
-    return { ok: false, error: "Couldn't check that category.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
+    return { ok: false, error: "Couldn't check that category.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.categoryUsageFailed' };
   }
 }
 
@@ -755,8 +815,8 @@ async function deleteCategory(
   try {
     const existing = await getCategories(userId);
     const target = existing.find((c) => c.id === input.id);
-    if (!target) return fail('That category no longer exists.');
-    if (target.isSystem) return fail('The fallback category cannot be deleted.');
+    if (!target) return fail('That category no longer exists.', 'validation', 'notFound.category');
+    if (target.isSystem) return fail('The fallback category cannot be deleted.', 'validation', 'validation.categoryFallbackCannotDelete');
 
     const usage = await db
       .select({ id: expense.id })
@@ -766,7 +826,7 @@ async function deleteCategory(
     if (usage.length > 0) {
       const plan = input.plan;
       if (!plan) {
-        return fail('Choose where these transactions should go before deleting.');
+        return fail('Choose where these transactions should go before deleting.', 'validation', 'validation.categoryDeleteChooseDestination');
       }
 
       const validNames = new Set(
@@ -775,7 +835,7 @@ async function deleteCategory(
 
       if (plan.mode === 'bulk') {
         if (!validNames.has(plan.reassignToName)) {
-          return fail('That destination category no longer exists.');
+          return fail('That destination category no longer exists.', 'validation', 'notFound.categoryDestination');
         }
         await db
           .update(expense)
@@ -788,7 +848,7 @@ async function deleteCategory(
         for (const row of usage) {
           const destination = plan.assignments[row.id];
           if (!destination || !validNames.has(destination)) {
-            return fail('Every transaction needs a destination category before deleting.');
+            return fail('Every transaction needs a destination category before deleting.', 'validation', 'validation.categoryDeleteAllNeedDestination');
           }
         }
 
@@ -838,7 +898,7 @@ async function deleteCategory(
         const stillValid = existing.some(
           (c) => c.id !== target.id && c.name === plan.reassignToName,
         );
-        if (!stillValid) return fail('That destination category no longer exists.');
+        if (!stillValid) return fail('That destination category no longer exists.', 'validation', 'notFound.categoryDestination');
 
         await db
           .update(recurringRule)
@@ -851,9 +911,17 @@ async function deleteCategory(
             ),
           );
       } else {
-        const names = referencingRules.map((r) => r.description).join(', ');
+        // ⚠️ ARRAY PARAM, deliberately NOT pre-joined with ', ' here. Chinese
+        // joins a list with 、not a comma-space, and that is a display
+        // decision the SERVER should not make. The raw array of descriptions
+        // (user data) travels in params.names; translateActionError() on the
+        // client joins it with the locale-correct separator.
+        const names = referencingRules.map((r) => r.description);
         return fail(
-          `These scheduled payments still use this category: ${names}. Update or remove them first.`,
+          `These scheduled payments still use this category: ${names.join(', ')}. Update or remove them first.`,
+          'validation',
+          'validation.categoryRulesStillUse',
+          { names },
         );
       }
     }
@@ -916,10 +984,10 @@ async function updateTransaction(
       .limit(1);
 
     const current = rows[0];
-    if (!current) return fail('That transaction no longer exists.');
+    if (!current) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
 
     if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.');
+      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
     }
 
     // Every field except identity is editable at any age. No per-transaction
@@ -929,13 +997,13 @@ async function updateTransaction(
     let newDate: string | undefined;
     if (input.date !== undefined && input.date !== current.date) {
       if (!DATE_PATTERN.test(input.date)) {
-        return fail('Date must be in YYYY-MM-DD format.');
+        return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
       }
       newDate = input.date;
     }
 
     if (input.type === 'expense') {
-      if (!input.category.trim()) return fail('An expense needs a category.');
+      if (!input.category.trim()) return fail('An expense needs a category.', 'validation', 'validation.expenseCategoryRequired');
 
       const patch: Record<string, unknown> = {
         description: input.description.trim(),
@@ -947,7 +1015,7 @@ async function updateTransaction(
 
       if (input.amount !== undefined) {
         if (!isFiniteNumber(input.amount) || input.amount <= 0) {
-          return fail('Expense amount must be a positive number.');
+          return fail('Expense amount must be a positive number.', 'validation', 'validation.expenseAmountPositive');
         }
         patch.amount = -Math.abs(input.amount);
       }
@@ -956,7 +1024,7 @@ async function updateTransaction(
         .where(and(eq(expense.userId, userId), eq(expense.id, input.id)));
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
-        return fail('Income category must be Standard Income or Side Cash.');
+        return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
       }
 
       const patch: Record<string, unknown> = {
@@ -968,17 +1036,17 @@ async function updateTransaction(
 
       if (input.grossAmount !== undefined || input.netAmount !== undefined) {
         if (!isFiniteNumber(input.grossAmount) || input.grossAmount < 0) {
-          return fail('Gross amount must be zero or greater.');
+          return fail('Gross amount must be zero or greater.', 'validation', 'validation.grossAmountNonNegative');
         }
         if (!isFiniteNumber(input.netAmount) || input.netAmount < 0) {
-          return fail('Net amount must be zero or greater.');
+          return fail('Net amount must be zero or greater.', 'validation', 'validation.netAmountNonNegative');
         }
         // Net above gross would mean more money arrived than was earned. The
         // column checks constrain each amount independently, so this
         // cross-column rule has to live here. Skipped for Side Cash, where the
         // two columns are deliberately set equal just below.
         if (input.category !== 'Side Cash' && input.netAmount > input.grossAmount) {
-          return fail('Pay after deductions cannot be more than pay before deductions.');
+          return fail('Pay after deductions cannot be more than pay before deductions.', 'validation', 'validation.netExceedsGross');
         }
         // Side cash is untaxed, so there is no gross/net split: one amount
         // fills both columns. Enforced here rather than trusting the client,
@@ -1019,7 +1087,7 @@ async function deleteTransaction(
       .where(and(eq(table.userId, userId), eq(table.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That transaction no longer exists.');
+    if (!rows[0]) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
 
     await db.delete(table).where(and(eq(table.userId, userId), eq(table.id, input.id)));
 
@@ -1051,13 +1119,13 @@ async function createBalanceAdjustment(
 ): Promise<ActionResult> {
   try {
     if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.');
+      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
     }
     if (!isFiniteNumber(input.delta) || input.delta === 0) {
-      return fail('Enter an amount that actually changes the balance.');
+      return fail('Enter an amount that actually changes the balance.', 'validation', 'validation.adjustmentAmountRequired');
     }
     if (!DATE_PATTERN.test(input.date)) {
-      return fail('Date must be in YYYY-MM-DD format.');
+      return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
     }
 
     await db.insert(balanceAdjustment).values({
@@ -1087,7 +1155,7 @@ async function deleteBalanceAdjustment(
       .where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That adjustment no longer exists.');
+    if (!rows[0]) return fail('That adjustment no longer exists.', 'validation', 'notFound.adjustment');
 
     await db
       .delete(balanceAdjustment)
@@ -1102,7 +1170,7 @@ async function deleteBalanceAdjustment(
 
 export type BalanceModeResult =
   | { ok: true; hasTransactions: boolean; checkingOpening: number; cashOpening: number }
-  | { ok: false; error: string; kind?: FailureKind };
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
 
 
 /* ---------------------------------------------------------------------------
@@ -1181,27 +1249,30 @@ interface NormalizedRule {
 async function normalizeRuleInput(
   userId: string,
   input: RecurringRuleActionInput,
-): Promise<{ ok: true; values: NormalizedRule } | { ok: false; error: string; kind?: FailureKind }> {
+): Promise<
+  | { ok: true; values: NormalizedRule }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode; params?: Record<string, string | string[]> }
+> {
   const description = input.description.trim();
-  if (!description) return { ok: false, error: 'A scheduled payment needs a description.' };
+  if (!description) return { ok: false, error: 'A scheduled payment needs a description.', code: 'validation.ruleDescriptionRequired' };
 
   if (input.kind !== 'expense' && input.kind !== 'income') {
-    return { ok: false, error: 'Select whether this is an expense or income.' };
+    return { ok: false, error: 'Select whether this is an expense or income.', code: 'validation.ruleKindRequired' };
   }
   if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-    return { ok: false, error: 'Select a valid payment method.' };
+    return { ok: false, error: 'Select a valid payment method.', code: 'validation.rulePaymentMethod' };
   }
   if (!RECURRING_FREQUENCIES.includes(input.frequency)) {
-    return { ok: false, error: 'Select a valid frequency.' };
+    return { ok: false, error: 'Select a valid frequency.', code: 'validation.ruleFrequency' };
   }
   if (!RECURRING_END_MODES.includes(input.endMode)) {
-    return { ok: false, error: 'Select a valid end condition.' };
+    return { ok: false, error: 'Select a valid end condition.', code: 'validation.ruleEndMode' };
   }
   if (!DATE_PATTERN.test(input.startDate)) {
-    return { ok: false, error: 'Start date must be in YYYY-MM-DD format.' };
+    return { ok: false, error: 'Start date must be in YYYY-MM-DD format.', code: 'validation.ruleStartDateFormat' };
   }
   if (!isFiniteNumber(input.amount) || input.amount <= 0) {
-    return { ok: false, error: 'Amount must be greater than zero.' };
+    return { ok: false, error: 'Amount must be greater than zero.', code: 'validation.ruleAmountPositive' };
   }
 
   // End condition: exactly one shape, fully specified.
@@ -1211,19 +1282,26 @@ async function normalizeRuleInput(
   if (input.endMode === 'after') {
     const count = input.endCount;
     if (!isFiniteNumber(count) || !Number.isInteger(count) || count < 1) {
-      return { ok: false, error: 'Number of payments must be a whole number of at least 1.' };
+      return { ok: false, error: 'Number of payments must be a whole number of at least 1.', code: 'validation.ruleEndCountInteger' };
     }
     if (count > MAX_END_COUNT) {
-      return { ok: false, error: `Number of payments cannot exceed ${MAX_END_COUNT}.` };
+      // MAX_END_COUNT is a CONSTANT, passed as a param so a future change to
+      // the limit needs no dictionary edit - same pattern as MAX_CATEGORY_NAME.
+      return {
+        ok: false,
+        error: `Number of payments cannot exceed ${MAX_END_COUNT}.`,
+        code: 'validation.ruleEndCountMax',
+        params: { max: String(MAX_END_COUNT) },
+      };
     }
     endCount = count;
   } else if (input.endMode === 'on') {
     const date = input.endDate?.trim() ?? '';
     if (!DATE_PATTERN.test(date)) {
-      return { ok: false, error: 'End date must be in YYYY-MM-DD format.' };
+      return { ok: false, error: 'End date must be in YYYY-MM-DD format.', code: 'validation.ruleEndDateFormat' };
     }
     if (date < input.startDate) {
-      return { ok: false, error: 'End date cannot be before the start date.' };
+      return { ok: false, error: 'End date cannot be before the start date.', code: 'validation.ruleEndDateBeforeStart' };
     }
     endDate = date;
   }
@@ -1240,14 +1318,14 @@ async function normalizeRuleInput(
 
   if (input.kind === 'income') {
     if (!INCOME_CATEGORIES.includes(input.category)) {
-      return { ok: false, error: 'Income must be Standard Income or Side Cash.' };
+      return { ok: false, error: 'Income must be Standard Income or Side Cash.', code: 'validation.ruleIncomeCategory' };
     }
     const gross = input.grossAmount;
     if (!isFiniteNumber(gross) || gross <= 0) {
-      return { ok: false, error: 'Gross amount must be greater than zero.' };
+      return { ok: false, error: 'Gross amount must be greater than zero.', code: 'validation.ruleGrossAmountPositive' };
     }
     if (input.amount > gross) {
-      return { ok: false, error: 'Net amount cannot be more than the gross amount.' };
+      return { ok: false, error: 'Net amount cannot be more than the gross amount.', code: 'validation.ruleNetExceedsGross' };
     }
     return {
       ok: true,
@@ -1280,7 +1358,7 @@ async function normalizeRuleInput(
     .where(and(eq(category.userId, userId), eq(category.name, categoryName)))
     .limit(1);
 
-  if (!owned[0]) return { ok: false, error: 'Select a valid category.' };
+  if (!owned[0]) return { ok: false, error: 'Select a valid category.', code: 'validation.ruleCategoryInvalid' };
 
   return {
     ok: true,
@@ -1308,7 +1386,7 @@ async function createRecurringRule(
 ): Promise<ActionResult> {
   try {
     const normalized = await normalizeRuleInput(userId, input);
-    if (!normalized.ok) return fail(normalized.error);
+    if (!normalized.ok) return fail(normalized.error, 'validation', normalized.code, normalized.params);
 
     // A start date in the past would otherwise backfill on the next page load.
     // Setting the mark to yesterday starts the rule from today instead. Because
@@ -1361,17 +1439,17 @@ async function updateRecurringRule(
 
     const existing = rows[0];
     if (!existing || existing.status === 'deleted') {
-      return fail('That scheduled payment no longer exists.');
+      return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule');
     }
 
     // Expense history lives in `expense`, income history in `income`. Switching
     // kind would orphan every row already materialized from this rule.
     if (existing.kind !== input.kind) {
-      return fail('A scheduled payment cannot be switched between expense and income. Delete it and create a new one.');
+      return fail('A scheduled payment cannot be switched between expense and income. Delete it and create a new one.', 'validation', 'validation.ruleKindLocked');
     }
 
     const normalized = await normalizeRuleInput(userId, input);
-    if (!normalized.ok) return fail(normalized.error);
+    if (!normalized.ok) return fail(normalized.error, 'validation', normalized.code, normalized.params);
 
     // materializedThrough is deliberately absent from this SET clause.
     await db
@@ -1397,7 +1475,7 @@ async function setRecurringRuleStatus(
 ): Promise<ActionResult> {
   try {
     if (input.status !== 'active' && input.status !== 'paused') {
-      return fail('Invalid status.');
+      return fail('Invalid status.', 'validation', 'validation.ruleStatusInvalid');
     }
 
     const rows = await db
@@ -1407,7 +1485,7 @@ async function setRecurringRuleStatus(
       .limit(1);
 
     if (!rows[0] || rows[0].status === 'deleted') {
-      return fail('That scheduled payment no longer exists.');
+      return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule');
     }
 
     // Resuming after a long pause must not backfill the gap. The mark is left
@@ -1454,7 +1532,7 @@ async function deleteRecurringRule(
       .limit(1);
 
     if (!rows[0] || rows[0].status === 'deleted') {
-      return fail('That scheduled payment no longer exists.');
+      return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule');
     }
 
     await db
@@ -1487,7 +1565,7 @@ async function loadBalanceMode(userId: string): Promise<BalanceModeResult> {
     };
   } catch (error) {
     console.error('[pebble action] getBalanceModeAction', error);
-    return { ok: false, error: "Couldn't reach the database to load your balance settings.", kind: classifyError(error) === 'database' ? 'database' : 'unknown' };
+    return { ok: false, error: "Couldn't reach the database to load your balance settings.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.balanceModeFailed' };
   }
 }
 

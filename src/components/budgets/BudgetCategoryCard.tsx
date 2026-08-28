@@ -1,4 +1,8 @@
+'use client';
+
 import { formatCurrency } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { overUnderLabel } from '@/lib/i18n/phrasing';
 import type { BudgetEntry } from './types';
 
 interface BudgetCategoryCardProps {
@@ -6,6 +10,8 @@ interface BudgetCategoryCardProps {
 }
 
 export function BudgetCategoryCard({ entry }: BudgetCategoryCardProps) {
+  const { d, t } = useTranslation();
+  // name is USER DATA and is rendered exactly as stored.
   const { name, icon: Icon, color, budget, spent, pct } = entry;
   const noBudget = budget === 0;
   const over = pct > 100;
@@ -27,11 +33,11 @@ export function BudgetCategoryCard({ entry }: BudgetCategoryCardProps) {
       </div>
       <div className="font-mono-tab" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
         {noBudget ? (
-          <span style={{ color: 'var(--wine)' }}>{formatCurrency(spent)} spent — no budget set</span>
+          <span style={{ color: 'var(--wine)' }}>{t(d.budgetsPage.noBudgetSet, { amount: formatCurrency(spent) })}</span>
         ) : (
           <>
-            <span style={{ color: 'var(--ink-soft)' }}>{formatCurrency(spent)} of {formatCurrency(budget)}</span>
-            <span style={{ color: over ? 'var(--wine)' : 'var(--ink-soft)' }}>{over ? `${formatCurrency(spent - budget)} over` : `${formatCurrency(budget - spent)} left`}</span>
+            <span style={{ color: 'var(--ink-soft)' }}>{t(d.phrasing.ofAmount, { spent: formatCurrency(spent), total: formatCurrency(budget) })}</span>
+            <span style={{ color: over ? 'var(--wine)' : 'var(--ink-soft)' }}>{overUnderLabel(d, 'budget', spent, budget)}</span>
           </>
         )}
       </div>

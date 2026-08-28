@@ -18,6 +18,8 @@
 import { generateOccurrences, type Ymd } from '@/lib/recurring/occurrences';
 import { isExhausted } from '@/lib/recurring/occurrences';
 import type { RecurringRule } from '@/types';
+import { fullMonthLabel } from './monthLabels';
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
 export interface UpcomingItem {
   ruleId: string;
@@ -48,8 +50,6 @@ export interface UpcomingSummary {
   throughYmd: string;
 }
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 /** Day before `ymd`, as the exclusive lower bound for "from today onwards". */
 function dayBefore(ymd: string): string {
   const y = Number(ymd.slice(0, 4));
@@ -71,6 +71,7 @@ export function computeUpcoming(
   rules: readonly RecurringRule[],
   today: string,
   monthsAhead = 3,
+  locale: Locale = DEFAULT_LOCALE,
 ): UpcomingSummary {
   const throughYmd = endOfMonthAhead(today, monthsAhead);
   const items: UpcomingItem[] = [];
@@ -115,7 +116,8 @@ export function computeUpcoming(
     let m = byMonth.get(key);
     if (!m) {
       const mi = Number(key.slice(5, 7)) - 1;
-      m = { key, label: `${MONTH_ABBR[mi]} ${key.slice(0, 4)}`, items: [], expenseTotal: 0, incomeTotal: 0 };
+      const yy = Number(key.slice(0, 4));
+      m = { key, label: fullMonthLabel(yy, mi, locale), items: [], expenseTotal: 0, incomeTotal: 0 };
       byMonth.set(key, m);
     }
     m.items.push(it);

@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // Structural rather than lucide-react's LucideIcon: this component should not
 // care where an icon component came from, and CategoryMeta's icons satisfy it.
@@ -46,8 +47,13 @@ function filterOptions(options: SearchableSelectOption[], query: string) {
 
 export function SearchableSelect({
   value, onChange, options, placeholder, disabled,
-  emptyMessage = 'No matches', style, id, ariaLabel,
+  emptyMessage, style, id, ariaLabel,
 }: SearchableSelectProps) {
+  const { d } = useTranslation();
+  // Default resolved here, not in the parameter list: a default parameter
+  // cannot call a hook, and an English literal there would be permanently
+  // untranslatable for every caller that omits the prop.
+  const emptyText = emptyMessage ?? d.select.noMatches;
   const reactId = useId();
   const baseId = id ?? `ss-${reactId}`;
   const listboxId = `${baseId}-listbox`;
@@ -159,6 +165,17 @@ export function SearchableSelect({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // ⚠️ IME COMPOSITION GUARD. Everything below must be skipped while a
+    // Chinese, Japanese or Korean input method is composing.
+    //
+    // A pinyin IME opens its own candidate list: ArrowUp/ArrowDown page
+    // through candidates and Enter confirms the chosen one. Without this
+    // guard those keys were intercepted here instead, so typing a category
+    // name in Chinese moved the dropdown highlight and committed the wrong
+    // option before the word was finished. Latin typing never produces a
+    // composition, so this changes nothing in English.
+    if (e.nativeEvent.isComposing) return;
+
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!open) { openList(); return; }
@@ -300,7 +317,7 @@ export function SearchableSelect({
           }}
         >
           {filtered.length === 0 ? (
-            <li style={{ padding: '0.6rem 0.7rem', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{emptyMessage}</li>
+            <li style={{ padding: '0.6rem 0.7rem', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{emptyText}</li>
           ) : (
             filtered.map((o, i) => {
               const OptionIconComponent = o.icon;

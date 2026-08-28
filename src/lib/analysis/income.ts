@@ -20,8 +20,8 @@ import type { IncomeTransaction, Transaction } from '@/types';
 import { filterToWindow, type AnalysisWindow } from './windows';
 import { computeObservedMonths, monthIndex } from './months';
 import { isExpense } from './spending';
-
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import { chartMonthLabel } from './monthLabels';
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
 
 export interface MonthlyDeduction {
   key: string;
@@ -32,7 +32,11 @@ export interface MonthlyDeduction {
   rate: number | null;
 }
 
-export type StabilityBand = 'very steady' | 'steady' | 'variable' | 'highly variable';
+// ⚠️ RENAMED from spaced English literals ('very steady' etc.) to camelCase.
+// Confirmed safe: this value is never persisted and never compared, only
+// rendered - so nothing outside this file's own band() depends on the exact
+// string. camelCase avoids awkward 'very steady' dictionary keys.
+export type StabilityBand = 'veryStable' | 'stable' | 'variable' | 'highlyVariable';
 
 export interface IncomeSummary {
   avgMonthlyNet: number | null;
@@ -59,15 +63,16 @@ function isStandardIncome(t: Transaction): t is IncomeTransaction {
 function band(cv: number): StabilityBand {
   // Conventional thresholds, not derived. A salaried income lands near 0; 0.5
   // means the typical month is half again away from the mean.
-  if (cv < 0.10) return 'very steady';
-  if (cv < 0.25) return 'steady';
+  if (cv < 0.10) return 'veryStable';
+  if (cv < 0.25) return 'stable';
   if (cv < 0.50) return 'variable';
-  return 'highly variable';
+  return 'highlyVariable';
 }
 
 export function computeIncomeSummary(
   transactions: readonly Transaction[],
   window: AnalysisWindow,
+  locale: Locale = DEFAULT_LOCALE,
 ): IncomeSummary {
   const inWindow = filterToWindow(window, transactions);
 
@@ -102,7 +107,7 @@ export function computeIncomeSummary(
 
     monthlyDeductions.push({
       key: `${y}-${String(m + 1).padStart(2, '0')}`,
-      label: m === 0 ? `${MONTH_ABBR[m]} ${String(y).slice(2)}` : MONTH_ABBR[m],
+      label: chartMonthLabel(y, m, locale),
       gross,
       net,
       // Guarded: deductionPct returns 0 for zero gross, but a month with no pay

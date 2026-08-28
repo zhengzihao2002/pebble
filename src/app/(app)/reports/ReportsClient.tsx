@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryItem } from '@/lib/data/mappers';
-import { parseLocalDate } from '@/lib/format';
+import { formatMonthYear, parseLocalDate } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { periodValueLabel } from '@/lib/i18n/enumLabels';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
 import { compareSameDayIds } from '@/lib/stats';
 import { ReportFilters } from '@/components/reports/ReportFilters';
@@ -24,6 +26,10 @@ interface ReportsClientProps {
 }
 
 export function ReportsClient({ transactions, categories, budgets }: ReportsClientProps) {
+  // ⚠️ Destructured as dict/tr, NOT d/t. This file uses `t` for a transaction
+  // in a dozen closures and `d` for a parsed Date in two more; the obvious
+  // names would shadow both and silently change what the code means.
+  const { d: dict, t: tr, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
@@ -175,9 +181,9 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     : periodGroup === 'year' ? yearOptions
     : null;
   const subPeriodLabel =
-    periodGroup === 'month' ? 'Which month'
-    : periodGroup === 'quarter' ? 'Which quarter'
-    : 'Which year';
+    periodGroup === 'month' ? dict.reports.whichMonth
+    : periodGroup === 'quarter' ? dict.reports.whichQuarter
+    : dict.reports.whichYear;
 
   const yearScoped = (showYearSelector && effectiveSubYear !== 'All')
     ? baseFiltered.filter((t) => parseLocalDate(t.date).getFullYear() === Number(effectiveSubYear))
@@ -222,29 +228,39 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
   const leadingTime = (items: Transaction[]): number =>
     items.length === 0 ? 0 : parseLocalDate(items[0].date).getTime();
 
-  const periodBuckets = new Map<string, { sortKey: number; items: Transaction[] }>();
+  // ⚠️ MONTH_NAMES and QUARTER_NAMES above are VALUES, not labels: subPeriod
+  // holds one, it is persisted to localStorage in reportFilters, and it is
+  // compared by equality when filtering. They stay English everywhere; only
+  // their <option> text is translated, in ReportFilters.
+  const periodBuckets = new Map<string, { sortKey: number; label: string; items: Transaction[] }>();
   if (showPeriodHeaders) {
     periodFiltered.forEach((t) => {
       const d = parseLocalDate(t.date);
-      let key: string, sortKey: number;
+      // key stays English and stable; label is what gets rendered. Splitting
+      // them keeps the React key, the sort tiebreak and the expansion key
+      // language-independent.
+      let key: string, sortKey: number, label: string;
       if (periodGroup === 'month') {
         key = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        label = formatMonthYear(d.getFullYear(), d.getMonth(), locale);
         sortKey = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
       } else if (periodGroup === 'quarter') {
         const q = Math.floor(d.getMonth() / 3) + 1;
         key = `Q${q} ${d.getFullYear()}`;
+        label = tr(dict.reports.quarterOfYear, { quarter: dict.quarters[`Q${q}` as 'Q1'], year: d.getFullYear() });
         sortKey = new Date(d.getFullYear(), (q - 1) * 3, 1).getTime();
       } else {
         // periodGroup === 'year'. Previously fell through to the quarter
         // branch, so selecting Year silently grouped and labelled by quarter.
         key = `${d.getFullYear()}`;
+        label = key;
         sortKey = new Date(d.getFullYear(), 0, 1).getTime();
       }
-      if (!periodBuckets.has(key)) periodBuckets.set(key, { sortKey, items: [] });
+      if (!periodBuckets.has(key)) periodBuckets.set(key, { sortKey, label, items: [] });
       periodBuckets.get(key)!.items.push(t);
     });
   } else {
-    periodBuckets.set('__flat__', { sortKey: 0, items: periodFiltered });
+    periodBuckets.set('__flat__', { sortKey: 0, label: '', items: periodFiltered });
   }
 
   // Groups and subgroups order on the SAME axis as the rows inside them, so
@@ -272,9 +288,9 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
                 ? leadingTime(b.items) - leadingTime(a.items)
                 : b.total - a.total,
             ) || a.key.localeCompare(b.key));
-        return { key, sortKey: v.sortKey, total, subGroups };
+        return { key, label: v.label, sortKey: v.sortKey, total, subGroups };
       }
-      return { key, sortKey: v.sortKey, total, items: [...v.items].sort(sortFn) };
+      return { key, label: v.label, sortKey: v.sortKey, total, items: [...v.items].sort(sortFn) };
     })
     .sort((a, b) =>
       directed(
@@ -308,15 +324,19 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restored, groupsExpanded, groupKeySignature]);
 
+  // Rebuilt as ' · '-joined parts rather than one interpolated sentence. The
+  // original spliced the raw periodGroup value into English text ("By month"),
+  // which no other language can take; joined parts need no word order at all.
+  const yearPart = effectiveSubYear === 'All' ? dict.reports.allYears : effectiveSubYear;
   const periodSummary =
-    periodGroup === 'all' ? 'All time'
-    : periodGroup === 'year' ? (subPeriod === 'All' ? 'By year' : subPeriod)
+    periodGroup === 'all' ? dict.reports.allTime
+    : periodGroup === 'year' ? (subPeriod === 'All' ? dict.reports.byYear : subPeriod)
     : subPeriod === 'All'
-      ? `By ${periodGroup} · ${effectiveSubYear === 'All' ? 'all years' : effectiveSubYear}`
-      : `${subPeriod}${effectiveSubYear === 'All' ? ' · all years' : ` ${effectiveSubYear}`}`;
-  const filterSummaryParts = [reportType === 'expense' ? 'Expenses' : 'Income', periodSummary];
-  if (categoryGroup === 'category') filterSummaryParts.push('grouped by category');
-  if (!allSelected) filterSummaryParts.push(`${selectedCategories.size} categor${selectedCategories.size === 1 ? 'y' : 'ies'}`);
+      ? `${periodGroup === 'month' ? dict.reports.byMonth : dict.reports.byQuarter} · ${yearPart}`
+      : `${periodValueLabel(dict, subPeriod)} · ${yearPart}`;
+  const filterSummaryParts = [reportType === 'expense' ? dict.reports.expenses : dict.reports.income, periodSummary];
+  if (categoryGroup === 'category') filterSummaryParts.push(dict.reports.groupedByCategory);
+  if (!allSelected) filterSummaryParts.push(tr(selectedCategories.size === 1 ? dict.reports.categoriesOne : dict.reports.categoriesOther, { count: selectedCategories.size }));
   const filterSummary = filterSummaryParts.join(' · ');
 
   return (

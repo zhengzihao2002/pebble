@@ -33,7 +33,13 @@ export interface ReportCategorySubGroup {
 }
 
 export interface ReportPeriodGroup {
+  // Stable and ENGLISH. Used as the React key, as the sort tiebreak, and as
+  // half of the `${period}::${category}` expansion key - none of which may
+  // change when the language does.
   key: string;
+  // What the user sees. Separate from key precisely so translating the header
+  // cannot remount every group or reorder the report.
+  label: string;
   sortKey: number;
   total: number;
   items?: Transaction[];

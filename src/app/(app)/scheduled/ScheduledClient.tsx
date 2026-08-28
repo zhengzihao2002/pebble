@@ -10,6 +10,11 @@ import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { isExhausted } from '@/lib/recurring/occurrences';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
+import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
+import type { Dictionary } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n/locale';
 import type { RecurringRule, UpcomingOccurrence } from '@/types';
 
 interface ScheduledClientProps {
@@ -19,23 +24,27 @@ interface ScheduledClientProps {
   catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
 }
 
-const FREQUENCY_LABEL: Record<RecurringRule['frequency'], string> = {
-  once: 'One-off',
-  weekly: 'Weekly',
-  biweekly: 'Every 2 weeks',
-  monthly: 'Monthly',
-  yearly: 'Yearly',
-};
-
-function describeSchedule(rule: RecurringRule): string {
-  const base = FREQUENCY_LABEL[rule.frequency];
-  if (rule.frequency === 'once') return `${base} on ${formatDate(rule.startDate)}`;
-  if (rule.endMode === 'after' && rule.endCount) return `${base}, ${rule.endCount} payments from ${formatDate(rule.startDate)}`;
-  if (rule.endMode === 'on' && rule.endDate) return `${base} until ${formatDate(rule.endDate)}`;
-  return `${base} from ${formatDate(rule.startDate)}`;
+/**
+ * Builds the inline schedule description ("Monthly from Aug 21" etc.).
+ *
+ * Takes d/t/locale as parameters rather than calling useTranslation() itself:
+ * it is a plain function used inside a .map(), not a component, and passing
+ * the already-resolved dictionary avoids resolving it once per rule.
+ *
+ * rule.frequency indexes d.scheduled.frequencyShort directly - both are typed
+ * against the same RecurringFrequency values, so a mismatched key is a
+ * compile error.
+ */
+function describeSchedule(rule: RecurringRule, d: Dictionary, t: typeof import('@/lib/i18n').t, locale: Locale): string {
+  const freq = d.scheduled.frequencyShort[rule.frequency];
+  if (rule.frequency === 'once') return t(d.scheduled.onceOn, { freq, date: formatDate(rule.startDate, locale) });
+  if (rule.endMode === 'after' && rule.endCount) return t(d.scheduled.afterCount, { freq, count: rule.endCount, date: formatDate(rule.startDate, locale) });
+  if (rule.endMode === 'on' && rule.endDate) return t(d.scheduled.until, { freq, date: formatDate(rule.endDate, locale) });
+  return t(d.scheduled.from, { freq, date: formatDate(rule.startDate, locale) });
 }
 
 export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: ScheduledClientProps) {
+  const { d, t, locale } = useTranslation();
   const [editing, setEditing] = useState<RecurringRule | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +67,7 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
     }));
     setBusyId(null);
     if (!result.ok) {
-      setError(result.error);
+      setError(translateActionError(d, locale, result));
       setErrorKind(result.kind);
       // Held so Try again repeats this rule's toggle. The status is re-read
       // from `rule` at retry time rather than captured, so a retry always
@@ -80,19 +89,30 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
       />
 
       <div className="card" style={cardStyle}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Your schedules</h3>
+        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.scheduled.title}</h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          Payments and income Pebble creates for you. They appear when you open the app after their
-          date, so nothing runs while Pebble is closed. Editing a schedule only affects what comes
-          next — transactions it has already created are left exactly as they are, and deleting one
-          you did not want is permanent. Pausing skips that period entirely rather than catching up
-          on it later.
+          {d.scheduled.blurb}
         </p>
 
         {rules.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', margin: 0 }}>
-            Nothing scheduled yet. Use <strong style={{ color: 'var(--ink)' }}>Add schedule</strong> above
-            to set up a recurring payment like a car loan or your salary.
+            {/* {action} renders the Header button's own label - one source of
+                truth, so a rename there cannot leave this sentence stale.
+                Split on the placeholder rather than using t() directly so the
+                button name keeps its <strong> styling. */}
+            {(() => {
+              // Split on the placeholder so the button name keeps its <strong>
+              // styling, matching the pattern used for every other multi-part
+              // sentence with an embedded emphasis.
+              const parts = d.scheduled.emptyHint.split('{action}');
+              return (
+                <>
+                  {parts[0]}
+                  <strong style={{ color: 'var(--ink)' }}>{d.header.addSchedule}</strong>
+                  {parts[1]}
+                </>
+              );
+            })()}
           </p>
         ) : (
           <div>
@@ -111,13 +131,17 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {/* rule.description is USER DATA - rendered as stored. */}
                       {rule.description}
                       {finished
-                        ? <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>finished</span>
-                        : paused && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>paused</span>}
+                        ? <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>{d.scheduled.finished}</span>
+                        : paused && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>{d.scheduled.paused}</span>}
                     </div>
                     <div style={{ fontSize: '0.77rem', color: 'var(--ink-soft)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {rule.category} · {describeSchedule(rule)}
+                      {/* rule.category is either a real category name (user
+                          data) or one of the two income literals - one call
+                          handles both, translating only the latter. */}
+                      {categoryLabel(d, rule.category)} · {describeSchedule(rule, d, t, locale)}
                     </div>
                   </div>
 
@@ -131,14 +155,14 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                   <button
                     type="button" onClick={() => toggleStatus(rule)} disabled={busyId === rule.id || finished}
                     className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }}
-                    aria-label={paused ? `Resume ${rule.description}` : `Pause ${rule.description}`}
+                    aria-label={t(paused ? d.scheduled.resumeAria : d.scheduled.pauseAria, { description: rule.description })}
                   >
                     {paused ? <Play size={14} /> : <Pause size={14} />}
                   </button>
                   <button
                     type="button" onClick={() => setEditing(rule)}
                     className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }}
-                    aria-label={`Edit ${rule.description}`}
+                    aria-label={t(d.scheduled.editAria, { description: rule.description })}
                   >
                     <Pencil size={14} />
                   </button>
@@ -151,18 +175,18 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
 
       <div className="card" style={cardStyle}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>
-          Coming up
+          {d.scheduled.comingUp}
           <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--ink-soft)', marginLeft: 6 }}>
-            next {previewDays} days
+            {t(d.scheduled.nextDays, { days: previewDays })}
           </span>
         </h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          These have not happened yet, so they are not in your balance. Paused schedules are not shown.
+          {d.scheduled.upcomingHint}
         </p>
 
         {upcoming.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', margin: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <CalendarClock size={15} />Nothing due in the next {previewDays} days.
+            <CalendarClock size={15} />{t(d.scheduled.nothingDue, { days: previewDays })}
           </p>
         ) : (
           <div>
@@ -172,11 +196,13 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                 style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)' }}
               >
                 <span className="font-mono-tab" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', flexShrink: 0, width: 74 }}>
-                  {formatDate(item.date)}
+                  {formatDate(item.date, locale)}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '0.87rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: 1 }}>{item.category} · {item.paymentMethod}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: 1 }}>
+                    {categoryLabel(d, item.category)} · {paymentMethodLabel(d, item.paymentMethod)}
+                  </div>
                 </div>
                 <span
                   className="font-mono-tab"

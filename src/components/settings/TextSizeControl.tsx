@@ -1,23 +1,33 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import type { Dictionary } from '@/lib/i18n';
+
 interface TextSizeControlProps {
   textSize: number;
   onChange: (value: number) => void;
 }
 
-const PRESETS = [
-  { label: 'Small', value: 85 },
-  { label: 'Default', value: 100 },
-  { label: 'Large', value: 115 },
-  { label: 'Extra large', value: 130 },
+// Value plus a dictionary key, not a label. Module scope cannot call a hook,
+// so the component resolves - the same arrangement navItems.ts uses.
+//
+// The key is also the React key. It was the LABEL before this change, which
+// meant every preset button remounted on a language switch.
+const PRESETS: { labelKey: keyof Dictionary['textSize']; value: number }[] = [
+  { labelKey: 'small', value: 85 },
+  { labelKey: 'default', value: 100 },
+  { labelKey: 'large', value: 115 },
+  { labelKey: 'extraLarge', value: 130 },
 ];
 
 export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
+  const { d } = useTranslation();
+
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Text size</h3>
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.textSize.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
-        Adjust how large text appears throughout Pebble.
+        {d.textSize.blurb}
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
         <input
@@ -40,8 +50,8 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {PRESETS.map((p) => (
-          <button key={p.label} onClick={() => onChange(p.value)} className={`pill ${textSize === p.value ? 'active' : ''}`}>
-            {p.label}
+          <button key={p.labelKey} onClick={() => onChange(p.value)} className={`pill ${textSize === p.value ? 'active' : ''}`}>
+            {d.textSize[p.labelKey]}
           </button>
         ))}
       </div>

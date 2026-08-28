@@ -1,19 +1,32 @@
 import { LayoutDashboard, Receipt, BarChart3, LineChart, PiggyBank, Target, CalendarClock, Settings as SettingsIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { Dictionary } from '@/lib/i18n';
 
+/**
+ * Carries a KEY, not a label.
+ *
+ * This module has no 'use client' and is imported by both Sidebar and
+ * BottomNav, so it cannot call a hook - there is nowhere here to read the
+ * locale from. Each consumer holds the dictionary already (it renders the
+ * text) and resolves d.nav[item.labelKey] itself.
+ *
+ * Typed against the dictionary rather than as a plain string so a key that
+ * does not exist is a compile error. `import type` erases at build time, so
+ * naming the Dictionary here pulls no strings into the bundle.
+ */
 export interface NavItem {
   href: string;
-  label: string;
+  labelKey: keyof Dictionary['nav'];
   icon: LucideIcon;
 }
 
 export const navItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/transactions', label: 'Transactions', icon: Receipt },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/analysis', label: 'Analysis', icon: LineChart },
-  { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/goals', label: 'Goals', icon: Target },
-  { href: '/scheduled', label: 'Scheduled', icon: CalendarClock },
-  { href: '/settings', label: 'Settings', icon: SettingsIcon },
+  { href: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/transactions', labelKey: 'transactions', icon: Receipt },
+  { href: '/reports', labelKey: 'reports', icon: BarChart3 },
+  { href: '/analysis', labelKey: 'analysis', icon: LineChart },
+  { href: '/budgets', labelKey: 'budgets', icon: PiggyBank },
+  { href: '/goals', labelKey: 'goals', icon: Target },
+  { href: '/scheduled', labelKey: 'scheduled', icon: CalendarClock },
+  { href: '/settings', labelKey: 'settings', icon: SettingsIcon },
 ];

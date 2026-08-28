@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Banknote, SlidersHorizontal } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -20,6 +21,8 @@ interface StatementRowProps {
 }
 
 export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, totalBalanceAfter, onOpenDetail, categoryMeta }: StatementRowProps) {
+  const { d, t, locale } = useTranslation();
+
   // Adjustments have no category. They are manual balance corrections, so
   // they get their own icon and a neutral treatment rather than being coloured
   // as income or spending.
@@ -28,9 +31,10 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
   const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
   const isIncome = !isAdjustment && txn.amount > 0;
 
-  const subtitleParts = isAdjustment ? ['Balance adjustment'] : [txn.category];
+  // txn.category is USER DATA - passed through untranslated, always.
+  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : [txn.category];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
-  subtitleParts.push(formatDate(txn.date));
+  subtitleParts.push(formatDate(txn.date, locale));
 
   const accentColor = isAdjustment
     ? 'var(--ink-soft)'
@@ -77,7 +81,7 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {txn.description.split('\n')[0] || (isAdjustment ? 'Balance adjustment' : '')}
+          {txn.description.split('\n')[0] || (isAdjustment ? d.txn.balanceAdjustment : '')}
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {subtitleParts.join(' · ')}
@@ -93,7 +97,7 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
           {amountPrefix}{formatCurrency(txn.amount)}
         </div>
         <div className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
-          Bal {formatCurrency(totalBalanceAfter)}
+          {t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })}
         </div>
       </div>
 
@@ -106,11 +110,13 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem' }}>
-            <span style={{ color: 'var(--ink-soft)' }}>Checking</span>
+            {/* An account NAME here, not a stored value being echoed - the
+                figure beside it is derived, and nothing on this row writes. */}
+            <span style={{ color: 'var(--ink-soft)' }}>{d.enums.paymentMethod.Checking}</span>
             <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(checkingBalanceAfter)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 4 }}>
-            <span style={{ color: 'var(--ink-soft)' }}>Cash</span>
+            <span style={{ color: 'var(--ink-soft)' }}>{d.enums.paymentMethod.Cash}</span>
             <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(cashBalanceAfter)}</span>
           </div>
         </div>

@@ -9,8 +9,17 @@ import type { Transaction } from '@/types';
 import { buildTrendData, getAvailablePeriods } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function IncomeSpendingChart({ transactions }: { transactions: Transaction[] }) {
+  const { d } = useTranslation();
+  // TREND_MODES lives in @/data/seed with English labels. Looked up by VALUE
+  // against the same d.statsModes dictionary the dashboard tiles use - the
+  // mode keys overlap - falling back to the seed label for anything that
+  // doesn't match, so an unrecognised mode degrades to English rather than
+  // a blank option.
+  const modeLabel = (value: string, fallback: string) =>
+    (d.statsModes as Record<string, string>)[value] ?? fallback;
   const [trendMode, setTrendMode] = useState('last6');
   const [trendYear, setTrendYear] = useState<string | null>(null);
 
@@ -61,13 +70,13 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>Income vs. spending</h3>
+        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.trendChart.title}</h3>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           <select
             value={trendMode} onChange={(e) => handleTrendModeChange(e.target.value)}
             style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
           >
-            {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{modeLabel(m.value, m.label)}</option>)}
           </select>
           {needsYear && availableYears.length > 0 && (
             <select
@@ -81,7 +90,7 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
       </div>
       {trendData.length === 0 ? (
         <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
-          No data for this period
+          {d.trendChart.noData}
         </div>
       ) : (
       <ResponsiveContainer width="100%" height={220}>
@@ -99,15 +108,15 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
           <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={38} />
-          <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{ borderRadius: 10, border: '1px solid #E1E4DD', fontSize: 13 }} />
-          <Area type="monotone" dataKey="income" stroke="#1F5A45" fill="url(#incomeGrad)" strokeWidth={2} />
-          <Area type="monotone" dataKey="spending" stroke="#AD7B2E" fill="url(#spendGrad)" strokeWidth={2} />
+          <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{ borderRadius: 10, fontSize: 13 }} />
+          <Area type="monotone" dataKey="income" name={d.dashboard.income} stroke="#1F5A45" fill="url(#incomeGrad)" strokeWidth={2} />
+          <Area type="monotone" dataKey="spending" name={d.dashboard.spending} stroke="#AD7B2E" fill="url(#spendGrad)" strokeWidth={2} />
         </AreaChart>
       </ResponsiveContainer>
       )}
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: '#1F5A45' }} />Income</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: '#AD7B2E' }} />Spending</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: '#1F5A45' }} />{d.dashboard.income}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: '#AD7B2E' }} />{d.dashboard.spending}</span>
       </div>
     </div>
   );

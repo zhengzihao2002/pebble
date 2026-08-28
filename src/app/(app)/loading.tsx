@@ -25,7 +25,11 @@ import { LoadingBlock } from '@/components/shared/Spinner';
 export default function AppGroupLoading() {
   return (
     <div style={{ animation: 'pebble-fade-in 0.2s ease 0.18s both' }}>
-      <LoadingBlock label="Loading…" minHeight={440} size={56} labelSize="0.95rem" />
+      {/* No label prop, deliberately: this is a Server Component and cannot
+          read the locale, so LoadingBlock - which is a client component -
+          resolves the default from the dictionary itself. Passing one here
+          would hardcode English into the fallback for every route. */}
+      <LoadingBlock minHeight={440} size={56} labelSize="0.95rem" />
     </div>
   );
 }

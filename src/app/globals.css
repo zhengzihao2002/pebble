@@ -226,10 +226,34 @@ html.no-theme-transition * {
   --wine: #8C3D42; --wine-soft: #F3E2E2; --line: #E1E4DD;
   --shadow: 0 1px 2px rgba(23,36,32,0.04), 0 10px 28px -14px rgba(23,36,32,0.18);
   --overlay-tint: rgba(241, 243, 238, 0.6);
+  /* CJK fallback for all three type stacks.
+
+     SYSTEM FONTS, NOT A WEBFONT, deliberately. A Noto Sans SC download is
+     megabytes even split by unicode-range, and PingFang SC (macOS/iOS) and
+     Microsoft YaHei (Windows) are both good faces already installed.
+
+     Font fallback is PER GLYPH, not per element, so this changes nothing for
+     Latin text: digits still resolve to IBM Plex Mono and .font-mono-tab's
+     tabular-nums keeps working on every money figure, date and percentage.
+     Only characters the primary face lacks reach this list.
+
+     A CJK SANS is used even for .font-display. Songti SC would be the
+     faithful pairing for Fraunces, but CJK serifs render thin and weak at UI
+     sizes on screen and Chinese UI convention is sans regardless. */
+  --cjk: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC";
   transition: --paper 0.3s ease, --mist 0.3s ease,
     --pine 0.3s ease, --pine-soft 0.3s ease, --gold 0.3s ease, --gold-soft 0.3s ease,
     --wine 0.3s ease, --wine-soft 0.3s ease, --line 0.3s ease, --overlay-tint 0.3s ease;
-  font-family: var(--font-work-sans), system-ui, sans-serif;
+  /* Tells the browser which palette to draw NATIVE widget internals in:
+     the date field's calendar icon and popup, number spinners, <select>
+     popups, checkboxes and scrollbar corners. Those are browser-drawn and do
+     not read our background-color, so without this they stayed light in dark
+     mode even though the field box around them was dark.
+
+     Declared once here because color-scheme INHERITS - every control inside
+     .pebble-root picks it up, including the portalled dropdowns. */
+  color-scheme: light;
+  font-family: var(--font-work-sans), var(--cjk), system-ui, sans-serif;
   background-color: var(--paper); color: var(--ink);
   height: 100vh;
   height: 100dvh;
@@ -271,16 +295,51 @@ html.no-theme-transition * {
   --wine: #D48A8F; --wine-soft: #3A2426; --line: #2A3830;
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
   --overlay-tint: rgba(18, 28, 24, 0.6);
+  /* Pairs with the light declaration above. Both selectors are needed for the
+     same reason the palette needs both: .pebble-root.dark is set by AppShell
+     after hydration, .pebble-dark .pebble-root by the pre-paint script. */
+  color-scheme: dark;
 }
 .pebble-root, .pebble-root * {
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease;
 }
-.pebble-root .font-display { font-family: var(--font-fraunces), Georgia, serif; }
-.pebble-root .font-mono-tab { font-family: var(--font-ibm-plex-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.pebble-root .font-display { font-family: var(--font-fraunces), var(--cjk), Georgia, serif; }
+.pebble-root .font-mono-tab { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow); }
 .pebble-root button { font-family: inherit; cursor: pointer; }
 .pebble-root input, .pebble-root select { font-family: inherit; }
 .pebble-root input::placeholder { color: var(--ink-soft); opacity: 0.7; }
+
+/* Recharts hover tooltips, themed to match InfoTooltip.
+   
+   WHY THIS IS CSS AND NOT A PROP. Recharts colours each tooltip ROW from its
+   series colour, written as an INLINE style on the element - so the gold
+   spending series printed gold text, which is illegible on a light panel and
+   was the actual bug. contentStyle and itemStyle do not reliably beat that
+   inline colour across versions.
+   
+   WHY !important. Beating a third-party library's inline styles is one of the
+   few places it is the right tool rather than a shortcut.
+   
+   WHY HERE AND NOT IN EACH CHART. There are six charts across the Dashboard
+   and Analysis pages. One rule covers all of them and cannot drift, whereas
+   six copies of a style prop already had drifted.
+   
+   The cost: tooltip rows lose their per-series colour. The chart lines and
+   the legend still carry it, so nothing becomes ambiguous. */
+.pebble-root .recharts-default-tooltip {
+  background-color: var(--mist) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0.6rem !important;
+  box-shadow: var(--shadow);
+}
+.pebble-root .recharts-default-tooltip .recharts-tooltip-label,
+.pebble-root .recharts-default-tooltip .recharts-tooltip-item,
+.pebble-root .recharts-default-tooltip .recharts-tooltip-item-name,
+.pebble-root .recharts-default-tooltip .recharts-tooltip-item-separator,
+.pebble-root .recharts-default-tooltip .recharts-tooltip-item-value {
+  color: var(--ink) !important;
+}
 .pebble-root * { box-sizing: border-box; }
 
 .pebble-shell { display: flex; min-height: 100vh; }

@@ -2,13 +2,17 @@
 
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { SignOutButton } from '@/components/layout/SignOutButton';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function AccountCard() {
   const { name, email, initials } = useCurrentUser();
+  // name, email and initials are the signed-in user's own data - never
+  // translated, never transformed.
+  const { d } = useTranslation();
 
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '1rem' }}>Account</h3>
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '1rem' }}>{d.account.title}</h3>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
         <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 600, flexShrink: 0 }}>
           {initials}

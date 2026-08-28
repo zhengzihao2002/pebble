@@ -24,3 +24,9 @@ export const PEBBLE_UI_STORAGE_KEY = 'pebble-ui';
 
 /** Field the pre-paint script reads. Must stay in partialize(). */
 export const DARK_MODE_FIELD = 'darkMode';
+
+/**
+ * Field the pre-paint script reads to set <html lang> before first paint.
+ * Must stay in partialize(), same as DARK_MODE_FIELD.
+ */
+export const LOCALE_FIELD = 'locale';

@@ -1,3 +1,5 @@
+import { INTL_LOCALE, DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
+
 // Strips the time-of-day off a Date, for calendar-day-level comparisons.
 export function atMidnight(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -45,6 +47,10 @@ export function parseLocalDate(dateStr: string): Date {
   return new Date(year, month - 1, day);
 }
 
+// ⚠️ NO LOCALE PARAMETER, DELIBERATELY - do not add one.
+// These are the user's actual US dollars. Rendering them as ¥ would
+// misrepresent real money, and 'en-US' grouping is identical to 'zh-CN'
+// grouping anyway, so a locale here could only ever make things worse.
 export function formatCurrency(n: number): string {
   return n < 0
     ? `-$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -55,28 +61,72 @@ export function formatCurrency(n: number): string {
 // when the date falls outside the current year. The comparison year is read
 // fresh on every call rather than captured at module load, so a long-lived
 // tab or a warm server container can't keep formatting against a stale year.
-export function formatDate(dateStr: string): string {
+//
+// The locale parameter is OPTIONAL and defaults to English, deliberately.
+// Making it required would have forced every call site in the app into one
+// unreviewable diff; instead each localization phase updates its own callers
+// and a final grep catches any left behind.
+//
+// ⚠️ This formats for DISPLAY only. The stored 'YYYY-MM-DD' form is never
+// produced here and must never be localized - those strings are compared
+// LEXICOGRAPHICALLY throughout src/lib/analysis/, so any other shape silently
+// reorders history.
+export function formatDate(dateStr: string, locale: Locale = DEFAULT_LOCALE): string {
   const d = parseLocalDate(dateStr);
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString(INTL_LOCALE[locale], {
     month: 'short',
     day: 'numeric',
     ...(sameYear ? {} : { year: 'numeric' }),
   });
 }
 
+// 'Monday, August 21, 2025'. Used where a single date is the subject of the
+// row rather than a compact tag - the transaction detail view.
+export function formatFullDate(dateStr: string, locale: Locale = DEFAULT_LOCALE): string {
+  return parseLocalDate(dateStr).toLocaleDateString(INTL_LOCALE[locale], {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+}
+
+// 'August 21, 2025'. Same as above without the weekday, for prose where the
+// day of the week would be noise.
+export function formatLongDate(dateStr: string, locale: Locale = DEFAULT_LOCALE): string {
+  return parseLocalDate(dateStr).toLocaleDateString(INTL_LOCALE[locale], {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+}
+
+// 'August 2026' / '2026年8月', from a year and a ZERO-BASED month, matching
+// JavaScript's Date convention and the shape getLastNMonths() returns.
+//
+// Takes the numbers rather than a preformatted string so the month name comes
+// out in the reader's language. The label field on those objects is built in
+// stats.ts, which is shared with server code and cannot know the locale.
+export function formatMonthYear(year: number, month: number, locale: Locale = DEFAULT_LOCALE): string {
+  return new Date(year, month, 1).toLocaleDateString(INTL_LOCALE[locale], {
+    month: 'long', year: 'numeric',
+  });
+}
+
 // Goal target dates are stored as 'YYYY-MM-DD' text. The field accepted free
 // text before it became a date picker, so any value that doesn't match is
 // passed through unchanged rather than rendered as 'Invalid Date'.
-export function formatGoalDate(value: string): string {
+export function formatGoalDate(value: string, locale: Locale = DEFAULT_LOCALE): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  return parseLocalDate(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return parseLocalDate(value).toLocaleDateString(INTL_LOCALE[locale], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ⚠️ CLIENT-SIDE ONLY - reads the local hour, which is UTC on the server.
-export function getGreeting(): string {
+//
+// Returns a KEY, not a sentence. A formatting module must not own prose: the
+// caller looks the key up in d.header.greeting. RENAMED from getGreeting()
+// deliberately rather than just retyped - changing the return type alone would
+// have left any caller doing `${getGreeting()}, name` compiling fine and
+// rendering "morning, Bob". The rename makes every caller fail loudly instead.
+export function getGreetingKey(): 'morning' | 'afternoon' | 'evening' {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afternoon';
+  return 'evening';
 }

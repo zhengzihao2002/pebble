@@ -7,6 +7,8 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { formatCurrency } from '@/lib/format';
 import { LoadingOverlay } from '@/components/shared/Spinner';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface OpeningBalanceCardProps {
   checkingOpening: number;
@@ -38,6 +40,7 @@ const labelStyle: React.CSSProperties = {
 export function OpeningBalanceCard({
   checkingOpening, cashOpening, checkingTransactionTotal, cashTransactionTotal,
 }: OpeningBalanceCardProps) {
+  const { d, locale } = useTranslation();
   const [checking, setChecking] = useState(String(checkingOpening));
   const [cash, setCash] = useState(String(cashOpening));
   const [saving, setSaving] = useState(false);
@@ -62,22 +65,25 @@ export function OpeningBalanceCard({
       cashOpening: cashNum,
     }));
     setSaving(false);
-    if (!result.ok) { setError(result.error); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     setSaved(true);
   };
 
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
-      {saving && <LoadingOverlay label="Saving balances…" />}
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>Starting balances</h3>
+      {saving && <LoadingOverlay label={d.openingBalance.saving} />}
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.openingBalance.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
-        What each account held before your first recorded transaction. Your balance today is worked out
-        from this plus everything you have recorded since. Negative values are fine for an overdrawn account.
+        {d.openingBalance.blurb}
       </p>
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.1rem', flexWrap: 'wrap' }}>
+        {/* Account NAMES being displayed, not values being submitted: the
+            payload below sends checkingOpening/cashOpening as named
+            properties. Drawn from the shared enum labels so this card cannot
+            drift from the rest of the app. */}
         <label style={labelStyle}>
-          Checking
+          {d.enums.paymentMethod.Checking}
           <input
             type="number" step="0.01" value={checking}
             onChange={(e) => { setChecking(e.target.value); setSaved(false); }}
@@ -85,7 +91,7 @@ export function OpeningBalanceCard({
           />
         </label>
         <label style={labelStyle}>
-          Cash
+          {d.enums.paymentMethod.Cash}
           <input
             type="number" step="0.01" value={cash}
             onChange={(e) => { setCash(e.target.value); setSaved(false); }}
@@ -95,22 +101,27 @@ export function OpeningBalanceCard({
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem' }}>
-        <span>Balance today, with these values</span>
+        <span>{d.openingBalance.projectedLabel}</span>
         <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-          {formatCurrency(projectedChecking)} checking · {formatCurrency(projectedCash)} cash
+          {/* Word order differs: English puts the account name after the
+              figure, Chinese before it. Split on the placeholders so each
+              language positions them itself. */}
+          {d.openingBalance.projectedValue
+            .replace('{checking}', formatCurrency(projectedChecking))
+            .replace('{cash}', formatCurrency(projectedCash))}
         </span>
       </div>
 
       <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginBottom: '0.8rem' }} />
       {saved && !dirty && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>Saved.</p>
+        <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginBottom: '0.8rem' }}>{d.openingBalance.saved}</p>
       )}
 
       <button
         onClick={handleSave} disabled={saving} className="btn-primary"
         style={{ padding: '0.65rem 1.1rem', opacity: saving ? 0.6 : 1 }}
       >
-        {saving ? 'Saving…' : 'Save starting balances'}
+        {saving ? d.common.saving : d.openingBalance.save}
       </button>
     </div>
   );

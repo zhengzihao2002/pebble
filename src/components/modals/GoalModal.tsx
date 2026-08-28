@@ -9,6 +9,8 @@ import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { playEventSound } from '@/lib/sound/useSound';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 import type { Goal } from '@/types';
 
 interface GoalModalProps {
@@ -20,7 +22,14 @@ interface GoalModalProps {
 
 type Mode = 'form' | 'confirmDelete';
 
+/**
+ * ⚠️ Two stored values here are NOT text and are never translated: iconKey,
+ * which resolveGoalIcon() looks up, and color, which is a hex string. The
+ * goal's name is user data. The target date is a type="date" input, so its
+ * value stays 'YYYY-MM-DD' whatever the browser's picker displays.
+ */
 export function GoalModal({ onClose, goal }: GoalModalProps) {
+  const { d, locale } = useTranslation();
   const isEdit = goal !== undefined;
 
   const [mode, setMode] = useState<Mode>('form');
@@ -47,6 +56,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     setSaving(true);
     setSaveError(null);
 
+    // iconKey and color go through untouched - both are looked up, not read.
     const payload = {
       name: name.trim(), target: Number(target), current: current ? Number(current) : 0,
       date: date.trim(), iconKey, color,
@@ -57,7 +67,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
 
     setSaving(false);
     if (!result.ok) {
-      setSaveError(result.error);
+      setSaveError(translateActionError(d, locale, result));
       setSaveErrorKind(result.kind);
       playEventSound('saveFailed');
       return;
@@ -83,7 +93,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     setSaveError(null);
     const result = await callAction(() => deleteGoalAction({ id: goal.id }));
     setSaving(false);
-    if (!result.ok) { setSaveError(result.error); setSaveErrorKind(result.kind); return; }
+    if (!result.ok) { setSaveError(translateActionError(d, locale, result)); setSaveErrorKind(result.kind); return; }
     onClose();
   };
 
@@ -96,38 +106,39 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
           positioned ancestor - covers this card and blocks the form beneath it.
           Without it the overlay would escape to the viewport. */}
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting goal…' : 'Saving goal…'} />}
+        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.goalModal.deletingOverlay : d.goalModal.saving} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
-          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{isEdit ? 'Edit goal' : 'Add goal'}</h2>
+          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{isEdit ? d.goalModal.titleEdit : d.goalModal.titleAdd}</h2>
           <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         {mode === 'confirmDelete' ? (
           <div>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Delete this goal?</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.goalModal.deleteConfirm}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              <strong style={{ color: 'var(--ink)' }}>{goal?.name}</strong> will be removed. No money moves —
-              a goal only ever recorded a share of your balance you had set aside, so that amount simply
-              goes back to unallocated.
+              {/* The goal's name is user data and leads the sentence in both
+                  languages, so the remainder is a single key. */}
+              <strong style={{ color: 'var(--ink)' }}>{goal?.name}</strong> {d.goalModal.deleteBody}
             </p>
             <ActionError message={saveError} kind={saveErrorKind} onRetry={handleDelete} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
+              <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.goalModal.keepIt}</button>
               <button type="button" onClick={handleDelete} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Deleting…' : 'Delete'}
+                {saving ? d.goalModal.deleting : d.goalModal.delete}
               </button>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <label style={labelStyle}>
-              Goal name
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. New Car" required style={inputStyle} />
+              {d.goalModal.name}
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={d.goalModal.namePlaceholder} required style={inputStyle} />
             </label>
 
             <label style={labelStyle}>
-              Target amount
+              {d.goalModal.targetAmount}
               <div style={{ position: 'relative' }}>
+                {/* Stays '$' in every locale - the user's real US dollars. */}
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                 <input
                   type="number" min="0" step="0.01" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" required
@@ -137,7 +148,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
             </label>
 
             <label style={labelStyle}>
-              {isEdit ? 'Set aside so far' : 'Already saved'} <span style={{ opacity: 0.7 }}>(optional)</span>
+              {isEdit ? d.goalModal.setAsideSoFar : d.goalModal.alreadySaved} <span style={{ opacity: 0.7 }}>{d.goalModal.optional}</span>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                 <input
@@ -148,13 +159,17 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
             </label>
 
             <label style={labelStyle}>
-              Target date
+              {d.goalModal.targetDate}
+              {/* The browser localizes its own picker from <html lang>; the
+                  value stays 'YYYY-MM-DD', which is what reaches the action. */}
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
             </label>
 
             <label style={labelStyle}>
-              Icon
+              {d.goalModal.icon}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {/* key is the stored iconKey, resolved by resolveGoalIcon().
+                    Never translated, never a label. */}
                 {GOAL_ICON_OPTIONS.map(({ key, icon: OptIcon }) => (
                   <button
                     key={key} type="button" onClick={() => setIconKey(key)}
@@ -171,7 +186,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
             </label>
 
             <label style={labelStyle}>
-              Color
+              {d.goalModal.color}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {GOAL_COLOR_OPTIONS.map((c) => (
                   <button
@@ -194,11 +209,11 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   className="pill"
                   style={{ padding: '0.72rem 1rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  <Trash2 size={14} />Delete
+                  <Trash2 size={14} />{d.goalModal.delete}
                 </button>
               )}
               <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add goal'}
+                {saving ? d.common.saving : isEdit ? d.goalModal.saveChanges : d.goalModal.titleAdd}
               </button>
             </div>
           </form>

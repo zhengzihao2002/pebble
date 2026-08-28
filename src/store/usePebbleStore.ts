@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
+import type { Locale } from '@/lib/i18n/locale';
 import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 
@@ -36,6 +37,10 @@ export interface DashboardPrefs {
 interface PebbleUIState {
   darkMode: boolean;
   textSize: number;
+  // Display language. A DEVICE preference like the two above: it changes
+  // nothing that is stored, compared or sent to Postgres. AppShell mirrors it
+  // into the pebble-lang cookie so Server Components can read it too.
+  locale: Locale;
   // null means never set on this device: the Reports screen then resolves its
   // own date-based defaults rather than falling back to a stored month that
   // could be years old. Filter choices qualify as device preferences - they
@@ -55,6 +60,7 @@ interface PebbleUIState {
   // findSoundFile() and plays silence - no error, no cleanup needed.
   soundPrefs: Record<SoundEvent, string | null>;
   setDarkMode: (value: boolean) => void;
+  setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
   setReportFilters: (value: ReportFilterPrefs) => void;
   setDashboardPrefs: (patch: Partial<DashboardPrefs>) => void;
@@ -73,6 +79,9 @@ export const usePebbleStore = create<PebbleUIState>()(
     (set) => ({
       darkMode: false,
       textSize: 100,
+      // Static, matching every other initial value here: the server and the
+      // first client render must agree exactly, and persist rehydrates after.
+      locale: 'en',
       reportFilters: null,
       dashboardPrefs: null,
       analysisPrefs: null,
@@ -80,6 +89,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       // first client render must agree exactly, and persist rehydrates after.
       soundPrefs: emptySoundPrefs(),
       setDarkMode: (value) => set({ darkMode: value }),
+      setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
       setReportFilters: (value) => set({ reportFilters: value }),
       setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),
@@ -103,6 +113,9 @@ export const usePebbleStore = create<PebbleUIState>()(
       partialize: (state) => ({
         darkMode: state.darkMode,
         textSize: state.textSize,
+        // Omitting this persists nothing and reports no error - the language
+        // would simply reset on every reload.
+        locale: state.locale,
         reportFilters: state.reportFilters,
         dashboardPrefs: state.dashboardPrefs,
         analysisPrefs: state.analysisPrefs,

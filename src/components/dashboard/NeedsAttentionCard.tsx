@@ -6,6 +6,7 @@ import type { CategoryMeta, Transaction } from '@/types';
 import { computeCategorySpent } from '@/lib/stats';
 import { BudgetRow } from '@/components/shared/BudgetRow';
 import { getToday } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface NeedsAttentionCardProps {
   transactions: Transaction[];
@@ -13,6 +14,7 @@ interface NeedsAttentionCardProps {
 }
 
 export function NeedsAttentionCard({ transactions, categoryMeta }: NeedsAttentionCardProps) {
+  const { d } = useTranslation();
   // Budgets are annual, so "spent" is always the CURRENT year - read per
   // render rather than from a module-load constant, which would keep showing
   // last year's totals for as long as the container stayed warm into January.
@@ -31,8 +33,8 @@ export function NeedsAttentionCard({ transactions, categoryMeta }: NeedsAttentio
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>Needs attention</h3>
-        <Link href="/budgets" className="link-btn">See all <ChevronRight size={14} /></Link>
+        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.needsAttention.title}</h3>
+        <Link href="/budgets" className="link-btn">{d.common.seeAll} <ChevronRight size={14} /></Link>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
         {topBudgets.map((b) => <BudgetRow key={b.name} {...b} />)}

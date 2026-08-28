@@ -16,6 +16,8 @@ import { SearchableSelect, type SearchableSelectOption } from '@/components/shar
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { translateActionError } from '@/lib/i18n/actionErrors';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type {
   PaymentMethod,
@@ -33,21 +35,18 @@ interface RecurringRuleModalProps {
 
 type Mode = 'form' | 'confirmDelete';
 
-const FREQUENCY_OPTIONS: { value: RecurringFrequency; label: string }[] = [
-  { value: 'once', label: 'Once (a single future payment)' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Every 2 weeks' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-];
-
-const END_MODE_OPTIONS: { value: RecurringEndMode; label: string }[] = [
-  { value: 'never', label: 'Never' },
-  { value: 'after', label: 'After a number of payments' },
-  { value: 'on', label: 'On a date' },
-];
+// ⚠️ VALUES ONLY. Every entry is a CHECK-constrained column value in
+// recurring_rule. These arrays are module scope and cannot call a hook, so
+// they carry the value and the component looks the label up by it - the same
+// arrangement navItems.ts uses.
+//
+// The ORDER here is the order of the dropdown, and it is not derived from the
+// dictionary, so a translation can never reorder a control.
+const FREQUENCY_VALUES: RecurringFrequency[] = ['once', 'weekly', 'biweekly', 'monthly', 'yearly'];
+const END_MODE_VALUES: RecurringEndMode[] = ['never', 'after', 'on'];
 
 export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
+  const { d, locale } = useTranslation();
   const isEdit = rule !== undefined;
   // Runs in the browser, so the zone is known directly - no cookie needed.
   const today = todayInZone(resolveBrowserTimeZone());
@@ -79,9 +78,9 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     let cancelled = false;
     // A failure here used to return silently, leaving an empty category
     // dropdown with no explanation. Surfaced instead.
-    callAction(getCategoriesAction, "Couldn't load your categories.").then((result) => {
+    callAction(getCategoriesAction, d.addTxn.categoriesFailed).then((result) => {
       if (cancelled) return;
-      if (!result.ok) { setCategoryError(result.error); return; }
+      if (!result.ok) { setCategoryError(translateActionError(d, locale, result)); return; }
       setCategories(result.categories);
       setCategoryError(null);
       // Only default the picker when adding - never overwrite an edited rule's
@@ -91,6 +90,10 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     return () => {
       cancelled = true;
     };
+    // Deliberately empty: refetching categories because the language changed
+    // would be pointless work, and a message already on screen stays in the
+    // language it was raised in until the next attempt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%' };
@@ -98,7 +101,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const hintStyle: React.CSSProperties = { fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 };
 
   // Icons resolved here on the client from iconKey - they cannot cross the
-  // RSC boundary.
+  // RSC boundary. label === value deliberately: category names are USER DATA
+  // and are never translated.
   const categoryOptions: SearchableSelectOption[] = categories.map((c) => ({
     value: c.name,
     label: c.name,
@@ -106,7 +110,15 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     color: c.color,
   }));
 
-  const noun = kind === 'income' ? 'income' : 'payment';
+  // Was a noun spliced into three sentences. Chinese cannot take a noun in
+  // that position - 定期收入 and 定期支出 are compounds - so each sentence is
+  // its own key, chosen by kind.
+  const isIncome = kind === 'income';
+  const titleText = isEdit
+    ? (isIncome ? d.recurring.titleEditIncome : d.recurring.titleEditExpense)
+    : (isIncome ? d.recurring.titleNewIncome : d.recurring.titleNewExpense);
+  const deleteConfirmText = isIncome ? d.recurring.deleteConfirmIncome : d.recurring.deleteConfirmExpense;
+
   const isPastStart = startDate < today;
   const showBackfill = !isEdit && isPastStart && frequency !== 'once';
 
@@ -119,6 +131,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     setSaving(true);
     setSaveError(null);
 
+    // Every value below is the stored English literal, taken straight from
+    // state. No label ever reaches this payload.
     const payload = {
       kind,
       description: description.trim(),
@@ -140,7 +154,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
     setSaving(false);
     if (!result.ok) {
-      setSaveError(result.error);
+      setSaveError(translateActionError(d, locale, result));
       setSaveErrorKind(result.kind);
       return;
     }
@@ -154,7 +168,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     const result = await callAction(() => deleteRecurringRuleAction({ id: rule.id }));
     setSaving(false);
     if (!result.ok) {
-      setSaveError(result.error);
+      setSaveError(translateActionError(d, locale, result));
       setSaveErrorKind(result.kind);
       return;
     }
@@ -173,27 +187,27 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
           overlay away from the visible region, since it pins with inset: 0.
           dvh, not vh: mobile browser chrome makes vh overshoot. */}
       <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 440, boxSizing: 'border-box', margin: '1rem 0', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 4rem)' }} onClick={(e) => e.stopPropagation()}>
-        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? 'Deleting schedule…' : 'Saving schedule…'} />}
+        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.recurring.deletingSchedule : d.recurring.savingSchedule} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem', flexShrink: 0 }}>
           <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>
-            {isEdit ? `Edit scheduled ${noun}` : `New scheduled ${noun}`}
+            {titleText}
           </h2>
           <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
         {mode === 'confirmDelete' ? (
           <div style={{ minHeight: 0, overflowY: 'auto' }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Delete this scheduled {noun}?</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{deleteConfirmText}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              <strong style={{ color: 'var(--ink)' }}>{rule?.description}</strong> will stop creating new
-              transactions. Everything it has already created stays exactly where it is — those are real
-              transactions that have happened.
+              {/* The rule's own description is USER DATA and leads the sentence
+                  in both languages, so the remainder is one key. */}
+              <strong style={{ color: 'var(--ink)' }}>{rule?.description}</strong> {d.recurring.deleteBody}
             </p>
             <ActionError message={saveError} kind={saveErrorKind} onRetry={handleDelete} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>Keep it</button>
+              <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.recurring.keepIt}</button>
               <button type="button" onClick={handleDelete} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Deleting…' : 'Delete'}
+                {saving ? d.recurring.deleting : d.recurring.delete}
               </button>
             </div>
           </div>
@@ -209,7 +223,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                 still line up with the header instead of insetting. */}
             <div className="themed-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.35rem', paddingRight: '0.35rem', marginLeft: '-0.35rem', marginRight: '-0.35rem' }}>
               <label style={labelStyle}>
-                Type
+                {d.recurring.type}
                 <select
                   value={kind}
                   // Expense history lives in `expense`, income in `income`.
@@ -223,15 +237,17 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                   }}
                   style={{ ...inputStyle, opacity: isEdit ? 0.6 : 1 }}
                 >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
+                  {/* value stays the stored literal; only the child text is
+                      translated. This is the whole pattern. */}
+                  <option value="expense">{d.enums.kind.expense}</option>
+                  <option value="income">{d.enums.kind.income}</option>
                 </select>
-                {isEdit && <p style={hintStyle}>Type cannot be changed. Delete this and create a new one instead.</p>}
+                {isEdit && <p style={hintStyle}>{d.recurring.typeLocked}</p>}
               </label>
 
               <label style={labelStyle}>
-                Description
-                <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={kind === 'income' ? 'e.g. Salary' : 'e.g. Car loan'} required style={inputStyle} />
+                {d.recurring.description}
+                <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense} required style={inputStyle} />
               </label>
 
               {/* A div, not a label: <label> forwards clicks to its control, so
@@ -239,20 +255,22 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                   a native select - a searchable combobox over two fixed options
                   would be worse than what it replaces. */}
               <div style={labelStyle}>
-                <span>Category</span>
+                <span>{d.recurring.category}</span>
                 {kind === 'income' ? (
                   <select value={category} onChange={(e) => setCategory(e.target.value)} required style={inputStyle}>
-                    <option value="Standard Income">Standard Income</option>
-                    <option value="Side Cash">Side Cash</option>
+                    {/* ⚠️ Matched as string literals by isSideCash() and the
+                        income filters in stats.ts. */}
+                    <option value="Standard Income">{d.enums.incomeCategory['Standard Income']}</option>
+                    <option value="Side Cash">{d.enums.incomeCategory['Side Cash']}</option>
                   </select>
                 ) : (
                   <SearchableSelect
                     value={category}
                     onChange={setCategory}
                     options={categoryOptions}
-                    placeholder={categoryError ? 'Unavailable' : 'Search categories…'}
+                    placeholder={categoryError ? d.select.unavailable : d.select.searchCategories}
                     disabled={categoryOptions.length === 0}
-                    ariaLabel="Category"
+                    ariaLabel={d.recurring.category}
                   />
                 )}
                 {kind === 'expense' && categoryError && (
@@ -262,22 +280,24 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
               {kind === 'expense' && (
                 <label style={labelStyle}>
-                  Tag <span style={{ opacity: 0.7 }}>(optional)</span>
-                  <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Fixed" style={inputStyle} />
+                  {d.recurring.tag} <span style={{ opacity: 0.7 }}>{d.recurring.tagHint}</span>
+                  <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder={d.recurring.tagPlaceholder} style={inputStyle} />
                 </label>
               )}
 
               <label style={labelStyle}>
-                Paid from
+                {d.recurring.paidFrom}
                 <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
-                  <option value="Checking">Checking</option>
-                  <option value="Cash">Cash</option>
+                  {/* payment_method carries a CHECK constraint - a translated
+                      value would fail the insert outright. */}
+                  <option value="Checking">{d.enums.paymentMethod.Checking}</option>
+                  <option value="Cash">{d.enums.paymentMethod.Cash}</option>
                 </select>
               </label>
 
               {kind === 'income' && (
                 <label style={labelStyle}>
-                  Gross amount
+                  {d.recurring.grossAmount}
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                     <input type="number" min="0" step="0.01" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
@@ -286,51 +306,48 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
               )}
 
               <label style={labelStyle}>
-                {kind === 'income' ? 'Net amount (what actually lands)' : 'Amount'}
+                {isIncome ? d.recurring.netAmount : d.recurring.amount}
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
                   <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
                 </div>
-                {kind === 'income' && <p style={hintStyle}>Only the net amount affects your balance. Gross is recorded for reference.</p>}
+                {isIncome && <p style={hintStyle}>{d.recurring.netHint}</p>}
               </label>
 
               <label style={labelStyle}>
-                Frequency
+                {d.recurring.frequency}
                 <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringFrequency)} style={inputStyle}>
-                  {FREQUENCY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {FREQUENCY_VALUES.map((v) => <option key={v} value={v}>{d.recurring.frequencies[v]}</option>)}
                 </select>
               </label>
 
               <label style={labelStyle}>
-                {frequency === 'once' ? 'Date' : 'Starts on'}
+                {frequency === 'once' ? d.recurring.dateOnce : d.recurring.startsOn}
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={inputStyle} />
                 {(frequency === 'monthly' || frequency === 'yearly') && (
-                  <p style={hintStyle}>
-                    Months shorter than this date use their last day — the 31st becomes the 28th in
-                    February, then returns to the 31st in March.
-                  </p>
+                  <p style={hintStyle}>{d.recurring.monthEndHint}</p>
                 )}
               </label>
 
               {frequency !== 'once' && (
                 <label style={labelStyle}>
-                  Ends
+                  {d.recurring.ends}
                   <select value={endMode} onChange={(e) => setEndMode(e.target.value as RecurringEndMode)} style={inputStyle}>
-                    {END_MODE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {END_MODE_VALUES.map((v) => <option key={v} value={v}>{d.recurring.endModes[v]}</option>)}
                   </select>
                 </label>
               )}
 
               {frequency !== 'once' && endMode === 'after' && (
                 <label style={labelStyle}>
-                  Number of payments
-                  <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder="e.g. 48" required className="font-mono-tab" style={inputStyle} />
+                  {d.recurring.endCount}
+                  <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder={d.recurring.endCountPlaceholder} required className="font-mono-tab" style={inputStyle} />
                 </label>
               )}
 
               {frequency !== 'once' && endMode === 'on' && (
                 <label style={labelStyle}>
-                  Last payment on or before
+                  {d.recurring.endDate}
                   <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} required style={inputStyle} />
                 </label>
               )}
@@ -340,11 +357,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                   <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={backfill} onChange={(e) => setBackfill(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
                     <span>
-                      Also create the payments that already happened
-                      <p style={{ ...hintStyle, marginTop: 3 }}>
-                        This start date is in the past. By default only future payments are created —
-                        tick this only if these transactions are not already in Pebble.
-                      </p>
+                      {d.recurring.backfillLabel}
+                      <p style={{ ...hintStyle, marginTop: 3 }}>{d.recurring.backfillHint}</p>
                     </span>
                   </label>
                 </div>
@@ -360,11 +374,11 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {isEdit && (
                   <button type="button" onClick={() => { setMode('confirmDelete'); setSaveError(null); }} className="pill" style={{ padding: '0.72rem 1rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Trash2 size={14} />Delete
+                    <Trash2 size={14} />{d.recurring.delete}
                   </button>
                 )}
                 <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
-                  {saving ? 'Saving…' : isEdit ? 'Save changes' : kind === 'income' ? 'Add income schedule' : 'Add payment schedule'}
+                  {saving ? d.common.saving : isEdit ? d.recurring.saveChanges : isIncome ? d.recurring.addIncomeSchedule : d.recurring.addPaymentSchedule}
                 </button>
               </div>
             </div>
