@@ -259,6 +259,7 @@ html.no-theme-transition * {
   height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 .pebble-root.themed-scroll,
 .pebble-root .themed-scroll {
