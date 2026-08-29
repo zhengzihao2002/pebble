@@ -76,6 +76,16 @@ export const zh: typeof en = {
       english: 'English',
       chinese: '中文',
     },
+
+    timeZone: {
+      title: '时区',
+      label: '财务时区',
+      hint: '如果你在旅行，可以固定一个时区，让日期始终以该地为准。如果不需要，可保持使用设备时区。',
+      deviceOptionGeneric: '使用设备时区',
+      deviceOption: '使用设备时区（检测到：{zone}）',
+      save: '保存',
+      saved: '已保存。',
+    },
   },
 
   error: {
@@ -765,6 +775,7 @@ export const zh: typeof en = {
     'notFound.recurringRule': '该定期计划已不存在。',
     'validation.ruleKindLocked': '定期计划无法在支出和收入之间切换。请删除后重新创建一个。',
     'validation.ruleStatusInvalid': '无效的状态。',
+    'validation.timeZoneInvalid': '无法识别该时区。',
   },
 
   goalModal: {

@@ -73,4 +73,6 @@ export type ServerErrorCode =
   | 'validation.ruleCategoryInvalid'
   | 'notFound.recurringRule'
   | 'validation.ruleKindLocked'
-  | 'validation.ruleStatusInvalid';
+  | 'validation.ruleStatusInvalid'
+  // --- timezone override (Phase 1) ---
+  | 'validation.timeZoneInvalid';

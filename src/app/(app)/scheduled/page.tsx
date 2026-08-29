@@ -32,7 +32,7 @@ export default async function ScheduledPage() {
   // Preview only - the fallback affects which dates are listed as upcoming on
   // a first load, never what gets written. Catch-up above skips entirely
   // rather than guessing, and the client refreshes once the cookie is set.
-  const today = todayInZone((await resolveUserTimeZone()) ?? FALLBACK_TIME_ZONE);
+  const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
   const horizon = addDays(today, PREVIEW_DAYS);
 
   // Same generator that materializes, run forward - a preview can never

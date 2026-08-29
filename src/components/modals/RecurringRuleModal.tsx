@@ -16,6 +16,7 @@ import { SearchableSelect, type SearchableSelectOption } from '@/components/shar
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -48,8 +49,10 @@ const END_MODE_VALUES: RecurringEndMode[] = ['never', 'after', 'on'];
 export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const { d, locale } = useTranslation();
   const isEdit = rule !== undefined;
-  // Runs in the browser, so the zone is known directly - no cookie needed.
-  const today = todayInZone(resolveBrowserTimeZone());
+  const timeZoneOverride = useTimeZoneOverride();
+  // Stored override wins; otherwise the browser's own zone, known directly
+  // here with no cookie needed.
+  const today = todayInZone(timeZoneOverride ?? resolveBrowserTimeZone());
 
   const [mode, setMode] = useState<Mode>('form');
   const [saving, setSaving] = useState(false);

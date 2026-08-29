@@ -117,16 +117,42 @@ export function formatGoalDate(value: string, locale: Locale = DEFAULT_LOCALE): 
   return parseLocalDate(value).toLocaleDateString(INTL_LOCALE[locale], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// ⚠️ CLIENT-SIDE ONLY - reads the local hour, which is UTC on the server.
+// ⚠️ CLIENT-SIDE ONLY - and now ZONE-AWARE: takes the timezone to bucket the
+// hour in, rather than reading the SYSTEM clock's own zone via
+// Date.getHours(). That ignored both the browser's live IANA zone and any
+// stored override entirely - the greeting said "evening" no matter what
+// timezone was set in Settings. Callers resolve the zone the same way
+// client-side "today" is resolved elsewhere: stored override, else the
+// browser's own detected zone.
 //
 // Returns a KEY, not a sentence. A formatting module must not own prose: the
 // caller looks the key up in d.header.greeting. RENAMED from getGreeting()
 // deliberately rather than just retyped - changing the return type alone would
 // have left any caller doing `${getGreeting()}, name` compiling fine and
 // rendering "morning, Bob". The rename makes every caller fail loudly instead.
-export function getGreetingKey(): 'morning' | 'afternoon' | 'evening' {
-  const h = new Date().getHours();
+export function getGreetingKey(timeZone: string): 'morning' | 'afternoon' | 'evening' {
+  const h = hourInZone(timeZone);
   if (h < 12) return 'morning';
   if (h < 18) return 'afternoon';
   return 'evening';
+}
+
+// Hour-of-day in an arbitrary IANA zone. Intl.DateTimeFormat, not
+// Date.getHours() - the latter always reads the SYSTEM's own zone and cannot
+// be told to compute a different one. Cosmetic only (a greeting, not a
+// financial date), so an unrecognized zone falls back to the system hour
+// rather than skipping outright - every zone reaching here has already been
+// validated by isValidTimeZone() or drawn from Intl.supportedValuesOf(), so
+// this catch is defensive, not a path expected to actually run.
+function hourInZone(timeZone: string, now: Date = new Date()): number {
+  try {
+    const formatted = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(now);
+    return parseInt(formatted, 10);
+  } catch {
+    return now.getHours();
+  }
 }

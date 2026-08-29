@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Fraunces, Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { authClient } from "@/lib/auth/client";
@@ -24,6 +25,25 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Pebble",
   description: "Pebble budgeting app",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Pebble",
+  },
+};
+
+// themeColor lives here, not in `metadata` - deprecated there since Next 14.
+// A single static value, not a light/dark media-query pair: Pebble's dark
+// mode is the manual `pebble-dark` class toggle in the pre-paint script
+// above, not the OS-level prefers-color-scheme a media-query themeColor
+// would actually be responding to. --pine (#1F5A45) is the fixed brand
+// color in both themes, so one value is correct here, not a simplification.
+export const viewport: Viewport = {
+  themeColor: "#1F5A45",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -51,7 +71,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           page for. suppressHydrationWarning on <html> above is what makes the
           resulting server/client class mismatch acceptable.
         */}
-        <script
+        <Script
+          id="pebble-preinit"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var p=s?JSON.parse(s).state:null;var d=p&&p[${JSON.stringify(DARK_MODE_FIELD)}];var l=p&&p[${JSON.stringify(LOCALE_FIELD)}];var e=document.documentElement;e.classList.add('no-theme-transition');if(d)e.classList.add('pebble-dark');if(l==='zh')e.lang='zh-CN';}catch(err){}`,
           }}

@@ -107,6 +107,16 @@ export const en = {
       english: 'English',
       chinese: '中文',
     },
+
+    timeZone: {
+      title: 'Timezone',
+      label: 'Timezone for your finances',
+      hint: "Pin a timezone so dates stay anchored to one place while you travel. Leave this on your device's timezone if you don't need it.",
+      deviceOptionGeneric: 'Use device timezone',
+      deviceOption: 'Use device timezone (detected: {zone})',
+      save: 'Save',
+      saved: 'Saved.',
+    },
   },
 
   // The (app) route error boundary. Deliberately says nothing about the cause:
@@ -851,6 +861,7 @@ export const en = {
     'notFound.recurringRule': 'That scheduled payment no longer exists.',
     'validation.ruleKindLocked': 'A scheduled payment cannot be switched between expense and income. Delete it and create a new one.',
     'validation.ruleStatusInvalid': 'Invalid status.',
+    'validation.timeZoneInvalid': 'That timezone is not recognized.',
   } satisfies Record<ServerErrorCode, string>,
 
   goalModal: {

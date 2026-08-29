@@ -83,7 +83,7 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
   // bug this exists to prevent - so a run without a known zone is SKIPPED
   // rather than guessed. The client sets the cookie and refreshes once, and
   // catch-up is idempotent and late-by-design, so deferring one load is free.
-  const timeZone = await resolveUserTimeZone();
+  const timeZone = await resolveUserTimeZone(userId);
   if (timeZone === null) return { ...EMPTY, awaitingTimeZone: true };
 
   // Snapshot the clock ONCE for the whole run, mirroring getWindowPredicate in

@@ -115,6 +115,16 @@ export async function getUserAccount(userId: string): Promise<OpeningBalances> {
   return mapUserAccountRow(rows[0]);
 }
 
+export async function getUserTimeZoneOverride(userId: string): Promise<string | null> {
+  const rows = await db
+    .select({ timeZone: userAccount.timeZone })
+    .from(userAccount)
+    .where(eq(userAccount.userId, userId))
+    .limit(1);
+
+  return rows[0]?.timeZone ?? null;
+}
+
 export interface PebbleData {
   expenses: ExpenseTransaction[];
   income: IncomeTransaction[];

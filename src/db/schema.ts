@@ -346,6 +346,7 @@ export const userAccount = pgTable(
     cashOpening: numeric('cash_opening', { precision: 12, scale: 2, mode: 'number' })
       .default(0)
       .notNull(),
+    timeZone: text('time_zone'),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
       .notNull(),

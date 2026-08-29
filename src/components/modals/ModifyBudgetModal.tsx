@@ -12,6 +12,7 @@ import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { todayInZone } from '@/lib/recurring/occurrences';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { usePebbleStore, type ManualIncomeFrequency, type IncomeEstimateMode } from '@/store/usePebbleStore';
@@ -97,6 +98,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     return () => { aliveRef.current = false; };
   }, []);
 
+  const timeZoneOverride = useTimeZoneOverride();
+
   const load = () => {
     setLoading(true);
     setError(null);
@@ -111,7 +114,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     // never touch it.
     let today = '';
     try {
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const zone = timeZoneOverride ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (zone) today = todayInZone(zone);
     } catch { /* leave empty - the server will skip the estimate */ }
 

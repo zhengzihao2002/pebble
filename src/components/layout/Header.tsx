@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Plus, Bell } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { getGreetingKey } from '@/lib/format';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface HeaderProps {
@@ -25,12 +28,28 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
   const { d, t } = useTranslation();
 
   const firstName = !isPending && name ? name.trim().split(/\s+/)[0] : '';
-  const greetingWord = d.header.greeting[getGreetingKey()];
+
+  // Zone-aware and hydration-safe, mirroring AnalysisClient's `today` state:
+  // starts null so the server render and first client render match exactly,
+  // then resolves in a mount effect from the stored override, falling back
+  // to the browser's own live zone - the same order used everywhere else
+  // client-side "today" is computed. A brief blank subtitle before the
+  // effect runs is the same tradeoff AnalysisClient already makes.
+  const timeZoneOverride = useTimeZoneOverride();
+  const [greetingKey, setGreetingKey] = useState<'morning' | 'afternoon' | 'evening' | null>(null);
+
+  useEffect(() => {
+    const zone = timeZoneOverride ?? resolveBrowserTimeZone();
+    setGreetingKey(getGreetingKey(zone));
+  }, [timeZoneOverride]);
+
   // Interpolated, not concatenated. The separator was a hardcoded ', ' and
   // Chinese needs a fullwidth comma, so it lives in the dictionary now.
-  const greeting = firstName
-    ? t(d.header.greetingWithName, { greeting: greetingWord, name: firstName })
-    : greetingWord;
+  const greeting = greetingKey
+    ? (firstName
+        ? t(d.header.greetingWithName, { greeting: d.header.greeting[greetingKey], name: firstName })
+        : d.header.greeting[greetingKey])
+    : '';
 
   // Recomputed every render so the greeting stays live, same as before.
   //

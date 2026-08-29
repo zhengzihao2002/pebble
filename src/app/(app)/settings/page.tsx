@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getExpenses, getIncome, getUserAccount, getUserTimeZoneOverride } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { SettingsClient } from './SettingsClient';
 
@@ -14,11 +14,12 @@ export default async function SettingsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, openingBalances, adjustments] = await Promise.all([
+  const [expenses, income, openingBalances, adjustments, timeZoneOverride] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getUserAccount(userId),
     getBalanceAdjustments(userId),
+    getUserTimeZoneOverride(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -35,6 +36,7 @@ export default async function SettingsPage() {
       checkingTransactionTotal={fromZero.checking}
       cashTransactionTotal={fromZero.cash}
       hasTransactions={expenses.length > 0 || income.length > 0}
+      timeZoneOverride={timeZoneOverride}
     />
   );
 }

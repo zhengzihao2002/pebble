@@ -7,6 +7,7 @@ import type { CategoryItem } from '@/lib/data/mappers';
 import { formatCurrency } from '@/lib/format';
 import { computeCategorySpent } from '@/lib/stats';
 import { isYmd, todayInZone } from '@/lib/recurring/occurrences';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import {
   ANALYSIS_WINDOW_KEYS,
   DEFAULT_ANALYSIS_WINDOW,
@@ -110,6 +111,7 @@ function MiniTile({ label, value, note }: { label: string; value: string; note?:
 
 export function AnalysisClient({ transactions, categories, budgets, rules, totalBalance }: AnalysisClientProps) {
   const { d, t, locale } = useTranslation();
+  const timeZoneOverride = useTimeZoneOverride();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Static and date-free, so the server render and the first client render are
@@ -126,7 +128,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     // Intl THROW, hence the try; `today` then stays null and date-dependent
     // metrics skip. We never fall back to UTC.
     try {
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const zone = timeZoneOverride ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (zone) {
         const ymd = todayInZone(zone);
         if (isYmd(ymd)) setToday(ymd);

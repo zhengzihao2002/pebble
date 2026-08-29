@@ -31,7 +31,7 @@ import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
-
+import { isValidTimeZone } from '@/lib/time/timeZone';
 /**
  * Mutation layer.
  *
@@ -478,6 +478,36 @@ async function setOpeningBalances(
     return { ok: true };
   } catch (error) {
     return handleUnexpected('setOpeningBalancesAction', error);
+  }
+}
+
+async function setTimeZoneOverride(
+  userId: string,
+  zone: string | null,
+): Promise<ActionResult> {
+  try {
+    if (zone !== null && !isValidTimeZone(zone)) {
+      return fail('That timezone is not recognized.', 'validation', 'validation.timeZoneInvalid');
+    }
+
+    await db
+      .insert(userAccount)
+      .values({
+        userId,
+        timeZone: zone,
+      })
+      .onConflictDoUpdate({
+        target: userAccount.userId,
+        set: {
+          timeZone: zone,
+          updatedAt: new Date().toISOString(),
+        },
+      });
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('setTimeZoneOverrideAction', error);
   }
 }
 
@@ -1422,7 +1452,7 @@ async function createRecurringRule(
     // Falls back only if the cookie is somehow absent during an action, which
     // should not happen - the user has the app open by definition. Worst case
     // the rule starts a day off, not a wrongly dated transaction.
-    const today = todayInZone((await resolveUserTimeZone()) ?? FALLBACK_TIME_ZONE);
+    const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
     const materializedThrough =
       input.backfill === true || normalized.values.startDate >= today
         ? null
@@ -1521,7 +1551,7 @@ async function setRecurringRuleStatus(
       input.status === 'active'
         ? {
             status: 'active',
-            materializedThrough: todayInZone((await resolveUserTimeZone()) ?? FALLBACK_TIME_ZONE),
+            materializedThrough: todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE),
             updatedAt: new Date().toISOString(),
           }
         : { status: 'paused', updatedAt: new Date().toISOString() };
@@ -1630,3 +1660,4 @@ export const createRecurringRuleAction = withSessionUser(createRecurringRule);
 export const updateRecurringRuleAction = withSessionUser(updateRecurringRule);
 export const setRecurringRuleStatusAction = withSessionUser(setRecurringRuleStatus);
 export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);
+export const setTimeZoneOverrideAction = withSessionUser(setTimeZoneOverride);

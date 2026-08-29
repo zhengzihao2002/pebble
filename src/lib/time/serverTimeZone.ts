@@ -3,6 +3,7 @@ import 'server-only';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { TIME_ZONE_COOKIE, isValidTimeZone } from './timeZone';
+import { getUserTimeZoneOverride } from '@/lib/data/queries';
 
 /**
  * The user's timezone, as reported by their own browser.
@@ -26,7 +27,12 @@ import { TIME_ZONE_COOKIE, isValidTimeZone } from './timeZone';
  *
  * cache() dedupes across a single render pass.
  */
-export const resolveUserTimeZone = cache(async (): Promise<string | null> => {
+export const resolveUserTimeZone = cache(async (userId: string): Promise<string | null> => {
+  // Stored override takes precedence - an explicit choice beats a guess from
+  // whatever device happened to make this request.
+  const override = await getUserTimeZoneOverride(userId);
+  if (override && isValidTimeZone(override)) return override;
+
   try {
     const store = await cookies();
     const raw = store.get(TIME_ZONE_COOKIE)?.value;

@@ -4,6 +4,7 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
+import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
 import { OpeningBalanceCard } from '@/components/settings/OpeningBalanceCard';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
@@ -17,13 +18,14 @@ interface SettingsClientProps {
   checkingTransactionTotal: number;
   cashTransactionTotal: number;
   hasTransactions: boolean;
+  timeZoneOverride: string | null;
 }
 
 // Mixed page: textSize and darkMode are device preferences and stay in the
 // store (localStorage). Opening balances are financial data and come from
 // Postgres.
 export function SettingsClient({
-  checkingOpening, cashOpening, checkingTransactionTotal, cashTransactionTotal, hasTransactions,
+  checkingOpening, cashOpening, checkingTransactionTotal, cashTransactionTotal, hasTransactions, timeZoneOverride,
 }: SettingsClientProps) {
   const textSize = usePebbleStore((s) => s.textSize);
   const setTextSize = usePebbleStore((s) => s.setTextSize);
@@ -61,6 +63,10 @@ export function SettingsClient({
           seven to eight, which pairs evenly in the two-column layout rather
           than opening the gap the comment above warns about. */}
       <LanguageControl locale={locale} onChange={setLocale} />
+      {/* Takes the preference-card count from 8 to 9 (odd) - opens the pairing
+          gap the comment above warns about. Accepted: no clean pairing exists
+          without a layout change, which is out of scope. */}
+      <TimeZoneCard timeZoneOverride={timeZoneOverride} />
       {/* Grouped with the other device preferences, and short enough not to
           disturb the tall/short pairing described above. */}
       <SoundSettingsCard />
