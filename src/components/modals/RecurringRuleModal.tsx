@@ -113,10 +113,14 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
       setAccounts(result.accounts);
       setAccountError(null);
-      // Preferred account first, else whatever sorts first - the behaviour
-      // before preferences existed.
-      const preferred = result.accounts.find((a) => a.isPreferred);
-      setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+      // ⚠️ CREATE ONLY. An existing rule keeps the account it was saved with,
+      // always. Applying the preferred-account fallback here as well silently
+      // MOVED rules to a newly-starred account when they were opened and
+      // saved - the account is not something an edit should ever substitute.
+      if (!isEdit) {
+        const preferred = result.accounts.find((a) => a.isPreferred);
+        setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+      }
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +151,31 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
   const isPastStart = startDate < today;
   const showBackfill = !isEdit && isPastStart && frequency !== 'once';
+
+  // Nothing changed means nothing to save: an identical write costs a round
+  // trip and a row update for no reason.
+  //
+  // It also makes an unintended change VISIBLE. A Save button that lights up
+  // on a form nobody touched is the signal that something was substituted -
+  // which is exactly how a preferred-account fallback silently moved rules to
+  // a newly-starred account before it was restricted to create only.
+  //
+  // Comparisons match how each field is STORED, not how the form holds it:
+  // expense amounts are negative in the database but positive here, and tag
+  // is null there but '' here.
+  const dirty = !isEdit || !rule || (
+    description.trim() !== rule.description ||
+    category !== rule.category ||
+    (kind === 'expense' ? (tag.trim() || null) : null) !== rule.tag ||
+    accountId !== rule.accountId ||
+    Number(amount) !== Math.abs(rule.amount) ||
+    (kind === 'income' ? Number(grossAmount) : null) !== rule.grossAmount ||
+    frequency !== rule.frequency ||
+    startDate !== rule.startDate ||
+    endMode !== rule.endMode ||
+    (endMode === 'after' ? Number(endCount) : null) !== rule.endCount ||
+    (endMode === 'on' ? endDate : null) !== rule.endDate
+  );
 
   // A write in flight must not be cancellable - see AddTransactionModal.
   const requestClose = () => { if (saving) return; onClose(); };
@@ -405,7 +434,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                     <Trash2 size={14} />{d.recurring.delete}
                   </button>
                 )}
-                <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving ? 0.6 : 1 }}>
+                <button type="submit" disabled={saving || !dirty} className="btn-primary" style={{ flex: 1, padding: '0.72rem', opacity: saving || !dirty ? 0.6 : 1 }}>
                   {saving ? d.common.saving : isEdit ? d.recurring.saveChanges : isIncome ? d.recurring.addIncomeSchedule : d.recurring.addPaymentSchedule}
                 </button>
               </div>
