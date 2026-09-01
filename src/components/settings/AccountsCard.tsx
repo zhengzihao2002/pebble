@@ -135,6 +135,23 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   <Star size={15} fill={a.isPreferred ? 'var(--gold)' : 'none'} />
                 </button>
               )}
+              {/* Independent of isDefault: emptying Checking or Cash into
+                  another account is legitimate - the account itself stays, it
+                  just ends up with nothing in it. Only hibernate and delete
+                  are default-exempt.
+
+                  Disabled when empty: the dialog could only report that there
+                  is nothing to move. Delete stays enabled by contrast - its
+                  error message IS the explanation, and a greyed button
+                  explains nothing. */}
+              <button
+                type="button" onClick={() => setMoveSource(a)} className="icon-btn"
+                aria-label={t(d.accounts.moveTitle, { name: a.name })}
+                disabled={!hasRecords[a.id]}
+                style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
+              >
+                <ArrowRightLeft size={15} />
+              </button>
               {/* Hidden, not disabled, for the defaults: they are simply not
                   closable, and a greyed button invites a "why not?" the UI
                   would then have to answer. */}
@@ -150,18 +167,6 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     style={{ width: 30, height: 30, borderRadius: '50%' }}
                   >
                     {a.status === 'hibernated' ? <Sun size={15} /> : <Moon size={15} />}
-                  </button>
-                  {/* Disabled when empty: the dialog could only report that there
-                      is nothing to move. Delete stays enabled by contrast - its
-                      error message IS the explanation, and a greyed button
-                      explains nothing. */}
-                  <button
-                    type="button" onClick={() => setMoveSource(a)} className="icon-btn"
-                    aria-label={t(d.accounts.moveTitle, { name: a.name })}
-                    disabled={!hasRecords[a.id]}
-                    style={{ width: 30, height: 30, borderRadius: '50%', opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
-                  >
-                    <ArrowRightLeft size={15} />
                   </button>
                   <button
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
