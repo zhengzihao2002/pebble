@@ -7,6 +7,7 @@ import type {
   CategoryRow,
   BalanceAdjustmentRow,
   RecurringRuleRow,
+  AccountRow,
 } from '@/db/schema';
 import type {
   BalanceAdjustment,
@@ -44,13 +45,12 @@ const PAYMENT_METHODS: readonly PaymentMethod[] = ['Cash', 'Checking'];
  * guarantee rather than a hopeful cast. Still validated, because a future
  * migration could drop the constraint without anyone updating this file.
  */
-function toPaymentMethod(value: string, rowId: string): PaymentMethod {
-  if ((PAYMENT_METHODS as readonly string[]).includes(value)) {
-    return value as PaymentMethod;
-  }
-  throw new Error(
-    `Invalid payment_method "${value}" on row ${rowId}. Expected 'Cash' or 'Checking'.`,
-  );
+function toPaymentMethod(value: string, _rowId: string): PaymentMethod {
+  // Pass-through. This column holds an ACCOUNT NAME now, not one of two
+  // constrained literals - the CHECK that justified throwing here was dropped
+  // when accounts became user-defined. Ownership and validity are enforced on
+  // accountId, which is a real foreign key.
+  return value;
 }
 
 const INCOME_CATEGORIES = ['Standard Income', 'Side Cash'] as const;
@@ -80,6 +80,7 @@ export function mapExpenseRow(row: ExpenseRow): ExpenseTransaction {
     tag: row.tag,
     date: row.transactionDate,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    accountId: row.accountId,
     amount: row.amount,
     recurringRuleId: row.recurringRuleId ?? undefined,
   };
@@ -98,6 +99,7 @@ export function mapIncomeRow(row: IncomeRow): IncomeTransaction {
     category: toIncomeCategory(row.category, row.id),
     date: row.transactionDate,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    accountId: row.accountId,
     grossAmount: row.grossAmount,
     netAmount: row.netAmount,
     amount: row.netAmount,
@@ -117,24 +119,43 @@ export function mapBudgetRows(rows: BudgetRow[]): Record<string, number> {
   return budgets;
 }
 
-export interface OpeningBalances {
-  checkingOpening: number;
-  cashOpening: number;
-}
 
 /**
  * OPENING balances - the balance before any recorded transaction.
  * A user with no user_account row yet has opening balances of zero.
  */
-export function mapUserAccountRow(row: UserAccountRow | undefined): OpeningBalances {
-  if (!row) {
-    return { checkingOpening: 0, cashOpening: 0 };
-  }
+export interface Account {
+  id: string;
+  name: string;
+  kind: 'bank' | 'cash';
+  last4: string | null;
+  openingBalance: number;
+  status: 'active' | 'hibernated';
+  isDefault: boolean;
+  /** Preselected in transaction forms. At most one per user. */
+  isPreferred: boolean;
+  sortOrder: number;
+}
+
+/**
+ * kind and status are CHECK-constrained in Postgres, so the cast is safe -
+ * the database cannot hold a value outside those unions. Cast rather than
+ * validate: a runtime check here would be dead code that never fires.
+ */
+export function mapAccountRow(row: AccountRow): Account {
   return {
-    checkingOpening: row.checkingOpening,
-    cashOpening: row.cashOpening,
+    id: row.id,
+    name: row.name,
+    kind: row.kind as 'bank' | 'cash',
+    last4: row.last4,
+    openingBalance: row.openingBalance,
+    status: row.status as 'active' | 'hibernated',
+    isDefault: row.isDefault,
+    isPreferred: row.isPreferred,
+    sortOrder: row.sortOrder,
   };
 }
+
 
 /**
  * iconKey stays a string. Resolving it to a LucideIcon here would produce a
@@ -185,6 +206,8 @@ export function mapBalanceAdjustmentRow(row: BalanceAdjustmentRow): BalanceAdjus
     description: row.description,
     date: row.transactionDate,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    accountId: row.accountId,
+    transferGroupId: row.transferGroupId,
     amount: row.amount,
   };
 }
@@ -231,6 +254,7 @@ export function mapRecurringRuleRow(row: RecurringRuleRow): RecurringRule {
     category: row.category,
     tag: row.tag,
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
+    accountId: row.accountId,
     amount: row.amount,
     grossAmount: row.grossAmount,
     frequency: toUnion(RECURRING_FREQUENCIES, row.frequency, row.id, 'frequency'),

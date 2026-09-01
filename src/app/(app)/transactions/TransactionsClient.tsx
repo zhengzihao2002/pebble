@@ -12,6 +12,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { StatTab } from '@/components/shared/StatTab';
 import { MonthNavigator } from '@/components/transactions/MonthNavigator';
 import { StatementList, type StatementEntry } from '@/components/transactions/StatementList';
+import type { Account } from '@/lib/data/mappers';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 
 interface TransactionsClientProps {
@@ -22,16 +23,15 @@ interface TransactionsClientProps {
   budgets: Record<string, number>;
   accountOpeningTotal: number;
   currentBalance: number;
-  // Split out of the same computeCurrentBalances() call as the total, so
-  // the parts always sum to the figure shown above them. Deriving them
-  // from the ledger instead would risk a mismatch: that walk is capped to
-  // a 13-month view window.
-  currentChecking: number;
-  currentCash: number;
+  // From the same computeCurrentBalances() call as the total, so the parts
+  // always sum to the figure shown above them. Deriving them from the ledger
+  // instead would risk a mismatch: that walk is capped to a 13-month window.
+  accounts: Account[];
+  balancesByAccount: Record<string, number>;
 }
 
 export function TransactionsClient({
-  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, currentChecking, currentCash,
+  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
   const { d, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
@@ -114,12 +114,13 @@ export function TransactionsClient({
                 was the English label before this change, which meant both
                 chips remounted on a language switch. Nothing here is
                 submitted - these are display figures. */}
-            {([
-              { icon: Landmark, method: 'Checking', value: currentChecking },
-              { icon: Coins, method: 'Cash', value: currentCash },
-            ] as const).map(({ icon: AccountIcon, method, value }) => (
+            {accounts.map((a) => {
+              const AccountIcon = a.kind === 'bank' ? Landmark : Coins;
+              const method = a.name;
+              const value = balancesByAccount[a.id] ?? 0;
+              return (
               <span
-                key={method}
+                key={a.id}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
                   padding: '0.38rem 0.8rem', borderRadius: 99,
@@ -128,12 +129,13 @@ export function TransactionsClient({
                 }}
               >
                 <AccountIcon size={15} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.enums.paymentMethod[method]}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{method}</span>
                 <span className="font-mono-tab" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)' }}>
                   {formatCurrency(value)}
                 </span>
               </span>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -160,6 +162,7 @@ export function TransactionsClient({
       <StatementList
         entries={monthEntries}
         openingBalance={openingBalance}
+        accounts={accounts}
         categoryMeta={categoryMeta}
         onOpenDetail={setSelectedTransaction}
       />

@@ -6,6 +6,7 @@ import {
   createRecurringRuleAction,
   deleteRecurringRuleAction,
   getCategoriesAction,
+  getAccountsAction,
   updateRecurringRuleAction,
 } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
@@ -19,7 +20,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
-import type { CategoryItem } from '@/lib/data/mappers';
+import type { CategoryItem, Account } from '@/lib/data/mappers';
 import type {
   PaymentMethod,
   RecurringEndMode,
@@ -65,7 +66,11 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const [description, setDescription] = useState(rule?.description ?? '');
   const [category, setCategory] = useState(rule?.category ?? '');
   const [tag, setTag] = useState(rule?.tag ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(rule?.paymentMethod ?? 'Checking');
+  // Account ID, not name: names are user data and can repeat across a
+  // closed and an active account.
+  const [accountId, setAccountId] = useState(rule?.accountId ?? '');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountError, setAccountError] = useState<string | null>(null);
   // Stored negative for expenses; the form always works in positive magnitude
   // and the action re-applies the sign.
   const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : '');
@@ -96,6 +101,24 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     // Deliberately empty: refetching categories because the language changed
     // would be pointless work, and a message already on screen stays in the
     // language it was raised in until the next attempt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Same pattern as categories: fetched on open, not via the layout, since
+  // this modal mounts in AppShell and a layout fetch would run on every page.
+  useEffect(() => {
+    let cancelled = false;
+    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
+      setAccounts(result.accounts);
+      setAccountError(null);
+      // Preferred account first, else whatever sorts first - the behaviour
+      // before preferences existed.
+      const preferred = result.accounts.find((a) => a.isPreferred);
+      setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+    });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -141,7 +164,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
       description: description.trim(),
       category,
       tag: kind === 'expense' ? tag.trim() || undefined : undefined,
-      paymentMethod,
+      accountId,
       amount: Number(amount),
       grossAmount: kind === 'income' ? Number(grossAmount) : undefined,
       frequency,
@@ -290,11 +313,13 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
               <label style={labelStyle}>
                 {isIncome ? d.recurring.paidInto : d.recurring.paidFrom}
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} style={inputStyle}>
-                  {/* payment_method carries a CHECK constraint - a translated
-                      value would fail the insert outright. */}
-                  <option value="Checking">{d.enums.paymentMethod.Checking}</option>
-                  <option value="Cash">{d.enums.paymentMethod.Cash}</option>
+                {/* Account names are USER DATA and are never translated. */}
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.last4 ? `${a.name} ····${a.last4}` : a.name}
+                    </option>
+                  ))}
                 </select>
               </label>
 

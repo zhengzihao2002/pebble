@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { DashboardClient } from './DashboardClient';
 
@@ -16,14 +16,14 @@ export default async function DashboardPage() {
   // Never throws - a failure is logged and retried on the next load.
   const catchUp = await runRecurringCatchUp(userId);
 
-  const [expenses, income, budgets, categories, openingBalances, adjustments, goals] = await Promise.all([
+  const [expenses, income, budgets, categories, adjustments, goals, accounts] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
     getCategories(userId),
-    getUserAccount(userId),
     getBalanceAdjustments(userId),
     getGoals(userId),
+    getAccounts(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -32,8 +32,7 @@ export default async function DashboardPage() {
   // transaction, never read from a stored current-balance field.
   const balances = computeCurrentBalances(
     transactions,
-    openingBalances.checkingOpening,
-    openingBalances.cashOpening,
+    accounts,
     adjustments,
   );
 

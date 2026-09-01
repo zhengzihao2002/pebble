@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getExpenses, getGoals, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getExpenses, getGoals, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { getDictionary, t } from '@/lib/i18n';
@@ -32,12 +32,12 @@ export default async function GoalsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [goals, expenses, income, openingBalances, adjustments] = await Promise.all([
+  const [goals, expenses, income, adjustments, accounts] = await Promise.all([
     getGoals(userId),
     getExpenses(userId),
     getIncome(userId),
-    getUserAccount(userId),
     getBalanceAdjustments(userId),
+    getAccounts(userId),
   ]);
 
   // Cookie read, not a query. Display-only: nothing below writes, and the
@@ -48,8 +48,7 @@ export default async function GoalsPage() {
   // second balance code path: opening balances plus every record against them.
   const balances = computeCurrentBalances(
     mergeTransactions(expenses, income),
-    openingBalances.checkingOpening,
-    openingBalances.cashOpening,
+    accounts,
     adjustments,
   );
 

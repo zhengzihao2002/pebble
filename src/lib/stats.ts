@@ -339,8 +339,8 @@ export function computeCategorySpent(transactions: Transaction[], year: number):
 
 export interface LedgerEntry {
   transId: string;
-  checkingBalanceAfter: number;
-  cashBalanceAfter: number;
+  /** Every account's balance immediately after this record, keyed by id. */
+  balancesAfter: Record<string, number>;
   totalBalanceAfter: number;
 }
 
@@ -353,7 +353,7 @@ export interface LedgerEntry {
 // balances are derived. Storing the current balance instead would mean two
 // sources of truth that can silently drift apart — unacceptable for money.
 export function computeRecentTransactions(
-  expenses: ExpenseTransaction[], income: IncomeTransaction[], checkingOpening: number, cashOpening: number,
+  expenses: ExpenseTransaction[], income: IncomeTransaction[], accounts: BalanceAccount[],
   adjustments: BalanceAdjustment[] = []
 ): LedgerEntry[] {
   const all: LedgerRecord[] = [...expenses, ...income, ...adjustments].sort((a, b) => {
@@ -362,17 +362,23 @@ export function computeRecentTransactions(
     return compareSameDayIds(a.id, b.id);
   });
 
-  let runningChecking = checkingOpening;
-  let runningCash = cashOpening;
+  // Keyed by accountId, not payment method: the old two-branch version swept
+  // every non-Checking record into Cash, which was correct only while exactly
+  // two accounts existed.
+  const running: Record<string, number> = {};
+  accounts.forEach((a) => { running[a.id] = a.openingBalance; });
 
   const ledger: LedgerEntry[] = all.map((t) => {
-    if (t.paymentMethod === 'Checking') runningChecking += t.amount;
-    else runningCash += t.amount;
+    // Skip rather than default: a foreign key makes an unknown account
+    // unreachable from the database, so this only fires on a real bug, and a
+    // visibly wrong total beats money landing silently in the wrong account.
+    if (running[t.accountId] !== undefined) running[t.accountId] += t.amount;
     return {
       transId: t.id,
-      checkingBalanceAfter: runningChecking,
-      cashBalanceAfter: runningCash,
-      totalBalanceAfter: runningChecking + runningCash,
+      // Copied, not referenced: `running` is mutated on every iteration, so a
+      // shared reference would leave every row showing the FINAL balances.
+      balancesAfter: { ...running },
+      totalBalanceAfter: Object.values(running).reduce((sum, v) => sum + v, 0),
     };
   });
 
@@ -380,26 +386,51 @@ export function computeRecentTransactions(
 }
 
 export interface CurrentBalances {
-  checking: number;
-  cash: number;
+  /** Keyed by account id. Every account passed in appears here, even at zero. */
+  byAccount: Record<string, number>;
   total: number;
 }
 
-// Current balance is DERIVED, never stored: opening + the sum of every
-// transaction against that payment method. Expense amounts are negative and
-// income amounts positive, so a single sum handles both directions.
+/** The minimum an account must expose to be balanced. */
+export interface BalanceAccount {
+  id: string;
+  openingBalance: number;
+}
+
+// Current balance is DERIVED, never stored: each account's opening balance
+// plus the sum of every record against THAT ACCOUNT. Expense amounts are
+// negative and income amounts positive, so a single sum handles both.
+//
+// Keyed by accountId, not by payment method. The previous version branched
+// `if Checking else Cash`, which silently swept every non-Checking record
+// into Cash - correct while exactly two accounts existed, wrong the moment a
+// third did.
+//
+// CLOSED ACCOUNTS ARE INCLUDED. Closure requires a zero balance and is held
+// at zero afterwards by compensating adjustments to the account's own
+// opening balance, so a closed account contributes zero without being
+// filtered. Nothing to remember, nothing to get wrong.
+//
+// A record whose accountId is not in `accounts` is SKIPPED rather than
+// folded into a default. A foreign key makes that unreachable from the
+// database; skipping means a bug surfaces as a visibly wrong total rather
+// than as money quietly landing in the wrong account.
 export function computeCurrentBalances(
-  transactions: Transaction[], checkingOpening: number, cashOpening: number,
+  transactions: Transaction[],
+  accounts: BalanceAccount[],
   adjustments: BalanceAdjustment[] = []
 ): CurrentBalances {
-  let checking = checkingOpening;
-  let cash = cashOpening;
+  const byAccount: Record<string, number> = {};
+  accounts.forEach((a) => { byAccount[a.id] = a.openingBalance; });
+
   const all: LedgerRecord[] = [...transactions, ...adjustments];
   all.forEach((t) => {
-    if (t.paymentMethod === 'Checking') checking += t.amount;
-    else cash += t.amount;
+    if (byAccount[t.accountId] === undefined) return;
+    byAccount[t.accountId] += t.amount;
   });
-  return { checking, cash, total: checking + cash };
+
+  const total = Object.values(byAccount).reduce((sum, v) => sum + v, 0);
+  return { byAccount, total };
 }
 
 export interface MonthOption {

@@ -9,6 +9,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 // A ledger entry with its full transaction record resolved — recentTransactions
 // entries are deliberately lightweight (just balances + an id), so the page
 // resolves each back to its full record before handing entries down here.
+import type { Account } from '@/lib/data/mappers';
+
 export interface StatementEntry extends LedgerEntry {
   record: LedgerRecord;
 }
@@ -16,11 +18,13 @@ export interface StatementEntry extends LedgerEntry {
 interface StatementListProps {
   entries: StatementEntry[];
   openingBalance: number;
+  /** Passed through to StatementRow for per-account balance names. */
+  accounts: Account[];
   categoryMeta: CategoryMeta;
   onOpenDetail: (txn: LedgerRecord) => void;
 }
 
-export function StatementList({ entries, openingBalance, categoryMeta, onOpenDetail }: StatementListProps) {
+export function StatementList({ entries, openingBalance, accounts, categoryMeta, onOpenDetail }: StatementListProps) {
   const { d, t } = useTranslation();
   return (
     <div className="card" style={{ padding: '0.25rem 0 1rem', overflow: 'hidden' }}>
@@ -34,7 +38,7 @@ export function StatementList({ entries, openingBalance, categoryMeta, onOpenDet
           {entries.map((e) => (
             <StatementRow
               key={e.transId} txn={e.record}
-              checkingBalanceAfter={e.checkingBalanceAfter} cashBalanceAfter={e.cashBalanceAfter} totalBalanceAfter={e.totalBalanceAfter}
+              balancesAfter={e.balancesAfter} accounts={accounts} totalBalanceAfter={e.totalBalanceAfter}
               onOpenDetail={onOpenDetail} categoryMeta={categoryMeta}
             />
           ))}

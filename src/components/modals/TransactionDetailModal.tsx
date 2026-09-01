@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Banknote, Pencil, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import type { CategoryMeta, LedgerRecord, PaymentMethod } from '@/types';
 import { formatCurrency, formatFullDate, formatLongDate } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
-import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction } from '@/lib/actions/pebble';
+import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
+import type { Account } from '@/lib/data/mappers';
 import { ActionError } from '@/components/shared/ActionError';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -50,7 +51,11 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Checking');
+  // Account ID, not name. On a CLOSED account this is locked: the server
+  // rejects a change, and the picker below renders read-only to match.
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
   const [grossPay, setGrossPay] = useState('');
@@ -66,7 +71,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     setDescription(txn.description);
     setCategory(txn.type === 'adjustment' ? '' : txn.category);
     setTag(txn.type === 'expense' ? (txn.tag ?? '') : '');
-    setPaymentMethod(txn.paymentMethod);
+    setAccountId(txn.accountId);
     setDate(txn.date);
     setAmount(txn.type === 'expense' ? String(Math.abs(txn.amount)) : '');
     setGrossPay(txn.type === 'income' ? String(txn.grossAmount) : '');
@@ -154,7 +159,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     if (txn.type === 'adjustment') return false;
     if (description.trim() !== txn.description.trim()) return true;
     if (category !== txn.category) return true;
-    if (paymentMethod !== txn.paymentMethod) return true;
+    if (accountId !== txn.accountId) return true;
     if (date !== txn.date) return true;
     if (txn.type === 'expense') {
       if (tag.trim() !== (txn.tag ?? '').trim()) return true;
@@ -170,6 +175,35 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   // Split from handleSave so the confirm dialog can call it directly. The edit
   // form stays mounted behind the dialog, so this re-derives its payload from
   // the same state rather than from a copy taken before the check.
+  // Active accounts for the picker. The transaction's OWN account may be
+  // closed and therefore absent from this list - handled below.
+  useEffect(() => {
+    let cancelled = false;
+    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
+      setAccounts(result.accounts);
+      setAccountError(null);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A transaction on a HIBERNATED account is frozen in amount and account.
+  // A hibernated account is not in `accounts` (active-only), so its
+  // absence IS the signal - no extra flag needed. Falls back to the stored
+  // payment_method name for display, which carries the account's name.
+  const onHibernatedAccount = accounts.length > 0 && !accounts.some((a) => a.id === accountId);
+  const accountName = accounts.find((a) => a.id === txn?.accountId)?.name ?? txn?.paymentMethod ?? '';
+
+  const accountOptions = useMemo<SearchableSelectOption[]>(
+    () => accounts.map((a) => ({
+      value: a.id,
+      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+    })),
+    [accounts],
+  );
+
   const performSave = async () => {
     if (busy || txn.type === 'adjustment') return;
     setBusy(true);
@@ -182,7 +216,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
       category,
       ...(txn.type === 'expense' ? { tag } : {}),
       date,
-      paymentMethod,
+      accountId,
       ...(txn.type === 'expense' ? { amount: Number(amount) } : {}),
       ...(txn.type === 'income'
         ? {
@@ -251,7 +285,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const rows: { key: string; label: string; value: string }[] = isAdjustment ? [
     { key: 'type', label: d.txnDetail.rowType, value: d.txn.balanceAdjustment },
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
-    { key: 'account', label: d.txnDetail.rowAccount, value: paymentMethodLabel(d, txn.paymentMethod) },
+    { key: 'account', label: d.txnDetail.rowAccount, value: accountName },
   ] : [
     { key: 'type', label: d.txnDetail.rowType, value: isIncome ? d.enums.kind.income : d.enums.kind.expense },
     // Category and tag are USER DATA - shown exactly as stored.
@@ -263,7 +297,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     // Income shows a different heading than expense: 'Payment method'
     // implies the user is spending, which is backwards for a deposit. Only
     // the label changes - the underlying value/comparison is untouched.
-    { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: paymentMethodLabel(d, txn.paymentMethod) || '—' },
+    { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountName || '—' },
     // Side cash is untaxed, so the actions store gross = net. Showing both
     // rows would print the same number twice under two labels that imply a
     // deduction happened. One "Amount" row, matching the edit form's label.
@@ -388,7 +422,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                   <input
                     type="number" min="0" step="0.01" value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="font-mono-tab" style={inputStyle}
+                    disabled={onHibernatedAccount}
+                    className="font-mono-tab"
+                    style={{ ...inputStyle, opacity: onHibernatedAccount ? 0.6 : 1 }}
                   />
                 </label>
               </>
@@ -413,7 +449,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     {!editingSideCash && (
                       <label style={labelStyle}>
                         {d.txnDetail.rowPayBefore}
-                        <input type="number" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} className="font-mono-tab" style={inputStyle} />
+                        <input type="number" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} disabled={onHibernatedAccount} className="font-mono-tab" style={{ ...inputStyle, opacity: onHibernatedAccount ? 0.6 : 1 }} />
                       </label>
                     )}
                     <label style={labelStyle}>
@@ -421,8 +457,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                       <input
                         type="number" min="0" step="0.01" value={netPay}
                         onChange={(e) => setNetPay(e.target.value)}
+                        disabled={onHibernatedAccount}
                         className="font-mono-tab"
-                        style={{ ...inputStyle, border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
+                        style={{ ...inputStyle, opacity: onHibernatedAccount ? 0.6 : 1, border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
                       />
                     </label>
                     {!editingSideCash && (
@@ -447,15 +484,31 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             {(
               <label style={labelStyle}>
                 {txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {/* CHECK-constrained values. setPaymentMethod always
-                      receives the English literal. */}
-                  {(['Checking', 'Cash'] as const).map((m) => (
-                    <button key={m} type="button" onClick={() => setPaymentMethod(m)} className={`pill ${paymentMethod === m ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
-                      {d.enums.paymentMethod[m]}
-                    </button>
-                  ))}
-                </div>
+                {/* A closed account freezes this field: the transaction cannot
+                    move off it, and the server rejects a change regardless of
+                    what the form sends. Rendered read-only rather than hidden,
+                    so the account is still visible. */}
+                {onHibernatedAccount ? (
+                  <>
+                    <input
+                      value={accountName} disabled readOnly
+                      style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>
+                      {d.txnDetail.closedAccountLocked}
+                    </span>
+                  </>
+                ) : (
+                  <SearchableSelect
+                    value={accountId}
+                    onChange={setAccountId}
+                    options={accountOptions}
+                    ariaLabel={txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod}
+                  />
+                )}
+                {accountError && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--wine)' }}>{accountError}</span>
+                )}
               </label>
             )}
 

@@ -7,8 +7,7 @@ import {
   getExpenses,
   getIncome,
   getRecurringRules,
-  getUserAccount,
-} from '@/lib/data/queries';
+  getAccounts} from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { AnalysisClient } from './AnalysisClient';
 
@@ -26,14 +25,14 @@ export default async function AnalysisPage() {
 
   // Analysis sees the COMPLETE history, same as Reports: year-over-year and
   // seasonality metrics are the whole point of this page.
-  const [expenses, income, budgets, categories, openingBalances, adjustments, rules] = await Promise.all([
+  const [expenses, income, budgets, categories, adjustments, rules, accounts] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
     getCategories(userId),
-    getUserAccount(userId),
     getBalanceAdjustments(userId),
     getRecurringRules(userId),
+    getAccounts(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -47,8 +46,7 @@ export default async function AnalysisPage() {
   //     client never to receive them.
   const balances = computeCurrentBalances(
     transactions,
-    openingBalances.checkingOpening,
-    openingBalances.cashOpening,
+    accounts,
     adjustments,
   );
 

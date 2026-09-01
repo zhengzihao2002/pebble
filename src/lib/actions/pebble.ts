@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '@/db';
 import {
+  account,
   balanceAdjustment,
   budget,
   category,
@@ -14,7 +15,7 @@ import {
   userAccount,
 } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getUserAccount, hasAnyTransactions } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, hasAnyTransactions, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
 import { isYmd } from '@/lib/recurring/occurrences';
@@ -28,7 +29,7 @@ import type {
 import { addDays, todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
-import type { CategoryItem } from '@/lib/data/mappers';
+import type { CategoryItem, Account } from '@/lib/data/mappers';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
 import { isValidTimeZone } from '@/lib/time/timeZone';
@@ -164,7 +165,7 @@ export interface AddExpenseActionInput {
   type: 'expense';
   description: string;
   date: string;
-  paymentMethod: PaymentMethod;
+  accountId: string;
   category: string;
   tag?: string;
   amount: number;
@@ -174,7 +175,7 @@ export interface AddIncomeActionInput {
   type: 'income';
   description: string;
   date: string;
-  paymentMethod: PaymentMethod;
+  accountId: string;
   category: 'Standard Income' | 'Side Cash';
   grossAmount: number;
   netAmount: number;
@@ -195,8 +196,22 @@ async function addTransaction(
     if (!DATE_PATTERN.test(input.date)) {
       return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
     }
-    if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
+
+    // Ownership check before any write: the id arrives from the client, and
+    // withSessionUser guarantees WHO is asking, not WHAT they own.
+    //
+    // Active only. A closed account is settled at zero permanently and takes
+    // no new activity - editing an EXISTING transaction on one is handled
+    // separately, where the account is shown locked rather than selectable.
+    const owned = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, input.accountId)))
+      .limit(1);
+
+    const targetAccount = owned[0];
+    if (!targetAccount || targetAccount.status !== 'active') {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
     }
 
     if (input.type === 'expense') {
@@ -210,11 +225,14 @@ async function addTransaction(
       await db.insert(expense).values({
         id: generateTransId(),
         userId,
+        accountId: targetAccount.id,
         description: input.description.trim(),
         category: input.category,
         tag: input.tag?.trim() ?? '',
         transactionDate: input.date,
-        paymentMethod: input.paymentMethod,
+        // Legacy reconciliation trail only - carries the account name now
+        // that accounts are user-defined. Never read for logic.
+        paymentMethod: targetAccount.name,
         amount: -Math.abs(input.amount),
       });
     } else {
@@ -243,10 +261,11 @@ async function addTransaction(
       await db.insert(income).values({
         id: generateTransId(),
         userId,
+        accountId: targetAccount.id,
         description: input.description.trim(),
         category: input.category,
         transactionDate: input.date,
-        paymentMethod: input.paymentMethod,
+        paymentMethod: targetAccount.name,
         grossAmount: grossToStore,
         netAmount: input.netAmount,
       });
@@ -442,44 +461,6 @@ async function modifyBudgets(
   }
 }
 
-/**
- * Sets OPENING balances - the balance before any recorded transaction.
- * Current balances are derived and must never be written here.
- */
-async function setOpeningBalances(
-  userId: string,
-  input: { checkingOpening: number; cashOpening: number },
-): Promise<ActionResult> {
-  try {
-    if (!isFiniteNumber(input.checkingOpening)) {
-      return fail('Checking opening balance must be a number.', 'validation', 'validation.checkingOpeningNumber');
-    }
-    if (!isFiniteNumber(input.cashOpening)) {
-      return fail('Cash opening balance must be a number.', 'validation', 'validation.cashOpeningNumber');
-    }
-
-    await db
-      .insert(userAccount)
-      .values({
-        userId,
-        checkingOpening: input.checkingOpening,
-        cashOpening: input.cashOpening,
-      })
-      .onConflictDoUpdate({
-        target: userAccount.userId,
-        set: {
-          checkingOpening: input.checkingOpening,
-          cashOpening: input.cashOpening,
-          updatedAt: new Date().toISOString(),
-        },
-      });
-
-    revalidateAll();
-    return { ok: true };
-  } catch (error) {
-    return handleUnexpected('setOpeningBalancesAction', error);
-  }
-}
 
 async function setTimeZoneOverride(
   userId: string,
@@ -614,18 +595,17 @@ export type AllocationSummaryResult =
  */
 async function loadAllocationSummary(userId: string): Promise<AllocationSummaryResult> {
   try {
-    const [expenses, incomeRows, openingBalances, adjustments, goals] = await Promise.all([
+    const [expenses, incomeRows, adjustments, goals, accounts] = await Promise.all([
       getExpenses(userId),
       getIncome(userId),
-      getUserAccount(userId),
       getBalanceAdjustments(userId),
       getGoals(userId),
+      getAccounts(userId),
     ]);
 
     const balances = computeCurrentBalances(
       mergeTransactions(expenses, incomeRows),
-      openingBalances.checkingOpening,
-      openingBalances.cashOpening,
+      accounts,
       adjustments,
     );
 
@@ -1022,7 +1002,8 @@ export interface UpdateTransactionInput {
   category: string;
   tag?: string;
   date?: string;
-  paymentMethod: PaymentMethod;
+  /** Target account. Locked to its current value on a closed account. */
+  accountId: string;
   amount?: number;
   grossAmount?: number;
   netAmount?: number;
@@ -1035,7 +1016,7 @@ async function updateTransaction(
   try {
     const table = input.type === 'expense' ? expense : income;
     const rows = await db
-      .select({ id: table.id, date: table.transactionDate, paymentMethod: table.paymentMethod })
+      .select({ id: table.id, date: table.transactionDate, accountId: table.accountId })
       .from(table)
       .where(and(eq(table.userId, userId), eq(table.id, input.id)))
       .limit(1);
@@ -1043,8 +1024,56 @@ async function updateTransaction(
     const current = rows[0];
     if (!current) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
 
-    if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
+    // The account the row currently sits on, and the one being requested.
+    // Both matter: a CLOSED account freezes the amount and the account itself,
+    // while date, description, category and tag stay editable.
+    //
+    // Enforced HERE, not only in the UI. The modal disables those fields, but
+    // a disabled input is a courtesy - this is the guarantee.
+    const currentAccountRows = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, current.accountId)))
+      .limit(1);
+
+    const currentAccount = currentAccountRows[0];
+    const onHibernatedAccount = currentAccount?.status === 'hibernated';
+
+    if (onHibernatedAccount) {
+      if (input.accountId !== current.accountId) {
+        return fail(
+          'A transaction on a closed account cannot be moved to another account.',
+          'validation',
+          'validation.closedAccountLocked',
+        );
+      }
+      // Amount is frozen: changing it would move a closed account off zero,
+      // and a closed account must contribute exactly what it contributed the
+      // day it was closed. Rejected outright rather than silently ignored, so
+      // a client that sends one is told why.
+      const sendsAmount = input.type === 'expense'
+        ? input.amount !== undefined
+        : (input.grossAmount !== undefined || input.netAmount !== undefined);
+      if (sendsAmount) {
+        return fail(
+          'The amount of a transaction on a closed account cannot be changed.',
+          'validation',
+          'validation.closedAccountLocked',
+        );
+      }
+    }
+
+    // Ownership check on the requested account. Skipped when unchanged on a
+    // closed account, which the branch above already validated.
+    const targetRows = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, input.accountId)))
+      .limit(1);
+
+    const targetAccount = targetRows[0];
+    if (!targetAccount || (!onHibernatedAccount && targetAccount.status !== 'active')) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
     }
 
     // Every field except identity is editable at any age. No per-transaction
@@ -1066,7 +1095,8 @@ async function updateTransaction(
         description: input.description.trim(),
         category: input.category,
         tag: input.tag?.trim() ?? '',
-        paymentMethod: input.paymentMethod,
+        accountId: targetAccount.id,
+        paymentMethod: targetAccount.name,
       };
       if (newDate) patch.transactionDate = newDate;
 
@@ -1087,7 +1117,8 @@ async function updateTransaction(
       const patch: Record<string, unknown> = {
         description: input.description.trim(),
         category: input.category,
-        paymentMethod: input.paymentMethod,
+        accountId: targetAccount.id,
+        paymentMethod: targetAccount.name,
       };
       if (newDate) patch.transactionDate = newDate;
 
@@ -1127,10 +1158,15 @@ async function updateTransaction(
 /**
  * Deletes a transaction outright, as if it had never been recorded.
  *
- * No balance repair is needed: computeRecentTransactions rebuilds the entire
- * ledger from the stored opening balances on every render, so every running
- * balance after this one corrects itself automatically. Nothing is stored
- * that could go stale.
+ * No balance repair is needed: computeCurrentBalances re-derives everything
+ * from the stored records on every render, so removing one simply removes its
+ * contribution. Nothing stored can go stale.
+ *
+ * A transaction on a HIBERNATED account cannot be deleted at all - the guard
+ * is below, not a compensating adjustment. An offset on the same account
+ * would leave the balance exactly as it was, making the deletion a no-op that
+ * merely hides the row: worse than refusing, because it looks like something
+ * happened.
  */
 async function deleteTransaction(
   userId: string,
@@ -1139,12 +1175,27 @@ async function deleteTransaction(
   try {
     const table = input.type === 'expense' ? expense : income;
     const rows = await db
-      .select({ id: table.id })
+      .select({ id: table.id, accountId: table.accountId })
       .from(table)
       .where(and(eq(table.userId, userId), eq(table.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
+    const target = rows[0];
+    if (!target) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
+
+    const accountRows = await db
+      .select({ status: account.status })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, target.accountId)))
+      .limit(1);
+
+    if (accountRows[0]?.status === 'hibernated') {
+      return fail(
+        'This account is hibernated. Wake it first to delete transactions.',
+        'validation',
+        'validation.hibernatedNoDelete',
+      );
+    }
 
     await db.delete(table).where(and(eq(table.userId, userId), eq(table.id, input.id)));
 
@@ -1168,16 +1219,13 @@ async function deleteTransaction(
 async function createBalanceAdjustment(
   userId: string,
   input: {
-    paymentMethod: PaymentMethod;
+    accountId: string;
     delta: number;
     description: string;
     date: string;
   },
 ): Promise<ActionResult> {
   try {
-    if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-      return fail('Payment method must be Cash or Checking.', 'validation', 'validation.paymentMethod');
-    }
     if (!isFiniteNumber(input.delta) || input.delta === 0) {
       return fail('Enter an amount that actually changes the balance.', 'validation', 'validation.adjustmentAmountRequired');
     }
@@ -1185,12 +1233,29 @@ async function createBalanceAdjustment(
       return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
     }
 
+    // Ownership check: the id arrives from the client, and withSessionUser
+    // guarantees WHO is asking, not WHAT they own. Closed accounts are
+    // rejected too - they are settled at zero permanently.
+    const owned = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, input.accountId)))
+      .limit(1);
+
+    const target = owned[0];
+    if (!target || target.status !== 'active') {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+
     await db.insert(balanceAdjustment).values({
       id: generateTransId(),
       userId,
+      accountId: target.id,
       description: input.description.trim() || 'Balance adjustment',
       transactionDate: input.date,
-      paymentMethod: input.paymentMethod,
+      // Legacy reconciliation trail only - carries the account name now that
+      // accounts are user-defined. Never read for logic.
+      paymentMethod: target.name,
       amount: input.delta,
     });
 
@@ -1225,10 +1290,6 @@ async function deleteBalanceAdjustment(
   }
 }
 
-export type BalanceModeResult =
-  | { ok: true; hasTransactions: boolean; checkingOpening: number; cashOpening: number }
-  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
-
 
 /* ---------------------------------------------------------------------------
  * Scheduled & recurring payment rules
@@ -1255,7 +1316,8 @@ export interface RecurringRuleActionInput {
   category: string;
   /** Expense only - the income table has no tag column. */
   tag?: string;
-  paymentMethod: PaymentMethod;
+  /** The account this rule materializes into. Must be active and owned. */
+  accountId: string;
   /**
    * POSITIVE MAGNITUDE, always. Expense amounts are negated here so the form
    * never has to reason about sign. For income this is the NET amount.
@@ -1286,7 +1348,9 @@ interface NormalizedRule {
   description: string;
   category: string;
   tag: string | null;
-  paymentMethod: PaymentMethod;
+  accountId: string;
+  /** Legacy reconciliation trail - the account's name. Never read for logic. */
+  paymentMethod: string;
   amount: number;
   grossAmount: number | null;
   frequency: RecurringFrequency;
@@ -1316,8 +1380,18 @@ async function normalizeRuleInput(
   if (input.kind !== 'expense' && input.kind !== 'income') {
     return { ok: false, error: 'Select whether this is an expense or income.', code: 'validation.ruleKindRequired' };
   }
-  if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
-    return { ok: false, error: 'Select a valid payment method.', code: 'validation.rulePaymentMethod' };
+  // Ownership check: the id arrives from the client. Active only - a rule
+  // materializing into a closed account would give it a non-zero balance on
+  // the next catch-up, which closeAccount() also guards against from its side.
+  const ownedAccount = await db
+    .select({ id: account.id, status: account.status, name: account.name })
+    .from(account)
+    .where(and(eq(account.userId, userId), eq(account.id, input.accountId)))
+    .limit(1);
+
+  const ruleAccount = ownedAccount[0];
+  if (!ruleAccount || ruleAccount.status !== 'active') {
+    return { ok: false, error: 'That account no longer exists.', code: 'notFound.account' };
   }
   if (!RECURRING_FREQUENCIES.includes(input.frequency)) {
     return { ok: false, error: 'Select a valid frequency.', code: 'validation.ruleFrequency' };
@@ -1392,7 +1466,8 @@ async function normalizeRuleInput(
         category: input.category,
         // The income table has no tag column, and a CHECK enforces NULL here.
         tag: null,
-        paymentMethod: input.paymentMethod,
+        accountId: ruleAccount.id,
+        paymentMethod: ruleAccount.name,
         amount: input.amount,
         grossAmount: gross,
         frequency,
@@ -1424,7 +1499,8 @@ async function normalizeRuleInput(
       description,
       category: categoryName,
       tag: input.tag?.trim() || null,
-      paymentMethod: input.paymentMethod,
+      accountId: ruleAccount.id,
+      paymentMethod: ruleAccount.name,
       // Stored negative, matching expense.amount and its CHECK (amount <= 0).
       amount: -Math.abs(input.amount),
       grossAmount: null,
@@ -1604,28 +1680,6 @@ async function deleteRecurringRule(
   }
 }
 
-/**
- * Tells the settings screen which balance UI to show: opening balances for a
- * brand-new account, manual adjustments once any transaction exists.
- */
-async function loadBalanceMode(userId: string): Promise<BalanceModeResult> {
-  try {
-    const [hasTransactions, account] = await Promise.all([
-      hasAnyTransactions(userId),
-      getUserAccount(userId),
-    ]);
-    return {
-      ok: true,
-      hasTransactions,
-      checkingOpening: account.checkingOpening,
-      cashOpening: account.cashOpening,
-    };
-  } catch (error) {
-    console.error('[pebble action] getBalanceModeAction', error);
-    return { ok: false, error: "Couldn't reach the database to load your balance settings.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.balanceModeFailed' };
-  }
-}
-
 /* -------------------------------------------------------------------------
  * Exported actions
  *
@@ -1643,11 +1697,95 @@ export const addGoalAction = withSessionUser(addGoal);
 export const updateGoalAction = withSessionUser(updateGoal);
 export const deleteGoalAction = withSessionUser(deleteGoal);
 export const getAllocationSummaryAction = withSessionUser(loadAllocationSummary);
-export const setOpeningBalancesAction = withSessionUser(setOpeningBalances);
 export const getCategoriesAction = withSessionUser(loadCategories);
 export const updateTransactionAction = withSessionUser(updateTransaction);
 export const deleteTransactionAction = withSessionUser(deleteTransaction);
+/**
+ * Moves money between two accounts.
+ *
+ * TWO balance_adjustment rows, not a dedicated record type: adjustments are
+ * already excluded from Reports (a transfer is not spending or income),
+ * already render in the statement, and already flow through the balance
+ * derivation. A separate table would mean teaching every one of those paths a
+ * fourth record type to reproduce properties this one already has.
+ *
+ * BALANCE-NEUTRAL BY CONSTRUCTION: the source row is -amount and the
+ * destination +amount, so the pair always sums to zero. The user's total
+ * cannot move, only its distribution.
+ *
+ * Both rows share a transferGroupId so a delete can remove them together.
+ * Written in one batch(): half a transfer would create or destroy money.
+ *
+ * Both accounts must be ACTIVE. A transfer is new activity, and hibernation
+ * means an account takes none.
+ */
+async function createTransfer(
+  userId: string,
+  input: { fromAccountId: string; toAccountId: string; amount: number; description: string; date: string },
+): Promise<ActionResult> {
+  try {
+    if (input.fromAccountId === input.toAccountId) {
+      return fail('Choose two different accounts.', 'validation', 'validation.transferSameAccount');
+    }
+    if (!isFiniteNumber(input.amount) || input.amount <= 0) {
+      return fail('Transfer amount must be greater than zero.', 'validation', 'validation.transferAmountPositive');
+    }
+    if (!DATE_PATTERN.test(input.date)) {
+      return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
+    }
+
+    // Ownership check on both ids - they arrive from the client.
+    const rows = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), inArray(account.id, [input.fromAccountId, input.toAccountId])));
+
+    const source = rows.find((r) => r.id === input.fromAccountId);
+    const destination = rows.find((r) => r.id === input.toAccountId);
+
+    if (!source || !destination) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+    if (source.status !== 'active' || destination.status !== 'active') {
+      return fail('Both accounts must be active to transfer between them.', 'validation', 'validation.transferInactiveAccount');
+    }
+
+    const groupId = generateId();
+    const magnitude = Math.abs(input.amount);
+    const note = input.description.trim();
+
+    await db.batch([
+      db.insert(balanceAdjustment).values({
+        id: generateTransId(),
+        userId,
+        accountId: source.id,
+        transferGroupId: groupId,
+        description: note || `Transfer to ${destination.name}`,
+        transactionDate: input.date,
+        paymentMethod: source.name,
+        amount: -magnitude,
+      }),
+      db.insert(balanceAdjustment).values({
+        id: generateTransId(),
+        userId,
+        accountId: destination.id,
+        transferGroupId: groupId,
+        description: note || `Transfer from ${source.name}`,
+        transactionDate: input.date,
+        paymentMethod: destination.name,
+        amount: magnitude,
+      }),
+    ]);
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('createTransferAction', error);
+  }
+}
+
 export const createBalanceAdjustmentAction = withSessionUser(createBalanceAdjustment);
+export const createTransferAction = withSessionUser(createTransfer);
 export const deleteBalanceAdjustmentAction = withSessionUser(deleteBalanceAdjustment);
 export const modifyBudgetsAction = withSessionUser(modifyBudgets);
 export const getBudgetModalDataAction = withSessionUser(loadBudgetModalData);
@@ -1655,9 +1793,452 @@ export const createCategoryAction = withSessionUser(createCategory);
 export const updateCategoryAction = withSessionUser(updateCategory);
 export const getCategoryUsageAction = withSessionUser(loadCategoryUsage);
 export const deleteCategoryAction = withSessionUser(deleteCategory);
-export const getBalanceModeAction = withSessionUser(loadBalanceMode);
 export const createRecurringRuleAction = withSessionUser(createRecurringRule);
 export const updateRecurringRuleAction = withSessionUser(updateRecurringRule);
 export const setRecurringRuleStatusAction = withSessionUser(setRecurringRuleStatus);
 export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);
+
+/* ------------------------------------------------------------------------
+ * Accounts
+ * ---------------------------------------------------------------------- */
+
+export interface CreateAccountInput {
+  name: string;
+  kind: 'bank' | 'cash';
+  /** Exactly 4 digits when kind is 'bank'; ignored otherwise. */
+  last4: string;
+}
+
+/**
+ * Validation mirrors the database CHECKs deliberately. The constraints are the
+ * real guard - this layer exists to turn a constraint violation into a
+ * translated message instead of an opaque 500.
+ */
+async function createAccount(userId: string, input: CreateAccountInput): Promise<ActionResult> {
+  try {
+    const name = input.name.trim();
+    if (!name) {
+      return fail('An account needs a name.', 'validation', 'validation.accountNameRequired');
+    }
+    if (name.length > 40) {
+      return fail('That account name is too long.', 'validation', 'validation.accountNameTooLong');
+    }
+    if (input.kind !== 'bank' && input.kind !== 'cash') {
+      return fail('Choose an account type.', 'validation', 'validation.accountKindInvalid');
+    }
+
+    const last4 = input.kind === 'bank' ? input.last4.trim() : null;
+    if (input.kind === 'bank' && !/^[0-9]{4}$/.test(last4 ?? '')) {
+      return fail('Enter the last 4 digits of the account number.', 'validation', 'validation.accountLast4Invalid');
+    }
+
+    // The partial unique index (active accounts only) is what actually
+    // enforces this; checking first turns a 23505 into a usable message.
+    // A closed account may share the name - that is the point of the index.
+    const existing = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.name, name), eq(account.status, 'active')))
+      .limit(1);
+
+    if (existing[0]) {
+      return fail('You already have an account with that name.', 'validation', 'validation.accountNameDuplicate');
+    }
+
+    const rows = await db
+      .select({ sortOrder: account.sortOrder })
+      .from(account)
+      .where(eq(account.userId, userId));
+    const nextSort = rows.reduce((max, r) => Math.max(max, r.sortOrder), -1) + 1;
+
+    await db.insert(account).values({
+      id: generateId(),
+      userId,
+      name,
+      kind: input.kind,
+      last4,
+      // Every account starts at zero. A starting balance is recorded as a
+      // dated balance adjustment instead, so nothing moves the total without
+      // a visible row explaining it.
+      sortOrder: nextSort,
+    });
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('createAccountAction', error);
+  }
+}
+
+/**
+ * Hibernates an account: frozen, but not gone.
+ *
+ * The balance is KEPT and still counts toward the total - hibernation says
+ * "I have stopped using this", not "this is settled at zero". No new
+ * transactions may be charged to it, and its existing transactions have their
+ * amount and account locked and cannot be deleted. Date, description,
+ * category and tag stay editable.
+ *
+ * Reversible, which is why the name stays reserved by the unique index.
+ */
+async function hibernateAccount(userId: string, accountId: string): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: account.id, status: account.status, isDefault: account.isDefault })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)))
+      .limit(1);
+
+    const target = rows[0];
+    if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.isDefault) {
+      return fail('The default Checking and Cash accounts cannot be hibernated.', 'validation', 'validation.accountDefaultCannotClose');
+    }
+    if (target.status === 'hibernated') {
+      return fail('That account is already hibernated.', 'validation', 'validation.accountAlreadyClosed');
+    }
+
+    // Active rules would keep materializing transactions into a frozen
+    // account on every catch-up. Blocked rather than auto-paused: a rule
+    // that pauses itself is a silent state change.
+    const liveRules = await db
+      .select({ id: recurringRule.id })
+      .from(recurringRule)
+      .where(and(
+        eq(recurringRule.userId, userId),
+        eq(recurringRule.accountId, accountId),
+        ne(recurringRule.status, 'deleted'),
+      ));
+
+    if (liveRules.length > 0) {
+      return fail(
+        'This account still has scheduled payments. Delete or move them first.',
+        'validation',
+        'validation.accountHasRules',
+      );
+    }
+
+    await db
+      .update(account)
+      // isPreferred cleared with it: a preselected account that rejects new
+      // transactions would be broken by construction.
+      .set({ status: 'hibernated', isPreferred: false, updatedAt: new Date().toISOString() })
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('hibernateAccountAction', error);
+  }
+}
+
+/** Returns a hibernated account to active use. */
+async function wakeAccount(userId: string, accountId: string): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: account.id, status: account.status })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)))
+      .limit(1);
+
+    const target = rows[0];
+    if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.status !== 'hibernated') {
+      return fail('That account is not hibernated.', 'validation', 'validation.accountNotHibernated');
+    }
+
+    await db
+      .update(account)
+      .set({ status: 'active', updatedAt: new Date().toISOString() })
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('wakeAccountAction', error);
+  }
+}
+
+/**
+ * Deletes an account outright - zero trace, row and all.
+ *
+ * REQUIRES THE ACCOUNT TO BE COMPLETELY EMPTY: no expenses, no income, no
+ * balance adjustments, no recurring rules of any status. Moving records out
+ * is a separate, explicit operation the user performs first.
+ *
+ * That precondition is what makes this safe. Nothing references the row, so
+ * ON DELETE RESTRICT can never fire and no financial history can be orphaned
+ * or cascade-deleted. A delete that silently took transactions with it would
+ * be indistinguishable from data loss.
+ */
+async function deleteAccount(userId: string, accountId: string): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: account.id, isDefault: account.isDefault })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)))
+      .limit(1);
+
+    const target = rows[0];
+    if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.isDefault) {
+      return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
+    }
+
+    const [expenses, incomeRows, adjustments, rules] = await Promise.all([
+      db.select({ id: expense.id }).from(expense).where(and(eq(expense.userId, userId), eq(expense.accountId, accountId))).limit(1),
+      db.select({ id: income.id }).from(income).where(and(eq(income.userId, userId), eq(income.accountId, accountId))).limit(1),
+      db.select({ id: balanceAdjustment.id }).from(balanceAdjustment).where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.accountId, accountId))).limit(1),
+      db.select({ id: recurringRule.id }).from(recurringRule).where(and(eq(recurringRule.userId, userId), eq(recurringRule.accountId, accountId))).limit(1),
+    ]);
+
+    if (expenses[0] || incomeRows[0] || adjustments[0] || rules[0]) {
+      return fail(
+        'This account still has records. Move them to another account first.',
+        'validation',
+        'validation.accountNotEmpty',
+      );
+    }
+
+    await db.delete(account).where(and(eq(account.userId, userId), eq(account.id, accountId)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('deleteAccountAction', error);
+  }
+}
+
 export const setTimeZoneOverrideAction = withSessionUser(setTimeZoneOverride);
+export type AccountsResult =
+  | { ok: true; accounts: Account[] }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+/**
+ * Active accounts for a transaction form's picker.
+ *
+ * Closed accounts are excluded: they cannot receive new activity. An EDIT of
+ * a transaction already on a closed account is handled by the caller, which
+ * shows that account as a locked, non-selectable value.
+ */
+async function loadAccounts(userId: string): Promise<AccountsResult> {
+  try {
+    const accounts = await getAccounts(userId);
+    return { ok: true, accounts: accounts.filter((a) => a.status === 'active') };
+  } catch (error) {
+    console.error('[pebble action] getAccountsAction', error);
+    return {
+      ok: false,
+      error: "Couldn't reach the database to load your accounts.",
+      kind: classifyError(error) === 'database' ? 'database' : 'unknown',
+      code: 'loader.accountsFailed',
+    };
+  }
+}
+
+export const createAccountAction = withSessionUser(createAccount);
+export const getAccountsAction = withSessionUser(loadAccounts);
+/**
+ * Moves records from one account to another.
+ *
+ * ALL FOUR record types move: expenses, income, balance adjustments and
+ * recurring rules. Deletion requires an account to be empty of every one of
+ * them, so a move that skipped any would leave the account undeletable with
+ * nothing on screen explaining why.
+ *
+ * The destination must be ACTIVE. Hibernation means no new activity, and
+ * arriving records are activity. The SOURCE may be hibernated - emptying a
+ * hibernated account is exactly how it becomes deletable.
+ *
+ * batch() runs every statement in one transaction. A partial move would
+ * scatter records across two accounts with no indication anything failed.
+ */
+async function moveAccountRecords(
+  userId: string,
+  input: { fromAccountId: string; toAccountId: string; transactionIds?: string[] },
+): Promise<ActionResult> {
+  try {
+    if (input.fromAccountId === input.toAccountId) {
+      return fail('Choose a different destination account.', 'validation', 'validation.moveSameAccount');
+    }
+
+    // Ownership checks on both ids - they arrive from the client.
+    const rows = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(
+        eq(account.userId, userId),
+        inArray(account.id, [input.fromAccountId, input.toAccountId]),
+      ));
+
+    const source = rows.find((r) => r.id === input.fromAccountId);
+    const destination = rows.find((r) => r.id === input.toAccountId);
+
+    if (!source || !destination) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+    if (destination.status !== 'active') {
+      return fail('Records can only be moved into an active account.', 'validation', 'validation.moveDestinationInactive');
+    }
+
+    // A partial move names transaction ids; a full move takes everything,
+    // including recurring rules. Rules are deliberately NOT selectable
+    // individually - a rule is a schedule, not a record in the list.
+    const partial = input.transactionIds !== undefined && input.transactionIds.length > 0;
+
+    const patch = { accountId: destination.id, paymentMethod: destination.name };
+
+    const statements = partial
+      ? [
+          db.update(expense).set(patch).where(and(
+            eq(expense.userId, userId),
+            eq(expense.accountId, source.id),
+            inArray(expense.id, input.transactionIds!),
+          )),
+          db.update(income).set(patch).where(and(
+            eq(income.userId, userId),
+            eq(income.accountId, source.id),
+            inArray(income.id, input.transactionIds!),
+          )),
+          db.update(balanceAdjustment).set(patch).where(and(
+            eq(balanceAdjustment.userId, userId),
+            eq(balanceAdjustment.accountId, source.id),
+            inArray(balanceAdjustment.id, input.transactionIds!),
+          )),
+        ]
+      : [
+          db.update(expense).set(patch).where(and(eq(expense.userId, userId), eq(expense.accountId, source.id))),
+          db.update(income).set(patch).where(and(eq(income.userId, userId), eq(income.accountId, source.id))),
+          db.update(balanceAdjustment).set(patch).where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.accountId, source.id))),
+          db.update(recurringRule).set({ ...patch, updatedAt: new Date().toISOString() })
+            .where(and(eq(recurringRule.userId, userId), eq(recurringRule.accountId, source.id))),
+        ];
+
+    await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('moveAccountRecordsAction', error);
+  }
+}
+
+export const hibernateAccountAction = withSessionUser(hibernateAccount);
+export interface AccountUsageRecord {
+  id: string;
+  /** 'expense' | 'income' | 'adjustment' - the table the row lives in. */
+  kind: 'expense' | 'income' | 'adjustment';
+  description: string;
+  date: string;
+  amount: number;
+}
+
+export interface AccountUsage {
+  records: AccountUsageRecord[];
+  /** Rules are counted, not listed: a schedule is not a row in the ledger. */
+  ruleCount: number;
+}
+
+export type AccountUsageResult =
+  | { ok: true; usage: AccountUsage }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+/**
+ * Everything attached to an account, for the move flow.
+ *
+ * All four record types are counted because deletion requires the account to
+ * be empty of every one of them. Rules are returned as a COUNT rather than a
+ * list: they are schedules, not ledger rows, and are not individually
+ * selectable in a partial move.
+ */
+async function loadAccountUsage(userId: string, accountId: string): Promise<AccountUsageResult> {
+  try {
+    const [expenses, incomeRows, adjustments, rules] = await Promise.all([
+      db.select({ id: expense.id, description: expense.description, date: expense.transactionDate, amount: expense.amount })
+        .from(expense).where(and(eq(expense.userId, userId), eq(expense.accountId, accountId)))
+        .orderBy(desc(expense.transactionDate)),
+      db.select({ id: income.id, description: income.description, date: income.transactionDate, amount: income.netAmount })
+        .from(income).where(and(eq(income.userId, userId), eq(income.accountId, accountId)))
+        .orderBy(desc(income.transactionDate)),
+      db.select({ id: balanceAdjustment.id, description: balanceAdjustment.description, date: balanceAdjustment.transactionDate, amount: balanceAdjustment.amount })
+        .from(balanceAdjustment).where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.accountId, accountId)))
+        .orderBy(desc(balanceAdjustment.transactionDate)),
+      db.select({ id: recurringRule.id })
+        .from(recurringRule).where(and(eq(recurringRule.userId, userId), eq(recurringRule.accountId, accountId))),
+    ]);
+
+    const records: AccountUsageRecord[] = [
+      ...expenses.map((r) => ({ ...r, kind: 'expense' as const })),
+      ...incomeRows.map((r) => ({ ...r, kind: 'income' as const })),
+      ...adjustments.map((r) => ({ ...r, kind: 'adjustment' as const })),
+    ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+    return { ok: true, usage: { records, ruleCount: rules.length } };
+  } catch (error) {
+    console.error('[pebble action] getAccountUsageAction', error);
+    return {
+      ok: false,
+      error: "Couldn't check that account.",
+      kind: classifyError(error) === 'database' ? 'database' : 'unknown',
+      code: 'loader.accountUsageFailed',
+    };
+  }
+}
+
+export const moveAccountRecordsAction = withSessionUser(moveAccountRecords);
+export const getAccountUsageAction = withSessionUser(loadAccountUsage);
+/**
+ * Sets the account that transaction forms preselect.
+ *
+ * The clear and the set run in ONE batch(): a partial failure would either
+ * leave two preferred accounts (which the unique index refuses outright, so
+ * the whole thing would fail) or none at all.
+ *
+ * Hibernated accounts cannot be preferred - preselecting an account that
+ * rejects new transactions would be broken by construction.
+ *
+ * Passing the currently-preferred account clears the preference, so the star
+ * is a toggle rather than a one-way switch.
+ */
+async function setPreferredAccount(userId: string, accountId: string): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: account.id, status: account.status, isPreferred: account.isPreferred })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, accountId)))
+      .limit(1);
+
+    const target = rows[0];
+    if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.status !== 'active') {
+      return fail('A hibernated account cannot be the preferred one.', 'validation', 'validation.preferredMustBeActive');
+    }
+
+    const clear = db
+      .update(account)
+      .set({ isPreferred: false, updatedAt: new Date().toISOString() })
+      .where(and(eq(account.userId, userId), eq(account.isPreferred, true)));
+
+    if (target.isPreferred) {
+      // Toggling the current preference off leaves none, and forms fall back
+      // to the first account as they did before any preference existed.
+      await clear;
+    } else {
+      await db.batch([
+        clear,
+        db.update(account)
+          .set({ isPreferred: true, updatedAt: new Date().toISOString() })
+          .where(and(eq(account.userId, userId), eq(account.id, accountId))),
+      ]);
+    }
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('setPreferredAccountAction', error);
+  }
+}
+
+export const wakeAccountAction = withSessionUser(wakeAccount);
+export const setPreferredAccountAction = withSessionUser(setPreferredAccount);
+export const deleteAccountAction = withSessionUser(deleteAccount);

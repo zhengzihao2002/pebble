@@ -13,6 +13,7 @@ import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import { ModifyBudgetModal } from '@/components/modals/ModifyBudgetModal';
 import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
+import { TransferModal } from '@/components/modals/TransferModal';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -29,6 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Same reasoning as the goal modal: the trigger lives in Header, which
   // AppShell renders, so the modal has to be mounted here too.
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
+  // Same reasoning as the modals above: the trigger lives in Header.
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   // Same effect the original top-level App component had: text-size
   // setting scales the document's root font size, which every rem-based
@@ -153,6 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onModifyBudgetClick={() => setShowModifyBudgetModal(true)}
             onAddGoalClick={() => setShowAddGoalModal(true)}
             onAddScheduleClick={() => setShowAddScheduleModal(true)}
+            onTransferClick={() => setShowTransferModal(true)}
           />
           <main className="pebble-main">{children}</main>
         </div>
@@ -163,6 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {showModifyBudgetModal && <ModifyBudgetModal onClose={() => setShowModifyBudgetModal(false)} />}
       {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
       {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
+      {showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
     </div>
   );
 }

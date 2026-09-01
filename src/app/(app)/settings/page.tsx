@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getExpenses, getIncome, getUserAccount, getUserTimeZoneOverride } from '@/lib/data/queries';
+import { getBalanceAdjustments, getExpenses, getIncome, getUserTimeZoneOverride, getAccounts, getRecurringRules } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { SettingsClient } from './SettingsClient';
 
@@ -14,29 +14,36 @@ export default async function SettingsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, openingBalances, adjustments, timeZoneOverride] = await Promise.all([
+  const [expenses, income, adjustments, timeZoneOverride, accounts, rules] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
-    getUserAccount(userId),
     getBalanceAdjustments(userId),
     getUserTimeZoneOverride(userId),
+    getAccounts(userId),
+    getRecurringRules(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
 
-  // The transaction-only totals, obtained by computing current balances from
-  // a zero opening. This lets the settings card show a live projected balance
-  // as the opening values are edited, without re-querying.
-  const fromZero = computeCurrentBalances(transactions, 0, 0, adjustments);
+  // Real per-account balances, for the accounts card: it shows each balance
+  // and needs it to explain why a close is blocked. Same derivation as every
+  // other page, so the figure here cannot disagree with the dashboard's.
+  const balances = computeCurrentBalances(transactions, accounts, adjustments);
+
+  // Whether each account has anything to move. Counted here from data already
+  // in memory rather than queried per account in the card, which would mean N
+  // round trips to grey out a button.
+  const hasRecords: Record<string, boolean> = {};
+  for (const r of [...transactions, ...adjustments, ...rules]) {
+    hasRecords[r.accountId] = true;
+  }
 
   return (
     <SettingsClient
-      checkingOpening={openingBalances.checkingOpening}
-      cashOpening={openingBalances.cashOpening}
-      checkingTransactionTotal={fromZero.checking}
-      cashTransactionTotal={fromZero.cash}
-      hasTransactions={expenses.length > 0 || income.length > 0}
       timeZoneOverride={timeZoneOverride}
+      accounts={accounts}
+      balancesByAccount={balances.byAccount}
+      hasRecords={hasRecords}
     />
   );
 }

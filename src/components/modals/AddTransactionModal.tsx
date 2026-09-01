@@ -5,8 +5,8 @@ import { X } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
 import { resolveCategoryIcon } from '@/lib/data/icons';
-import type { CategoryItem } from '@/lib/data/mappers';
-import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction } from '@/lib/actions/pebble';
+import type { CategoryItem, Account } from '@/lib/data/mappers';
+import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -24,8 +24,9 @@ interface AddTransactionModalProps {
  * ⚠️ LANGUAGE MUST NOT CHANGE WHAT THIS FORM SUBMITS.
  *
  * Four stored values are chosen here: type ('expense'/'income'), category
- * (user data, or 'Standard Income'/'Side Cash' for income), paymentMethod
- * ('Checking'/'Cash', CHECK-constrained) and the date ('YYYY-MM-DD').
+ * (user data, or 'Standard Income'/'Side Cash' for income), the ACCOUNT
+ * (an accountId - user-defined, so its name is never translated) and the
+ * date ('YYYY-MM-DD').
  *
  * Every one of them previously rendered its own raw value as its button
  * label. They now render a dictionary LABEL while the state - and therefore
@@ -50,6 +51,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // client from iconKey - they cannot cross the RSC boundary.
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
   // so a layout fetch would run on every page navigation.
@@ -74,10 +77,29 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Same reasoning as categories above: fetched on open, not via the layout.
+  useEffect(() => {
+    let active = true;
+    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
+      if (!active) return;
+      if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
+      setAccounts(result.accounts);
+      setAccountError(null);
+      // Preferred account first, else whatever sorts first - the behaviour
+      // before preferences existed.
+      const preferred = result.accounts.find((a) => a.isPreferred);
+      setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayDateString());
-  const [paymentMethod, setPaymentMethod] = useState<'Checking' | 'Cash'>('Checking');
+  // The stored value is the account ID, not its name: names are user data
+  // and can repeat across a closed and an active account.
+  const [accountId, setAccountId] = useState('');
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
   const [amount, setAmount] = useState('');
@@ -87,6 +109,14 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   // Compares against the STORED literal, never against a label.
   const isSideCashSelected = incomeCategory === 'Side Cash';
+
+  const accountOptions = useMemo<SearchableSelectOption[]>(
+    () => accounts.map((a) => ({
+      value: a.id,
+      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+    })),
+    [accounts],
+  );
 
   const categoryOptions = useMemo<SearchableSelectOption[]>(
     // label === value deliberately: category names are USER DATA and are
@@ -130,14 +160,14 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
     let result;
     if (type === 'expense') {
-      result = await callAction(() => addTransactionAction({ type, description, date, paymentMethod, category, tag: tag.trim(), amount: Number(amount) }));
+      result = await callAction(() => addTransactionAction({ type, description, date, accountId, category, tag: tag.trim(), amount: Number(amount) }));
     } else {
       // Side cash is untaxed: one amount fills both gross and net.
       const gross = isSideCashSelected
         ? Number(netPay)
         : (grossPay ? Number(grossPay) : Number(netPay));
       // incomeCategory goes over the wire as the untranslated literal.
-      result = await callAction(() => addTransactionAction({ type, description, date, paymentMethod, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
+      result = await callAction(() => addTransactionAction({ type, description, date, accountId, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
     }
 
     setSaving(false);
@@ -374,18 +404,17 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
           <label style={labelStyle}>
             {d.addTxn.paymentMethod}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {/* CHECK-constrained values. A translated one fails the insert. */}
-              {(['Checking', 'Cash'] as const).map((m) => (
-                <button
-                  key={m} type="button" onClick={() => setPaymentMethod(m)}
-                  className={`pill ${paymentMethod === m ? 'active' : ''}`}
-                  style={{ flex: 1, padding: '0.55rem' }}
-                >
-                  {d.enums.paymentMethod[m]}
-                </button>
-              ))}
-            </div>
+            {/* A combobox, not pills: the account list is user-defined and
+                unbounded, so a fixed row of buttons would wrap badly. The
+                VALUE is the account id; the label is the user's own name for
+                it and is never translated. */}
+            <SearchableSelect
+              value={accountId}
+              onChange={setAccountId}
+              options={accountOptions}
+              ariaLabel={d.addTxn.paymentMethod}
+            />
+            {accountError && <ActionError message={accountError} />}
           </label>
 
           <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />

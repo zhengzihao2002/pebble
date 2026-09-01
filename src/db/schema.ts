@@ -80,6 +80,73 @@ export const userInNeonAuth = neonAuth.table(
  * off real historical transactions, and recreating an identical rule afterwards
  * would re-materialize its whole past as duplicates from a null high-water mark.
  */
+/**
+ * User-defined accounts. Replaces the fixed Checking/Cash pair.
+ *
+ * DECLARED ABOVE recurringRule AND expense DELIBERATELY - same TDZ hazard
+ * documented on recurringRule itself. All four ledger tables reference this
+ * one, so it must be initialized first or the module throws on import.
+ * tsc does NOT catch this.
+ *
+ * status: 'hibernated' freezes an account without settling it - the balance is
+ * kept and still counts toward the total. Its transactions have their amount
+ * and account locked and cannot be deleted; date, description, category and
+ * tag stay editable. Reversible via wake, which is why the unique index on
+ * (user_id, name) covers every account rather than only the active ones.
+ *
+ * Deletion is separate and requires a completely empty account.
+ */
+export const account = pgTable(
+  'account',
+  {
+    id: text().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    name: text().notNull(),
+    /** 'bank' | 'cash'. Drives whether last4 is required. */
+    kind: text().notNull(),
+    /** Exactly 4 digits for user-created bank accounts; NULL for cash and
+     *  for the seeded defaults, which predate the requirement. */
+    last4: text(),
+    openingBalance: numeric('opening_balance', { precision: 12, scale: 2, mode: 'number' })
+      .default(0)
+      .notNull(),
+    /** 'active' | 'hibernated' */
+    status: text().default('active').notNull(),
+    /** Seeded Checking and Cash. Cannot be hibernated or deleted. */
+    isDefault: boolean('is_default').default(false).notNull(),
+    /**
+     * Preselected in transaction forms. DISTINCT from isDefault, which is a
+     * structural fact (seeded, undeletable) rather than a preference - a
+     * user-created account can be preferred, and a default need not be.
+     *
+     * At most one per user, enforced by a partial unique index in Postgres
+     * that Drizzle's builder cannot express.
+     */
+    isPreferred: boolean('is_preferred').default(false).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('account_user_idx').using('btree', table.userId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [userInNeonAuth.id],
+      name: 'account_user_id_fkey',
+    }).onDelete('cascade'),
+    check('account_kind_check', sql`kind = ANY (ARRAY['bank'::text, 'cash'::text])`),
+    check('account_status_check', sql`status = ANY (ARRAY['active'::text, 'hibernated'::text])`),
+    check(
+      'account_last4_check',
+      sql`kind = 'bank'::text AND (is_default OR last4 IS NOT NULL AND last4 ~ '^[0-9]{4}$'::text) OR kind = 'cash'::text AND last4 IS NULL`,
+    ),
+  ],
+);
+
 export const recurringRule = pgTable(
   'recurring_rule',
   {
@@ -92,6 +159,7 @@ export const recurringRule = pgTable(
     /** expense only - the income table has no tag column */
     tag: text(),
     paymentMethod: text('payment_method').notNull(),
+    accountId: text('account_id').notNull(),
     /** expense: <= 0. income: the NET amount, >= 0. Mirrors the target table. */
     amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
     /** income only, and required there */
@@ -178,6 +246,7 @@ export const expense = pgTable(
     tag: text().default('').notNull(),
     transactionDate: date('transaction_date').notNull(),
     paymentMethod: text('payment_method').default('Checking').notNull(),
+    accountId: text('account_id').notNull(),
     amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
@@ -234,6 +303,7 @@ export const income = pgTable(
     category: text().default('').notNull(),
     transactionDate: date('transaction_date').notNull(),
     paymentMethod: text('payment_method').default('Checking').notNull(),
+    accountId: text('account_id').notNull(),
     grossAmount: numeric('gross_amount', { precision: 12, scale: 2, mode: 'number' }).notNull(),
     netAmount: numeric('net_amount', { precision: 12, scale: 2, mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -420,6 +490,13 @@ export const balanceAdjustment = pgTable(
     description: text().default('').notNull(),
     transactionDate: date('transaction_date').notNull(),
     paymentMethod: text('payment_method').default('Checking').notNull(),
+    accountId: text('account_id').notNull(),
+    /**
+     * Pairs the two halves of a transfer. Both rows share one id, so
+     * deleting either must delete both - otherwise money is created or
+     * destroyed. NULL means an ordinary standalone adjustment.
+     */
+    transferGroupId: text('transfer_group_id'),
     amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
@@ -452,6 +529,8 @@ export type GoalRow = typeof goal.$inferSelect;
 export type GoalInsert = typeof goal.$inferInsert;
 export type BudgetRow = typeof budget.$inferSelect;
 export type BudgetInsert = typeof budget.$inferInsert;
+export type AccountRow = typeof account.$inferSelect;
+export type AccountInsert = typeof account.$inferInsert;
 export type UserAccountRow = typeof userAccount.$inferSelect;
 export type UserAccountInsert = typeof userAccount.$inferInsert;
 export type CategoryRow = typeof category.$inferSelect;

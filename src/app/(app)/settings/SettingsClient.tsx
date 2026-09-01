@@ -5,7 +5,8 @@ import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
-import { OpeningBalanceCard } from '@/components/settings/OpeningBalanceCard';
+import { AccountsCard } from '@/components/settings/AccountsCard';
+import type { Account } from '@/lib/data/mappers';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { NotificationsCard } from '@/components/settings/NotificationsCard';
@@ -13,19 +14,18 @@ import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { AccountCard } from '@/components/settings/AccountCard';
 
 interface SettingsClientProps {
-  checkingOpening: number;
-  cashOpening: number;
-  checkingTransactionTotal: number;
-  cashTransactionTotal: number;
-  hasTransactions: boolean;
   timeZoneOverride: string | null;
+  accounts: Account[];
+  balancesByAccount: Record<string, number>;
+  /** accountId -> true when the account has records that could be moved. */
+  hasRecords: Record<string, boolean>;
 }
 
 // Mixed page: textSize and darkMode are device preferences and stay in the
 // store (localStorage). Opening balances are financial data and come from
 // Postgres.
 export function SettingsClient({
-  checkingOpening, cashOpening, checkingTransactionTotal, cashTransactionTotal, hasTransactions, timeZoneOverride,
+  timeZoneOverride, accounts, balancesByAccount, hasRecords,
 }: SettingsClientProps) {
   const textSize = usePebbleStore((s) => s.textSize);
   const setTextSize = usePebbleStore((s) => s.setTextSize);
@@ -43,19 +43,11 @@ export function SettingsClient({
           transaction exists, changing them would silently rewrite every
           historical running balance, so corrections are recorded as dated
           adjustments instead. */}
-      {hasTransactions ? (
-        <ModifyBalanceCard
-          checkingBalance={checkingOpening + checkingTransactionTotal}
-          cashBalance={cashOpening + cashTransactionTotal}
-        />
-      ) : (
-        <OpeningBalanceCard
-          checkingOpening={checkingOpening}
-          cashOpening={cashOpening}
-          checkingTransactionTotal={checkingTransactionTotal}
-          cashTransactionTotal={cashTransactionTotal}
-        />
-      )}
+      {/* Always shown. Opening balances were removed outright: every account
+          starts at zero and a starting figure is recorded here as a dated
+          adjustment, so nothing moves a balance without a visible row. */}
+      <ModifyBalanceCard accounts={accounts} balancesByAccount={balancesByAccount} />
+      <AccountsCard accounts={accounts} balancesByAccount={balancesByAccount} hasRecords={hasRecords} />
       <CategoryManagerCard />
       <TextSizeControl textSize={textSize} onChange={setTextSize} />
       <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />

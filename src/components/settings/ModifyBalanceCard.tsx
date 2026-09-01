@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { PaymentMethod } from '@/types';
+import type { Account } from '@/lib/data/mappers';
 import { createBalanceAdjustmentAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -12,8 +12,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface ModifyBalanceCardProps {
-  checkingBalance: number;
-  cashBalance: number;
+  accounts: Account[];
+  balancesByAccount: Record<string, number>;
 }
 
 type Mode = 'setTo' | 'changeBy';
@@ -29,19 +29,19 @@ const labelStyle: React.CSSProperties = {
 };
 
 /**
- * Corrects a balance once transactions exist.
+ * Sets or corrects an account balance.
  *
- * Opening balances are no longer editable at that point: changing them would
- * silently rewrite every historical running balance in the statement. A
- * correction is recorded instead, as a dated adjustment that appears in the
- * statement but never in Reports.
+ * THE ONLY WAY A BALANCE MOVES WITHOUT A TRANSACTION. Opening balances were
+ * removed outright: every account starts at zero, and a starting figure is
+ * recorded here as a dated adjustment that appears in the statement but never
+ * in Reports. Nothing moves the total without a visible row explaining it.
  */
-export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanceCardProps) {
+export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalanceCardProps) {
   const { d, t, locale } = useTranslation();
-  // 'Checking' | 'Cash' - the stored, CHECK-constrained value. It is sent
-  // straight to createBalanceAdjustmentAction below; only its label is ever
-  // translated.
-  const [account, setAccount] = useState<PaymentMethod>('Checking');
+  // Account NAMES are user data and are never translated. Only active
+  // accounts are adjustable: a closed one is settled at zero permanently.
+  const active = accounts.filter((a) => a.status === 'active');
+  const [accountId, setAccountId] = useState(active[0]?.id ?? '');
   const [mode, setMode] = useState<Mode>('setTo');
   const [value, setValue] = useState('');
   const [description, setDescription] = useState('');
@@ -50,7 +50,8 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
   const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   const [saved, setSaved] = useState(false);
 
-  const currentBalance = account === 'Checking' ? checkingBalance : cashBalance;
+  const account = active.find((a) => a.id === accountId);
+  const currentBalance = balancesByAccount[accountId] ?? 0;
   const entered = Number(value);
   const hasValue = value.trim() !== '' && Number.isFinite(entered);
   const delta = !hasValue ? 0 : mode === 'setTo' ? entered - currentBalance : entered;
@@ -66,7 +67,7 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
     // today, and a value captured at mount would still be yesterday's on a
     // card left open past midnight.
     const result = await callAction(() => createBalanceAdjustmentAction({
-      paymentMethod: account,
+      accountId,
       delta,
       description,
       date: todayDateString(),
@@ -88,9 +89,9 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        {(['Checking', 'Cash'] as const).map((m) => (
-          <button key={m} type="button" onClick={() => { setAccount(m); setSaved(false); }} className={`pill ${account === m ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
-            {d.enums.paymentMethod[m]}
+        {active.map((a) => (
+          <button key={a.id} type="button" onClick={() => { setAccountId(a.id); setSaved(false); }} className={`pill ${accountId === a.id ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
+            {a.name}
           </button>
         ))}
       </div>
@@ -98,7 +99,7 @@ export function ModifyBalanceCard({ checkingBalance, cashBalance }: ModifyBalanc
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1rem' }}>
         {/* Chinese drops the space between the account name and the noun,
             which is why this is a template rather than concatenation. */}
-        <span>{t(d.modifyBalance.balanceNow, { account: d.enums.paymentMethod[account] })}</span>
+        <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
         <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(currentBalance)}</span>
       </div>
 

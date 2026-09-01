@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getUserAccount } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, computeRecentTransactions, mergeTransactions } from '@/lib/stats';
 import { TransactionsClient } from './TransactionsClient';
 
@@ -14,13 +14,13 @@ export default async function TransactionsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, budgets, categories, openingBalances, adjustments] = await Promise.all([
+  const [expenses, income, budgets, categories, adjustments, accounts] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
     getCategories(userId),
-    getUserAccount(userId),
     getBalanceAdjustments(userId),
+    getAccounts(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -31,15 +31,13 @@ export default async function TransactionsPage() {
   const ledger = computeRecentTransactions(
     expenses,
     income,
-    openingBalances.checkingOpening,
-    openingBalances.cashOpening,
+    accounts,
     adjustments,
   );
 
   const balances = computeCurrentBalances(
     transactions,
-    openingBalances.checkingOpening,
-    openingBalances.cashOpening,
+    accounts,
     adjustments,
   );
 
@@ -50,10 +48,10 @@ export default async function TransactionsPage() {
       ledger={ledger}
       categories={categories}
       budgets={budgets}
-      accountOpeningTotal={openingBalances.checkingOpening + openingBalances.cashOpening}
+      accountOpeningTotal={accounts.reduce((sum, a) => sum + a.openingBalance, 0)}
       currentBalance={balances.total}
-      currentChecking={balances.checking}
-      currentCash={balances.cash}
+      accounts={accounts}
+      balancesByAccount={balances.byAccount}
     />
   );
 }

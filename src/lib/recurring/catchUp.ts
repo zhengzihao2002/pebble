@@ -116,6 +116,9 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
         expenseValues.push({
           id: uniqueTransId(issuedIds),
           userId,
+          // Inherited from the rule: a materialized occurrence must land in
+          // the same account the rule is attached to.
+          accountId: rule.accountId,
           description: rule.description,
           category: rule.category,
           tag: rule.tag ?? '',
@@ -129,6 +132,7 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
         incomeValues.push({
           id: uniqueTransId(issuedIds),
           userId,
+          accountId: rule.accountId,
           description: rule.description,
           category: rule.category,
           transactionDate: date,

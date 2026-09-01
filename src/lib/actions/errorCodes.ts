@@ -21,7 +21,8 @@ export type ServerErrorCode =
   | 'loader.allocationSummaryFailed'
   | 'loader.categoriesFailed'
   | 'loader.categoryUsageFailed'
-  | 'loader.balanceModeFailed'
+  | 'loader.accountsFailed'
+  | 'loader.accountUsageFailed'
   // --- transactions & balance adjustments (sub-step 4a) ---
   | 'validation.dateFormat'
   | 'validation.paymentMethod'
@@ -42,8 +43,6 @@ export type ServerErrorCode =
   | 'notFound.goal'
   | 'validation.budgetCategoryNameRequired'
   | 'validation.budgetAmountNonNegative'
-  | 'validation.checkingOpeningNumber'
-  | 'validation.cashOpeningNumber'
   // --- categories (sub-step 4c) ---
   | 'validation.categoryNameRequired'
   | 'validation.categoryNameTooLong'
@@ -75,4 +74,26 @@ export type ServerErrorCode =
   | 'validation.ruleKindLocked'
   | 'validation.ruleStatusInvalid'
   // --- timezone override (Phase 1) ---
-  | 'validation.timeZoneInvalid';
+  | 'validation.timeZoneInvalid'
+  // --- accounts (multi-account feature) ---
+  | 'notFound.account'
+  | 'validation.accountNameRequired'
+  | 'validation.accountNameTooLong'
+  | 'validation.accountNameDuplicate'
+  | 'validation.accountKindInvalid'
+  | 'validation.accountLast4Invalid'
+  | 'validation.accountOpeningNumber'
+  | 'validation.accountDefaultCannotClose'
+  | 'validation.accountAlreadyClosed'
+  | 'validation.accountBalanceNotZero'
+  | 'validation.accountHasRules'
+  | 'validation.closedAccountLocked'
+  | 'validation.hibernatedNoDelete'
+  | 'validation.accountNotHibernated'
+  | 'validation.accountNotEmpty'
+  | 'validation.moveSameAccount'
+  | 'validation.moveDestinationInactive'
+  | 'validation.preferredMustBeActive'
+  | 'validation.transferSameAccount'
+  | 'validation.transferAmountPositive'
+  | 'validation.transferInactiveAccount';

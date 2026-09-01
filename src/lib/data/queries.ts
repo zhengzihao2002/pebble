@@ -11,6 +11,7 @@ import {
   income,
   recurringRule,
   userAccount,
+  account,
 } from '@/db/schema';
 import type {
   BalanceAdjustment,
@@ -35,8 +36,8 @@ import {
   mapGoalRow,
   mapIncomeRow,
   mapRecurringRuleRow,
-  mapUserAccountRow,
-  type OpeningBalances,
+  mapAccountRow,
+  type Account,
 } from './mappers';
 
 /**
@@ -102,19 +103,28 @@ export async function getGoals(userId: string): Promise<Goal[]> {
 }
 
 /**
- * OPENING balances. A user who has never set them has no user_account row;
- * that is a normal state, not an error, and maps to zeroes.
+ * Every account, closed ones included. Callers filter by status themselves:
+ * dropdowns want active only, but transaction DISPLAY needs closed accounts
+ * too, since historical rows still reference them.
  */
-export async function getUserAccount(userId: string): Promise<OpeningBalances> {
+export async function getAccounts(userId: string): Promise<Account[]> {
   const rows = await db
     .select()
-    .from(userAccount)
-    .where(eq(userAccount.userId, userId))
-    .limit(1);
+    .from(account)
+    .where(eq(account.userId, userId))
+    .orderBy(account.sortOrder);
 
-  return mapUserAccountRow(rows[0]);
+  return rows.map(mapAccountRow);
 }
 
+/**
+ * The user's stored timezone override, or null when they have not pinned one.
+ *
+ * Reads only the time_zone column - the rest of user_account is legacy:
+ * checking_opening and cash_opening were superseded by per-account balances
+ * and zeroed, and are kept only as a record of the original values.
+ * Read on every page load by resolveUserTimeZone().
+ */
 export async function getUserTimeZoneOverride(userId: string): Promise<string | null> {
   const rows = await db
     .select({ timeZone: userAccount.timeZone })
@@ -125,32 +135,6 @@ export async function getUserTimeZoneOverride(userId: string): Promise<string | 
   return rows[0]?.timeZone ?? null;
 }
 
-export interface PebbleData {
-  expenses: ExpenseTransaction[];
-  income: IncomeTransaction[];
-  budgets: Record<string, number>;
-  goals: Goal[];
-  openingBalances: OpeningBalances;
-}
-
-/**
- * Convenience aggregate for pages needing most of the dataset. Runs the five
- * queries concurrently rather than sequentially - meaningful over neon-http,
- * where each query is a separate HTTP round trip.
- *
- * Prefer the individual functions on pages that only need one or two.
- */
-export async function getAllPebbleData(userId: string): Promise<PebbleData> {
-  const [expenses, incomeRows, budgets, goals, openingBalances] = await Promise.all([
-    getExpenses(userId),
-    getIncome(userId),
-    getBudgets(userId),
-    getGoals(userId),
-    getUserAccount(userId),
-  ]);
-
-  return { expenses, income: incomeRows, budgets, goals, openingBalances };
-}
 
 /**
  * Returns the user's categories, seeding the defaults on first access.

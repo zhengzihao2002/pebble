@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Banknote, SlidersHorizontal } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
+import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
@@ -14,14 +15,16 @@ const hasTextSelection = () =>
 
 interface StatementRowProps {
   txn: LedgerRecord;
-  checkingBalanceAfter: number;
-  cashBalanceAfter: number;
+  /** Every account's balance after this record, keyed by account id. */
+  balancesAfter: Record<string, number>;
+  /** Needed for names and ordering - accounts are user data, not a fixed pair. */
+  accounts: Account[];
   totalBalanceAfter: number;
   onOpenDetail: (txn: LedgerRecord) => void;
   categoryMeta: CategoryMeta;
 }
 
-export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, totalBalanceAfter, onOpenDetail, categoryMeta }: StatementRowProps) {
+export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, onOpenDetail, categoryMeta }: StatementRowProps) {
   const { d, t, locale } = useTranslation();
 
   // Adjustments have no category. They are manual balance corrections, so
@@ -112,16 +115,21 @@ export function StatementRow({ txn, checkingBalanceAfter, cashBalanceAfter, tota
             padding: '0.55rem 0.75rem', boxShadow: 'var(--shadow)', minWidth: 150,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem' }}>
-            {/* An account NAME here, not a stored value being echoed - the
-                figure beside it is derived, and nothing on this row writes. */}
-            <span style={{ color: 'var(--ink-soft)' }}>{d.enums.paymentMethod.Checking}</span>
-            <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(checkingBalanceAfter)}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 4 }}>
-            <span style={{ color: 'var(--ink-soft)' }}>{d.enums.paymentMethod.Cash}</span>
-            <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(cashBalanceAfter)}</span>
-          </div>
+          {/* Account NAMES are USER DATA and are never translated - unlike the
+              old fixed Checking/Cash pair, which came from the dictionary.
+              Closed accounts still appear here: a historical row references
+              one, and hiding it would leave an unexplained figure. */}
+          {accounts.map((a, i) => (
+            <div
+              key={a.id}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: i === 0 ? 0 : 4 }}
+            >
+              <span style={{ color: 'var(--ink-soft)' }}>{a.name}</span>
+              <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                {formatCurrency(balancesAfter[a.id] ?? 0)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
