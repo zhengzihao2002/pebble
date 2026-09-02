@@ -48,7 +48,9 @@ export default async function TransactionsPage() {
       ledger={ledger}
       categories={categories}
       budgets={budgets}
-      accountOpeningTotal={accounts.reduce((sum, a) => sum + a.openingBalance, 0)}
+      // Every account starts at zero by design - the pre-transaction
+      // baseline for a month with no prior entries is always 0.
+      accountOpeningTotal={0}
       currentBalance={balances.total}
       accounts={accounts}
       balancesByAccount={balances.byAccount}

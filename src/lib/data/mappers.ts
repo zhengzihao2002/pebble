@@ -120,16 +120,11 @@ export function mapBudgetRows(rows: BudgetRow[]): Record<string, number> {
 }
 
 
-/**
- * OPENING balances - the balance before any recorded transaction.
- * A user with no user_account row yet has opening balances of zero.
- */
 export interface Account {
   id: string;
   name: string;
   kind: 'bank' | 'cash';
   last4: string | null;
-  openingBalance: number;
   status: 'active' | 'hibernated';
   isDefault: boolean;
   /** Preselected in transaction forms. At most one per user. */
@@ -148,7 +143,6 @@ export function mapAccountRow(row: AccountRow): Account {
     name: row.name,
     kind: row.kind as 'bank' | 'cash',
     last4: row.last4,
-    openingBalance: row.openingBalance,
     status: row.status as 'active' | 'hibernated',
     isDefault: row.isDefault,
     isPreferred: row.isPreferred,

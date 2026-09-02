@@ -348,10 +348,10 @@ export interface LedgerEntry {
 // independent running balances (Checking and Cash), and returns a
 // lightweight newest-first ledger.
 //
-// Starts from the OPENING balances (the balance before any recorded
-// transaction) and walks FORWARD. Opening balances are stored; current
-// balances are derived. Storing the current balance instead would mean two
-// sources of truth that can silently drift apart — unacceptable for money.
+// Walks FORWARD from zero (every account starts at zero by design)
+// through every record for that account, in order. Current balances are
+// derived, never stored: storing them instead would mean two sources of
+// truth that can silently drift apart — unacceptable for money.
 export function computeRecentTransactions(
   expenses: ExpenseTransaction[], income: IncomeTransaction[], accounts: BalanceAccount[],
   adjustments: BalanceAdjustment[] = []
@@ -366,7 +366,7 @@ export function computeRecentTransactions(
   // every non-Checking record into Cash, which was correct only while exactly
   // two accounts existed.
   const running: Record<string, number> = {};
-  accounts.forEach((a) => { running[a.id] = a.openingBalance; });
+  accounts.forEach((a) => { running[a.id] = 0; });
 
   const ledger: LedgerEntry[] = all.map((t) => {
     // Skip rather than default: a foreign key makes an unknown account
@@ -394,22 +394,23 @@ export interface CurrentBalances {
 /** The minimum an account must expose to be balanced. */
 export interface BalanceAccount {
   id: string;
-  openingBalance: number;
 }
 
-// Current balance is DERIVED, never stored: each account's opening balance
-// plus the sum of every record against THAT ACCOUNT. Expense amounts are
-// negative and income amounts positive, so a single sum handles both.
+// Current balance is DERIVED, never stored: the sum of every record against
+// THAT ACCOUNT, starting from zero. Expense amounts are negative and income
+// amounts positive, so a single sum handles both. Every account starts at
+// zero by design; any pre-existing balance was converted into dated
+// `balance_adjustment` rows so it shows up in the ledger instead of moving
+// the total invisibly.
 //
 // Keyed by accountId, not by payment method. The previous version branched
 // `if Checking else Cash`, which silently swept every non-Checking record
 // into Cash - correct while exactly two accounts existed, wrong the moment a
 // third did.
 //
-// CLOSED ACCOUNTS ARE INCLUDED. Closure requires a zero balance and is held
-// at zero afterwards by compensating adjustments to the account's own
-// opening balance, so a closed account contributes zero without being
-// filtered. Nothing to remember, nothing to get wrong.
+// CLOSED ACCOUNTS ARE INCLUDED. Closure requires a zero balance, held at
+// zero via compensating `balance_adjustment` rows, so a closed account
+// contributes zero without being filtered.
 //
 // A record whose accountId is not in `accounts` is SKIPPED rather than
 // folded into a default. A foreign key makes that unreachable from the
@@ -421,7 +422,7 @@ export function computeCurrentBalances(
   adjustments: BalanceAdjustment[] = []
 ): CurrentBalances {
   const byAccount: Record<string, number> = {};
-  accounts.forEach((a) => { byAccount[a.id] = a.openingBalance; });
+  accounts.forEach((a) => { byAccount[a.id] = 0; });
 
   const all: LedgerRecord[] = [...transactions, ...adjustments];
   all.forEach((t) => {

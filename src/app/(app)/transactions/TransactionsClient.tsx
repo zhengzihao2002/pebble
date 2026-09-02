@@ -80,8 +80,8 @@ export function TransactionsClient({
     // with zero activity.
     const entries = entriesWithRecords.filter((e) => e.record.date >= monthStart && e.record.date < monthNext);
     const priorEntry = entriesWithRecords.find((e) => e.record.date < monthStart);
-    // With no prior transaction the month opens at the account's stored
-    // opening balance, NOT at zero.
+    // With no prior transaction the month opens at accountOpeningTotal,
+    // which is always 0 - every account starts at zero by design.
     const opening = priorEntry ? priorEntry.totalBalanceAfter : accountOpeningTotal;
     const closing = entries.length > 0 ? entries[0].totalBalanceAfter : opening;
     const deposits = entries.reduce((s, e) => (e.record.amount > 0 ? s + e.record.amount : s), 0);
