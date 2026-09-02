@@ -17,6 +17,7 @@ export const zh: typeof en = {
     loading: '加载中…',
     loadingAria: '加载中',
     seeAll: '查看全部',
+    close: '关闭',
     transportError: '无法连接到服务器。你的更改可能未保存——请在重试前确认。',
     working: '处理中…',
     saving: '保存中…',
@@ -30,6 +31,7 @@ export const zh: typeof en = {
     budgets: '预算',
     goals: '目标',
     scheduled: '定期',
+    more: '更多',
     settings: '设置',
   },
 
@@ -54,7 +56,6 @@ export const zh: typeof en = {
     addTransaction: '添加交易',
     modifyBudget: '修改预算',
     addSchedule: '添加计划',
-    notifications: '通知',
   },
 
   sidebar: {
@@ -324,16 +325,6 @@ export const zh: typeof en = {
     extraLarge: '特大',
   },
 
-  notifications: {
-    title: '通知',
-    comingSoon: '通知功能即将推出',
-    budgetAlerts: '预算提醒',
-    budgetAlertsHint: '当某个分类接近预算上限时通知我',
-    weeklySummary: '每周汇总',
-    weeklySummaryHint: '每周一回顾你的支出情况',
-    largeTxn: '大额交易提醒',
-    largeTxnHint: '超过 $500 的交易通知我',
-  },
 
   account: {
     title: 'Pebble 账户',

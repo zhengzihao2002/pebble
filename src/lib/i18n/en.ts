@@ -34,6 +34,7 @@ export const en = {
     // a trailing "dot dot dot" is noise rather than a hint that time passes.
     loadingAria: 'Loading',
     seeAll: 'See all',
+    close: 'Close',
     transportError: "Couldn't reach the server. Your change may not have been saved — check before trying again.",
     working: 'Working…',
     saving: 'Saving…',
@@ -50,6 +51,7 @@ export const en = {
     budgets: 'Budgets',
     goals: 'Goals',
     scheduled: 'Scheduled',
+    more: 'More',
     settings: 'Settings',
   },
 
@@ -79,7 +81,6 @@ export const en = {
     addTransaction: 'Add transaction',
     modifyBudget: 'Modify Budget',
     addSchedule: 'Add schedule',
-    notifications: 'Notifications',
   },
 
   sidebar: {
@@ -374,18 +375,6 @@ export const en = {
     extraLarge: 'Extra large',
   },
 
-  notifications: {
-    title: 'Notifications',
-    comingSoon: 'Notifications coming soon',
-    budgetAlerts: 'Budget alerts',
-    budgetAlertsHint: 'Get notified when a category nears its limit',
-    weeklySummary: 'Weekly summary',
-    weeklySummaryHint: 'A recap of your spending every Monday',
-    largeTxn: 'Large transaction alerts',
-    // The $500 is an illustrative figure in prose, not a stored amount. It
-    // stays in dollars in both locales, like every other figure in Pebble.
-    largeTxnHint: 'Notify me for transactions over $500',
-  },
 
   // The user's Pebble login. DISTINCT from d.accounts, which is the
   // financial accounts list (Checking, Cash, etc) shown in the same Settings

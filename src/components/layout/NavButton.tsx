@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
+import { isNavItemActive } from './navItems';
 
 interface NavButtonProps {
   href: string;
@@ -12,7 +13,7 @@ interface NavButtonProps {
 
 export function NavButton({ href, icon: Icon, label }: NavButtonProps) {
   const pathname = usePathname();
-  const active = pathname === href;
+  const active = isNavItemActive(pathname, href);
 
   return (
     <Link href={href} className={`nav-btn ${active ? 'active' : ''}`} style={{ textDecoration: 'none' }}>

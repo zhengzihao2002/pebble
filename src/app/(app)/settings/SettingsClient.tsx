@@ -9,7 +9,6 @@ import { AccountsCard } from '@/components/settings/AccountsCard';
 import type { Account } from '@/lib/data/mappers';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
-import { NotificationsCard } from '@/components/settings/NotificationsCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 
@@ -62,7 +61,6 @@ export function SettingsClient({
       {/* Grouped with the other device preferences, and short enough not to
           disturb the tall/short pairing described above. */}
       <SoundSettingsCard />
-      <NotificationsCard />
       <PebbleAccountCard />
     </div>
   );

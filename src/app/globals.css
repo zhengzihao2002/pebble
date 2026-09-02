@@ -348,11 +348,46 @@ html.no-theme-transition * {
 
 .pebble-sidebar { display: none; flex-direction: column; width: 16rem; flex-shrink: 0; border-right: 1px solid var(--line); padding: 1.5rem 1rem; position: sticky; top: 0; height: 100vh; }
 .pebble-bottom-nav {
-  display: flex; position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--mist); border-top: 1px solid var(--line);
-  justify-content: safe center; padding: 0.4rem 0.5rem; z-index: 20;
-  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+  background-color: var(--mist); border-top: 1px solid var(--line);
+  padding: 0.4rem 0.5rem; z-index: 20;
+  padding-bottom: calc(0.4rem + env(safe-area-inset-bottom));
+  /* No overflow-x. Five fixed items fit at 320px, and horizontal scrolling
+     along the bottom edge collided with the iOS app-switcher gesture. */
 }
-.pebble-bottom-nav::-webkit-scrollbar { display: none; }
+/* EQUAL WIDTHS. space-around sized each item to its label, so the highlight
+   covered a different amount of space per item and the row looked ragged.
+   flex: 1 makes every cell identical, which is also what lets the expanded
+   column line up exactly over the More button. */
+.pebble-root .pebble-bottom-nav > * { flex: 1 1 0; min-width: 0; }
+
+/* The expanded items sit in a column directly above More, each cell the same
+   size as a bar button - it reads as that one button's column extending
+   upward rather than a separate panel. Absolutely positioned so it adds no
+   height to the bar itself. */
+.pebble-bottom-nav-stack {
+  position: absolute; bottom: 100%; right: 0.5rem;
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pebble-bottom-nav-stack.open { grid-template-rows: 1fr; }
+.pebble-bottom-nav-stack-inner { overflow: hidden; min-height: 0; }
+.pebble-bottom-nav-stack-panel {
+  background-color: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow);
+  padding: 0.4rem;
+  margin-bottom: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+/* Same vertical presence as a bar button: .bottom-nav-btn's own padding is
+   0.3rem, and in the bar it sits inside the nav's 0.4rem, so a stacked item
+   needs the difference added back or it reads noticeably thinner. */
+.pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn {
+  padding: 0.55rem 0.3rem;
+  border-radius: 0.65rem;
+}
 @media (min-width: 760px) {
   .pebble-sidebar { display: flex; }
   .pebble-bottom-nav { display: none; }
