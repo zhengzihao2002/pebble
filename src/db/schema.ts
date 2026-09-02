@@ -107,9 +107,6 @@ export const account = pgTable(
     /** Exactly 4 digits for user-created bank accounts; NULL for cash and
      *  for the seeded defaults, which predate the requirement. */
     last4: text(),
-    openingBalance: numeric('opening_balance', { precision: 12, scale: 2, mode: 'number' })
-      .default(0)
-      .notNull(),
     /** 'active' | 'hibernated' */
     status: text().default('active').notNull(),
     /** Seeded Checking and Cash. Cannot be hibernated or deleted. */
