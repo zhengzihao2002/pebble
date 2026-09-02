@@ -387,8 +387,17 @@ export const en = {
     largeTxnHint: 'Notify me for transactions over $500',
   },
 
+  // The user's Pebble login. DISTINCT from d.accounts, which is the
+  // financial accounts list (Checking, Cash, etc) shown in the same Settings
+  // column - hence the explicit 'Pebble account' wording rather than a bare
+  // 'Account' that reads ambiguously beside it.
   account: {
-    title: 'Account',
+    title: 'Pebble account',
+    profileLink: 'Profile',
+    profileHint: 'Name and email',
+    securityLink: 'Security',
+    securityHint: 'Password and active sessions',
+    backToSettings: 'Back to Settings',
   },
 
   openingBalance: {

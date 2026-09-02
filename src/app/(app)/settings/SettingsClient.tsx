@@ -11,7 +11,7 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { NotificationsCard } from '@/components/settings/NotificationsCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
-import { AccountCard } from '@/components/settings/AccountCard';
+import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 
 interface SettingsClientProps {
   timeZoneOverride: string | null;
@@ -63,7 +63,7 @@ export function SettingsClient({
           disturb the tall/short pairing described above. */}
       <SoundSettingsCard />
       <NotificationsCard />
-      <AccountCard />
+      <PebbleAccountCard />
     </div>
   );
 }

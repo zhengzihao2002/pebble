@@ -336,7 +336,12 @@ export const zh: typeof en = {
   },
 
   account: {
-    title: '账户',
+    title: 'Pebble 账户',
+    profileLink: '个人资料',
+    profileHint: '姓名与邮箱',
+    securityLink: '安全',
+    securityHint: '密码与登录设备',
+    backToSettings: '返回设置',
   },
 
   openingBalance: {

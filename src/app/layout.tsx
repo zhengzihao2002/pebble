@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { Fraunces, Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import { authClient } from "@/lib/auth/client";
-import { NeonAuthUIProvider } from "@neondatabase/auth-ui";
+import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
 import { DARK_MODE_FIELD, LOCALE_FIELD, PEBBLE_UI_STORAGE_KEY } from "@/store/storageKeys";
 
 const fraunces = Fraunces({
@@ -71,18 +69,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           page for. suppressHydrationWarning on <html> above is what makes the
           resulting server/client class mismatch acceptable.
         */}
-        <Script
+        {/* A RAW <script>, not next/script. strategy="beforeInteractive"
+            does not inline this: Next emits it as a push into self.__next_s
+            for its client runtime to execute after hydration, which is long
+            after first paint. The class this sets was therefore never present
+            for the CSS at the top of globals.css to key on - the dark-mode
+            flash on every reload. A plain script tag in the SSR'd HTML runs
+            synchronously at parse time, which is the guarantee needed here. */}
+        <script
           id="pebble-preinit"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `try{var s=localStorage.getItem(${JSON.stringify(PEBBLE_UI_STORAGE_KEY)});var p=s?JSON.parse(s).state:null;var d=p&&p[${JSON.stringify(DARK_MODE_FIELD)}];var l=p&&p[${JSON.stringify(LOCALE_FIELD)}];var e=document.documentElement;e.classList.add('no-theme-transition');if(d)e.classList.add('pebble-dark');if(l==='zh')e.lang='zh-CN';}catch(err){}`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <NeonAuthUIProvider authClient={authClient} emailOTP>
-          {children}
-        </NeonAuthUIProvider>
+        <PebbleAuthUIProvider>{children}</PebbleAuthUIProvider>
       </body>
     </html>
   );
