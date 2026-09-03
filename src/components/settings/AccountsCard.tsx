@@ -95,68 +95,85 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
         {visible.map((a) => {
           const AccountIcon = a.kind === 'bank' ? Landmark : Coins;
           const balance = balancesByAccount[a.id] ?? 0;
+          // A STACK, not a row. The buttons used to sit beside the name and
+          // wrap only once it could no longer hold 140px - a threshold that
+          // resolved differently on a real phone than in Chrome's device
+          // emulation, so an iPhone 14 Pro crowded four buttons against the
+          // name and clipped it while the emulator wrapped correctly. Giving
+          // the buttons their own line guarantees the name has the full width
+          // on every device, with no measurement to get wrong.
           return (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', minWidth: 0 }}>
-              <AccountIcon size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {a.name}{a.last4 ? ` ····${a.last4}` : ''}
-                </p>
-                {/* Hibernated balances still count toward the total, so they are
-                    shown - marked with --gold to read as dormant rather than
-                    absent. */}
-                <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: a.status === 'hibernated' ? 'var(--gold)' : 'var(--ink-soft)' }}>
-                  {formatCurrency(balance)}
-                  {a.status === 'hibernated' && ` · ${d.accounts.hibernated}`}
-                  {a.isPreferred && (
-                    <span style={{ color: 'var(--gold)', fontWeight: 500 }}>
-                      {` · ${d.accounts.preferred}`}
-                    </span>
-                  )}
-                </p>
-              </div>
-              {/* Independent of isDefault: Checking and Cash CAN be preferred,
-                  they just cannot be hibernated or deleted. Only active
-                  accounts can be preferred - preselecting one that rejects
-                  new transactions would be broken. */}
-              {a.status === 'active' && (
-                <button
-                  type="button"
-                  onClick={() => runAccountAction(() => setPreferredAccountAction(a.id))}
-                  className="icon-btn"
-                  aria-pressed={a.isPreferred}
-                  aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
-                  style={{
-                    width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                    borderColor: a.isPreferred ? 'var(--gold)' : 'var(--line)',
-                    color: a.isPreferred ? 'var(--gold)' : 'var(--ink-soft)',
-                  }}
-                >
-                  <Star size={15} fill={a.isPreferred ? 'var(--gold)' : 'none'} />
-                </button>
-              )}
-              {/* Independent of isDefault: emptying Checking or Cash into
-                  another account is legitimate - the account itself stays, it
-                  just ends up with nothing in it. Only hibernate and delete
-                  are default-exempt.
+            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.7rem 0', borderBottom: '1px solid var(--line)', minWidth: 0 }}>
+              {/* Star and move ride the name line - two buttons always fit
+                  beside a truncating name. Hibernate and delete drop to their
+                  own line below, left-aligned.
 
-                  Disabled when empty: the dialog could only report that there
-                  is nothing to move. Delete stays enabled by contrast - its
-                  error message IS the explanation, and a greyed button
-                  explains nothing. */}
-              <button
-                type="button" onClick={() => setMoveSource(a)} className="icon-btn"
-                aria-label={t(d.accounts.moveTitle, { name: a.name })}
-                disabled={!hasRecords[a.id]}
-                style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
-              >
-                <ArrowRightLeft size={15} />
-              </button>
-              {/* Hidden, not disabled, for the defaults: they are simply not
-                  closable, and a greyed button invites a "why not?" the UI
-                  would then have to answer. */}
+                  ALWAYS SPLIT, never wrapped. flexWrap put all four on one
+                  line until the name could no longer hold its basis, and that
+                  threshold resolved differently on a real iPhone than in
+                  Chrome's device emulation - the emulator wrapped, the phone
+                  crowded the name and clipped it. Splitting deterministically
+                  removes the measurement entirely. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                <AccountIcon size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.name}{a.last4 ? ` ····${a.last4}` : ''}
+                  </p>
+                  {/* Hibernated balances still count toward the total, so they
+                      are shown - marked with --gold to read as dormant rather
+                      than absent. */}
+                  <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: a.status === 'hibernated' ? 'var(--gold)' : 'var(--ink-soft)' }}>
+                    {formatCurrency(balance)}
+                    {a.status === 'hibernated' && ` · ${d.accounts.hibernated}`}
+                    {a.isPreferred && (
+                      <span style={{ color: 'var(--gold)', fontWeight: 500 }}>
+                        {` · ${d.accounts.preferred}`}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Only active accounts can be preferred - preselecting one
+                    that rejects new transactions would be broken. Independent
+                    of isDefault: Checking and Cash CAN be preferred. */}
+                {a.status === 'active' && (
+                  <button
+                    type="button"
+                    onClick={() => runAccountAction(() => setPreferredAccountAction(a.id))}
+                    className="icon-btn"
+                    aria-pressed={a.isPreferred}
+                    aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      borderColor: a.isPreferred ? 'var(--gold)' : 'var(--line)',
+                      color: a.isPreferred ? 'var(--gold)' : 'var(--ink-soft)',
+                    }}
+                  >
+                    <Star size={15} fill={a.isPreferred ? 'var(--gold)' : 'none'} />
+                  </button>
+                )}
+
+                {/* Emptying Checking or Cash into another account is
+                    legitimate - the account itself stays. Disabled when empty:
+                    the dialog could only report there is nothing to move.
+                    Delete stays enabled by contrast - its error message IS the
+                    explanation, and a greyed button explains nothing. */}
+                <button
+                  type="button" onClick={() => setMoveSource(a)} className="icon-btn"
+                  aria-label={t(d.accounts.moveTitle, { name: a.name })}
+                  disabled={!hasRecords[a.id]}
+                  style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
+                >
+                  <ArrowRightLeft size={15} />
+                </button>
+              </div>
+
+              {/* Second line, left-aligned. Absent entirely for the defaults,
+                  which are neither hibernatable nor deletable - so they stay a
+                  single line and gain no height. */}
               {!a.isDefault && (
-                <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
                   <button
                     type="button"
                     onClick={() => runAccountAction(() => (
@@ -164,14 +181,14 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     ))}
                     className="icon-btn"
                     aria-label={t(a.status === 'hibernated' ? d.accounts.wakeLabel : d.accounts.hibernateLabel, { name: a.name })}
-                    style={{ width: 30, height: 30, borderRadius: '50%' }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                   >
                     {a.status === 'hibernated' ? <Sun size={15} /> : <Moon size={15} />}
                   </button>
                   <button
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
                     aria-label={t(d.accounts.deleteLabel, { name: a.name })}
-                    style={{ width: 30, height: 30, borderRadius: '50%' }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                   >
                     <Trash2 size={15} />
                   </button>
