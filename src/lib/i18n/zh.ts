@@ -18,7 +18,6 @@ export const zh: typeof en = {
     loadingAria: '加载中',
     seeAll: '查看全部',
     close: '关闭',
-    rotateToPortrait: 'Pebble 更适合竖屏使用，请将设备转回竖屏。',
     transportError: '无法连接到服务器。你的更改可能未保存——请在重试前确认。',
     working: '处理中…',
     saving: '保存中…',

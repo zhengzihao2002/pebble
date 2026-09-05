@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import { useTranslation } from '@/lib/i18n/useTranslation';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -21,8 +20,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const darkMode = usePebbleStore((s) => s.darkMode);
   const textSize = usePebbleStore((s) => s.textSize);
   const locale = usePebbleStore((s) => s.locale);
-  // Only for the landscape-block message handed to CSS below.
-  const { d } = useTranslation();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
@@ -150,14 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div
-      ref={rootRef}
-      className={`pebble-root themed-scroll ${darkMode ? 'dark' : ''}`}
-      // Read by the landscape-block rule in globals.css. CSS content:
-      // cannot reach the dictionary, so the translated string is
-      // handed to it as an attribute.
-      data-rotate-message={d.common.rotateToPortrait}
-    >
+    <div ref={rootRef} className={`pebble-root themed-scroll ${darkMode ? 'dark' : ''}`}>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">
