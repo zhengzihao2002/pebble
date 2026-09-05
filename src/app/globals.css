@@ -343,6 +343,27 @@ html.no-theme-transition * {
 }
 .pebble-root * { box-sizing: border-box; }
 
+/* Landscape block.
+   iOS ignores the manifest's orientation field for home-screen apps and does
+   not implement the Screen Orientation lock API, so a website cannot prevent
+   the rotation. It can decline to be usable sideways, which is the next best
+   thing: a short, wide viewport gets a prompt instead of a squashed layout.
+
+   pointer: coarse gates it to touch devices. A laptop window under 600px tall
+   is a legitimate size and must not be blocked - fix A above already gives it
+   the mobile layout, which is the correct outcome there. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .pebble-shell { display: none; }
+  .pebble-root::after {
+    content: attr(data-rotate-message);
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem; text-align: center;
+    background-color: var(--paper); color: var(--ink-soft);
+    font-size: 0.95rem; line-height: 1.6;
+  }
+}
+
 .pebble-shell { display: flex; min-height: 100vh; }
 .pebble-main-content { container-type: inline-size; container-name: content; flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -388,14 +409,18 @@ html.no-theme-transition * {
   padding: 0.55rem 0.3rem;
   border-radius: 0.65rem;
 }
-@media (min-width: 760px) {
+/* WIDTH AND HEIGHT, not width alone. A phone turned sideways is wide but
+   short, so a width-only query put it into the desktop layout - sidebar in,
+   bottom nav out - which is not what a phone should show at any rotation.
+   A laptop is both wide and tall and still matches. */
+@media (min-width: 760px) and (min-height: 600px) {
   .pebble-sidebar { display: flex; }
   .pebble-bottom-nav { display: none; }
 }
 
 .pebble-header { padding: 1.1rem 1.25rem; }
 .pebble-main { padding: 1.25rem 1.25rem 6rem; flex: 1; }
-@media (min-width: 760px) {
+@media (min-width: 760px) and (min-height: 600px) {
   .pebble-header { padding: 1.3rem 2.5rem; }
   .pebble-main { padding: 2.5rem; }
 }

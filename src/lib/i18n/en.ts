@@ -35,6 +35,7 @@ export const en = {
     loadingAria: 'Loading',
     seeAll: 'See all',
     close: 'Close',
+    rotateToPortrait: 'Pebble works best upright. Please rotate your device back to portrait.',
     transportError: "Couldn't reach the server. Your change may not have been saved — check before trying again.",
     working: 'Working…',
     saving: 'Saving…',
