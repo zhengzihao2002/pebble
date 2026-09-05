@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronRight, Search } from 'lucide-react';
+import type { Account } from '@/lib/data/mappers';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel, periodValueLabel } from '@/lib/i18n/enumLabels';
 
@@ -48,6 +49,12 @@ interface ReportFiltersProps {
   descQuery: string;
   onDescQueryChange: (v: string) => void;
 
+  accounts: Account[];
+  /** Empty means ALL - see the note on the state in ReportsClient. */
+  selectedAccounts: Set<string>;
+  onToggleAccount: (id: string) => void;
+  onClearAccounts: () => void;
+
   availableCats: string[];
   selectedCategories: Set<string>;
   allSelected: boolean;
@@ -72,6 +79,7 @@ export function ReportFilters({
   sortDir, onSortDirChange,
   sortField, onSortFieldChange,
   descQuery, onDescQueryChange,
+  accounts, selectedAccounts, onToggleAccount, onClearAccounts,
   availableCats, selectedCategories, allSelected, onToggleCategory, onToggleAllCategories,
   showTagFilter, singleSelectedCategory, availableTags, selectedTags, onToggleTag, onClearTags,
 }: ReportFiltersProps) {
@@ -217,6 +225,27 @@ export function ReportFilters({
                 />
               </div>
             </div>
+
+            {/* Above categories: an account is the broader cut, and reading
+                "these accounts, then these categories" matches how the filter
+                actually narrows.
+
+                Account NAMES are user data and are never translated, unlike
+                the two income category literals below. Hibernated accounts
+                appear here too - Reports covers complete history. */}
+            {accounts.length > 1 && (
+              <div>
+                <p className="filter-label">{dict.reports.onlyAccounts}</p>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button onClick={onClearAccounts} className={`pill ${selectedAccounts.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
+                  {accounts.map((a) => (
+                    <button key={a.id} onClick={() => onToggleAccount(a.id)} className={`pill ${selectedAccounts.has(a.id) ? 'active' : ''}`}>
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="filter-label">{dict.reports.onlyCategories}</p>

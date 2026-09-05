@@ -171,6 +171,7 @@ export const zh: typeof en = {
 
   txn: {
     gross: '税前 {amount}',
+    noAccountBalances: '所有账户余额均为零。',
     balanceAfter: '余额 {amount}',
     balanceAdjustment: '余额调整',
   },
@@ -532,6 +533,8 @@ export const zh: typeof en = {
     sortNewest: '时间从新到旧', sortOldest: '时间从旧到新',
     description: '描述',
     descriptionPlaceholder: '可选——搜索描述',
+    onlyAccounts: '账户',
+    accountsOther: '{count} 个账户',
     onlyCategories: '仅包含以下分类',
     all: '全部',
     subCategoryOf: '{category}的子分类',

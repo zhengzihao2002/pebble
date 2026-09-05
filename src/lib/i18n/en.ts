@@ -213,6 +213,7 @@ export const en = {
 
   txn: {
     gross: 'Gross {amount}',
+    noAccountBalances: 'All accounts are at zero.',
     balanceAfter: 'Bal {amount}',
     balanceAdjustment: 'Balance adjustment',
   },
@@ -594,6 +595,8 @@ export const en = {
     sortNewest: 'Newest first', sortOldest: 'Oldest first',
     description: 'Description',
     descriptionPlaceholder: 'Optional — search description',
+    onlyAccounts: 'Accounts',
+    accountsOther: '{count} accounts',
     onlyCategories: 'Only include categories',
     all: 'All',
     subCategoryOf: '{category} sub-category',

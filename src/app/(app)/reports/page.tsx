@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBudgets, getCategories, getExpenses, getIncome } from '@/lib/data/queries';
+import { getAccounts, getBudgets, getCategories, getExpenses, getIncome } from '@/lib/data/queries';
 import { mergeTransactions } from '@/lib/stats';
 import { ReportsClient } from './ReportsClient';
 
@@ -17,11 +17,14 @@ export default async function ReportsPage() {
   // Reports sees the COMPLETE history. The 13-month limit on the
   // transactions page is a statement-navigator view constraint only;
   // expense and income rows are permanent and all of them are reported on.
-  const [expenses, income, budgets, categories] = await Promise.all([
+  const [expenses, income, budgets, categories, accounts] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
     getCategories(userId),
+    // Hibernated accounts included: Reports covers complete history, and a
+    // hibernated account still holds real past spending.
+    getAccounts(userId),
   ]);
 
   return (
@@ -29,6 +32,7 @@ export default async function ReportsPage() {
       transactions={mergeTransactions(expenses, income)}
       categories={categories}
       budgets={budgets}
+      accounts={accounts}
     />
   );
 }

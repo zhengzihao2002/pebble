@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import type { CategoryItem } from '@/lib/data/mappers';
+import type { CategoryItem, Account } from '@/lib/data/mappers';
 import { formatMonthYear, parseLocalDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { periodValueLabel } from '@/lib/i18n/enumLabels';
@@ -23,9 +23,10 @@ interface ReportsClientProps {
   transactions: Transaction[];
   categories: CategoryItem[];
   budgets: Record<string, number>;
+  accounts: Account[];
 }
 
-export function ReportsClient({ transactions, categories, budgets }: ReportsClientProps) {
+export function ReportsClient({ transactions, categories, budgets, accounts }: ReportsClientProps) {
   // ⚠️ Destructured as dict/tr, NOT d/t. This file uses `t` for a transaction
   // in a dozen closures and `d` for a parsed Date in two more; the obvious
   // names would shadow both and silently change what the code means.
@@ -56,6 +57,14 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
 
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(expenseCats));
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+
+  // Empty means ALL, deliberately - not a set seeded with every id. A seeded
+  // set would silently exclude any account created later in the session, and
+  // "all" is the default nobody has to opt into.
+  //
+  // NOT PERSISTED, matching selectedCategories: a stored selection can name
+  // things that no longer exist, and accounts can be deleted outright.
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
 
   const showTagFilter = reportType === 'expense' && selectedCategories.size === 1;
   const singleSelectedCategory = showTagFilter ? Array.from(selectedCategories)[0] : null;
@@ -131,6 +140,15 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
       return next;
     });
   };
+  const toggleAccount = (id: string) => {
+    setSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearAccounts = () => setSelectedAccounts(new Set());
+
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
       const next = new Set(prev);
@@ -151,6 +169,8 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
     const matchesType = reportType === 'expense' ? isExpense(t) : !isExpense(t);
     if (!matchesType) return false;
     if (!selectedCategories.has(t.category)) return false;
+    // Empty set means every account, so no filtering to do.
+    if (selectedAccounts.size > 0 && !selectedAccounts.has(t.accountId)) return false;
     if (!t.description.toLowerCase().includes(descQuery.toLowerCase())) return false;
     if (showTagFilter && selectedTags.size > 0) {
       if (!isExpense(t) || !t.tag || !selectedTags.has(t.tag)) return false;
@@ -337,6 +357,19 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
   const filterSummaryParts = [reportType === 'expense' ? dict.reports.expenses : dict.reports.income, periodSummary];
   if (categoryGroup === 'category') filterSummaryParts.push(dict.reports.groupedByCategory);
   if (!allSelected) filterSummaryParts.push(tr(selectedCategories.size === 1 ? dict.reports.categoriesOne : dict.reports.categoriesOther, { count: selectedCategories.size }));
+  // Named when it is a single account, counted otherwise. Without this the
+  // summary is silent about an active account filter, and a collapsed panel
+  // would show reduced totals with nothing explaining why.
+  if (selectedAccounts.size > 0) {
+    const only = selectedAccounts.size === 1
+      ? accounts.find((a) => a.id === Array.from(selectedAccounts)[0])
+      : undefined;
+    filterSummaryParts.push(
+      only
+        ? only.name
+        : tr(dict.reports.accountsOther, { count: selectedAccounts.size }),
+    );
+  }
   const filterSummary = filterSummaryParts.join(' · ');
 
   return (
@@ -365,6 +398,10 @@ export function ReportsClient({ transactions, categories, budgets }: ReportsClie
         onSortFieldChange={setSortField}
         descQuery={descQuery}
         onDescQueryChange={setDescQuery}
+        accounts={accounts}
+        selectedAccounts={selectedAccounts}
+        onToggleAccount={toggleAccount}
+        onClearAccounts={clearAccounts}
         availableCats={availableCats}
         selectedCategories={selectedCategories}
         allSelected={allSelected}
