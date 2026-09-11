@@ -11,8 +11,9 @@ import { resolveCategoryIcon } from './icons';
  * pass the serializable CategoryItem[] (carrying iconKey as a string) and the
  * plain budgets map; this reassembles the icon-bearing structure here.
  *
- * Ordering follows sortOrder from the query, so Object.keys() preserves the
- * order the user sees in settings.
+ * Ordering follows getCategories(), which sorts by name, so Object.keys()
+ * preserves the order the user sees in settings - except that integer-like
+ * names ("401") are hoisted to the front by JavaScript's object key rules.
  */
 export function buildCategoryMeta(
   categories: CategoryItem[],

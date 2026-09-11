@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, ArrowRight } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -68,7 +68,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const options = useMemo<SearchableSelectOption[]>(
+  const options = useMemo<SelectFieldOption[]>(
     () => accounts.map((a) => ({
       value: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
@@ -122,7 +122,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
           <div style={labelStyle}>
             <span>{d.transfer.from}</span>
-            <SearchableSelect value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
+            <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--ink-soft)' }}>
@@ -131,7 +131,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
 
           <div style={labelStyle}>
             <span>{d.transfer.to}</span>
-            <SearchableSelect value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
+            <SelectField value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
           </div>
 
           {sameAccount && (

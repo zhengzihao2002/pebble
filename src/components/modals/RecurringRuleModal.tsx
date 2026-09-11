@@ -13,7 +13,7 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
@@ -133,7 +133,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   // Icons resolved here on the client from iconKey - they cannot cross the
   // RSC boundary. label === value deliberately: category names are USER DATA
   // and are never translated.
-  const categoryOptions: SearchableSelectOption[] = categories.map((c) => ({
+  const categoryOptions: SelectFieldOption[] = categories.map((c) => ({
     value: c.name,
     label: c.name,
     icon: resolveCategoryIcon(c.iconKey),
@@ -319,7 +319,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                     <option value="Side Cash">{d.enums.incomeCategory['Side Cash']}</option>
                   </select>
                 ) : (
-                  <SearchableSelect
+                  <SelectField
                     value={category}
                     onChange={setCategory}
                     options={categoryOptions}

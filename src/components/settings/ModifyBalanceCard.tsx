@@ -6,6 +6,7 @@ import { createBalanceAdjustmentAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -41,6 +42,12 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
   // Account NAMES are user data and are never translated. Only active
   // accounts are adjustable: a closed one is settled at zero permanently.
   const active = accounts.filter((a) => a.status === 'active');
+  // Same label shape as every other account picker, so two accounts with the
+  // same name can still be told apart on a write that moves money.
+  const accountOptions: SelectFieldOption[] = active.map((a) => ({
+    value: a.id,
+    label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+  }));
   const [accountId, setAccountId] = useState(active[0]?.id ?? '');
   const [mode, setMode] = useState<Mode>('setTo');
   const [value, setValue] = useState('');
@@ -88,12 +95,16 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
         {d.modifyBalance.blurb}
       </p>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        {active.map((a) => (
-          <button key={a.id} type="button" onClick={() => { setAccountId(a.id); setSaved(false); }} className={`pill ${accountId === a.id ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem' }}>
-            {a.name}
-          </button>
-        ))}
+      {/* Was a button row. Same list (active only), same default (active[0]),
+          so a dropdown removes no safety step - something is always selected. */}
+      <div style={{ marginBottom: '1rem' }}>
+        <SelectField
+          value={accountId}
+          onChange={(v) => { setAccountId(v); setSaved(false); }}
+          options={accountOptions}
+          disabled={accountOptions.length === 0}
+          ariaLabel={d.modifyBalance.account}
+        />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1rem' }}>

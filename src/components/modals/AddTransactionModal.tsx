@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction } from '@/lib/actions/pebble';
@@ -110,7 +110,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // Compares against the STORED literal, never against a label.
   const isSideCashSelected = incomeCategory === 'Side Cash';
 
-  const accountOptions = useMemo<SearchableSelectOption[]>(
+  const accountOptions = useMemo<SelectFieldOption[]>(
     () => accounts.map((a) => ({
       value: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
@@ -118,7 +118,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     [accounts],
   );
 
-  const categoryOptions = useMemo<SearchableSelectOption[]>(
+  const categoryOptions = useMemo<SelectFieldOption[]>(
     // label === value deliberately: category names are USER DATA and are
     // never translated. The user already has Chinese category names alongside
     // English ones, and every join is by name.
@@ -302,7 +302,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                     click on the word "Category". The input carries its own
                     accessible name via aria-label. */}
                 <span>{d.addTxn.category}</span>
-                <SearchableSelect
+                <SelectField
                   id="add-txn-category"
                   value={category}
                   onChange={setCategory}
@@ -408,7 +408,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 unbounded, so a fixed row of buttons would wrap badly. The
                 VALUE is the account id; the label is the user's own name for
                 it and is never translated. */}
-            <SearchableSelect
+            <SelectField
               value={accountId}
               onChange={setAccountId}
               options={accountOptions}

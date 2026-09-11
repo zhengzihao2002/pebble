@@ -11,7 +11,7 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { Account } from '@/lib/data/mappers';
 import { ActionError } from '@/components/shared/ActionError';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
@@ -116,7 +116,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   // categoryMeta already carries a resolved icon and colour per name, so no
   // resolveCategoryIcon() call is needed here. label === value: category
   // names are USER DATA and are never translated.
-  const categoryOptions: SearchableSelectOption[] = categoryNames.map((name) => ({
+  const categoryOptions: SelectFieldOption[] = categoryNames.map((name) => ({
     value: name,
     label: name,
     icon: categoryMeta[name]?.icon,
@@ -196,7 +196,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   const onHibernatedAccount = accounts.length > 0 && !accounts.some((a) => a.id === accountId);
   const accountName = accounts.find((a) => a.id === txn?.accountId)?.name ?? txn?.paymentMethod ?? '';
 
-  const accountOptions = useMemo<SearchableSelectOption[]>(
+  const accountOptions = useMemo<SelectFieldOption[]>(
     () => accounts.map((a) => ({
       value: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
@@ -405,7 +405,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     carries its own accessible name via ariaLabel. */}
                 <div style={labelStyle}>
                   <span>{d.txnDetail.rowCategory}</span>
-                  <SearchableSelect
+                  <SelectField
                     value={category}
                     onChange={setCategory}
                     options={categoryOptions}
@@ -499,7 +499,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                     </span>
                   </>
                 ) : (
-                  <SearchableSelect
+                  <SelectField
                     value={accountId}
                     onChange={setAccountId}
                     options={accountOptions}

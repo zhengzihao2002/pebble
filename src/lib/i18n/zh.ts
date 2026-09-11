@@ -193,6 +193,7 @@ export const zh: typeof en = {
     noMatches: '无匹配项',
     unavailable: '不可用',
     searchCategories: '搜索分类…',
+    choose: '请选择…',
   },
 
   addTxn: {
@@ -349,6 +350,7 @@ export const zh: typeof en = {
   },
 
   modifyBalance: {
+    account: '账户',
     title: '调整余额',
     blurb: '如果 Pebble 与你的实际账户不一致，可在此记录差额。它会作为一笔调整出现在账单中，但不计入报表——这是修正，而非支出或收入。',
     saving: '正在记录调整…',
@@ -428,6 +430,13 @@ export const zh: typeof en = {
     title: '外观',
     darkMode: '深色模式',
     hint: '切换为深色配色方案',
+  },
+
+  selectMode: {
+    title: '下拉列表',
+    hint: '搜索列表可输入文字筛选；简单列表使用设备自带的选择器。',
+    searchable: '搜索列表',
+    plain: '简单列表',
   },
 
   transactions: {

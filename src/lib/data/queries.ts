@@ -178,7 +178,7 @@ export async function getCategories(userId: string): Promise<CategoryItem[]> {
     .orderBy(asc(category.sortOrder), asc(category.name));
 
   if (rows.length > 0) {
-    return rows.map(mapCategoryRow);
+    return sortCategoriesByName(rows.map(mapCategoryRow));
   }
 
   const seed = [
@@ -210,7 +210,20 @@ export async function getCategories(userId: string): Promise<CategoryItem[]> {
     .where(eq(category.userId, userId))
     .orderBy(asc(category.sortOrder), asc(category.name));
 
-  return seeded.map(mapCategoryRow);
+  return sortCategoriesByName(seeded.map(mapCategoryRow));
+}
+
+// Categories are user data in mixed scripts (English and Chinese), so a plain
+// string comparison is wrong for both. The zh collator orders Han names by
+// pinyin, then Latin names A-Z, case-insensitively, with numeric runs compared
+// as numbers ("Gifts 2" before "Gifts 10"). Runs on the server, so the order
+// never depends on the visitor's browser. The code-point tiebreak makes names
+// the collator considers equal still come back in a fixed order.
+const CATEGORY_COLLATOR = new Intl.Collator('zh', { numeric: true, sensitivity: 'base' });
+
+function sortCategoriesByName(items: CategoryItem[]): CategoryItem[] {
+  return [...items].sort((a, b) =>
+    CATEGORY_COLLATOR.compare(a.name, b.name) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 /**

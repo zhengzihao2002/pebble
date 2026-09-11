@@ -4,6 +4,7 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
+import { SelectModeControl } from '@/components/settings/SelectModeControl';
 import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
 import { AccountsCard } from '@/components/settings/AccountsCard';
 import type { Account } from '@/lib/data/mappers';
@@ -32,6 +33,8 @@ export function SettingsClient({
   const setDarkMode = usePebbleStore((s) => s.setDarkMode);
   const locale = usePebbleStore((s) => s.locale);
   const setLocale = usePebbleStore((s) => s.setLocale);
+  const selectMode = usePebbleStore((s) => s.selectMode);
+  const setSelectMode = usePebbleStore((s) => s.setSelectMode);
 
   return (
     // Card order matters here: the two tall cards (balance, categories) lead so
@@ -54,6 +57,8 @@ export function SettingsClient({
           seven to eight, which pairs evenly in the two-column layout rather
           than opening the gap the comment above warns about. */}
       <LanguageControl locale={locale} onChange={setLocale} />
+      {/* Device preference, grouped with language. Card count 9 -> 10. */}
+      <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
       {/* Takes the preference-card count from 8 to 9 (odd) - opens the pairing
           gap the comment above warns about. Accepted: no clean pairing exists
           without a layout change, which is out of scope. */}

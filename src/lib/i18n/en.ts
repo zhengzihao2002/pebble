@@ -236,6 +236,8 @@ export const en = {
     noMatches: 'No matches',
     unavailable: 'Unavailable',
     searchCategories: 'Search categories…',
+    // Plain-mode dropdowns only: shown while nothing valid is selected.
+    choose: 'Choose…',
   },
 
   addTxn: {
@@ -403,6 +405,8 @@ export const en = {
   },
 
   modifyBalance: {
+    // Accessible name for the account dropdown.
+    account: 'Account',
     title: 'Adjust a balance',
     blurb: 'If Pebble and your real account disagree, record the difference here. It shows up in your statement as an adjustment, but is left out of Reports — it is a correction, not spending or income.',
     saving: 'Recording adjustment…',
@@ -492,6 +496,14 @@ export const en = {
     title: 'Appearance',
     darkMode: 'Dark mode',
     hint: 'Switch to a darker color scheme',
+  },
+
+  // Labels only. The stored values stay 'searchable' / 'plain' in every locale.
+  selectMode: {
+    title: 'Dropdown lists',
+    hint: "Search list lets you type to filter. Simple list uses your device's standard picker.",
+    searchable: 'Search list',
+    plain: 'Simple list',
   },
 
   transactions: {

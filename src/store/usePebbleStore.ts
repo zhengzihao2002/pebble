@@ -56,6 +56,11 @@ export interface ManualIncomePrefs {
   frequency: ManualIncomeFrequency;
 }
 
+// Which picker Pebble's dropdowns use. 'searchable' is the type-to-filter
+// combobox; 'plain' is the browser's native <select>. A device preference
+// like the ones above: nothing here reaches Postgres.
+export type SelectMode = 'searchable' | 'plain';
+
 interface PebbleUIState {
   darkMode: boolean;
   textSize: number;
@@ -89,6 +94,10 @@ interface PebbleUIState {
   // The user's own typed figure, kept even while 'system' mode is selected,
   // so switching back to 'manual' does not lose what was entered.
   manualIncomePrefs: ManualIncomePrefs;
+  // Read through SelectField, never by individual call sites. Any stored
+  // value other than 'plain' is treated as 'searchable' there, so a key
+  // written by an older or newer build cannot break a form.
+  selectMode: SelectMode;
   setDarkMode: (value: boolean) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -98,6 +107,7 @@ interface PebbleUIState {
   setSoundPref: (event: SoundEvent, soundId: string | null) => void;
   setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
   setManualIncomePrefs: (patch: Partial<ManualIncomePrefs>) => void;
+  setSelectMode: (value: SelectMode) => void;
 }
 
 const noopStorage = {
@@ -123,6 +133,9 @@ export const usePebbleStore = create<PebbleUIState>()(
       // Static, matching every other initial value here.
       incomeEstimateMode: 'system',
       manualIncomePrefs: { amount: '', frequency: 'monthly' },
+      // Static, matching every other initial value here. 'searchable' is the
+      // behaviour before this preference existed, so an upgrade changes nothing.
+      selectMode: 'searchable',
       setDarkMode: (value) => set({ darkMode: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
@@ -137,6 +150,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       // edited independently, and a replacing setter would let editing one
       // clear the other.
       setManualIncomePrefs: (patch) => set((state) => ({ manualIncomePrefs: { ...state.manualIncomePrefs, ...patch } })),
+      setSelectMode: (value) => set({ selectMode: value }),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -162,6 +176,9 @@ export const usePebbleStore = create<PebbleUIState>()(
         soundPrefs: state.soundPrefs,
         incomeEstimateMode: state.incomeEstimateMode,
         manualIncomePrefs: state.manualIncomePrefs,
+        // Omitting this persists nothing and reports no error - the picker
+        // choice would simply reset on every reload.
+        selectMode: state.selectMode,
       }),
     }
   )

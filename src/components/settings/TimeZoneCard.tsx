@@ -7,7 +7,7 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
-import { SearchableSelect, type SearchableSelectOption } from '@/components/shared/SearchableSelect';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
@@ -41,7 +41,7 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
     setDeviceZone(resolveBrowserTimeZone());
   }, []);
 
-  const options = useMemo<SearchableSelectOption[]>(() => {
+  const options = useMemo<SelectFieldOption[]>(() => {
     const zones = Intl.supportedValuesOf('timeZone');
     return [
       {
@@ -85,7 +85,7 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
         {d.settings.timeZone.hint}
       </p>
 
-      <SearchableSelect
+      <SelectField
         value={selected}
         onChange={(v) => { setSelected(v); setSaved(false); }}
         options={options}
