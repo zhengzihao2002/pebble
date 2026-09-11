@@ -422,20 +422,40 @@ html.no-theme-transition * {
 
 .goals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; min-width: 0; }
 
-/* Settings cards vary enormously in height - a dark-mode toggle beside the
-   category manager - so this is multi-column rather than grid. A grid row is
-   as tall as its tallest cell, which would leave dead space under every short
-   card; multi-column lets each column flow independently so cards pack tight
-   against one another.
-   The trade is reading order: content flows down column one, then down column
-   two. Acceptable here because these are independent preference cards with no
-   narrative sequence.
-   `columns: 320px` sets a target width and lets the browser pick the count,
-   mirroring how repeat(auto-fit, minmax(...)) behaves in the other grids.
-   Row spacing comes from each child's margin, not gap - multi-column has no
-   row gap of its own. */
-.settings-grid { columns: 320px; column-gap: 1.25rem; min-width: 0; }
-.settings-grid > * { break-inside: avoid; margin-bottom: 1.25rem; }
+/* Settings: one centered column, one card per row at every width.
+
+   Replaced a multi-column masonry layout that stretched across wide monitors
+   and whose card order had to be hand-tuned to avoid gaps. A single column
+   has no pairing problem, so card order now follows the sections.
+
+   max-width is in rem, so it scales with the text-size preference and line
+   length stays roughly constant. At phone widths it never binds, so mobile is
+   the same single column as before. */
+.settings-layout { display: flex; justify-content: center; gap: 2.5rem; min-width: 0; }
+.settings-column { flex: 1 1 auto; max-width: 44rem; min-width: 0; display: flex; flex-direction: column; gap: 2.25rem; }
+.settings-section { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0;
+  /* Clears the sticky app header when the section nav scrolls here. */
+  scroll-margin-top: 7rem; }
+.settings-section-title { margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--ink); }
+.settings-section-cards { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+
+/* Settings section nav. Hidden unless the content area is at least 844px wide:
+   roughly a 1100px viewport minus the 16rem sidebar at default text size. A
+   container query rather than @media, like the other responsive rules here,
+   so a larger text size (wider sidebar) brings the nav in later.
+   align-self: flex-start is required - a stretched flex item is as tall as
+   the column and has nowhere to stick. */
+.settings-nav { display: none; flex: 0 0 11rem; align-self: flex-start; position: sticky; top: 7rem; }
+@container content (min-width: 844px) { .settings-nav { display: block; } }
+.settings-nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.pebble-root .settings-nav-btn {
+  display: block; width: 100%; text-align: left; padding: 0.5rem 0.75rem;
+  border: none; border-radius: 0.6rem; background-color: transparent;
+  color: var(--ink-soft); font-size: 0.87rem; font-weight: 500;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.pebble-root .settings-nav-btn:hover { background-color: var(--pine-soft); color: var(--pine); }
+.pebble-root .settings-nav-btn.active { background-color: var(--pine-soft); color: var(--pine); font-weight: 600; box-shadow: inset 3px 0 0 var(--pine); }
 
 .divider-vert { display: none; }
 @container content (min-width: 480px) { .divider-vert { display: block; } }
@@ -454,13 +474,19 @@ html.no-theme-transition * {
 
 .pebble-root .bottom-nav-btn {
   display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0;
-  padding: 0.3rem 0.9rem; color: var(--ink-soft); background: none; border: none; font-size: 0.65rem; font-weight: 500;
+  /* 0.35rem, not 0.9rem: horizontal padding is rem-based and scales with the
+     text-size preference along with the label, so generous padding here was
+     stealing exactly the width the label needed at Large/Extra Large - two
+     CJK characters with no space between them ("更多") would wrap onto a
+     second line instead of overflowing, the way a hyphen-free English word
+     would. Matches the tighter padding the secondary More panel already uses. */
+  padding: 0.3rem 0.35rem; color: var(--ink-soft); background: none; border: none; font-size: 0.65rem; font-weight: 500;
   transition: color 0.3s ease;
 }
 .pebble-root .bottom-nav-btn.active { color: var(--pine); font-weight: 700; }
 .pebble-root .bottom-nav-icon { transition: transform 0.25s ease; }
 .pebble-root .bottom-nav-icon.active { transform: scale(1.25); }
-.pebble-root .bottom-nav-label { transition: font-size 0.25s ease; }
+.pebble-root .bottom-nav-label { white-space: nowrap; transition: font-size 0.25s ease; }
 
 .pebble-root .pill {
   padding: 0.42rem 0.9rem; border-radius: 99px; font-size: 0.78rem; font-weight: 500;

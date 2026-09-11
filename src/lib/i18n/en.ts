@@ -506,6 +506,16 @@ export const en = {
     plain: 'Simple list',
   },
 
+  // Settings page section headings and the section nav. Labels only; the
+  // section ids used for scrolling are fixed strings in SettingsClient.
+  settingsSections: {
+    money: 'Money',
+    appearance: 'Appearance',
+    languageRegion: 'Language & region',
+    behavior: 'Behavior',
+    navLabel: 'Settings sections',
+  },
+
   transactions: {
     totalBalanceToday: 'Total balance, today',
     openingBalance: 'Opening balance',

@@ -439,6 +439,14 @@ export const zh: typeof en = {
     plain: '简单列表',
   },
 
+  settingsSections: {
+    money: '财务',
+    appearance: '外观',
+    languageRegion: '语言与地区',
+    behavior: '行为',
+    navLabel: '设置分区',
+  },
+
   transactions: {
     totalBalanceToday: '今日总余额',
     openingBalance: '期初余额',

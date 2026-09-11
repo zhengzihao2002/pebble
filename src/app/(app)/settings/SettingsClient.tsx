@@ -1,6 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
@@ -12,6 +14,7 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
+import { SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
 
 interface SettingsClientProps {
   timeZoneOverride: string | null;
@@ -21,12 +24,21 @@ interface SettingsClientProps {
   hasRecords: Record<string, boolean>;
 }
 
-// Mixed page: textSize and darkMode are device preferences and stay in the
-// store (localStorage). Opening balances are financial data and come from
-// Postgres.
+interface SettingsSection {
+  /** Stable DOM id the section nav scrolls to. A fixed string, never translated. */
+  id: string;
+  title: string;
+  cards: ReactNode;
+}
+
+// Mixed page: textSize, darkMode, locale and selectMode are device preferences
+// and stay in the store (localStorage). Balances and accounts are financial
+// data and come from Postgres. Every card is props-only; this component owns
+// all store reads.
 export function SettingsClient({
   timeZoneOverride, accounts, balancesByAccount, hasRecords,
 }: SettingsClientProps) {
+  const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
   const setTextSize = usePebbleStore((s) => s.setTextSize);
   const darkMode = usePebbleStore((s) => s.darkMode);
@@ -36,37 +48,76 @@ export function SettingsClient({
   const selectMode = usePebbleStore((s) => s.selectMode);
   const setSelectMode = usePebbleStore((s) => s.setSelectMode);
 
+  // ONE list, rendered below as the page content and by the section nav, so
+  // the two can never disagree about what exists or in what order.
+  const sections: SettingsSection[] = [
+    {
+      id: 'settings-money',
+      title: d.settingsSections.money,
+      cards: (
+        <>
+          {/* Always shown. Opening balances were removed outright: every account
+              starts at zero and a starting figure is recorded here as a dated
+              adjustment, so nothing moves a balance without a visible row. */}
+          <ModifyBalanceCard accounts={accounts} balancesByAccount={balancesByAccount} />
+          <AccountsCard accounts={accounts} balancesByAccount={balancesByAccount} hasRecords={hasRecords} />
+          <CategoryManagerCard />
+        </>
+      ),
+    },
+    {
+      id: 'settings-appearance',
+      title: d.settingsSections.appearance,
+      cards: (
+        <>
+          <TextSizeControl textSize={textSize} onChange={setTextSize} />
+          <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
+        </>
+      ),
+    },
+    {
+      id: 'settings-language-region',
+      title: d.settingsSections.languageRegion,
+      cards: (
+        <>
+          <LanguageControl locale={locale} onChange={setLocale} />
+          <TimeZoneCard timeZoneOverride={timeZoneOverride} />
+        </>
+      ),
+    },
+    {
+      id: 'settings-behavior',
+      title: d.settingsSections.behavior,
+      cards: (
+        <>
+          <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
+          <SoundSettingsCard />
+        </>
+      ),
+    },
+    {
+      id: 'settings-pebble-account',
+      // Reuses the card's own title rather than a near-duplicate key.
+      title: d.account.title,
+      cards: <PebbleAccountCard />,
+    },
+  ];
+
   return (
-    // Card order matters here: the two tall cards (balance, categories) lead so
-    // they pair with each other in a two-column layout, leaving the four short
-    // preference cards to pair off below. Reordering can open a large gap.
-    <div className="settings-grid">
-      {/* Opening balances are only settable on a fresh account. Once any
-          transaction exists, changing them would silently rewrite every
-          historical running balance, so corrections are recorded as dated
-          adjustments instead. */}
-      {/* Always shown. Opening balances were removed outright: every account
-          starts at zero and a starting figure is recorded here as a dated
-          adjustment, so nothing moves a balance without a visible row. */}
-      <ModifyBalanceCard accounts={accounts} balancesByAccount={balancesByAccount} />
-      <AccountsCard accounts={accounts} balancesByAccount={balancesByAccount} hasRecords={hasRecords} />
-      <CategoryManagerCard />
-      <TextSizeControl textSize={textSize} onChange={setTextSize} />
-      <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
-      {/* Grouped with the other device preferences. Takes the card count from
-          seven to eight, which pairs evenly in the two-column layout rather
-          than opening the gap the comment above warns about. */}
-      <LanguageControl locale={locale} onChange={setLocale} />
-      {/* Device preference, grouped with language. Card count 9 -> 10. */}
-      <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
-      {/* Takes the preference-card count from 8 to 9 (odd) - opens the pairing
-          gap the comment above warns about. Accepted: no clean pairing exists
-          without a layout change, which is out of scope. */}
-      <TimeZoneCard timeZoneOverride={timeZoneOverride} />
-      {/* Grouped with the other device preferences, and short enough not to
-          disturb the tall/short pairing described above. */}
-      <SoundSettingsCard />
-      <PebbleAccountCard />
+    <div className="settings-layout">
+      {/* Rendered at every width; CSS hides it below the container breakpoint. */}
+      <SettingsSectionNav
+        items={sections.map(({ id, title }) => ({ id, title }))}
+        label={d.settingsSections.navLabel}
+      />
+      <div className="settings-column">
+        {sections.map((section) => (
+          <section key={section.id} id={section.id} aria-labelledby={`${section.id}-title`} className="settings-section">
+            <h2 id={`${section.id}-title`} className="font-display settings-section-title">{section.title}</h2>
+            <div className="settings-section-cards">{section.cards}</div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
