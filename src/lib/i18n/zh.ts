@@ -542,6 +542,7 @@ export const zh: typeof en = {
     income: '收入',
     timePeriod: '时间范围',
     month: '月', quarter: '季度', year: '年', allTime: '全部时间',
+    last3: '最近3个月', last6: '最近6个月', last12: '最近12个月',
     whichYear: '选择年份', whichMonth: '选择月份', whichQuarter: '选择季度',
     allYears: '全部年份', allMonths: '全部月份', allQuarters: '全部季度',
     groupBy: '分组方式', groupCategory: '按分类', groupNone: '不分组',

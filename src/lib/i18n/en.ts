@@ -609,6 +609,7 @@ export const en = {
     income: 'Income',
     timePeriod: 'Time period',
     month: 'Month', quarter: 'Quarter', year: 'Year', allTime: 'All time',
+    last3: 'Last 3 months', last6: 'Last 6 months', last12: 'Last 12 months',
     whichYear: 'Which year', whichMonth: 'Which month', whichQuarter: 'Which quarter',
     allYears: 'All years', allMonths: 'All months', allQuarters: 'All quarters',
     groupBy: 'Group by', groupCategory: 'Category', groupNone: 'None',

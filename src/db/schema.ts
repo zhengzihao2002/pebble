@@ -406,13 +406,17 @@ export const budget = pgTable(
 export const userAccount = pgTable(
   'user_account',
   {
+    // checkingOpening/cashOpening were REMOVED HERE, not from Postgres - the
+    // live database already lacks these columns (superseded by per-account
+    // balances; see the comment above getUserTimeZoneOverride() in
+    // queries.ts). Drizzle generates INSERT statements from every declared
+    // column, so their presence here alone made every write to this table
+    // fail with SQLSTATE 42703 ("column does not exist") - reads were
+    // unaffected because getUserTimeZoneOverride() already selects only
+    // { timeZone }, never the whole row. This is a model correction, matching
+    // TypeScript to a database that was already this shape; it is NOT a
+    // migration and touches no DDL.
     userId: uuid('user_id').primaryKey().notNull(),
-    checkingOpening: numeric('checking_opening', { precision: 12, scale: 2, mode: 'number' })
-      .default(0)
-      .notNull(),
-    cashOpening: numeric('cash_opening', { precision: 12, scale: 2, mode: 'number' })
-      .default(0)
-      .notNull(),
     timeZone: text('time_zone'),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .defaultNow()

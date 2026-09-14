@@ -147,6 +147,9 @@ export function ReportFilters({
                   <option value="quarter">{dict.reports.quarter}</option>
                   <option value="year">{dict.reports.year}</option>
                   <option value="all">{dict.reports.allTime}</option>
+                  <option value="last3">{dict.reports.last3}</option>
+                  <option value="last6">{dict.reports.last6}</option>
+                  <option value="last12">{dict.reports.last12}</option>
                 </select>
               </div>
 
@@ -164,16 +167,11 @@ export function ReportFilters({
                 <div style={filterFieldStyle}>
                   <p className="filter-label">{subPeriodLabel}</p>
                   <select value={subPeriod} onChange={(e) => onSubPeriodChange(e.target.value)} style={filterSelectStyle}>
-                    {/* Was `All {periodGroup}s` - English pluralising the raw
-                        mode value. One key per mode instead.
-                        Each option's VALUE is the MONTH_NAMES / QUARTER_NAMES
-                        string that gets persisted and compared; only the text
-                        is translated, and a year number falls through. */}
-                    <option value="All">
-                      {periodGroup === 'month' ? dict.reports.allMonths
-                        : periodGroup === 'quarter' ? dict.reports.allQuarters
-                        : dict.reports.allYears}
-                    </option>
+                    {/* No "All" option: Month/Quarter/Year always shows exactly
+                        one period, defaulting to the current one - see
+                        effectiveSubPeriod in ReportsClient.tsx. Each option's
+                        VALUE is the MONTH_NAMES / QUARTER_NAMES string that gets
+                        persisted and compared; only the text is translated. */}
                     {subPeriodOptions.map((opt) => <option key={opt} value={opt}>{periodValueLabel(dict, opt)}</option>)}
                   </select>
                 </div>

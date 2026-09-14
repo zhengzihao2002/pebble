@@ -5,9 +5,12 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { CategoryMeta, Transaction } from '@/types';
 import { buildCategoryBreakdown, getAvailablePeriods, lightenColor, darkenColor } from '@/lib/stats';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { todayInZone } from '@/lib/recurring/occurrences';
 
 interface CategoryDonutChartProps {
   transactions: Transaction[];
@@ -16,6 +19,17 @@ interface CategoryDonutChartProps {
 
 export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
   const { d, locale } = useTranslation();
+
+  // See DashboardClient.tsx for the full rationale behind this pattern -
+  // resolved independently here since this component owns its own
+  // breakdownMode/breakdownPeriod state already, same as every other
+  // dashboardPrefs slice on this page.
+  const timeZoneOverride = useTimeZoneOverride();
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    const zone = timeZoneOverride ?? resolveBrowserTimeZone();
+    setToday(parseLocalDate(todayInZone(zone)));
+  }, [timeZoneOverride]);
   const modeLabel = (value: string, fallback: string) =>
     (d.statsModes as Record<string, string>)[value] ?? fallback;
   const [breakdownMode, setBreakdownMode] = useState('last6');
@@ -56,7 +70,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
     usePebbleStore.getState().setDashboardPrefs({ breakdownMode, breakdownPeriod });
   }, [restored, breakdownMode, breakdownPeriod]);
 
-  const donutData = buildCategoryBreakdown(transactions, breakdownMode, categoryMeta, breakdownPeriod);
+  const donutData = buildCategoryBreakdown(transactions, breakdownMode, categoryMeta, breakdownPeriod, today ?? undefined);
   const donutTotal = donutData.reduce((s, d) => s + d.value, 0);
 
   return (

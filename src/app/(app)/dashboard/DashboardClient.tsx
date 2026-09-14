@@ -13,12 +13,15 @@ import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
 import { STATS_MODES } from '@/data/seed';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { todayInZone } from '@/lib/recurring/occurrences';
 
 interface DashboardClientProps {
   transactions: Transaction[];
@@ -42,6 +45,24 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // Icons are functions and cannot cross the server/client boundary, so the
   // icon-bearing map is reassembled here from serializable budget numbers.
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
+
+  // Resolved once client-side, zone-aware - mirrors the identical pattern in
+  // Reports' ReportsClient.tsx. NOT getToday() directly: that reflects the
+  // CONTAINER's zone (UTC on Vercel) and, more importantly, has no way to
+  // honour a user's explicit Settings > Time Zone override - someone
+  // travelling with an override set would otherwise see Dashboard's "current
+  // period"/"last N months" windows resolve a different "today" than every
+  // other zone-aware surface in the app. Static null initial value keeps the
+  // server render and first client render identical; while it is null, every
+  // call below passes `undefined` through to stats.ts, which falls back to
+  // its own getToday() default - i.e. exactly this page's PRE-EXISTING
+  // behaviour for that one frame, upgrading to zone-aware once resolved.
+  const timeZoneOverride = useTimeZoneOverride();
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    const zone = timeZoneOverride ?? resolveBrowserTimeZone();
+    setToday(parseLocalDate(todayInZone(zone)));
+  }, [timeZoneOverride]);
 
   // Defaults to the current month rather than a rolling 30 days: a calendar
   // month is the unit a budget is actually kept in, and the rolling window
@@ -92,11 +113,15 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
     usePebbleStore.getState().setDashboardPrefs({ statsMode, statsPeriod });
   }, [statsRestored, statsMode, statsPeriod]);
 
-  const periodStats = computeStatsForPeriod(transactions, statsMode, statsPeriod);
+  // today ?? undefined: see the effect above for what null means here. Both
+  // calls MUST receive the identical `today` value (see the comment on
+  // describeWindow in stats.ts) - reading the same `today` state for both
+  // guarantees that.
+  const periodStats = computeStatsForPeriod(transactions, statsMode, statsPeriod, today ?? undefined);
   // The resolved months behind the four tiles below. Shown rather than left to
   // be inferred, matching the Analysis page, which prints its own range under
   // its period selector.
-  const statsWindow = describeWindow(statsMode, statsPeriod, locale);
+  const statsWindow = describeWindow(statsMode, statsPeriod, locale, today ?? undefined);
   // stats.ts is shared with server code but neither describeWindow nor
   // getAvailablePeriods is ever called server-side (confirmed by checking
   // every page.tsx import), so both safely take an optional locale param.

@@ -14,6 +14,10 @@ import { ReportResults } from '@/components/reports/ReportResults';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { ExpenseTransaction, Transaction } from '@/types';
 import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField, ReportPeriodGroup } from '@/components/reports/types';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { todayInZone } from '@/lib/recurring/occurrences';
+import { isRollingWindowKey, resolveRollingWindow, isInRollingWindow, formatRollingRangeLabel } from '@/components/reports/rollingWindow';
 
 function isExpense(t: Transaction): t is ExpenseTransaction {
   return t.type === 'expense';
@@ -50,6 +54,21 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const [descQuery, setDescQuery] = useState('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
+  // Resolved once client-side, zone-aware - never getToday(), which reflects
+  // the CONTAINER's zone (UTC on Vercel), not the user's. A separate, small
+  // effect mirrors Header.tsx's own greeting effect rather than folding into
+  // the restore effect below, which is unrelated. Static null initial value
+  // keeps the server render and first client render identical; one frame
+  // with today === null is accepted (see rollingWindow.ts and periodFiltered/
+  // periodSummary below) rather than guessing a zone or reading the clock
+  // during render.
+  const timeZoneOverride = useTimeZoneOverride();
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => {
+    const zone = timeZoneOverride ?? resolveBrowserTimeZone();
+    setToday(todayInZone(zone));
+  }, [timeZoneOverride]);
 
   const expenseCats = Object.keys(categoryMeta);
   const incomeCats = ['Standard Income', 'Side Cash'];
@@ -105,10 +124,13 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       // type rather than the 'expense' default the state was seeded with.
       if (saved.reportType === 'income') setSelectedCategories(new Set(incomeCats));
     } else {
-      // First visit on this device: this month, this year.
+      // First visit on this device: scope the "which year" filter to the
+      // current year. subPeriod is NOT seeded here - it stays at the static
+      // 'All' sentinel, and effectiveSubPeriod (below) resolves that to the
+      // current month/quarter/year once `today` is known, zone-aware, rather
+      // than this non-zone-aware new Date().
       const now = new Date();
       setSubYear(String(now.getFullYear()));
-      setSubPeriod(MONTH_NAMES[now.getMonth()]);
     }
     setRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,24 +227,79 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     : periodGroup === 'quarter' ? dict.reports.whichQuarter
     : dict.reports.whichYear;
 
+  // Resolved from the zone-aware `today` string (see the mount effect
+  // above), never a fresh Date read here - this const runs on every render,
+  // including the server render before hydration.
+  const currentMonthName = today ? MONTH_NAMES[Number(today.slice(5, 7)) - 1] : null;
+  const currentQuarterName = today ? QUARTER_NAMES[Math.floor((Number(today.slice(5, 7)) - 1) / 3)] : null;
+  const currentYearStr = today ? today.slice(0, 4) : null;
+  const currentPeriodValue =
+    periodGroup === 'month' ? currentMonthName
+    : periodGroup === 'quarter' ? currentQuarterName
+    // Falls back to the newest year actually present, mirroring
+    // effectiveSubYear's own fallback, for a year with no transactions yet.
+    : periodGroup === 'year' ? (currentYearStr && yearOptions.includes(currentYearStr) ? currentYearStr : (yearOptions[0] ?? null))
+    : null;
+
+  // The Month/Quarter/Year sub-period selector no longer offers "All" (see
+  // ReportFilters.tsx) - it always shows exactly one period, defaulting to
+  // the current one. 'All' can still arrive here from localStorage written
+  // before this change, or from handlePeriodGroupChange's reset on every
+  // mode switch; both are treated as "use the current period", not a value
+  // needing a migration. Falls back to the raw, possibly-stale subPeriod for
+  // the one frame before `today` resolves - accepted, same as the rolling
+  // window's own one-frame gap.
+  const effectiveSubPeriod =
+    subPeriodOptions && subPeriod !== 'All' && subPeriodOptions.includes(subPeriod)
+      ? subPeriod
+      : (currentPeriodValue ?? subPeriod);
+
   const yearScoped = (showYearSelector && effectiveSubYear !== 'All')
     ? baseFiltered.filter((t) => parseLocalDate(t.date).getFullYear() === Number(effectiveSubYear))
     : baseFiltered;
 
-  const periodFiltered = (subPeriodOptions && subPeriod !== 'All')
+  // null whenever periodGroup is not a rolling mode, and also for the one
+  // frame before `today` resolves - both fall through to the unfiltered set
+  // in periodFiltered below rather than guessing a window.
+  const rollingWindow = useMemo(
+    () => (today && isRollingWindowKey(periodGroup) ? resolveRollingWindow(periodGroup, today) : null),
+    [periodGroup, today],
+  );
+
+  // Month/Quarter/Year now ALWAYS narrows to exactly one period - no more
+  // "All periods" branch (see effectiveSubPeriod above). Gated on
+  // subPeriodOptions.includes(...) rather than "today resolved": an already-
+  // persisted, still-valid choice (e.g. a specific month picked earlier)
+  // filters immediately without waiting on the async today effect; only the
+  // CURRENT-period fallback needs `today`, and until it resolves this falls
+  // through to unfiltered for that one frame, same as the rolling window.
+  const periodFiltered = (subPeriodOptions && subPeriodOptions.includes(effectiveSubPeriod))
     ? yearScoped.filter((t) => {
         const d = parseLocalDate(t.date);
-        if (periodGroup === 'month') return MONTH_NAMES[d.getMonth()] === subPeriod;
-        if (periodGroup === 'quarter') return QUARTER_NAMES[Math.floor(d.getMonth() / 3)] === subPeriod;
-        return String(d.getFullYear()) === subPeriod;
+        if (periodGroup === 'month') return MONTH_NAMES[d.getMonth()] === effectiveSubPeriod;
+        if (periodGroup === 'quarter') return QUARTER_NAMES[Math.floor(d.getMonth() / 3)] === effectiveSubPeriod;
+        return String(d.getFullYear()) === effectiveSubPeriod;
       })
-    : yearScoped;
+    // Rolling windows filter on the plain YYYY-MM-DD string - see
+    // rollingWindow.ts. rollingWindow is null both when periodGroup is not a
+    // rolling mode and for the one frame before `today` resolves, so this
+    // falls through to the unfiltered set in both cases.
+    : rollingWindow
+      ? yearScoped.filter((t) => isInRollingWindow(rollingWindow, t.date))
+      : yearScoped;
 
   // Period headers render whenever a period grouping is active, including for a
   // single selected period. Previously also required subPeriod === 'All', so
   // choosing a specific month/quarter/year skipped bucketing entirely and the
   // rows fell into one untitled flat group.
-  const showPeriodHeaders = periodGroup !== 'all';
+  //
+  // ALLOW-LIST, not '!== all': a rolling window (last3/last6/last12) has no
+  // period buckets either. Grouping a rolling window by calendar period would
+  // put a partial in-progress month beside complete ones with nothing marking
+  // the difference - the same problem Analysis had to be remodelled to avoid.
+  // The fix here is to never group a rolling window, not to label the partial
+  // period.
+  const showPeriodHeaders = periodGroup === 'month' || periodGroup === 'quarter' || periodGroup === 'year';
 
   // Date sorting falls back to the id as a same-day tiebreak, matching how
   // the statement orders entries added on the same day.
@@ -348,12 +425,17 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // original spliced the raw periodGroup value into English text ("By month"),
   // which no other language can take; joined parts need no word order at all.
   const yearPart = effectiveSubYear === 'All' ? dict.reports.allYears : effectiveSubYear;
-  const periodSummary =
-    periodGroup === 'all' ? dict.reports.allTime
-    : periodGroup === 'year' ? (subPeriod === 'All' ? dict.reports.byYear : subPeriod)
-    : subPeriod === 'All'
+  const periodSummary = isRollingWindowKey(periodGroup)
+    // One frame before `today` resolves, rollingWindow is null - show just
+    // the mode name rather than a guessed or blank range.
+    ? (rollingWindow ? `${dict.reports[periodGroup]} · ${formatRollingRangeLabel(rollingWindow, locale)}` : dict.reports[periodGroup])
+    : periodGroup === 'all' ? dict.reports.allTime
+    // effectiveSubPeriod, not subPeriod: shows the RESOLVED current period,
+    // not the raw 'All' sentinel it may still equal internally.
+    : periodGroup === 'year' ? (effectiveSubPeriod === 'All' ? dict.reports.byYear : effectiveSubPeriod)
+    : effectiveSubPeriod === 'All'
       ? `${periodGroup === 'month' ? dict.reports.byMonth : dict.reports.byQuarter} · ${yearPart}`
-      : `${periodValueLabel(dict, subPeriod)} · ${yearPart}`;
+      : `${periodValueLabel(dict, effectiveSubPeriod)} · ${yearPart}`;
   const filterSummaryParts = [reportType === 'expense' ? dict.reports.expenses : dict.reports.income, periodSummary];
   if (categoryGroup === 'category') filterSummaryParts.push(dict.reports.groupedByCategory);
   if (!allSelected) filterSummaryParts.push(tr(selectedCategories.size === 1 ? dict.reports.categoriesOne : dict.reports.categoriesOther, { count: selectedCategories.size }));
@@ -382,7 +464,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         onTypeChange={handleTypeChange}
         periodGroup={periodGroup}
         onPeriodGroupChange={handlePeriodGroupChange}
-        subPeriod={subPeriod}
+        subPeriod={effectiveSubPeriod}
         onSubPeriodChange={setSubPeriod}
         subPeriodOptions={subPeriodOptions}
         subPeriodLabel={subPeriodLabel}

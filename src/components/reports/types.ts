@@ -1,7 +1,10 @@
 import type { Transaction } from '@/types';
 
 export type ReportType = 'expense' | 'income';
-export type PeriodGroup = 'month' | 'quarter' | 'year' | 'all';
+// last3/last6/last12: rolling windows. Flat/ungrouped by design - see
+// rollingWindow.ts. These values are persisted in reportFilters, so once
+// shipped they are effectively permanent.
+export type PeriodGroup = 'month' | 'quarter' | 'year' | 'all' | 'last3' | 'last6' | 'last12';
 export type CategoryGroupMode = 'category' | 'none';
 export type SortDir = 'desc' | 'asc';
 
@@ -15,6 +18,10 @@ export interface ReportFilterPrefs {
   reportType: ReportType;
   periodGroup: PeriodGroup;
   subYear: string;
+  // 'All' is an internal-only sentinel meaning "use whichever month/
+  // quarter/year is CURRENT" - no longer offered as a UI choice (see
+  // ReportFilters.tsx), but still a valid persisted/default value. See
+  // effectiveSubPeriod in ReportsClient.tsx.
   subPeriod: string;
   categoryGroup: CategoryGroupMode;
   sortField: SortField;

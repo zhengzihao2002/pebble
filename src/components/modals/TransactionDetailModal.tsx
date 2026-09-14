@@ -335,7 +335,13 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
       style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
       onClick={requestClose}
     >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+      {/* Capped so a long edit form or confirm panel cannot push the dialog
+          taller than the viewport - the body scrolls internally instead (see
+          the themed-scroll wrapper below). calc(100dvh - 4rem) cancels exactly
+          the backdrop's 1rem padding plus this card's own 1rem margin on each
+          side (2rem + 2rem) - same arithmetic RecurringRuleModal already uses
+          for the same reason. */}
+      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 4rem)' }} onClick={(e) => e.stopPropagation()}>
         {busy && <LoadingOverlay label={mode === 'confirmDelete' ? d.txnDetail.deletingOverlay : d.txnDetail.savingChanges} />}
         {/* mode drives which panel shows; 'confirmOverspend' pauses a save
             without unmounting the edit form behind it. */}
@@ -343,6 +349,11 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
           <button onClick={requestClose} disabled={busy} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: busy ? 0.4 : 1 }}><X size={18} /></button>
         </div>
 
+        {/* Close button stays OUTSIDE this wrapper so it is always reachable
+            even when the body below needs its own scroll. themed-scroll
+            matches the scrollbar styling already used elsewhere (e.g.
+            RecurringRuleModal, SearchableSelect's dropdown). */}
+        <div className="themed-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
           <div style={{ width: 52, height: 52, borderRadius: '0.9rem', backgroundColor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.85rem' }}>
             <Icon size={24} style={{ color: iconColor }} />
@@ -577,6 +588,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

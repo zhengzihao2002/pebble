@@ -142,8 +142,13 @@ export function estimateAnnualIncome(transactions: Transaction[]): number {
 // instead would re-read the clock for every transaction in a filter pass -
 // and a pass that straddled midnight would apply two different upper bounds
 // to different rows of the same list.
-export function getWindowPredicate(mode: string, periodKey?: string | null): (d: Date) => boolean {
-  const now = getToday();
+export function getWindowPredicate(mode: string, periodKey?: string | null, today: Date = getToday()): (d: Date) => boolean {
+  // Optional and defaulting to the original getToday() - every existing
+  // caller that omits it keeps its exact prior behaviour. Added so
+  // DashboardClient/CategoryDonutChart can pass a zone-aware "today" that
+  // honours the user's Settings > Time Zone override, which getToday() alone
+  // cannot see (it reads the container/browser clock directly).
+  const now = today;
 
   if (mode === '30d' || mode === '90d') {
     const days = mode === '30d' ? 30 : 90;
@@ -206,8 +211,12 @@ export interface WindowDescription {
  * prints its resolved range under the period selector; this gives the
  * dashboard the same, rather than leaving the user to infer it.
  */
-export function describeWindow(mode: string, periodKey?: string | null, locale: Locale = DEFAULT_LOCALE): WindowDescription {
-  const now = getToday();
+export function describeWindow(mode: string, periodKey?: string | null, locale: Locale = DEFAULT_LOCALE, today: Date = getToday()): WindowDescription {
+  // Same optional `today` as getWindowPredicate, for the same reason. MUST be
+  // given the identical value that predicate receives for the same render -
+  // a label describing a different window than the one actually filtered is
+  // worse than no label at all (see the file comment above this function).
+  const now = today;
   const y = now.getFullYear();
   const m = now.getMonth();
   const d = now.getDate();
@@ -287,9 +296,9 @@ export interface CategoryBreakdownEntry {
 // "Where it went" chart. periodKey lets the caller pin an exact
 // month/quarter/year instead of defaulting to the current one.
 export function buildCategoryBreakdown(
-  transactions: Transaction[], mode: string, categoryMeta: CategoryMeta, periodKey?: string | null
+  transactions: Transaction[], mode: string, categoryMeta: CategoryMeta, periodKey?: string | null, today?: Date
 ): CategoryBreakdownEntry[] {
-  const inWindow = getWindowPredicate(mode, periodKey);
+  const inWindow = getWindowPredicate(mode, periodKey, today);
   const sums: Record<string, number> = {};
 
   // Spending whose category name matches no category row. Previously these
@@ -464,8 +473,8 @@ export interface PeriodStats {
 
 // Totals income/spending within a selected window, for the
 // Income/Spending/Savings rate/Saved stat tiles.
-export function computeStatsForPeriod(transactions: Transaction[], mode: string, periodKey?: string | null): PeriodStats {
-  const inWindow = getWindowPredicate(mode, periodKey);
+export function computeStatsForPeriod(transactions: Transaction[], mode: string, periodKey?: string | null, today?: Date): PeriodStats {
+  const inWindow = getWindowPredicate(mode, periodKey, today);
   let income = 0;
   let spending = 0;
   transactions.forEach((t) => {
