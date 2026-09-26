@@ -455,6 +455,47 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
   .stat-tabs.stat-tabs-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
+/* Health status bar (Dashboard, opt-in in Settings). The hue arrives as
+   --hp-hue from healthHue() in src/lib/healthBar.ts; lightness and chroma are
+   theme-level so every rate stays equally soft in light and dark. Motion is
+   decoration only: the global reduced-motion rule stops it, and bubbles rest
+   at opacity 0 so nothing is left frozen on screen. */
+.pebble-root { --hp-l: 0.8; --hp-c: 0.12; }
+html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
+.health-bar { margin-top: 1.1rem; }
+.health-bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.45rem; }
+.health-bar-track { position: relative; height: 0.85rem; border-radius: 99px; background-color: var(--mist); border: 1px solid var(--line); transition: border-color 0.7s ease; }
+.health-bar-track.rated { border-color: oklch(var(--hp-l) var(--hp-c) var(--hp-hue) / 0.6); }
+.health-bar-fill {
+  position: absolute; top: 0; bottom: 0; left: 0; border-radius: 99px; overflow: hidden;
+  background-color: oklch(var(--hp-l) var(--hp-c) var(--hp-hue));
+  box-shadow: 0 0 12px -2px oklch(var(--hp-l) var(--hp-c) var(--hp-hue) / 0.7);
+  transition: width 0.7s ease, background-color 0.7s ease, box-shadow 0.7s ease;
+}
+.health-bar-fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 45%, transparent 70%);
+  background-size: 220% 100%;
+  animation: health-sheen 3.2s ease-in-out infinite;
+}
+.health-bar-bubbles { position: absolute; left: 0; bottom: 0; height: 100%; pointer-events: none; transition: width 0.7s ease; }
+.health-bar-bubble {
+  position: absolute; bottom: 20%; border-radius: 50%; opacity: 0;
+  background: oklch(calc(var(--hp-l) + 0.1) var(--hp-c) var(--hp-hue) / 0.85);
+  box-shadow: inset -1px -1px 0 rgba(255, 255, 255, 0.5);
+  animation: health-bubble var(--dur) ease-in infinite;
+  animation-delay: var(--delay);
+}
+@keyframes health-bubble {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translate(var(--drift), -1.9rem) scale(1.1); opacity: 0; }
+}
+@keyframes health-sheen {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 

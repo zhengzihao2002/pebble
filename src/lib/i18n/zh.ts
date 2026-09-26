@@ -332,6 +332,15 @@ export const zh: typeof en = {
     cjk: { sans: '黑体', serif: '宋体', kai: '楷体' },
   },
 
+  healthBar: {
+    title: '健康状态',
+    hp: 'HP {value}%',
+    noIncome: '本时段没有收入',
+    settingTitle: '健康状态条',
+    settingLabel: '在仪表板上显示',
+    settingHint: '在仪表板数据下方显示一条状态条，颜色按所选时段的储蓄率从红到绿变化。',
+  },
+
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
@@ -378,6 +387,7 @@ export const zh: typeof en = {
     newNamePlaceholder: '新分类名称',
     systemHint: '这是兜底分类——名称不可更改，但可以更换图标和颜色。',
     fallbackTag: '兜底',
+    customColor: '自定义颜色',
     save: '保存',
     cancel: '取消',
     adding: '添加中…',

@@ -106,6 +106,8 @@ interface PebbleUIState {
   // The CHINESE face, independent of the Latin one above - both always apply,
   // each to its own characters. Validated where applied, like the Latin one.
   cjkFontChoice: CjkFontChoice;
+  // Dashboard health status bar. Off by default - opt-in decoration.
+  showHealthBar: boolean;
   setDarkMode: (value: boolean) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -118,6 +120,7 @@ interface PebbleUIState {
   setSelectMode: (value: SelectMode) => void;
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
+  setShowHealthBar: (value: boolean) => void;
 }
 
 const noopStorage = {
@@ -151,6 +154,8 @@ export const usePebbleStore = create<PebbleUIState>()(
       fontChoice: 'default',
       // Static; 'sans' is the Chinese face from before this preference existed.
       cjkFontChoice: 'sans',
+      // Static, and off: an upgrade must not add anything to the dashboard.
+      showHealthBar: false,
       setDarkMode: (value) => set({ darkMode: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
@@ -168,6 +173,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setSelectMode: (value) => set({ selectMode: value }),
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
+      setShowHealthBar: (value) => set({ showHealthBar: value }),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -200,6 +206,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         fontChoice: state.fontChoice,
         // Also read by the pre-paint script (CJK_FONT_FIELD in storageKeys.ts).
         cjkFontChoice: state.cjkFontChoice,
+        showHealthBar: state.showHealthBar,
       }),
     }
   )

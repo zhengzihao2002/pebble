@@ -32,7 +32,7 @@ interface DraftState {
 
 function IconPicker({ value, color, onChange }: { value: string; color: string; onChange: (key: string) => void }) {
   return (
-    <div className="themed-scroll" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', maxHeight: 120, overflowY: 'auto', paddingRight: '0.25rem' }}>
+    <div className="themed-scroll" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', maxHeight: 170, overflowY: 'auto', paddingRight: '0.25rem' }}>
       {CATEGORY_ICON_OPTIONS.map(({ key, icon: OptIcon }) => (
         <button
           key={key} type="button" onClick={() => onChange(key)}
@@ -50,18 +50,46 @@ function IconPicker({ value, color, onChange }: { value: string; color: string; 
   );
 }
 
+const HEX6 = /^#[0-9a-fA-F]{6}$/;
+
 function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  const { d } = useTranslation();
+  // Compared ignoring case: the palette is uppercase, the browser's picker
+  // reports lowercase, and a colour saved earlier could be either.
+  const sameColor = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const isPalette = CATEGORY_COLOR_OPTIONS.some((c) => sameColor(c, value));
   return (
-    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
       {CATEGORY_COLOR_OPTIONS.map((c) => (
         <button
           key={c} type="button" onClick={() => onChange(c)}
           style={{
             width: 26, height: 26, borderRadius: '50%', backgroundColor: c,
-            border: value === c ? '2px solid var(--ink)' : '2px solid transparent', outlineOffset: 2,
+            border: sameColor(value, c) ? '2px solid var(--ink)' : '2px solid transparent', outlineOffset: 2,
           }}
         />
       ))}
+      {/* Any colour, via the browser's own picker (hue bar and colour square in
+          Chrome, the system colour panel with its wheel on Apple devices) - no
+          dependency. The input covers the swatch invisibly, so a click lands on
+          it directly. Saved as uppercase #RRGGBB like the palette: several
+          places append '20' for a tint, which only works on 6-digit hex. */}
+      <label
+        title={d.categoryManager.customColor}
+        style={{
+          position: 'relative', width: 26, height: 26, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', cursor: 'pointer',
+          background: isPalette ? 'conic-gradient(#E0605E, #E8B14F, #6FBF73, #4F9FE8, #9B6FE0, #E0605E)' : value,
+          border: isPalette ? '2px solid transparent' : '2px solid var(--ink)',
+        }}
+      >
+        <input
+          type="color"
+          aria-label={d.categoryManager.customColor}
+          value={HEX6.test(value) ? value.toLowerCase() : '#1f5a45'}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0, margin: 0 }}
+        />
+      </label>
     </div>
   );
 }

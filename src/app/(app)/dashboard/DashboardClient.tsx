@@ -11,6 +11,7 @@ import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice';
+import { HealthStatusBar } from '@/components/dashboard/HealthStatusBar';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
@@ -35,6 +36,8 @@ interface DashboardClientProps {
 
 export function DashboardClient({ transactions, categories, budgets, totalBalance, allocated, catchUp }: DashboardClientProps) {
   const { d, t, locale } = useTranslation();
+  // Strict true: a non-boolean stored by any other build means off.
+  const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
 
   // STATS_MODES lives in @/data/seed and carries an English label. Looked up
   // by VALUE here, falling back to that label, so seed.ts stays untouched and
@@ -229,6 +232,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
             )}
           />
         </div>
+        {/* The same income and rate as the cards above - never recomputed. */}
+        {showHealthBar && (
+          <HealthStatusBar income={periodStats.income} savingsRate={periodStats.savingsRate} />
+        )}
       </section>
 
       <section className="dash-charts-grid">

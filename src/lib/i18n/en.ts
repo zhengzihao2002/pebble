@@ -386,6 +386,17 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
+  healthBar: {
+    // Dashboard bar.
+    title: 'Health status',
+    hp: 'HP {value}%',
+    noIncome: 'No income this period',
+    // Settings card.
+    settingTitle: 'Health status bar',
+    settingLabel: 'Show on dashboard',
+    settingHint: 'A bar under the dashboard figures, coloured from red to green by your savings rate for the selected period.',
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -440,6 +451,7 @@ export const en = {
     newNamePlaceholder: 'New category name',
     systemHint: 'This is the fallback category — its name is fixed, but you can change its icon and colour.',
     fallbackTag: 'fallback',
+    customColor: 'Custom colour',
     save: 'Save',
     cancel: 'Cancel',
     adding: 'Adding…',
