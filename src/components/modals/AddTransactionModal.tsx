@@ -224,8 +224,13 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
         const unallocatedAfter = unallocatedNow - Number(amount);
         // Warns on the crossing only. Warning on every expense while already
         // over-allocated would train the dialog to be dismissed unread.
-        if (unallocatedNow >= 0 && unallocatedAfter < 0) {
-          setPendingShortfall(Math.abs(unallocatedAfter));
+        // Only when something is actually set aside: with nothing allocated,
+        // unallocated IS the balance, and a first expense on a fresh account
+        // would dip into goals that do not exist. The amount shown is capped
+        // at what was set aside - anything past that is the balance going
+        // negative, not goal money.
+        if (summary.allocated > 0 && unallocatedNow >= 0 && unallocatedAfter < 0) {
+          setPendingShortfall(Math.min(Math.abs(unallocatedAfter), summary.allocated));
           return;
         }
       }

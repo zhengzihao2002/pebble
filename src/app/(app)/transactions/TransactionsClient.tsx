@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -68,7 +68,7 @@ export function TransactionsClient({
     }, []);
   }, [ledger, recordsById]);
 
-  const { monthEntries, openingBalance, closingBalance, totalDeposits, totalWithdrawals } = useMemo(() => {
+  const { monthEntries, openingBalance, closingBalance, totalDeposits, totalWithdrawals, totalAdjustments } = useMemo(() => {
     const monthStart = `${selectedMonthInfo.year}-${String(selectedMonthInfo.month + 1).padStart(2, '0')}-01`;
     const nextMonthDate = new Date(selectedMonthInfo.year, selectedMonthInfo.month + 1, 1);
     const monthNext = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
@@ -84,11 +84,28 @@ export function TransactionsClient({
     // which is always 0 - every account starts at zero by design.
     const opening = priorEntry ? priorEntry.totalBalanceAfter : accountOpeningTotal;
     const closing = entries.length > 0 ? entries[0].totalBalanceAfter : opening;
-    const deposits = entries.reduce((s, e) => (e.record.amount > 0 ? s + e.record.amount : s), 0);
-    const withdrawals = entries.reduce((s, e) => (e.record.amount < 0 ? s + Math.abs(e.record.amount) : s), 0);
+    // Adjustments - manual corrections AND transfers, which are stored as a
+    // pair of adjustment rows - get their own figure. Counting them by sign
+    // made a correction read as income or spending, and every transfer
+    // inflated BOTH deposits and withdrawals. A transfer's two rows share a
+    // date and sum to zero, so here they cancel and only corrections remain.
+    // closing = opening + deposits - withdrawals + adjustments still holds.
+    const flows = entries.filter((e) => e.record.type !== 'adjustment');
+    const deposits = flows.reduce((s, e) => (e.record.amount > 0 ? s + e.record.amount : s), 0);
+    const withdrawals = flows.reduce((s, e) => (e.record.amount < 0 ? s + Math.abs(e.record.amount) : s), 0);
+    const adjustmentNet = entries.reduce((s, e) => (e.record.type === 'adjustment' ? s + e.record.amount : s), 0);
 
-    return { monthEntries: entries, openingBalance: opening, closingBalance: closing, totalDeposits: deposits, totalWithdrawals: withdrawals };
+    return { monthEntries: entries, openingBalance: opening, closingBalance: closing, totalDeposits: deposits, totalWithdrawals: withdrawals, totalAdjustments: adjustmentNet };
   }, [entriesWithRecords, selectedMonthInfo, accountOpeningTotal]);
+
+  // Sign written explicitly against Math.abs, as TransactionDetailModal
+  // does, so there is exactly one sign glyph whatever formatCurrency does
+  // with negatives. Rounded to cents first so float residue from a transfer
+  // pair or a set of corrections can never print as a signed zero.
+  const adjustmentCents = Math.round(totalAdjustments * 100);
+  const adjustmentSign = adjustmentCents > 0 ? '+' : adjustmentCents < 0 ? '-' : '';
+  const adjustmentText = `${adjustmentSign}${formatCurrency(Math.abs(adjustmentCents) / 100)}`;
+  const adjustmentColor = adjustmentCents > 0 ? 'var(--pine)' : adjustmentCents < 0 ? 'var(--wine)' : 'var(--ink-soft)';
 
   const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
   const canGoNewer = selectedMonthIndex > 0;
@@ -151,11 +168,12 @@ export function TransactionsClient({
           onNewer={() => setSelectedMonthIndex((i) => i - 1)}
         />
 
-        <div className="stat-tabs">
+        <div className="stat-tabs stat-tabs-five">
           <StatTab icon={Wallet} label={d.transactions.openingBalance} value={formatCurrency(openingBalance)} color="var(--ink-soft)" />
           <StatTab icon={Wallet} label={d.transactions.closingBalance} value={formatCurrency(closingBalance)} color="var(--pine)" />
           <StatTab icon={ArrowUpRight} label={d.transactions.deposits} value={formatCurrency(totalDeposits)} color="var(--pine)" />
           <StatTab icon={ArrowDownRight} label={d.transactions.withdrawals} value={formatCurrency(totalWithdrawals)} color="var(--wine)" />
+          <StatTab icon={SlidersHorizontal} label={d.transactions.adjustments} value={adjustmentText} color={adjustmentColor} valueColor={adjustmentColor} />
         </div>
       </div>
 

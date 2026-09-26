@@ -514,6 +514,7 @@ export const en = {
     closingBalance: 'Closing balance',
     deposits: 'Deposits',
     withdrawals: 'Withdrawals',
+    adjustments: 'Balance adjustments',
     prevMonth: 'Previous month',
     nextMonth: 'Next month',
     noActivity: 'No activity this month',

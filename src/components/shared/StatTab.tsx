@@ -11,9 +11,11 @@ interface StatTabProps {
    * Optional so existing call sites are unaffected.
    */
   info?: React.ReactNode;
+  /** Colour of the figure itself. Optional - defaults to ink, as before. */
+  valueColor?: string;
 }
 
-export function StatTab({ icon: Icon, label, value, sublabel, color, info }: StatTabProps) {
+export function StatTab({ icon: Icon, label, value, sublabel, color, info, valueColor = 'var(--ink)' }: StatTabProps) {
   return (
     <div className="stat-tab">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -21,7 +23,7 @@ export function StatTab({ icon: Icon, label, value, sublabel, color, info }: Sta
         <span style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {info}
       </div>
-      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--ink)' }}>{value}</div>
+      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>{value}</div>
       {sublabel && <div style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 2 }}>{sublabel}</div>}
     </div>
   );

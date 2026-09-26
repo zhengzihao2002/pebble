@@ -412,6 +412,25 @@ html.no-theme-transition * {
 .stat-tab { background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.85rem; padding: 0.8rem 0.95rem; box-shadow: var(--shadow); min-width: 0; overflow: hidden; }
 .stat-tab * { min-width: 0; overflow-wrap: anywhere; }
 
+/* Transactions shows five stat cards, which auto-fit leaves with one card
+   orphaned on its own row at most widths. Explicit tiers instead, sized off
+   the content container like every other responsive rule here: two columns
+   with the fifth card spanning both, then 3 + 2 on a six-track grid, then a
+   single row of five. The ranges do not overlap, so no tier overrides
+   another. */
+@container content (max-width: 559.98px) {
+  .stat-tabs.stat-tabs-five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-tabs.stat-tabs-five > :last-child { grid-column: 1 / -1; }
+}
+@container content (min-width: 560px) and (max-width: 899.98px) {
+  .stat-tabs.stat-tabs-five { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .stat-tabs.stat-tabs-five > * { grid-column: span 2; }
+  .stat-tabs.stat-tabs-five > :nth-child(n+4) { grid-column: span 3; }
+}
+@container content (min-width: 900px) {
+  .stat-tabs.stat-tabs-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 

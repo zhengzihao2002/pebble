@@ -54,14 +54,17 @@ export default async function GoalsPage() {
 
   const allocated = goals.reduce((sum, g) => sum + g.current, 0);
   const unallocated = balances.total - allocated;
-  const overAllocated = unallocated < 0;
+  // Nothing set aside means nothing over-allocated: with no goals,
+  // unallocated IS the balance, and a negative balance is not goals
+  // claiming too much.
+  const overAllocated = allocated > 0 && unallocated < 0;
 
   // Keyed by a stable identifier rather than by the translated label: the
   // React key must not change when the language does.
   const summaryRows: { key: string; label: string; value: number; color?: string }[] = [
     { key: 'total', label: d.goals.totalBalance, value: balances.total },
     { key: 'allocated', label: d.goals.setAside, value: allocated },
-    { key: 'unallocated', label: d.goals.unallocated, value: unallocated, color: overAllocated ? 'var(--wine)' : 'var(--pine)' },
+    { key: 'unallocated', label: d.goals.unallocated, value: unallocated, color: unallocated < 0 ? 'var(--wine)' : 'var(--pine)' },
   ];
 
   return (

@@ -444,6 +444,7 @@ export const zh: typeof en = {
     closingBalance: '期末余额',
     deposits: '存入',
     withdrawals: '支出',
+    adjustments: '余额调整',
     prevMonth: '上一个月',
     nextMonth: '下一个月',
     noActivity: '本月没有任何活动',

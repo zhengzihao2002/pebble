@@ -268,8 +268,13 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
         // Warns on the crossing only, matching the add path: a dialog that
         // fires on every edit while already over-allocated gets dismissed
         // unread.
-        if (unallocatedNow >= 0 && unallocatedAfter < 0) {
-          setShortfall(Math.abs(unallocatedAfter));
+        // Only when something is actually set aside: with nothing allocated,
+        // unallocated IS the balance, and a first expense on a fresh account
+        // would dip into goals that do not exist. The amount shown is capped
+        // at what was set aside - anything past that is the balance going
+        // negative, not goal money.
+        if (summary.allocated > 0 && unallocatedNow >= 0 && unallocatedAfter < 0) {
+          setShortfall(Math.min(Math.abs(unallocatedAfter), summary.allocated));
           setMode('confirmOverspend');
           return;
         }

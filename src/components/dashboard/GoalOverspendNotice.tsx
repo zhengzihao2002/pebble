@@ -31,7 +31,9 @@ interface GoalOverspendNoticeProps {
  */
 export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNoticeProps) {
   const { d } = useTranslation();
-  if (allocated <= totalBalance) return null;
+  // Nothing set aside means nothing to overspend: a negative balance with
+  // no goals is just a negative balance, not goals claiming too much.
+  if (allocated <= 0 || allocated <= totalBalance) return null;
 
   const shortfall = allocated - totalBalance;
 
