@@ -30,3 +30,12 @@ export const DARK_MODE_FIELD = 'darkMode';
  * Must stay in partialize(), same as DARK_MODE_FIELD.
  */
 export const LOCALE_FIELD = 'locale';
+
+/**
+ * Field the pre-paint script reads to set the font attribute on <html> before
+ * first paint. Must stay in partialize(), same as DARK_MODE_FIELD.
+ */
+export const FONT_FIELD = 'fontChoice';
+
+/** Field the pre-paint script reads for the Chinese face. Must stay in partialize(). */
+export const CJK_FONT_FIELD = 'cjkFontChoice';

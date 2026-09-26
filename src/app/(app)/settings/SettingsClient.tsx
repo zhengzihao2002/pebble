@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
+import { FontControl } from '@/components/settings/FontControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
@@ -47,6 +48,10 @@ export function SettingsClient({
   const setLocale = usePebbleStore((s) => s.setLocale);
   const selectMode = usePebbleStore((s) => s.selectMode);
   const setSelectMode = usePebbleStore((s) => s.setSelectMode);
+  const fontChoice = usePebbleStore((s) => s.fontChoice);
+  const setFontChoice = usePebbleStore((s) => s.setFontChoice);
+  const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
+  const setCjkFontChoice = usePebbleStore((s) => s.setCjkFontChoice);
 
   // ONE list, rendered below as the page content and by the section nav, so
   // the two can never disagree about what exists or in what order.
@@ -71,6 +76,10 @@ export function SettingsClient({
       cards: (
         <>
           <TextSizeControl textSize={textSize} onChange={setTextSize} />
+          <FontControl
+            fontChoice={fontChoice} onChange={setFontChoice}
+            cjkFontChoice={cjkFontChoice} onCjkChange={setCjkFontChoice}
+          />
           <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
         </>
       ),

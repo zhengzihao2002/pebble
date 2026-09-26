@@ -304,7 +304,31 @@ html.no-theme-transition * {
 .pebble-root, .pebble-root * {
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease;
 }
-.pebble-root .font-display { font-family: var(--font-fraunces), var(--cjk), Georgia, serif; }
+/* Font choice (Settings > Appearance). The pre-paint script in layout.tsx
+   sets data-pebble-font on <html> before first paint and AppShell keeps it in
+   step; absent means Default, so the rule above is untouched and the default
+   look cannot change. Each override sets the body family on .pebble-root
+   (inherited everywhere, portals included) and a heading variable that
+   .font-display falls back from. Numbers are deliberately NOT included:
+   .font-mono-tab keeps IBM Plex Mono so amounts stay column-aligned. Chinese
+   falls through to var(--cjk) in every case. */
+html[data-pebble-font="system"] .pebble-root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, var(--cjk), sans-serif;
+  --pebble-font-display: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+html[data-pebble-font="rounded"] .pebble-root { font-family: var(--font-nunito), var(--cjk), system-ui, sans-serif; --pebble-font-display: var(--font-nunito); }
+html[data-pebble-font="serif"] .pebble-root { font-family: var(--font-source-serif), var(--cjk), Georgia, serif; --pebble-font-display: var(--font-fraunces); }
+html[data-pebble-font="legible"] .pebble-root { font-family: var(--font-atkinson), var(--cjk), system-ui, sans-serif; --pebble-font-display: var(--font-atkinson); }
+/* Chinese face choice. Overrides --cjk itself, so the body, heading and
+   number stacks all pick it up, per glyph. Sans stays the DEFAULT for the
+   reason given where --cjk is defined (CJK serifs render thin at UI sizes);
+   serif and kai are opt-in. Each list ends with the default sans faces, for a
+   device with none of the requested ones. The Noto Serif SC webfont comes
+   after the installed serifs, so a device with Songti or SimSun never
+   downloads it. */
+html[data-pebble-cjk="serif"] .pebble-root { --cjk: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", var(--font-noto-serif-sc), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC"; }
+html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC"; }
+.pebble-root .font-display { font-family: var(--pebble-font-display, var(--font-fraunces)), var(--cjk), Georgia, serif; }
 .pebble-root .font-mono-tab { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow); }
 .pebble-root button { font-family: inherit; cursor: pointer; }

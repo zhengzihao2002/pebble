@@ -27,6 +27,13 @@ interface ReportFiltersProps {
   periodGroup: PeriodGroup;
   onPeriodGroupChange: (mode: PeriodGroup) => void;
 
+  /** 'YYYY-MM-DD' or '' for an open end. Shown only for periodGroup 'custom'. */
+  customStart: string;
+  customEnd: string;
+  onCustomStartChange: (v: string) => void;
+  onCustomEndChange: (v: string) => void;
+  customRangeInverted: boolean;
+
   subPeriod: string;
   onSubPeriodChange: (v: string) => void;
   subPeriodOptions: string[] | null;
@@ -73,6 +80,7 @@ export function ReportFilters({
   expanded, onToggleExpanded, filterSummary,
   reportType, onTypeChange,
   periodGroup, onPeriodGroupChange,
+  customStart, customEnd, onCustomStartChange, onCustomEndChange, customRangeInverted,
   subPeriod, onSubPeriodChange, subPeriodOptions, subPeriodLabel,
   subYear, onSubYearChange, yearOptions, showYearSelector,
   categoryGroup, onCategoryGroupChange,
@@ -150,8 +158,41 @@ export function ReportFilters({
                   <option value="last3">{dict.reports.last3}</option>
                   <option value="last6">{dict.reports.last6}</option>
                   <option value="last12">{dict.reports.last12}</option>
+                  <option value="custom">{dict.reports.custom}</option>
                 </select>
               </div>
+
+              {/* Only for Custom range. Native date inputs: the value is
+                  always 'YYYY-MM-DD', the picker localizes itself, and min/max
+                  keep the picker from offering an inverted pair. A typed
+                  inverted pair is still possible, hence the message. */}
+              {periodGroup === 'custom' && (
+                <>
+                  <div style={filterFieldStyle}>
+                    <p className="filter-label">{dict.reports.customFrom}</p>
+                    <input
+                      type="date" value={customStart} max={customEnd || undefined}
+                      onChange={(e) => onCustomStartChange(e.target.value)}
+                      aria-invalid={customRangeInverted || undefined}
+                      style={{ ...filterSelectStyle, ...(customRangeInverted ? { border: '1px solid var(--wine)' } : {}) }}
+                    />
+                  </div>
+                  <div style={filterFieldStyle}>
+                    <p className="filter-label">{dict.reports.customTo}</p>
+                    <input
+                      type="date" value={customEnd} min={customStart || undefined}
+                      onChange={(e) => onCustomEndChange(e.target.value)}
+                      aria-invalid={customRangeInverted || undefined}
+                      style={{ ...filterSelectStyle, ...(customRangeInverted ? { border: '1px solid var(--wine)' } : {}) }}
+                    />
+                  </div>
+                  {customRangeInverted && (
+                    <p style={{ flexBasis: '100%', margin: 0, fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>
+                      {dict.reports.customInvalid}
+                    </p>
+                  )}
+                </>
+              )}
 
               {showYearSelector && (
                 <div style={filterFieldStyle}>

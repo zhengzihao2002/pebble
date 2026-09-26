@@ -373,6 +373,19 @@ export const en = {
     titleRequired: 'A title is required.',
   },
 
+  font: {
+    title: 'Font',
+    blurb: 'Choose the typeface for text and headings. Amounts keep their fixed-width font so columns stay aligned. Chinese text has its own font setting, shown when the interface is in Chinese.',
+    default: 'Default',
+    system: 'System',
+    rounded: 'Rounded',
+    serif: 'Serif',
+    legible: 'High legibility',
+    // Chinese options. Only shown in the Chinese interface, but zh.ts is
+    // typed as typeof en, so the keys must exist here too.
+    cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -603,14 +616,17 @@ export const en = {
     timePeriod: 'Time period',
     month: 'Month', quarter: 'Quarter', year: 'Year', allTime: 'All time',
     last3: 'Last 3 months', last6: 'Last 6 months', last12: 'Last 12 months',
+    custom: 'Custom range', customFrom: 'From', customTo: 'To',
+    customInvalid: 'Start date is after end date.',
     whichYear: 'Which year', whichMonth: 'Which month', whichQuarter: 'Which quarter',
     allYears: 'All years', allMonths: 'All months', allQuarters: 'All quarters',
     groupBy: 'Group by', groupCategory: 'Category', groupNone: 'None',
     sort: 'Sort',
     sortHighest: 'Highest first', sortLowest: 'Lowest first',
     sortNewest: 'Newest first', sortOldest: 'Oldest first',
-    description: 'Description',
-    descriptionPlaceholder: 'Optional — search description',
+    // The search matches the whole stored string - title and description.
+    description: 'Search',
+    descriptionPlaceholder: 'Title or description',
     onlyAccounts: 'Accounts',
     accountsOther: '{count} accounts',
     onlyCategories: 'Only include categories',

@@ -18,6 +18,7 @@ import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { isRollingWindowKey, resolveRollingWindow, isInRollingWindow, formatRollingRangeLabel } from '@/components/reports/rollingWindow';
+import { defaultCustomRange, formatCustomRangeLabel, isCustomRangeInverted, isInCustomRange, sanitizeYmd } from '@/components/reports/customRange';
 
 function isExpense(t: Transaction): t is ExpenseTransaction {
   return t.type === 'expense';
@@ -52,6 +53,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const [groupsExpanded, setGroupsExpanded] = useState(false);
   const [restored, setRestored] = useState(false);
   const [descQuery, setDescQuery] = useState('');
+  // Custom range bounds, 'YYYY-MM-DD' or '' for an open end. Static '' seeds
+  // for the same server/client parity as everything above; defaults are
+  // filled once `today` is known (see the effect after the write-back).
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
@@ -120,6 +126,10 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       setSortDir(saved.sortDir);
       setFiltersExpanded(saved.filtersExpanded);
       setGroupsExpanded(saved.groupsExpanded);
+      // Validated, not trusted: localStorage can hold anything, and prefs
+      // written before custom ranges existed have neither field.
+      setCustomStart(sanitizeYmd(saved.customStart));
+      setCustomEnd(sanitizeYmd(saved.customEnd));
       // Category selection is not persisted, so it has to follow the restored
       // type rather than the 'expense' default the state was seeded with.
       if (saved.reportType === 'income') setSelectedCategories(new Set(incomeCats));
@@ -142,10 +152,25 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     if (!restored) return;
     usePebbleStore.getState().setReportFilters({
       reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
-      filtersExpanded, groupsExpanded,
+      filtersExpanded, groupsExpanded, customStart, customEnd,
     });
   }, [restored, reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
-      filtersExpanded, groupsExpanded]);
+      filtersExpanded, groupsExpanded, customStart, customEnd]);
+
+  // Choosing Custom range with no dates yet (first use, or prefs saved before
+  // this feature) fills the current month to date, zone-aware via `today`.
+  // Only when BOTH are empty: a range with one deliberately open end is left
+  // alone. Keyed on the mode and `today`, not the dates, so clearing both
+  // while already in Custom range does not refill them.
+  useEffect(() => {
+    if (!restored || periodGroup !== 'custom' || !today) return;
+    if (customStart === '' && customEnd === '') {
+      const range = defaultCustomRange(today);
+      setCustomStart(range.startYmd);
+      setCustomEnd(range.endYmd);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored, periodGroup, today]);
 
   const handleTypeChange = (t: ReportType) => {
     setReportType(t);
@@ -273,6 +298,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // filters immediately without waiting on the async today effect; only the
   // CURRENT-period fallback needs `today`, and until it resolves this falls
   // through to unfiltered for that one frame, same as the rolling window.
+  const customRange = { startYmd: customStart, endYmd: customEnd };
+  const customRangeInverted = isCustomRangeInverted(customRange);
+
   const periodFiltered = (subPeriodOptions && subPeriodOptions.includes(effectiveSubPeriod))
     ? yearScoped.filter((t) => {
         const d = parseLocalDate(t.date);
@@ -286,7 +314,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     // falls through to the unfiltered set in both cases.
     : rollingWindow
       ? yearScoped.filter((t) => isInRollingWindow(rollingWindow, t.date))
-      : yearScoped;
+      : periodGroup === 'custom'
+        // An inverted range is flagged in the filters and matches nothing,
+        // rather than being silently swapped. Flat, like rolling windows.
+        ? (customRangeInverted ? [] : yearScoped.filter((t) => isInCustomRange(customRange, t.date)))
+        : yearScoped;
 
   // Period headers render whenever a period grouping is active, including for a
   // single selected period. Previously also required subPeriod === 'All', so
@@ -429,6 +461,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     // One frame before `today` resolves, rollingWindow is null - show just
     // the mode name rather than a guessed or blank range.
     ? (rollingWindow ? `${dict.reports[periodGroup]} · ${formatRollingRangeLabel(rollingWindow, locale)}` : dict.reports[periodGroup])
+    : periodGroup === 'custom' ? `${dict.reports.custom} · ${formatCustomRangeLabel(customRange, locale)}`
     : periodGroup === 'all' ? dict.reports.allTime
     // effectiveSubPeriod, not subPeriod: shows the RESOLVED current period,
     // not the raw 'All' sentinel it may still equal internally.
@@ -464,6 +497,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         onTypeChange={handleTypeChange}
         periodGroup={periodGroup}
         onPeriodGroupChange={handlePeriodGroupChange}
+        customStart={customStart}
+        customEnd={customEnd}
+        onCustomStartChange={setCustomStart}
+        onCustomEndChange={setCustomEnd}
+        customRangeInverted={customRangeInverted}
         subPeriod={effectiveSubPeriod}
         onSubPeriodChange={setSubPeriod}
         subPeriodOptions={subPeriodOptions}

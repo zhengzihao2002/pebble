@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -20,6 +21,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const darkMode = usePebbleStore((s) => s.darkMode);
   const textSize = usePebbleStore((s) => s.textSize);
   const locale = usePebbleStore((s) => s.locale);
+  const fontChoice = usePebbleStore((s) => s.fontChoice);
+  const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
@@ -46,6 +49,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle('pebble-dark', darkMode);
   }, [darkMode]);
+
+  // Mirrors the font choice onto <html>, as darkMode is above: the pre-paint
+  // script sets it before first paint, this keeps it truthful after a change.
+  // An unknown stored value falls back to the default font.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isFontChoice(fontChoice) && fontChoice !== 'default') root.setAttribute(FONT_ATTRIBUTE, fontChoice);
+    else root.removeAttribute(FONT_ATTRIBUTE);
+  }, [fontChoice]);
+
+  // Same for the Chinese face. Unknown stored values fall back to sans.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isCjkFontChoice(cjkFontChoice) && cjkFontChoice !== 'sans') root.setAttribute(CJK_FONT_ATTRIBUTE, cjkFontChoice);
+    else root.removeAttribute(CJK_FONT_ATTRIBUTE);
+  }, [cjkFontChoice]);
 
   // Tells the server what timezone the user is actually in.
   //

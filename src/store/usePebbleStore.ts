@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
 import type { Locale } from '@/lib/i18n/locale';
 import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
+import type { CjkFontChoice, FontChoice } from '@/lib/fontChoice';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 
 /**
@@ -98,6 +99,13 @@ interface PebbleUIState {
   // value other than 'plain' is treated as 'searchable' there, so a key
   // written by an older or newer build cannot break a form.
   selectMode: SelectMode;
+  // Typeface for text and headings. Validated where it is applied (AppShell
+  // and the pre-paint script), so a value from an older or newer build falls
+  // back to the default font instead of matching no CSS rule.
+  fontChoice: FontChoice;
+  // The CHINESE face, independent of the Latin one above - both always apply,
+  // each to its own characters. Validated where applied, like the Latin one.
+  cjkFontChoice: CjkFontChoice;
   setDarkMode: (value: boolean) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -108,6 +116,8 @@ interface PebbleUIState {
   setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
   setManualIncomePrefs: (patch: Partial<ManualIncomePrefs>) => void;
   setSelectMode: (value: SelectMode) => void;
+  setFontChoice: (value: FontChoice) => void;
+  setCjkFontChoice: (value: CjkFontChoice) => void;
 }
 
 const noopStorage = {
@@ -136,6 +146,11 @@ export const usePebbleStore = create<PebbleUIState>()(
       // Static, matching every other initial value here. 'searchable' is the
       // behaviour before this preference existed, so an upgrade changes nothing.
       selectMode: 'searchable',
+      // Static, matching every other initial value here. 'default' is the
+      // look before this preference existed, so an upgrade changes nothing.
+      fontChoice: 'default',
+      // Static; 'sans' is the Chinese face from before this preference existed.
+      cjkFontChoice: 'sans',
       setDarkMode: (value) => set({ darkMode: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
@@ -151,6 +166,8 @@ export const usePebbleStore = create<PebbleUIState>()(
       // clear the other.
       setManualIncomePrefs: (patch) => set((state) => ({ manualIncomePrefs: { ...state.manualIncomePrefs, ...patch } })),
       setSelectMode: (value) => set({ selectMode: value }),
+      setFontChoice: (value) => set({ fontChoice: value }),
+      setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
     }),
     {
       // Deliberately a NEW key. The old 'pebble-storage' entry holds
@@ -179,6 +196,10 @@ export const usePebbleStore = create<PebbleUIState>()(
         // Omitting this persists nothing and reports no error - the picker
         // choice would simply reset on every reload.
         selectMode: state.selectMode,
+        // The pre-paint script reads this field (FONT_FIELD in storageKeys.ts).
+        fontChoice: state.fontChoice,
+        // Also read by the pre-paint script (CJK_FONT_FIELD in storageKeys.ts).
+        cjkFontChoice: state.cjkFontChoice,
       }),
     }
   )

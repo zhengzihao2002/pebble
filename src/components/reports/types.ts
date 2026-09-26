@@ -4,7 +4,8 @@ export type ReportType = 'expense' | 'income';
 // last3/last6/last12: rolling windows. Flat/ungrouped by design - see
 // rollingWindow.ts. These values are persisted in reportFilters, so once
 // shipped they are effectively permanent.
-export type PeriodGroup = 'month' | 'quarter' | 'year' | 'all' | 'last3' | 'last6' | 'last12';
+// custom: an explicit From/To range, also flat - see customRange.ts.
+export type PeriodGroup = 'month' | 'quarter' | 'year' | 'all' | 'last3' | 'last6' | 'last12' | 'custom';
 export type CategoryGroupMode = 'category' | 'none';
 export type SortDir = 'desc' | 'asc';
 
@@ -31,6 +32,11 @@ export interface ReportFilterPrefs {
   // Those keys are built from the period label and category name, so any filter
   // or rename would orphan them; a boolean survives both.
   groupsExpanded: boolean;
+  // Custom range bounds, 'YYYY-MM-DD' or '' for an open end. Optional: prefs
+  // saved before custom ranges existed have neither, and restore validates
+  // both rather than trusting localStorage.
+  customStart?: string;
+  customEnd?: string;
 }
 
 export interface ReportCategorySubGroup {
