@@ -124,8 +124,13 @@ function isFiniteNumber(value: unknown): value is number {
  * SQLSTATE class 08 is connection exception, 53 insufficient resources, 57
  * operator intervention (includes admin shutdown). All are "the database is
  * not currently able to serve you", not "your data was wrong".
+ *
+ * The real NeonDbError can also arrive nested under `.cause` on an outer
+ * error (name "Error") rather than as the top-level error itself. Checked
+ * two levels deep - error, error.cause, error.cause.cause - matching what has
+ * actually been observed, not walked to arbitrary depth.
  */
-function classifyError(error: unknown): FailureKind {
+function classifyDbErrorLike(error: unknown): FailureKind | null {
   const name = (error as { name?: unknown } | null)?.name;
 
   if (name === 'NeonDbError') {
@@ -138,6 +143,25 @@ function classifyError(error: unknown): FailureKind {
 
   // A rejected fetch surfaces as TypeError before the driver ever sees it.
   if (name === 'TypeError' || name === 'AbortError') return 'database';
+
+  return null;
+}
+
+function classifyError(error: unknown): FailureKind {
+  const direct = classifyDbErrorLike(error);
+  if (direct !== null) return direct;
+
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  if (cause !== undefined && cause !== null) {
+    const fromCause = classifyDbErrorLike(cause);
+    if (fromCause !== null) return fromCause;
+
+    const nestedCause = (cause as { cause?: unknown } | null)?.cause;
+    if (nestedCause !== undefined && nestedCause !== null) {
+      const fromNestedCause = classifyDbErrorLike(nestedCause);
+      if (fromNestedCause !== null) return fromNestedCause;
+    }
+  }
 
   return 'unknown';
 }

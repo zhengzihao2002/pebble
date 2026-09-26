@@ -111,7 +111,6 @@ export const zh: typeof en = {
     to: '至',
     amount: '金额',
     date: '日期',
-    note: '备注',
     optional: '（可选）',
     notePlaceholder: '例如：ATM 取现',
     sameAccount: '请选择两个不同的账户。',
@@ -207,8 +206,6 @@ export const zh: typeof en = {
     dipsBody: '这笔交易将花费你为目标预留的 {amount}。这样做没有问题——只是你的目标会依赖尚未到账的资金。',
     goBack: '返回',
     proceed: '继续',
-    description: '描述',
-    descriptionPlaceholder: '例如：咖啡店\n可在下一行添加备注',
     category: '分类',
     tag: '标签',
     tagHint: '（子分类，可选）',
@@ -239,7 +236,6 @@ export const zh: typeof en = {
 
     type: '类型',
     typeLocked: '类型无法更改。请删除后重新创建一项。',
-    description: '描述',
     descriptionPlaceholderIncome: '例如：工资',
     descriptionPlaceholderExpense: '例如：车贷',
     category: '分类',
@@ -300,7 +296,6 @@ export const zh: typeof en = {
     adjustmentNote: '这是对余额的手动修正。它会出现在账单中，但不计入报表，因为它并非真实的支出或收入。',
     edit: '编辑',
     delete: '删除',
-    description: '描述',
     tag: '标签',
     optional: '（可选）',
     sideCashNote: '外快会计入你的余额并出现在报表中，但不计入仪表板上的收入和储蓄率——这两项只统计常规收入。',
@@ -316,6 +311,14 @@ export const zh: typeof en = {
     deleteBody: '{date} 的 {description}（{amount}）将被彻底移除，如同从未记录过。你的余额会相应调整。此操作无法撤销。',
     keepIt: '保留',
     deleting: '删除中…',
+  },
+
+  titleDescription: {
+    title: '标题',
+    description: '描述',
+    descriptionPlaceholder: '其他补充信息',
+    titlePlaceholder: '例如：咖啡店',
+    titleRequired: '标题为必填项。',
   },
 
   textSize: {
@@ -335,18 +338,6 @@ export const zh: typeof en = {
     securityLink: '安全',
     securityHint: '密码与登录设备',
     backToSettings: '返回设置',
-  },
-
-  openingBalance: {
-    title: '初始余额',
-    blurb: '每个账户在你记录第一笔交易之前的金额。今天的余额由此加上之后记录的所有交易计算得出。账户透支时填负数也没有问题。',
-    saving: '正在保存余额…',
-    projectedLabel: '按当前数值计算的今日余额',
-    // Chinese puts the label before the figure, the reverse of English - the
-    // reason this is a template rather than concatenation.
-    projectedValue: '银行账户 {checking} · 现金 {cash}',
-    saved: '已保存。',
-    save: '保存初始余额',
   },
 
   modifyBalance: {

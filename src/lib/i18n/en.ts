@@ -138,7 +138,6 @@ export const en = {
     to: 'To',
     amount: 'Amount',
     date: 'Date',
-    note: 'Note',
     optional: '(optional)',
     notePlaceholder: 'e.g. ATM withdrawal',
     sameAccount: 'Choose two different accounts.',
@@ -251,8 +250,6 @@ export const en = {
     dipsBody: 'This transaction spends {amount} you had set aside for goals. That is fine to do — your goals will just be counting on money that is not there yet.',
     goBack: 'Go back',
     proceed: 'Continue',
-    description: 'Description',
-    descriptionPlaceholder: 'e.g. Coffee shop\nOptional notes on the next line',
     category: 'Category',
     tag: 'Tag',
     tagHint: '(sub-category, optional)',
@@ -286,7 +283,6 @@ export const en = {
 
     type: 'Type',
     typeLocked: 'Type cannot be changed. Delete this and create a new one instead.',
-    description: 'Description',
     descriptionPlaceholderIncome: 'e.g. Salary',
     descriptionPlaceholderExpense: 'e.g. Car loan',
     category: 'Category',
@@ -349,7 +345,6 @@ export const en = {
     adjustmentNote: 'A manual correction to your balance. It appears here in your statement but is left out of Reports, since it is not real spending or income.',
     edit: 'Edit',
     delete: 'Delete',
-    description: 'Description',
     tag: 'Tag',
     optional: '(optional)',
     sideCashNote: 'Side cash counts toward your balance and appears in Reports, but is left out of the Income and Savings rate figures on your dashboard — those track standard income only.',
@@ -367,6 +362,15 @@ export const en = {
     deleteBody: '{description} for {amount} on {date} will be removed as if it had never been recorded. Your balances will adjust. This cannot be undone.',
     keepIt: 'Keep it',
     deleting: 'Deleting…',
+  },
+
+  titleDescription: {
+    // One stored string, two fields - see src/lib/transactionDescription.ts.
+    title: 'Title',
+    description: 'Description',
+    descriptionPlaceholder: 'Any extra details',
+    titlePlaceholder: 'e.g. Coffee shop',
+    titleRequired: 'A title is required.',
   },
 
   textSize: {
@@ -390,18 +394,6 @@ export const en = {
     securityLink: 'Security',
     securityHint: 'Password and active sessions',
     backToSettings: 'Back to Settings',
-  },
-
-  openingBalance: {
-    title: 'Starting balances',
-    blurb: 'What each account held before your first recorded transaction. Your balance today is worked out from this plus everything you have recorded since. Negative values are fine for an overdrawn account.',
-    saving: 'Saving balances…',
-    projectedLabel: 'Balance today, with these values',
-    // Both account names come from d.enums.paymentMethod so this line tracks
-    // the labels used everywhere else. The figures are elements, not text.
-    projectedValue: '{checking} checking · {cash} cash',
-    saved: 'Saved.',
-    save: 'Save starting balances',
   },
 
   modifyBalance: {

@@ -12,6 +12,8 @@ import {
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
+import { composeDescription, descriptionTitle, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveCategoryIcon } from '@/lib/data/icons';
@@ -63,7 +65,11 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
   const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? 'expense');
-  const [description, setDescription] = useState(rule?.description ?? '');
+  // The rule's stored description, split once for the two fields. An edit
+  // that leaves both untouched sends this exact string back.
+  const initialParts = parseDescription(rule?.description ?? '');
+  const [title, setTitle] = useState(initialParts.title);
+  const [description, setDescription] = useState(initialParts.description);
   const [category, setCategory] = useState(rule?.category ?? '');
   const [tag, setTag] = useState(rule?.tag ?? '');
   // Account ID, not name: names are user data and can repeat across a
@@ -163,8 +169,12 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   // Comparisons match how each field is STORED, not how the form holds it:
   // expense amounts are negative in the database but positive here, and tag
   // is null there but '' here.
+  const outgoingDescription = rule
+    ? resolveEditedDescription(rule.description, title, description)
+    : composeDescription(title, description);
+
   const dirty = !isEdit || !rule || (
-    description.trim() !== rule.description ||
+    outgoingDescription.trim() !== rule.description ||
     category !== rule.category ||
     (kind === 'expense' ? (tag.trim() || null) : null) !== rule.tag ||
     accountId !== rule.accountId ||
@@ -182,7 +192,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (saving) return;
+    // Also reached from Try again, past the native required check.
+    if (saving || !title.trim()) return;
     setSaving(true);
     setSaveError(null);
 
@@ -190,7 +201,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
     // state. No label ever reaches this payload.
     const payload = {
       kind,
-      description: description.trim(),
+      description: outgoingDescription.trim(),
       category,
       tag: kind === 'expense' ? tag.trim() || undefined : undefined,
       accountId,
@@ -256,7 +267,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
               {/* The rule's own description is USER DATA and leads the sentence
                   in both languages, so the remainder is one key. */}
-              <strong style={{ color: 'var(--ink)' }}>{rule?.description}</strong> {d.recurring.deleteBody}
+              <strong style={{ color: 'var(--ink)' }}>{descriptionTitle(rule?.description ?? '')}</strong> {d.recurring.deleteBody}
             </p>
             <ActionError message={saveError} kind={saveErrorKind} onRetry={handleDelete} busy={saving} style={{ marginBottom: '0.9rem' }} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -300,10 +311,16 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                 {isEdit && <p style={hintStyle}>{d.recurring.typeLocked}</p>}
               </label>
 
-              <label style={labelStyle}>
-                {d.recurring.description}
-                <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense} required style={inputStyle} />
-              </label>
+              <TitleDescriptionFields
+                title={title}
+                description={description}
+                onTitleChange={setTitle}
+                onDescriptionChange={setDescription}
+                inputStyle={inputStyle}
+                labelStyle={labelStyle}
+                optionalLabel={d.txnDetail.optional}
+                titlePlaceholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense}
+              />
 
               {/* A div, not a label: <label> forwards clicks to its control, so
                   clicking the word "Category" would open the dropdown. Income keeps

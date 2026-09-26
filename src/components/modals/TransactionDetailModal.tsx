@@ -11,6 +11,8 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { Account } from '@/lib/data/mappers';
 import { ActionError } from '@/components/shared/ActionError';
+import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
+import { isDescriptionEdited, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
@@ -48,6 +50,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   // Escape key each need their own guard.
   const requestClose = () => { if (busy) return; onClose(); };
 
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
@@ -68,7 +71,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
     if (!txn) return;
     setMode('view');
     setError(null);
-    setDescription(txn.description);
+    const parts = parseDescription(txn.description);
+    setTitle(parts.title);
+    setDescription(parts.description);
     setCategory(txn.type === 'adjustment' ? '' : txn.category);
     setTag(txn.type === 'expense' ? (txn.tag ?? '') : '');
     setAccountId(txn.accountId);
@@ -155,9 +160,18 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   //
   // Every comparison here is value-to-value. Nothing in this block is
   // language-dependent, so switching locale can never mark a form dirty.
+  // Untouched fields send the ORIGINAL stored string back, byte for byte -
+  // see resolveEditedDescription(). The title is required only once either
+  // field is edited: imported records can have an empty description, and
+  // blocking an amount fix on one of them until it gets a title would be a
+  // regression.
+  const descriptionEdited = isDescriptionEdited(txn.description, title, description);
+  const outgoingDescription = resolveEditedDescription(txn.description, title, description);
+  const titleMissing = descriptionEdited && title.trim() === '';
+
   const hasChanges = (() => {
     if (txn.type === 'adjustment') return false;
-    if (description.trim() !== txn.description.trim()) return true;
+    if (outgoingDescription.trim() !== txn.description.trim()) return true;
     if (category !== txn.category) return true;
     if (accountId !== txn.accountId) return true;
     if (date !== txn.date) return true;
@@ -205,14 +219,14 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   );
 
   const performSave = async () => {
-    if (busy || txn.type === 'adjustment') return;
+    if (busy || txn.type === 'adjustment' || titleMissing) return;
     setBusy(true);
     setError(null);
 
     const result = await callAction(() => updateTransactionAction({
       id: txn.id,
       type: txn.type,
-      description,
+      description: outgoingDescription,
       category,
       ...(txn.type === 'expense' ? { tag } : {}),
       date,
@@ -401,13 +415,17 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
 
         {mode === 'edit' && (
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <label style={labelStyle}>
-              {d.txnDetail.description}
-              <textarea
-                value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </label>
+            <TitleDescriptionFields
+              title={title}
+              description={description}
+              onTitleChange={setTitle}
+              onDescriptionChange={setDescription}
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+              optionalLabel={d.txnDetail.optional}
+              required={false}
+              titleError={titleMissing ? d.titleDescription.titleRequired : null}
+            />
 
             {txn.type === 'expense' ? (
               <>
@@ -537,9 +555,9 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
               <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.cancel}</button>
               <button
                 type="button" onClick={handleSave}
-                disabled={busy || netExceedsGross || !hasChanges}
+                disabled={busy || netExceedsGross || !hasChanges || titleMissing}
                 className="btn-primary"
-                style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges ? 0.6 : 1 }}
+                style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges || titleMissing ? 0.6 : 1 }}
               >
                 {busy ? d.common.saving : d.txnDetail.saveChanges}
               </button>

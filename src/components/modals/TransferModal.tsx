@@ -8,6 +8,8 @@ import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
+import { composeDescription } from '@/lib/transactionDescription';
 import type { Account } from '@/lib/data/mappers';
 import { todayDateString } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -46,6 +48,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayDateString());
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +81,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
 
   const sameAccount = fromId !== '' && fromId === toId;
   const amountValid = amount.trim() !== '' && Number(amount) > 0;
-  const canSubmit = !!fromId && !!toId && !sameAccount && amountValid && !!date;
+  const canSubmit = !!fromId && !!toId && !sameAccount && amountValid && !!date && title.trim() !== '';
 
   const requestClose = () => { if (saving) return; onClose(); };
 
@@ -92,7 +95,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
       fromAccountId: fromId,
       toAccountId: toId,
       amount: Number(amount),
-      description,
+      description: composeDescription(title, description),
       date,
     }));
 
@@ -155,10 +158,16 @@ export function TransferModal({ onClose }: TransferModalProps) {
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
           </label>
 
-          <label style={labelStyle}>
-            {d.transfer.note} <span style={{ opacity: 0.7 }}>{d.transfer.optional}</span>
-            <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={d.transfer.notePlaceholder} style={inputStyle} />
-          </label>
+          <TitleDescriptionFields
+            title={title}
+            description={description}
+            onTitleChange={setTitle}
+            onDescriptionChange={setDescription}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+            optionalLabel={d.transfer.optional}
+            titlePlaceholder={d.transfer.notePlaceholder}
+          />
 
           <ActionError message={error} kind={errorKind} onRetry={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)} busy={saving} />
 

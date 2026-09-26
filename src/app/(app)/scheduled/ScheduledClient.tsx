@@ -1,5 +1,6 @@
 'use client';
 
+import { descriptionTitle } from '@/lib/transactionDescription';
 import { useState } from 'react';
 import { CalendarClock, Pause, Pencil, Play } from 'lucide-react';
 import { setRecurringRuleStatusAction } from '@/lib/actions/pebble';
@@ -132,7 +133,7 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {/* rule.description is USER DATA - rendered as stored. */}
-                      {rule.description}
+                      {descriptionTitle(rule.description)}
                       {finished
                         ? <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>{d.scheduled.finished}</span>
                         : paused && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6, fontWeight: 400 }}>{d.scheduled.paused}</span>}
@@ -155,14 +156,14 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                   <button
                     type="button" onClick={() => toggleStatus(rule)} disabled={busyId === rule.id || finished}
                     className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }}
-                    aria-label={t(paused ? d.scheduled.resumeAria : d.scheduled.pauseAria, { description: rule.description })}
+                    aria-label={t(paused ? d.scheduled.resumeAria : d.scheduled.pauseAria, { description: descriptionTitle(rule.description) })}
                   >
                     {paused ? <Play size={14} /> : <Pause size={14} />}
                   </button>
                   <button
                     type="button" onClick={() => setEditing(rule)}
                     className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }}
-                    aria-label={t(d.scheduled.editAria, { description: rule.description })}
+                    aria-label={t(d.scheduled.editAria, { description: descriptionTitle(rule.description) })}
                   >
                     <Pencil size={14} />
                   </button>
@@ -199,7 +200,7 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
                   {formatDate(item.date, locale)}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.87rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
+                  <div style={{ fontSize: '0.87rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{descriptionTitle(item.description)}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: 1 }}>
                     {categoryLabel(d, item.category)} · {paymentMethodLabel(d, item.paymentMethod)}
                   </div>

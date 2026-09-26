@@ -10,6 +10,8 @@ import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, 
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
+import { composeDescription } from '@/lib/transactionDescription';
 import { playEventSound } from '@/lib/sound/useSound';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
@@ -95,6 +97,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   }, []);
 
   const [type, setType] = useState<'expense' | 'income'>('expense');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayDateString());
   // The stored value is the account ID, not its name: names are user data
@@ -155,19 +158,22 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const requestClose = () => { if (saving) return; onClose(); };
 
   const performSave = async () => {
+    // Try again and the goal-dip confirm call this directly, past
+    // handleSubmit's check, so the title rule is enforced here too.
+    if (!title.trim()) return;
     setSaving(true);
     setSaveError(null);
 
     let result;
     if (type === 'expense') {
-      result = await callAction(() => addTransactionAction({ type, description, date, accountId, category, tag: tag.trim(), amount: Number(amount) }));
+      result = await callAction(() => addTransactionAction({ type, description: composeDescription(title, description), date, accountId, category, tag: tag.trim(), amount: Number(amount) }));
     } else {
       // Side cash is untaxed: one amount fills both gross and net.
       const gross = isSideCashSelected
         ? Number(netPay)
         : (grossPay ? Number(grossPay) : Number(netPay));
       // incomeCategory goes over the wire as the untranslated literal.
-      result = await callAction(() => addTransactionAction({ type, description, date, accountId, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
+      result = await callAction(() => addTransactionAction({ type, description: composeDescription(title, description), date, accountId, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
     }
 
     setSaving(false);
@@ -186,7 +192,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !date || saving) return;
+    if (!title.trim() || !date || saving) return;
 
     if (type === 'expense') {
       if (!amount || Number(amount) <= 0) return;
@@ -280,14 +286,15 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             ))}
           </div>
 
-          <label style={labelStyle}>
-            {d.addTxn.description}
-            <textarea
-              value={description} onChange={(e) => setDescription(e.target.value)} required rows={2}
-              placeholder={d.addTxn.descriptionPlaceholder}
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', minHeight: '2.6rem' }}
-            />
-          </label>
+          <TitleDescriptionFields
+            title={title}
+            description={description}
+            onTitleChange={setTitle}
+            onDescriptionChange={setDescription}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+            optionalLabel={d.txnDetail.optional}
+          />
 
           {type === 'expense' ? (
             <>

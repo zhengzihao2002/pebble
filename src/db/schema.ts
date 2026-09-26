@@ -3,11 +3,17 @@
  *
  * HAND-MAINTAINED. Verified against the live Neon database via `drizzle-kit pull`.
  * Do NOT paste raw pull output over this file. Every pull requires these fixes:
- *   1. `.default(')`  ->  `.default('')`   (6 sites: expense.description/category/tag,
- *      income.description/category, goal.target_date)
+ *   1. `.default(')`  ->  `.default('')`   (7 sites: expense.description/category/tag,
+ *      income.description/category, balance_adjustment.description, goal.target_date)
  *   2. numeric columns need `mode: 'number'` re-applied (see note below)
  *   3. user_id index opclass renders as `date_ops`; correct value is `uuid_ops`
- *   4. pull re-emits all 9 neon_auth tables; only `user` is kept here
+ *   4. pull re-emits all 9 neon_auth tables; only `user` is kept here. Neon Auth
+ *      has since added nullable phoneNumber / phoneNumberVerified to it; they are
+ *      deliberately not declared - Pebble never reads or writes them.
+ *
+ * payment_method holds an account NAME. The old Checking/Cash CHECK constraints
+ * on expense, income, recurring_rule and balance_adjustment were dropped from
+ * the database when user-defined accounts arrived; do not re-add them here.
  *
  * NEVER run `drizzle-kit push` or `drizzle-kit generate`. Pull (read-only) only.
  * Schema changes are written as reviewable SQL and run manually in the Neon SQL Editor.
@@ -197,10 +203,6 @@ export const recurringRule = pgTable(
     }).onDelete('cascade'),
     check('recurring_rule_kind_check', sql`kind = ANY (ARRAY['expense'::text, 'income'::text])`),
     check(
-      'recurring_rule_payment_method_check',
-      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
-    ),
-    check(
       'recurring_rule_frequency_check',
       sql`frequency = ANY (ARRAY['once'::text, 'weekly'::text, 'biweekly'::text, 'monthly'::text, 'yearly'::text])`,
     ),
@@ -269,10 +271,6 @@ export const expense = pgTable(
       name: 'expense_user_id_fkey',
     }).onDelete('cascade'),
     check('expense_amount_check', sql`amount <= (0)::numeric`),
-    check(
-      'expense_payment_method_check',
-      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
-    ),
     foreignKey({
       columns: [table.recurringRuleId],
       foreignColumns: [recurringRule.id],
@@ -324,10 +322,6 @@ export const income = pgTable(
     check(
       'income_amounts_check',
       sql`(gross_amount >= (0)::numeric) AND (net_amount >= (0)::numeric)`,
-    ),
-    check(
-      'income_payment_method_check',
-      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
     ),
     foreignKey({
       columns: [table.recurringRuleId],
@@ -514,10 +508,6 @@ export const balanceAdjustment = pgTable(
       foreignColumns: [userInNeonAuth.id],
       name: 'balance_adjustment_user_id_fkey',
     }).onDelete('cascade'),
-    check(
-      'balance_adjustment_payment_method_check',
-      sql`payment_method = ANY (ARRAY['Checking'::text, 'Cash'::text])`,
-    ),
   ],
 );
 
