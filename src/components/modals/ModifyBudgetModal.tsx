@@ -52,15 +52,19 @@ const manualFieldStyle: React.CSSProperties = {
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const { d, t, locale } = useTranslation();
 
-  // Income-estimate mode and the manual entry itself are DEVICE preferences,
+  // Income-estimate mode and the paycheck frequency are DEVICE preferences,
   // not financial data - see the comments in usePebbleStore.ts. Read directly
   // from the store with no restore-effect/mount-gate dance: this modal is
   // only ever mounted client-side, after a button click in AppShell, so
   // there is no server render of it to disagree with.
   const incomeEstimateMode = usePebbleStore((s) => s.incomeEstimateMode);
   const setIncomeEstimateMode = usePebbleStore((s) => s.setIncomeEstimateMode);
-  const manualIncomePrefs = usePebbleStore((s) => s.manualIncomePrefs);
-  const setManualIncomePrefs = usePebbleStore((s) => s.setManualIncomePrefs);
+  const manualFrequency = usePebbleStore((s) => s.manualIncomeFrequency);
+  const setManualFrequency = usePebbleStore((s) => s.setManualIncomeFrequency);
+  // The typed AMOUNT is modal state only, never persisted: it is a personal
+  // figure, and the store is per device, shared by everyone who signs in on
+  // it. Import latest refills it from data this modal already fetched.
+  const [manualAmount, setManualAmount] = useState('');
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
@@ -143,8 +147,9 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const categoryNames = Object.keys(categoryMeta);
   const totalBudgeted = categoryNames.reduce((s, name) => s + (Number(values[name]) || 0), 0);
 
-  const manualAmountNum = Number(manualIncomePrefs.amount) || 0;
-  const manualAnnual = manualAmountNum * MANUAL_FREQUENCY_MULTIPLIER[manualIncomePrefs.frequency];
+  const manualAmountNum = Number(manualAmount) || 0;
+  // ?? 12: a frequency from another build that this one does not know.
+  const manualAnnual = manualAmountNum * (MANUAL_FREQUENCY_MULTIPLIER[manualFrequency] ?? 12);
 
   // Whichever figure is actually in effect. Used both for the over-budget
   // colour check and for the new Estimated Savings figure below, so both
@@ -158,7 +163,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     // Rounded to cents: the stored value is a Postgres numeric and can carry
     // more precision than a dollar amount ever needs here.
     const rounded = Math.round(latestStandardIncomeNet * 100) / 100;
-    setManualIncomePrefs({ amount: String(rounded) });
+    setManualAmount(String(rounded));
   };
 
   // A write in flight must not be cancellable - see AddTransactionModal.
@@ -283,8 +288,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                   <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.76rem' }}>$</span>
                   <input
                     type="number" min="0" step="0.01" placeholder="0.00"
-                    value={manualIncomePrefs.amount}
-                    onChange={(e) => setManualIncomePrefs({ amount: e.target.value })}
+                    value={manualAmount}
+                    onChange={(e) => setManualAmount(e.target.value)}
                     className="font-mono-tab"
                     style={{ ...manualFieldStyle, paddingLeft: '1.2rem' }}
                   />
@@ -293,8 +298,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
               <label style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.65rem', color: 'var(--ink-soft)', flex: '1 1 110px', minWidth: 0 }}>
                 {d.budgetModal.manualFrequencyLabel}
                 <select
-                  value={manualIncomePrefs.frequency}
-                  onChange={(e) => setManualIncomePrefs({ frequency: e.target.value as ManualIncomeFrequency })}
+                  value={manualFrequency}
+                  onChange={(e) => setManualFrequency(e.target.value as ManualIncomeFrequency)}
                   style={manualFieldStyle}
                 >
                   {MANUAL_FREQUENCIES.map((f) => <option key={f} value={f}>{d.budgetModal.frequencies[f]}</option>)}

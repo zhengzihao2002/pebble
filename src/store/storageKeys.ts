@@ -39,3 +39,9 @@ export const FONT_FIELD = 'fontChoice';
 
 /** Field the pre-paint script reads for the Chinese face. Must stay in partialize(). */
 export const CJK_FONT_FIELD = 'cjkFontChoice';
+
+/**
+ * Pre-migration store key. Held transactions and balances before the database
+ * existed; never read. AppShell deletes it on load.
+ */
+export const LEGACY_STORAGE_KEY = 'pebble-storage';

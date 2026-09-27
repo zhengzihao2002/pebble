@@ -64,6 +64,10 @@ export const zh: typeof en = {
   },
 
   auth: {
+    signOutFailed: '无法退出登录',
+    signOutFailedHint: '你仍处于登录状态。请检查网络连接后重试。',
+    tryAgain: '重试',
+    cancel: '取消',
     signOut: '退出登录',
     signingOut: '正在退出…',
   },

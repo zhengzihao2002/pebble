@@ -91,6 +91,11 @@ export const en = {
   },
 
   auth: {
+    // Full-screen sign-out overlay (SignOutButton).
+    signOutFailed: "Couldn't sign out",
+    signOutFailedHint: 'You are still signed in. Check your connection and try again.',
+    tryAgain: 'Try again',
+    cancel: 'Cancel',
     signOut: 'Sign Out',
     signingOut: 'Signing out…',
   },

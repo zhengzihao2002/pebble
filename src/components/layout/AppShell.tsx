@@ -6,6 +6,7 @@ import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
+import { LEGACY_STORAGE_KEY } from '@/store/storageKeys';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -65,6 +66,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (isCjkFontChoice(cjkFontChoice) && cjkFontChoice !== 'sans') root.setAttribute(CJK_FONT_ATTRIBUTE, cjkFontChoice);
     else root.removeAttribute(CJK_FONT_ATTRIBUTE);
   }, [cjkFontChoice]);
+
+  // Removes the pre-migration store (transactions and balances from before
+  // the database existed). Nothing reads it; it only sat on disk. A no-op
+  // once gone, so running on every load costs nothing.
+  useEffect(() => {
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch { /* storage unavailable */ }
+  }, []);
 
   // Tells the server what timezone the user is actually in.
   //

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { NeonAuthUIProvider } from '@neondatabase/auth-ui';
 import { authClient } from '@/lib/auth/client';
@@ -21,9 +22,32 @@ import { authClient } from '@/lib/auth/client';
  * click sound mid-playback. Only surfaced once the account views moved
  * inside AppShell and there was finally a shell worth preserving.
  */
+// Sign-up asks for the invite code alongside name, email and password. The
+// /api/auth gate checks it against PEBBLE_INVITE_CODE and strips it before
+// forwarding. emailOTP stays ON only because password reset uses email codes;
+// email-code SIGN-IN is refused by that same gate.
+const ADDITIONAL_FIELDS = {
+  inviteCode: { label: 'Invite code', placeholder: 'Enter your invite code', required: true, type: 'string' as const },
+};
+const SIGN_UP = { fields: ['name', 'inviteCode'] };
+
+// Pages where email codes are switched OFF. The library ties the "Sign in
+// with Email Code" button to the same emailOTP switch that password reset
+// needs, and draws it as a plain button nothing else can target - so the
+// switch is turned off only where that button appears. The /api/auth gate
+// refuses code sign-in regardless; this only keeps the dead button off screen.
+const EMAIL_OTP_OFF_PATHS = ['/auth/sign-in', '/auth/sign-up'];
+
 export function PebbleAuthUIProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   return (
-    <NeonAuthUIProvider authClient={authClient} emailOTP Link={Link}>
+    <NeonAuthUIProvider
+      authClient={authClient}
+      emailOTP={!EMAIL_OTP_OFF_PATHS.includes(pathname)}
+      Link={Link}
+      additionalFields={ADDITIONAL_FIELDS}
+      signUp={SIGN_UP}
+    >
       {children}
     </NeonAuthUIProvider>
   );

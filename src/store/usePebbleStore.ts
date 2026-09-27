@@ -49,13 +49,6 @@ export type IncomeEstimateMode = 'system' | 'manual';
 // paycheck's worth for anyone paid that way.
 export type ManualIncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'yearly';
 
-export interface ManualIncomePrefs {
-  // Kept as a STRING, matching how the per-category budget inputs in
-  // ModifyBudgetModal already work: the input binds directly to this value,
-  // and Number(...) is applied only where the number is actually needed.
-  amount: string;
-  frequency: ManualIncomeFrequency;
-}
 
 // Which picker Pebble's dropdowns use. 'searchable' is the type-to-filter
 // combobox; 'plain' is the browser's native <select>. A device preference
@@ -92,9 +85,11 @@ interface PebbleUIState {
   // that is stored or sent to Postgres, only what number the modal displays
   // while you are setting budgets.
   incomeEstimateMode: IncomeEstimateMode;
-  // The user's own typed figure, kept even while 'system' mode is selected,
-  // so switching back to 'manual' does not lose what was entered.
-  manualIncomePrefs: ManualIncomePrefs;
+  // How often the manually entered paycheck arrives. The AMOUNT itself is
+  // deliberately NOT stored: it is a personal figure, and this storage is per
+  // device, shared by everyone who signs in on it. The amount lives in
+  // ModifyBudgetModal's own state and is re-imported each time it opens.
+  manualIncomeFrequency: ManualIncomeFrequency;
   // Read through SelectField, never by individual call sites. Any stored
   // value other than 'plain' is treated as 'searchable' there, so a key
   // written by an older or newer build cannot break a form.
@@ -116,11 +111,12 @@ interface PebbleUIState {
   setAnalysisPrefs: (patch: { window?: string }) => void;
   setSoundPref: (event: SoundEvent, soundId: string | null) => void;
   setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
-  setManualIncomePrefs: (patch: Partial<ManualIncomePrefs>) => void;
+  setManualIncomeFrequency: (value: ManualIncomeFrequency) => void;
   setSelectMode: (value: SelectMode) => void;
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
+  resetFilterPrefs: () => void;
 }
 
 const noopStorage = {
@@ -145,7 +141,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       soundPrefs: emptySoundPrefs(),
       // Static, matching every other initial value here.
       incomeEstimateMode: 'system',
-      manualIncomePrefs: { amount: '', frequency: 'monthly' },
+      manualIncomeFrequency: 'monthly',
       // Static, matching every other initial value here. 'searchable' is the
       // behaviour before this preference existed, so an upgrade changes nothing.
       selectMode: 'searchable',
@@ -166,25 +162,44 @@ export const usePebbleStore = create<PebbleUIState>()(
       // object, and a replacing setter would let the last one clear the rest.
       setSoundPref: (event, soundId) => set((state) => ({ soundPrefs: { ...state.soundPrefs, [event]: soundId } })),
       setIncomeEstimateMode: (value) => set({ incomeEstimateMode: value }),
-      // Merges, as setDashboardPrefs does: the amount and frequency fields are
-      // edited independently, and a replacing setter would let editing one
-      // clear the other.
-      setManualIncomePrefs: (patch) => set((state) => ({ manualIncomePrefs: { ...state.manualIncomePrefs, ...patch } })),
+      setManualIncomeFrequency: (value) => set({ manualIncomeFrequency: value }),
       setSelectMode: (value) => set({ selectMode: value }),
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
+      // Called only after a SUCCESSFUL sign-out (src/lib/auth/signOut.ts).
+      // These describe one person's way of looking at their own data; the
+      // next person on this browser should not inherit them. Device
+      // preferences (theme, fonts, text size, language, sounds) stay.
+      resetFilterPrefs: () => set({ reportFilters: null, dashboardPrefs: null, analysisPrefs: null }),
     }),
     {
-      // Deliberately a NEW key. The old 'pebble-storage' entry holds
-      // transactions and balances from before the database migration;
-      // pointing at a fresh key leaves that data untouched on disk rather
-      // than merging stale financial state into the new shape.
+      // Deliberately a NEW key. The old 'pebble-storage' entry held
+      // transactions and balances from before the database migration. It is
+      // never read, and AppShell now deletes it on load (LEGACY_STORAGE_KEY
+      // in storageKeys.ts).
       // Imported, not literal: the pre-paint theme script in layout.tsx reads
       // this exact key, and a rename that missed it would silently restore the
       // dark-mode flash.
       name: PEBBLE_UI_STORAGE_KEY,
       storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : noopStorage)),
+      // v1: the typed income AMOUNT stopped being stored - personal data in
+      // shared per-device storage. Keeps a valid frequency, drops the rest.
+      // persist writes the migrated state straight back, so the old amount
+      // leaves localStorage on the first load of this build.
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = { ...((persisted ?? {}) as Record<string, unknown>) };
+        if (version < 1) {
+          const old = state.manualIncomePrefs as { frequency?: unknown } | undefined;
+          const freq = old?.frequency;
+          if (freq === 'weekly' || freq === 'biweekly' || freq === 'semimonthly' || freq === 'monthly' || freq === 'yearly') {
+            state.manualIncomeFrequency = freq;
+          }
+          delete state.manualIncomePrefs;
+        }
+        return state as unknown as PebbleUIState;
+      },
       // darkMode MUST stay here - the pre-paint script reads it from the
       // persisted envelope (see DARK_MODE_FIELD in storageKeys.ts).
       partialize: (state) => ({
@@ -198,7 +213,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         analysisPrefs: state.analysisPrefs,
         soundPrefs: state.soundPrefs,
         incomeEstimateMode: state.incomeEstimateMode,
-        manualIncomePrefs: state.manualIncomePrefs,
+        manualIncomeFrequency: state.manualIncomeFrequency,
         // Omitting this persists nothing and reports no error - the picker
         // choice would simply reset on every reload.
         selectMode: state.selectMode,
