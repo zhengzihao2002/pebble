@@ -10,6 +10,7 @@ import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, 
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
 import { composeDescription } from '@/lib/transactionDescription';
 import { playEventSound } from '@/lib/sound/useSound';
@@ -55,6 +56,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  // Distinguishes 'none yet loaded' from 'the user has no accounts'.
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
   // so a layout fetch would run on every page navigation.
@@ -87,6 +90,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
       setAccounts(result.accounts);
       setAccountError(null);
+      setAccountsLoaded(true);
       // Preferred account first, else whatever sorts first - the behaviour
       // before preferences existed.
       const preferred = result.accounts.find((a) => a.isPreferred);
@@ -192,7 +196,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date || saving) return;
+    if (!title.trim() || !date || !accountId || saving) return;
 
     if (type === 'expense') {
       if (!amount || Number(amount) <= 0) return;
@@ -427,6 +431,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               ariaLabel={d.addTxn.paymentMethod}
             />
             {accountError && <ActionError message={accountError} />}
+            {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
           </label>
 
           <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
-import { db } from '@/db';
+import { db, neonSql } from '@/db';
 import {
   account,
   balanceAdjustment,
@@ -21,6 +21,7 @@ import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib
 import { isYmd } from '@/lib/recurring/occurrences';
 import { generateId, generateTransId } from '@/lib/ids';
 import { addToGoalGuarded } from '@/lib/data/goalAllocation';
+import { userWriteLockStatement } from '@/lib/data/userWriteLock';
 import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
 import type {
   PaymentMethod,
@@ -1379,16 +1380,23 @@ async function deleteBalanceAdjustment(
 ): Promise<ActionResult> {
   try {
     const rows = await db
-      .select({ id: balanceAdjustment.id, date: balanceAdjustment.transactionDate })
+      .select({ id: balanceAdjustment.id, group: balanceAdjustment.transferGroupId })
       .from(balanceAdjustment)
       .where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.id, input.id)))
       .limit(1);
 
-    if (!rows[0]) return fail('That adjustment no longer exists.', 'validation', 'notFound.adjustment');
+    const row = rows[0];
+    if (!row) return fail('That adjustment no longer exists.', 'validation', 'notFound.adjustment');
 
+    // A transfer is TWO rows sharing transfer_group_id. Deleting only the one
+    // clicked used to leave the other half behind, creating or destroying
+    // money (see the column's comment in schema.ts). Both halves now go, in
+    // one statement. Standalone adjustments (no group) are unchanged.
     await db
       .delete(balanceAdjustment)
-      .where(and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.id, input.id)));
+      .where(row.group
+        ? and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.transferGroupId, row.group))
+        : and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.id, input.id)));
 
     revalidateAll();
     return { ok: true };
@@ -2296,6 +2304,272 @@ async function loadAccountUsage(userId: string, accountId: string): Promise<Acco
 
 export const moveAccountRecordsAction = withSessionUser(moveAccountRecords);
 export const getAccountUsageAction = withSessionUser(loadAccountUsage);
+
+export interface AccountDeletionBalanceRow {
+  accountId: string;
+  name: string;
+  before: number;
+  /** null = this account is the one being deleted. */
+  after: number | null;
+}
+
+export interface AccountDeletionPreview {
+  accountName: string;
+  counts: { expenses: number; income: number; adjustments: number; transfers: number; rules: number };
+  /** Every row pointing at the account - the tripwire the delete re-checks. */
+  recordTotal: number;
+  /** The account itself first, then every OTHER account whose balance changes. */
+  balances: AccountDeletionBalanceRow[];
+  /** Names of accounts on the far side of transfers that will be removed. */
+  transferAccounts: string[];
+  totalBefore: number;
+  totalAfter: number;
+  allocated: number;
+}
+
+export type AccountDeletionPreviewResult =
+  | { ok: true; preview: AccountDeletionPreview }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+/**
+ * Fresh figures for the delete dialog. Balances use the same rule as
+ * computeCurrentBalances (signed amounts on this user's accounts), in cents.
+ * "After" removes the account's own rows AND both halves of every transfer
+ * touching it - exactly what deleteAccountWithRecords deletes.
+ */
+async function loadAccountDeletionPreview(userId: string, accountId: string): Promise<AccountDeletionPreviewResult> {
+  try {
+    const [accts, exp, inc, adj, rules, goals] = await Promise.all([
+      db.select({ id: account.id, name: account.name }).from(account).where(eq(account.userId, userId)),
+      db.select({ accountId: expense.accountId, amount: expense.amount }).from(expense).where(eq(expense.userId, userId)),
+      db.select({ accountId: income.accountId, amount: income.netAmount }).from(income).where(eq(income.userId, userId)),
+      db.select({ accountId: balanceAdjustment.accountId, amount: balanceAdjustment.amount, group: balanceAdjustment.transferGroupId })
+        .from(balanceAdjustment).where(eq(balanceAdjustment.userId, userId)),
+      db.select({ id: recurringRule.id }).from(recurringRule)
+        .where(and(eq(recurringRule.userId, userId), eq(recurringRule.accountId, accountId))),
+      db.select({ current: goal.currentAmount }).from(goal).where(eq(goal.userId, userId)),
+    ]);
+
+    const target = accts.find((a) => a.id === accountId);
+    if (!target) return { ok: false, error: 'That account no longer exists.', kind: 'validation', code: 'notFound.account' };
+
+    const cents = (n: number) => Math.round(n * 100);
+    const groups = new Set(adj.filter((r) => r.accountId === accountId && r.group).map((r) => r.group as string));
+    const before = new Map<string, number>();
+    const after = new Map<string, number>();
+    accts.forEach((a) => {
+      before.set(a.id, 0);
+      if (a.id !== accountId) after.set(a.id, 0);
+    });
+    const add = (m: Map<string, number>, id: string, amount: number) => {
+      const current = m.get(id);
+      if (current !== undefined) m.set(id, current + cents(amount));
+    };
+    exp.forEach((r) => { add(before, r.accountId, r.amount); if (r.accountId !== accountId) add(after, r.accountId, r.amount); });
+    inc.forEach((r) => { add(before, r.accountId, r.amount); if (r.accountId !== accountId) add(after, r.accountId, r.amount); });
+    adj.forEach((r) => {
+      add(before, r.accountId, r.amount);
+      const removed = r.accountId === accountId || (r.group !== null && groups.has(r.group));
+      if (!removed) add(after, r.accountId, r.amount);
+    });
+
+    const onAccount = <T extends { accountId: string }>(list: T[]) => list.filter((r) => r.accountId === accountId);
+    const counts = {
+      expenses: onAccount(exp).length,
+      income: onAccount(inc).length,
+      adjustments: onAccount(adj).filter((r) => !r.group).length,
+      transfers: groups.size,
+      rules: rules.length,
+    };
+    const recordTotal = counts.expenses + counts.income + onAccount(adj).length + counts.rules;
+    const nameOf = (id: string) => accts.find((a) => a.id === id)?.name ?? '';
+    const total = (m: Map<string, number>) => [...m.values()].reduce((s, v) => s + v, 0) / 100;
+
+    const balances: AccountDeletionBalanceRow[] = [
+      { accountId, name: target.name, before: (before.get(accountId) ?? 0) / 100, after: null },
+      ...accts
+        .filter((a) => a.id !== accountId && before.get(a.id) !== after.get(a.id))
+        .map((a) => ({ accountId: a.id, name: a.name, before: (before.get(a.id) ?? 0) / 100, after: (after.get(a.id) ?? 0) / 100 })),
+    ];
+    const transferAccounts = [...new Set(
+      adj.filter((r) => r.group !== null && groups.has(r.group) && r.accountId !== accountId).map((r) => nameOf(r.accountId)),
+    )];
+
+    return {
+      ok: true,
+      preview: {
+        accountName: target.name,
+        counts,
+        recordTotal,
+        balances,
+        transferAccounts,
+        totalBefore: total(before),
+        totalAfter: total(after),
+        allocated: goals.reduce((s, g) => s + cents(g.current), 0) / 100,
+      },
+    };
+  } catch (error) {
+    console.error('[pebble action] getAccountDeletionPreviewAction', error);
+    return { ok: false, error: "Couldn't check this account.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.accountDeletionPreviewFailed' };
+  }
+}
+
+/**
+ * TRIPWIRE for the account deletes below. Counts every row pointing at the
+ * account and, if it differs from what the user reviewed, divides by zero -
+ * SQLSTATE 22012 - which aborts the WHOLE transaction: nothing moves, nothing
+ * is deleted. Plain SQL has no RAISE, and this keeps the check inside the
+ * same locked transaction as the writes, where it cannot go stale.
+ * isTripwire() recognises that exact failure.
+ */
+function recordCountTripwire(userId: string, accountId: string, expected: number) {
+  return neonSql`
+    SELECT 1 / (CASE WHEN
+        (SELECT count(*) FROM expense WHERE user_id = ${userId}::uuid AND account_id = ${accountId})
+      + (SELECT count(*) FROM income WHERE user_id = ${userId}::uuid AND account_id = ${accountId})
+      + (SELECT count(*) FROM balance_adjustment WHERE user_id = ${userId}::uuid AND account_id = ${accountId})
+      + (SELECT count(*) FROM recurring_rule WHERE user_id = ${userId}::uuid AND account_id = ${accountId})
+      = ${expected} THEN 1 ELSE 0 END) AS unchanged
+  `;
+}
+
+function isTripwire(error: unknown): boolean {
+  let e: unknown = error;
+  for (let i = 0; i < 3 && e; i++) {
+    const code = (e as { code?: unknown }).code;
+    const message = String((e as { message?: unknown }).message ?? '');
+    if (code === '22012' || message.includes('division by zero')) return true;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+const ACCOUNT_CHANGED = 'This account changed while you were reviewing it. Check the updated details and try again.';
+
+/**
+ * Deletes an account AND every record in it, as if none had ever existed.
+ *
+ * This DELIBERATELY relaxes deleteAccount's "must be empty" rule, and only
+ * behind the dialog's preview, typed name and countdown. Everything happens
+ * in ONE transaction behind the per-user lock: the tripwire, both halves of
+ * every transfer touching the account (the far side's balance changes, and
+ * the preview says so), its other adjustments, expenses, income, recurring
+ * rules, and finally the account. ON DELETE RESTRICT still guards the last
+ * statement: if anything were missed, the database refuses and it all rolls
+ * back. The typed name is re-checked here so a stray retry cannot fire it.
+ */
+async function deleteAccountWithRecords(
+  userId: string,
+  input: { accountId: string; confirmName: string; expectedRecordCount: number },
+): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ id: account.id, name: account.name, isDefault: account.isDefault })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, input.accountId)))
+      .limit(1);
+    const target = rows[0];
+    if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.isDefault) {
+      return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
+    }
+    if (typeof input.confirmName !== 'string' || input.confirmName.trim() !== target.name.trim()) {
+      return fail('The name you typed does not match this account.', 'validation', 'validation.accountDeleteNameMismatch');
+    }
+    if (!Number.isInteger(input.expectedRecordCount) || input.expectedRecordCount < 0) {
+      return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+
+    const a = target.id;
+    const results = await neonSql.transaction(
+      [
+        userWriteLockStatement(userId),
+        recordCountTripwire(userId, a, input.expectedRecordCount),
+        neonSql`DELETE FROM balance_adjustment WHERE user_id = ${userId}::uuid AND transfer_group_id IN (
+          SELECT transfer_group_id FROM balance_adjustment
+          WHERE user_id = ${userId}::uuid AND account_id = ${a} AND transfer_group_id IS NOT NULL)`,
+        neonSql`DELETE FROM balance_adjustment WHERE user_id = ${userId}::uuid AND account_id = ${a}`,
+        neonSql`DELETE FROM expense WHERE user_id = ${userId}::uuid AND account_id = ${a}`,
+        neonSql`DELETE FROM income WHERE user_id = ${userId}::uuid AND account_id = ${a}`,
+        neonSql`DELETE FROM recurring_rule WHERE user_id = ${userId}::uuid AND account_id = ${a}`,
+        neonSql`DELETE FROM account WHERE user_id = ${userId}::uuid AND id = ${a} AND is_default = false RETURNING id`,
+      ],
+      { isolationLevel: 'ReadCommitted' },
+    );
+    const deleted = results[results.length - 1] as unknown;
+    if (!Array.isArray(deleted) || deleted.length !== 1) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    if (isTripwire(error)) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    return handleUnexpected('deleteAccountWithRecordsAction', error);
+  }
+}
+
+/**
+ * Moves every record and scheduled payment to another ACTIVE account, then
+ * deletes the now-empty account - one transaction behind the per-user lock,
+ * with the same tripwire. Nothing is lost and the total balance is unchanged.
+ */
+async function moveAndDeleteAccount(
+  userId: string,
+  input: { accountId: string; toAccountId: string; expectedRecordCount: number },
+): Promise<ActionResult> {
+  try {
+    if (input.accountId === input.toAccountId) {
+      return fail('Choose a different destination account.', 'validation', 'validation.moveSameAccount');
+    }
+    const rows = await db
+      .select({ id: account.id, status: account.status, name: account.name, isDefault: account.isDefault })
+      .from(account)
+      .where(and(eq(account.userId, userId), inArray(account.id, [input.accountId, input.toAccountId])));
+    const source = rows.find((r) => r.id === input.accountId);
+    const destination = rows.find((r) => r.id === input.toAccountId);
+    if (!source || !destination) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (source.isDefault) {
+      return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
+    }
+    if (destination.status !== 'active') {
+      return fail('Records can only be moved into an active account.', 'validation', 'validation.moveDestinationInactive');
+    }
+    if (!Number.isInteger(input.expectedRecordCount) || input.expectedRecordCount < 0) {
+      return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+
+    const from = source.id;
+    const to = destination.id;
+    const toName = destination.name;
+    const results = await neonSql.transaction(
+      [
+        userWriteLockStatement(userId),
+        recordCountTripwire(userId, from, input.expectedRecordCount),
+        neonSql`UPDATE expense SET account_id = ${to}, payment_method = ${toName} WHERE user_id = ${userId}::uuid AND account_id = ${from}`,
+        neonSql`UPDATE income SET account_id = ${to}, payment_method = ${toName} WHERE user_id = ${userId}::uuid AND account_id = ${from}`,
+        neonSql`UPDATE balance_adjustment SET account_id = ${to}, payment_method = ${toName} WHERE user_id = ${userId}::uuid AND account_id = ${from}`,
+        neonSql`UPDATE recurring_rule SET account_id = ${to}, payment_method = ${toName}, updated_at = now() WHERE user_id = ${userId}::uuid AND account_id = ${from}`,
+        neonSql`DELETE FROM account WHERE user_id = ${userId}::uuid AND id = ${from} AND is_default = false RETURNING id`,
+      ],
+      { isolationLevel: 'ReadCommitted' },
+    );
+    const deleted = results[results.length - 1] as unknown;
+    if (!Array.isArray(deleted) || deleted.length !== 1) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    if (isTripwire(error)) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    return handleUnexpected('moveAndDeleteAccountAction', error);
+  }
+}
+
+export const getAccountDeletionPreviewAction = withSessionUser(loadAccountDeletionPreview);
+export const deleteAccountWithRecordsAction = withSessionUser(deleteAccountWithRecords);
+export const moveAndDeleteAccountAction = withSessionUser(moveAndDeleteAccount);
 /**
  * Sets the account that transaction forms preselect.
  *

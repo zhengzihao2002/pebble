@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { AuthView } from '@neondatabase/auth-ui';
+import { AuthViewClient } from './AuthViewClient';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 
@@ -40,7 +40,7 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
           </div>
         </section>
         <section className="pebble-auth-form">
-          <AuthView path={path} />
+          <AuthViewClient path={path} />
         </section>
       </div>
     </main>

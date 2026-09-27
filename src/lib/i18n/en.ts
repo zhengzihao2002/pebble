@@ -101,6 +101,36 @@ export const en = {
   },
 
   accounts: {
+    // Delete dialog (AccountDeleteDialog). {name} and {accounts} are USER DATA.
+    deleteLoading: 'Checking what is in this account…',
+    deleteLoadFailed: "Couldn't check this account.",
+    deleteEmptyBody: 'This account has no records. Deleting it is permanent.',
+    deleteHasRecords: 'This account still has records:',
+    countExpenses: '{count} expenses',
+    countIncome: '{count} income',
+    countAdjustments: '{count} adjustments',
+    countTransfers: '{count} transfers',
+    countRules: '{count} scheduled payments',
+    optionMove: 'Move everything, then delete',
+    optionMoveHint: 'Every record and scheduled payment moves to another account, then this one is deleted. Nothing is lost.',
+    optionDestroy: 'Delete everything',
+    optionDestroyHint: 'Every record in this account is erased, as if it never existed.',
+    moveAndDelete: 'Move and delete',
+    destroyTitle: 'Delete {name} and everything in it',
+    destroyWarning: 'This cannot be undone. These records will be gone as if they never existed.',
+    balancesTitle: 'Balances, before → after',
+    deletedLabel: 'deleted',
+    totalLabel: 'Total balance',
+    unallocatedLabel: 'Unallocated',
+    transferWarning: 'Transfers with {accounts} will also be removed, which changes their balance.',
+    goalsWarning: 'Your goals will claim {amount} more than you have.',
+    typeName: 'Type {name} to confirm',
+    countdown: 'Delete forever ({seconds})',
+    destroyConfirm: 'Delete forever',
+    deleting: 'Deleting…',
+    deletedTitle: 'Deleted',
+    deletedBody: '{name} is gone.',
+    back: 'Back',
     title: 'Accounts',
     blurb: 'Each account keeps its own balance. Closing one is permanent and requires a zero balance first.',
     addAccount: 'Add account',
@@ -468,6 +498,12 @@ export const en = {
     unknownBrowser: 'Browser',
   },
 
+  noAccounts: {
+    // Transaction / transfer / schedule forms, when the user has no accounts.
+    body: 'You have no accounts yet. Create one to start recording.',
+    action: 'Create an account',
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -630,7 +666,7 @@ export const en = {
   dashboard: {
     balanceTitle: 'Your balance, today',
     balanceTooltipLabel: 'How your balance is calculated',
-    balanceTooltip: 'Your opening balances plus every transaction since — expenses, income and any manual balance corrections, across both {checking} and {cash}. {emphasis}: it is left out of income figures, but it is still money you have. This is a live figure, not tied to the period selected below.',
+    balanceTooltip: 'Every transaction you have recorded — expenses, income and any manual balance corrections — across all your accounts. {emphasis}: it is left out of income figures, but it is still money you have. This is a live figure, not tied to the period selected below.',
     balanceEmphasis: 'Side Cash is included here',
     inProgressNote: '· includes this month so far',
     periodTooltipLabel: 'What this period covers',
@@ -967,6 +1003,9 @@ export const en = {
   // ERROR, not a silent English fallback found later - the same guard
   // `zh: typeof en` gives every other key in this file.
   serverErrors: {
+    'validation.accountDeleteNameMismatch': 'The name you typed does not match this account.',
+    'validation.accountChangedSinceReview': 'This account changed while you were reviewing it. Check the updated details and try again.',
+    'loader.accountDeletionPreviewFailed': "Couldn't check this account.",
     'loader.sessionLocationsFailed': "Couldn't load session locations.",
     'session.expired': 'Your session has expired. Please sign in again.',
     'session.authUnavailable': "We couldn't verify your session right now. Please try again in a moment.",

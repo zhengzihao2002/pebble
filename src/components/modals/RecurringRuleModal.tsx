@@ -12,6 +12,7 @@ import {
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
 import { composeDescription, descriptionTitle, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { LoadingOverlay } from '@/components/shared/Spinner';
@@ -77,6 +78,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const [accountId, setAccountId] = useState(rule?.accountId ?? '');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  // Distinguishes 'none yet loaded' from 'the user has no accounts'.
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   // Stored negative for expenses; the form always works in positive magnitude
   // and the action re-applies the sign.
   const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : '');
@@ -119,6 +122,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
       setAccounts(result.accounts);
       setAccountError(null);
+      setAccountsLoaded(true);
       // ⚠️ CREATE ONLY. An existing rule keeps the account it was saved with,
       // always. Applying the preferred-account fallback here as well silently
       // MOVED rules to a newly-starred account when they were opened and
@@ -193,7 +197,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     // Also reached from Try again, past the native required check.
-    if (saving || !title.trim()) return;
+    if (saving || !title.trim() || !accountId) return;
     setSaving(true);
     setSaveError(null);
 
@@ -367,6 +371,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                     </option>
                   ))}
                 </select>
+                {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
               </label>
 
               {kind === 'income' && (

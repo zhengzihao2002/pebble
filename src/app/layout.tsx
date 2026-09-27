@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Work_Sans, IBM_Plex_Mono, Nunito, Source_Serif_4, Atkinson_Hyperlegible, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
+import { HtmlPreferenceSync } from "@/components/providers/HtmlPreferenceSync";
 import { CJK_FONT_FIELD, DARK_MODE_FIELD, FONT_FIELD, LOCALE_FIELD, PEBBLE_UI_STORAGE_KEY, THEME_FIELD } from "@/store/storageKeys";
 import { THEME_ATTRIBUTE, THEME_CHOICES } from "@/lib/themeChoice";
 import { CJK_FONT_ATTRIBUTE, CJK_FONT_CHOICES, FONT_ATTRIBUTE, FONT_CHOICES } from "@/lib/fontChoice";
@@ -108,7 +109,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <PebbleAuthUIProvider>{children}</PebbleAuthUIProvider>
+        <PebbleAuthUIProvider>
+          <HtmlPreferenceSync />
+          {children}
+        </PebbleAuthUIProvider>
       </body>
     </html>
   );

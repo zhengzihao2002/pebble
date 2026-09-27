@@ -73,6 +73,35 @@ export const zh: typeof en = {
   },
 
   accounts: {
+    deleteLoading: '正在检查这个账户中的内容…',
+    deleteLoadFailed: '无法检查这个账户。',
+    deleteEmptyBody: '这个账户没有任何记录。删除后无法恢复。',
+    deleteHasRecords: '这个账户中仍有记录：',
+    countExpenses: '{count} 笔支出',
+    countIncome: '{count} 笔收入',
+    countAdjustments: '{count} 笔调整',
+    countTransfers: '{count} 笔转账',
+    countRules: '{count} 个定期付款',
+    optionMove: '全部转移后删除',
+    optionMoveHint: '所有记录和定期付款会转移到另一个账户，然后删除这个账户。不会丢失任何内容。',
+    optionDestroy: '全部删除',
+    optionDestroyHint: '这个账户中的所有记录都会被清除，如同从未存在。',
+    moveAndDelete: '转移并删除',
+    destroyTitle: '删除「{name}」及其中的一切',
+    destroyWarning: '此操作无法撤销。这些记录会被彻底清除，如同从未存在。',
+    balancesTitle: '余额：删除前 → 删除后',
+    deletedLabel: '已删除',
+    totalLabel: '总余额',
+    unallocatedLabel: '未分配',
+    transferWarning: '与 {accounts} 之间的转账也会被删除，它们的余额会随之改变。',
+    goalsWarning: '你的目标将比你拥有的钱多占用 {amount}。',
+    typeName: '输入「{name}」以确认',
+    countdown: '永久删除（{seconds}）',
+    destroyConfirm: '永久删除',
+    deleting: '正在删除…',
+    deletedTitle: '已删除',
+    deletedBody: '「{name}」已删除。',
+    back: '返回',
     title: '账户',
     blurb: '每个账户都有独立余额。关闭账户是永久操作，且余额必须先归零。',
     addAccount: '添加账户',
@@ -408,6 +437,11 @@ export const zh: typeof en = {
     unknownBrowser: '浏览器',
   },
 
+  noAccounts: {
+    body: '你还没有任何账户。先创建一个账户，再开始记录。',
+    action: '创建账户',
+  },
+
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
@@ -552,7 +586,7 @@ export const zh: typeof en = {
   dashboard: {
     balanceTitle: '今日余额',
     balanceTooltipLabel: '余额的计算方式',
-    balanceTooltip: '你的初始余额，加上此后的每一笔交易——包括支出、收入以及所有手动余额修正，涵盖{checking}和{cash}。{emphasis}：它不计入收入数据，但仍然是你拥有的钱。这是实时数字，与下方选择的时间段无关。',
+    balanceTooltip: '你记录过的每一笔交易——支出、收入以及手动余额修正——涵盖你的所有账户。{emphasis}：它不计入收入数据，但仍是你拥有的钱。这是实时数字，不受下方所选时段影响。',
     balanceEmphasis: '外快也计入此处',
     inProgressNote: '· 含本月至今',
     periodTooltipLabel: '此时间段的范围',
@@ -870,6 +904,9 @@ export const zh: typeof en = {
   // ActionResult.code is undefined, so translateActionError() always falls
   // through to the server's English message until this fills in.
   serverErrors: {
+    'validation.accountDeleteNameMismatch': '输入的名称与账户名称不一致。',
+    'validation.accountChangedSinceReview': '在你查看期间这个账户发生了变化。请查看最新内容后再试。',
+    'loader.accountDeletionPreviewFailed': '无法检查这个账户。',
     'loader.sessionLocationsFailed': '无法加载会话位置。',
     'session.expired': '你的登录已过期，请重新登录。',
     'session.authUnavailable': '暂时无法验证你的登录状态，请稍后再试。',

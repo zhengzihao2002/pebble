@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Landmark, Coins, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
-import { createAccountAction, hibernateAccountAction, wakeAccountAction, deleteAccountAction, setPreferredAccountAction } from '@/lib/actions/pebble';
+import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -10,6 +10,7 @@ import { LoadingOverlay } from '@/components/shared/Spinner';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency } from '@/lib/format';
 import { AccountMoveDialog } from '@/components/settings/AccountMoveDialog';
+import { AccountDeleteDialog } from '@/components/settings/AccountDeleteDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -261,31 +262,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
       )}
 
       {confirmDelete && (
-        <div
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 60 }}
-          onClick={() => { if (!saving) setConfirmDelete(null); }}
-        >
-          <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            {saving && <LoadingOverlay label={d.common.saving} />}
-            <h2 className="font-display" style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.6rem' }}>
-              {t(d.accounts.confirmTitle, { name: confirmDelete.name })}
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-              {d.accounts.confirmBody}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => setConfirmDelete(null)} disabled={saving} className="pill" style={{ flex: 1, padding: '0.65rem' }}>
-                {d.accounts.cancel}
-              </button>
-              <button
-                type="button" onClick={() => runAccountAction(() => deleteAccountAction(confirmDelete.id))} disabled={saving}
-                className="btn-primary" style={{ flex: 1, padding: '0.65rem', backgroundColor: 'var(--wine)' }}
-              >
-                {d.accounts.confirmDelete}
-              </button>
-            </div>
-          </div>
-        </div>
+        <AccountDeleteDialog account={confirmDelete} allAccounts={accounts} onClose={() => setConfirmDelete(null)} />
       )}
     </div>
   );

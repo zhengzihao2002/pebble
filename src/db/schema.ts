@@ -145,7 +145,7 @@ export const account = pgTable(
     check('account_status_check', sql`status = ANY (ARRAY['active'::text, 'hibernated'::text])`),
     check(
       'account_last4_check',
-      sql`kind = 'bank'::text AND (is_default OR last4 IS NOT NULL AND last4 ~ '^[0-9]{4}$'::text) OR kind = 'cash'::text AND last4 IS NULL`,
+      sql`kind = 'bank'::text AND (last4 IS NULL OR last4 ~ '^[0-9]{4}$'::text) OR kind = 'cash'::text AND last4 IS NULL`,
     ),
   ],
 );

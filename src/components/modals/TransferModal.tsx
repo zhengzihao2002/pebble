@@ -8,6 +8,7 @@ import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
+import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
 import { composeDescription } from '@/lib/transactionDescription';
 import type { Account } from '@/lib/data/mappers';
@@ -44,6 +45,8 @@ export function TransferModal({ onClose }: TransferModalProps) {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  // Distinguishes 'none yet loaded' from 'the user has no accounts'.
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState('');
@@ -61,6 +64,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
       setAccounts(result.accounts);
       setAccountError(null);
+      setAccountsLoaded(true);
       // Preferred account as the source, since money usually leaves the
       // account the user treats as primary.
       const preferred = result.accounts.find((a) => a.isPreferred);
@@ -141,6 +145,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
             <p style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
           )}
           {accountError && <ActionError message={accountError} />}
+          {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
 
           <label style={labelStyle}>
             {d.transfer.amount}

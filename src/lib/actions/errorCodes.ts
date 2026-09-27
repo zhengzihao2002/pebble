@@ -101,4 +101,7 @@ export type ServerErrorCode =
   | 'validation.preferredMustBeActive'
   | 'validation.transferSameAccount'
   | 'validation.transferAmountPositive'
-  | 'validation.transferInactiveAccount';
+  | 'validation.transferInactiveAccount'
+  | 'validation.accountDeleteNameMismatch'
+  | 'validation.accountChangedSinceReview'
+  | 'loader.accountDeletionPreviewFailed';
