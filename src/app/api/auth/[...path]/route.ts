@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
+import { recordSessionLocation } from '@/lib/data/sessionLocation';
 
 /**
  * Pebble's gate in front of Neon Auth. Every auth request from the app passes
@@ -89,8 +90,32 @@ export async function POST(...args: Parameters<typeof neon.POST>) {
       headers,
       body: JSON.stringify(forwardedBody),
     });
-    return neon.POST(forwarded, ...rest);
+    const response = await neon.POST(forwarded, ...rest);
+    await recordLocationAfterSignIn(response, body.email, request.headers);
+    return response;
+  }
+
+  if (path === '/sign-in/email') {
+    const body = await readJson(request);
+    const response = await neon.POST(request, ...rest);
+    await recordLocationAfterSignIn(response, body?.email, request.headers);
+    return response;
   }
 
   return neon.POST(request, ...rest);
+}
+
+/**
+ * After a SUCCESSFUL sign-in or sign-up, records the approximate city of the
+ * new session from Vercel's geolocation headers (src/lib/data/sessionLocation.ts).
+ * Never allowed to affect the sign-in itself: any failure is logged and the
+ * response goes back unchanged.
+ */
+async function recordLocationAfterSignIn(response: Response, email: unknown, headers: Headers) {
+  if (!response.ok || typeof email !== 'string' || email.trim() === '') return;
+  try {
+    await recordSessionLocation(email, headers);
+  } catch (error) {
+    console.error('[session-location] could not record', error);
+  }
 }

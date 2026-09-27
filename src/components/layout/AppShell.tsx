@@ -7,6 +7,7 @@ import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { LEGACY_STORAGE_KEY } from '@/store/storageKeys';
+import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -24,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const locale = usePebbleStore((s) => s.locale);
   const fontChoice = usePebbleStore((s) => s.fontChoice);
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
+  const themeChoice = usePebbleStore((s) => s.themeChoice);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
@@ -66,6 +68,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (isCjkFontChoice(cjkFontChoice) && cjkFontChoice !== 'sans') root.setAttribute(CJK_FONT_ATTRIBUTE, cjkFontChoice);
     else root.removeAttribute(CJK_FONT_ATTRIBUTE);
   }, [cjkFontChoice]);
+
+  // Same for the colour theme. Unknown stored values fall back to Original.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isThemeChoice(themeChoice) && themeChoice !== 'original') root.setAttribute(THEME_ATTRIBUTE, themeChoice);
+    else root.removeAttribute(THEME_ATTRIBUTE);
+  }, [themeChoice]);
 
   // Removes the pre-migration store (transactions and balances from before
   // the database existed). Nothing reads it; it only sat on disk. A no-op

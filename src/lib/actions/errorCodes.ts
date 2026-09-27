@@ -23,6 +23,7 @@ export type ServerErrorCode =
   | 'loader.categoryUsageFailed'
   | 'loader.accountsFailed'
   | 'loader.accountUsageFailed'
+  | 'loader.sessionLocationsFailed'
   // --- transactions & balance adjustments (sub-step 4a) ---
   | 'validation.dateFormat'
   | 'validation.paymentMethod'
@@ -41,6 +42,10 @@ export type ServerErrorCode =
   | 'validation.goalSavedNonNegative'
   | 'validation.goalDateInvalid'
   | 'notFound.goal'
+  | 'validation.goalAddAmountInvalid'
+  | 'validation.goalAlreadyFull'
+  | 'validation.goalAddExceedsTarget'
+  | 'validation.goalInsufficientFunds'
   | 'validation.budgetCategoryNameRequired'
   | 'validation.budgetAmountNonNegative'
   // --- categories (sub-step 4c) ---

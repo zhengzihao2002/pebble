@@ -40,6 +40,9 @@ export const FONT_FIELD = 'fontChoice';
 /** Field the pre-paint script reads for the Chinese face. Must stay in partialize(). */
 export const CJK_FONT_FIELD = 'cjkFontChoice';
 
+/** Field the pre-paint script reads for the colour theme. Must stay in partialize(). */
+export const THEME_FIELD = 'themeChoice';
+
 /**
  * Pre-migration store key. Held transactions and balances before the database
  * existed; never read. AppShell deletes it on load.

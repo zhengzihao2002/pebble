@@ -5,6 +5,7 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { FontControl } from '@/components/settings/FontControl';
+import { ThemeControl } from '@/components/settings/ThemeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { HealthBarControl } from '@/components/settings/HealthBarControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
@@ -55,6 +56,8 @@ export function SettingsClient({
   const setCjkFontChoice = usePebbleStore((s) => s.setCjkFontChoice);
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
   const setShowHealthBar = usePebbleStore((s) => s.setShowHealthBar);
+  const themeChoice = usePebbleStore((s) => s.themeChoice);
+  const setThemeChoice = usePebbleStore((s) => s.setThemeChoice);
 
   // ONE list, rendered below as the page content and by the section nav, so
   // the two can never disagree about what exists or in what order.
@@ -78,6 +81,7 @@ export function SettingsClient({
       title: d.settingsSections.appearance,
       cards: (
         <>
+          <ThemeControl theme={themeChoice} onChange={setThemeChoice} />
           <TextSizeControl textSize={textSize} onChange={setTextSize} />
           <FontControl
             fontChoice={fontChoice} onChange={setFontChoice}

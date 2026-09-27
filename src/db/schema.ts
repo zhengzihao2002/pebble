@@ -511,6 +511,34 @@ export const balanceAdjustment = pgTable(
   ],
 );
 
+/**
+ * Approximate location of each sign-in, from Vercel's geolocation headers
+ * (src/lib/data/sessionLocation.ts). Keyed by the neon_auth session ID - NOT
+ * its token, which is the secret part. No foreign key into neon_auth.session:
+ * Neon manages that schema, and a reference could block its own updates;
+ * stale rows are removed at the next sign-in instead. Created by hand-run SQL
+ * (Feature 1), like every schema change on this project.
+ */
+export const sessionLocation = pgTable(
+  'session_location',
+  {
+    sessionId: text('session_id').primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    city: text(),
+    region: text(),
+    country: text(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('session_location_user_idx').using('btree', table.userId.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [userInNeonAuth.id],
+      name: 'session_location_user_id_fkey',
+    }).onDelete('cascade'),
+  ],
+);
+
 // Row types for the Phase 2 mapping layer.
 export type ExpenseRow = typeof expense.$inferSelect;
 export type ExpenseInsert = typeof expense.$inferInsert;

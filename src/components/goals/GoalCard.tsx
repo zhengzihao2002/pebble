@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Check, Pencil, Plus } from 'lucide-react';
 import type { Goal } from '@/types';
 import { formatCurrency, formatGoalDate } from '@/lib/format';
 import { resolveGoalIcon } from '@/lib/data/icons';
 import { GoalModal } from '@/components/modals/GoalModal';
+import { AddToGoalModal } from '@/components/goals/AddToGoalModal';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { overUnderLabel } from '@/lib/i18n/phrasing';
 
@@ -20,6 +21,9 @@ interface GoalCardProps {
 export function GoalCard({ goal }: GoalCardProps) {
   const { d, t, locale } = useTranslation();
   const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  // A filled goal takes no more - the server refuses it too.
+  const reached = goal.current >= goal.target;
   const pct = (goal.current / goal.target) * 100;
   const Icon = resolveGoalIcon(goal.iconKey);
 
@@ -52,7 +56,18 @@ export function GoalCard({ goal }: GoalCardProps) {
         {t(d.goalCard.thereSuffix, { pct: Math.round(pct), rest: overUnderLabel(d, 'goal', goal.current, goal.target) })}
       </p>
 
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        disabled={reached}
+        className={reached ? 'pill' : 'btn-primary'}
+        style={{ marginTop: '1rem', width: '100%', padding: '0.6rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: reached ? 0.75 : 1, cursor: reached ? 'default' : 'pointer' }}
+      >
+        {reached ? <><Check size={15} />{d.goalCard.goalReached}</> : <><Plus size={15} />{d.goalCard.addAmount}</>}
+      </button>
+
       {editing && <GoalModal goal={goal} onClose={() => setEditing(false)} />}
+      {adding && <AddToGoalModal goal={goal} onClose={() => setAdding(false)} />}
     </div>
   );
 }

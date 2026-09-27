@@ -20,6 +20,8 @@ import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
 import { isYmd } from '@/lib/recurring/occurrences';
 import { generateId, generateTransId } from '@/lib/ids';
+import { addToGoalGuarded } from '@/lib/data/goalAllocation';
+import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
 import type {
   PaymentMethod,
   RecurringEndMode,
@@ -430,6 +432,87 @@ async function deleteGoal(userId: string, input: { id: string }): Promise<Action
     return { ok: true };
   } catch (error) {
     return handleUnexpected('deleteGoalAction', error);
+  }
+}
+
+export interface AddToGoalActionInput {
+  id: string;
+  /** Dollars, at most two decimal places. */
+  amount: number;
+}
+
+// Matches formatCurrency, which is pinned to en-US: these are real dollars.
+function usd(value: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+}
+
+/**
+ * Adds to how much a goal has set aside, without rewriting its total.
+ *
+ * Unlike updateGoal ("warn, never block"), this REFUSES: the amount must fit
+ * within Unallocated and must not take the goal past its target. Both rules
+ * are enforced inside the database, in one transaction behind a per-user
+ * lock (src/lib/data/goalAllocation.ts), so two saves at the same moment
+ * cannot both spend the same unallocated money. The reads after a refusal
+ * only EXPLAIN it - they never decide it.
+ */
+async function addToGoal(userId: string, input: AddToGoalActionInput): Promise<ActionResult> {
+  try {
+    if (!isFiniteNumber(input.amount) || input.amount <= 0) {
+      return fail('Enter an amount greater than zero, in dollars and cents.', 'validation', 'validation.goalAddAmountInvalid');
+    }
+    const cents = Math.round(input.amount * 100);
+    if (cents <= 0 || Math.abs(input.amount * 100 - cents) > 1e-6) {
+      return fail('Enter an amount greater than zero, in dollars and cents.', 'validation', 'validation.goalAddAmountInvalid');
+    }
+
+    const updated = await addToGoalGuarded(userId, input.id, (cents / 100).toFixed(2));
+    if (updated) {
+      revalidateAll();
+      return { ok: true };
+    }
+
+    // Refused. Work out why from fresh figures - same order as the rules.
+    const rows = await db
+      .select({ current: goal.currentAmount, target: goal.targetAmount })
+      .from(goal)
+      .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return fail('That goal no longer exists.', 'validation', 'notFound.goal');
+
+    const remainingCents = Math.round(row.target * 100) - Math.round(row.current * 100);
+    if (remainingCents <= 0) {
+      return fail('This goal has already reached its target.', 'validation', 'validation.goalAlreadyFull');
+    }
+    if (cents > remainingCents) {
+      const amount = usd(remainingCents / 100);
+      return fail(`That is more than this goal still needs (${amount}).`, 'validation', 'validation.goalAddExceedsTarget', { amount });
+    }
+
+    const summary = await loadAllocationSummary(userId);
+    const availableCents = summary.ok
+      ? Math.max(0, Math.round(summary.totalBalance * 100) - Math.round(summary.allocated * 100))
+      : 0;
+    const amount = usd(availableCents / 100);
+    return fail(`Not enough unallocated money. You have ${amount} available.`, 'validation', 'validation.goalInsufficientFunds', { amount });
+  } catch (error) {
+    return handleUnexpected('addToGoalAction', error);
+  }
+}
+
+export interface SessionLocationsSuccess { ok: true; locations: SessionLocation[] }
+export type SessionLocationsResult =
+  | SessionLocationsSuccess
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+/** The signed-in user's recorded session locations - never anyone else's. */
+async function loadSessionLocations(userId: string): Promise<SessionLocationsResult> {
+  try {
+    return { ok: true, locations: await getSessionLocations(userId) };
+  } catch (error) {
+    console.error('[pebble action] getSessionLocationsAction', error);
+    return { ok: false, error: "Couldn't load session locations.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.sessionLocationsFailed' };
   }
 }
 
@@ -1720,6 +1803,8 @@ export const addTransactionAction = withSessionUser(addTransaction);
 export const addGoalAction = withSessionUser(addGoal);
 export const updateGoalAction = withSessionUser(updateGoal);
 export const deleteGoalAction = withSessionUser(deleteGoal);
+export const addToGoalAction = withSessionUser(addToGoal);
+export const getSessionLocationsAction = withSessionUser(loadSessionLocations);
 export const getAllocationSummaryAction = withSessionUser(loadAllocationSummary);
 export const getCategoriesAction = withSessionUser(loadCategories);
 export const updateTransactionAction = withSessionUser(updateTransaction);

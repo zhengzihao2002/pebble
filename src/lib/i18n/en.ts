@@ -402,6 +402,72 @@ export const en = {
     settingHint: 'A bar under the dashboard figures, coloured from red to green by your savings rate for the selected period.',
   },
 
+  addToGoal: {
+    // {name} is USER DATA - the goal's name, inserted untranslated.
+    title: 'Add to {name}',
+    loading: 'Checking your balance…',
+    loadFailed: "Couldn't check your balance.",
+    needs: 'Still needed',
+    available: 'Unallocated',
+    amountLabel: 'Amount to add',
+    quarter: '25%',
+    half: '50%',
+    fill: 'Fill to target',
+    invalidAmount: 'Enter an amount in dollars and cents, like 200 or 49.99.',
+    exceedsRemaining: 'This goal only needs {amount} more.',
+    exceedsAvailable: 'You only have {amount} unallocated.',
+    nothingAvailable: 'You have no unallocated money to add right now.',
+    review: 'Review',
+    confirmTitle: 'Review this change',
+    rowGoal: 'This goal',
+    rowLeft: 'Left to target',
+    rowUnallocated: 'Unallocated',
+    rowTotal: 'Total balance',
+    unchanged: 'Unchanged — no money moves',
+    was: 'was {pct}%',
+    reachesTarget: 'This fills the goal.',
+    back: 'Back',
+    confirm: 'Add {amount}',
+    saving: 'Adding…',
+    doneTitle: 'Added',
+    doneBody: '{amount} is now set aside for {name}.',
+    doneReached: 'Goal reached!',
+  },
+
+  theme: {
+    title: 'Theme',
+    blurb: 'Choose a colour palette. Every theme has a light and a dark version, and money in and money out stay clearly distinct in all of them.',
+    original: 'Original',
+    ocean: 'Ocean',
+    sakura: 'Sakura',
+    slate: 'Slate',
+    sand: 'Sand',
+  },
+
+  authBrand: {
+    // Sign-in / sign-up brand panel. The forms themselves are the auth
+    // library's and stay English.
+    tagline: 'Personal budgeting, simplified.',
+    body: 'See where your money goes, set it aside for what matters, and keep every account in one calm place.',
+  },
+
+  sessions: {
+    title: 'Sessions',
+    blurb: 'Where your account is signed in. Locations are approximate, recorded at each sign-in from its network address.',
+    loading: 'Loading your sessions…',
+    loadFailed: "Couldn't load your sessions.",
+    thisDevice: 'This device',
+    notRecorded: 'Location not recorded',
+    signedIn: 'Signed in {date}',
+    lastActive: 'Last active {date}',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    revokeFailed: "Couldn't sign that session out. Try again.",
+    browserOn: '{browser} on {os}',
+    unknownDevice: 'Unknown device',
+    unknownBrowser: 'Browser',
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -683,6 +749,8 @@ export const en = {
   },
 
   goalCard: {
+    addAmount: 'Add amount',
+    goalReached: 'Goal reached',
     target: 'Target {date}',
     // {pct} is a plain number with a literal '%', {rest} is overUnderLabel's
     // output - two independent facts, not one sentence to translate whole.
@@ -899,6 +967,7 @@ export const en = {
   // ERROR, not a silent English fallback found later - the same guard
   // `zh: typeof en` gives every other key in this file.
   serverErrors: {
+    'loader.sessionLocationsFailed': "Couldn't load session locations.",
     'session.expired': 'Your session has expired. Please sign in again.',
     'session.authUnavailable': "We couldn't verify your session right now. Please try again in a moment.",
     'session.unknown': 'Something went wrong. Please try again.',
@@ -926,6 +995,11 @@ export const en = {
     'validation.goalSavedNonNegative': 'Saved amount cannot be negative.',
     'validation.goalDateInvalid': 'Target date must be a valid date.',
     'notFound.goal': 'That goal no longer exists.',
+    'validation.goalAddAmountInvalid': 'Enter an amount greater than zero, in dollars and cents.',
+    'validation.goalAlreadyFull': 'This goal has already reached its target.',
+    // {amount} is a formatted dollar figure.
+    'validation.goalAddExceedsTarget': 'That is more than this goal still needs ({amount}).',
+    'validation.goalInsufficientFunds': 'Not enough unallocated money. You have {amount} available.',
     'validation.budgetCategoryNameRequired': 'Budget category names cannot be empty.',
     // {category} is USER DATA - a category name - and is inserted exactly as
     // stored, never translated.

@@ -4,6 +4,7 @@ import type { ReportFilterPrefs } from '@/components/reports/types';
 import type { Locale } from '@/lib/i18n/locale';
 import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
 import type { CjkFontChoice, FontChoice } from '@/lib/fontChoice';
+import type { ThemeChoice } from '@/lib/themeChoice';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 
 /**
@@ -103,6 +104,8 @@ interface PebbleUIState {
   cjkFontChoice: CjkFontChoice;
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
+  // Colour theme, independent of darkMode. Validated where applied.
+  themeChoice: ThemeChoice;
   setDarkMode: (value: boolean) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -117,6 +120,7 @@ interface PebbleUIState {
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
   resetFilterPrefs: () => void;
+  setThemeChoice: (value: ThemeChoice) => void;
 }
 
 const noopStorage = {
@@ -152,6 +156,8 @@ export const usePebbleStore = create<PebbleUIState>()(
       cjkFontChoice: 'sans',
       // Static, and off: an upgrade must not add anything to the dashboard.
       showHealthBar: false,
+      // Static; 'original' is the look from before themes existed.
+      themeChoice: 'original',
       setDarkMode: (value) => set({ darkMode: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
@@ -167,6 +173,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
+      setThemeChoice: (value) => set({ themeChoice: value }),
       // Called only after a SUCCESSFUL sign-out (src/lib/auth/signOut.ts).
       // These describe one person's way of looking at their own data; the
       // next person on this browser should not inherit them. Device
@@ -222,6 +229,8 @@ export const usePebbleStore = create<PebbleUIState>()(
         // Also read by the pre-paint script (CJK_FONT_FIELD in storageKeys.ts).
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
+        // Also read by the pre-paint script (THEME_FIELD in storageKeys.ts).
+        themeChoice: state.themeChoice,
       }),
     }
   )

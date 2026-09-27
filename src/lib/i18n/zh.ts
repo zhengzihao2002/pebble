@@ -345,6 +345,69 @@ export const zh: typeof en = {
     settingHint: '在仪表板数据下方显示一条状态条，颜色按所选时段的储蓄率从红到绿变化。',
   },
 
+  addToGoal: {
+    title: '为「{name}」增加金额',
+    loading: '正在核对你的余额…',
+    loadFailed: '无法核对你的余额。',
+    needs: '尚需',
+    available: '未分配',
+    amountLabel: '增加的金额',
+    quarter: '25%',
+    half: '50%',
+    fill: '补足目标',
+    invalidAmount: '请输入金额，例如 200 或 49.99。',
+    exceedsRemaining: '这个目标只还需要 {amount}。',
+    exceedsAvailable: '你只有 {amount} 未分配。',
+    nothingAvailable: '你目前没有可分配的钱。',
+    review: '查看',
+    confirmTitle: '确认这项更改',
+    rowGoal: '这个目标',
+    rowLeft: '距离目标',
+    rowUnallocated: '未分配',
+    rowTotal: '总余额',
+    unchanged: '不变——没有资金移动',
+    was: '原为 {pct}%',
+    reachesTarget: '这将补足这个目标。',
+    back: '返回',
+    confirm: '增加 {amount}',
+    saving: '正在增加…',
+    doneTitle: '已增加',
+    doneBody: '已为「{name}」预留 {amount}。',
+    doneReached: '目标达成！',
+  },
+
+  theme: {
+    title: '主题',
+    blurb: '选择配色。每个主题都有浅色和深色版本，收入与支出的颜色在所有主题中都清晰可辨。',
+    original: '原版',
+    ocean: '海洋',
+    sakura: '樱花',
+    slate: '石板',
+    sand: '沙丘',
+  },
+
+  authBrand: {
+    tagline: '让个人理财更简单。',
+    body: '看清钱花在哪里，为重要的事预留资金，把所有账户放在一个清爽的地方。',
+  },
+
+  sessions: {
+    title: '登录会话',
+    blurb: '你的账户在哪些地方登录。位置为近似值，根据每次登录时的网络地址记录。',
+    loading: '正在加载你的会话…',
+    loadFailed: '无法加载你的会话。',
+    thisDevice: '当前设备',
+    notRecorded: '未记录位置',
+    signedIn: '登录于 {date}',
+    lastActive: '最近活动 {date}',
+    signOut: '退出',
+    signingOut: '正在退出…',
+    revokeFailed: '无法退出该会话，请重试。',
+    browserOn: '{os} 上的 {browser}',
+    unknownDevice: '未知设备',
+    unknownBrowser: '浏览器',
+  },
+
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
@@ -605,6 +668,8 @@ export const zh: typeof en = {
   },
 
   goalCard: {
+    addAmount: '增加金额',
+    goalReached: '目标已达成',
     target: '目标日期 {date}',
     thereSuffix: '已完成 {pct}%——{rest}',
     editAria: '编辑{name}',
@@ -805,6 +870,7 @@ export const zh: typeof en = {
   // ActionResult.code is undefined, so translateActionError() always falls
   // through to the server's English message until this fills in.
   serverErrors: {
+    'loader.sessionLocationsFailed': '无法加载会话位置。',
     'session.expired': '你的登录已过期，请重新登录。',
     'session.authUnavailable': '暂时无法验证你的登录状态，请稍后再试。',
     'session.unknown': '出了点问题，请重试。',
@@ -832,6 +898,10 @@ export const zh: typeof en = {
     'validation.goalSavedNonNegative': '已存金额不能为负数。',
     'validation.goalDateInvalid': '目标日期必须是有效日期。',
     'notFound.goal': '该目标已不存在。',
+    'validation.goalAddAmountInvalid': '请输入大于零的金额，最多保留两位小数。',
+    'validation.goalAlreadyFull': '这个目标已经达成。',
+    'validation.goalAddExceedsTarget': '超过了这个目标还需要的金额（{amount}）。',
+    'validation.goalInsufficientFunds': '未分配的钱不够。你目前可用 {amount}。',
     'validation.budgetCategoryNameRequired': '预算分类名称不能为空。',
     'validation.budgetAmountNonNegative': '「{category}」的预算必须大于或等于零。',
     'validation.categoryNameRequired': '分类需要一个名称。',

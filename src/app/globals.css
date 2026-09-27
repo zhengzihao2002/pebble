@@ -301,6 +301,66 @@ html.no-theme-transition * {
      after hydration, .pebble-dark .pebble-root by the pre-paint script. */
   color-scheme: dark;
 }
+/* Colour themes (Settings > Appearance). GENERATED from one table, which
+   also generated the preview tiles in ThemeControl.tsx - keep them in step.
+   The pre-paint script sets data-pebble-theme on <html> before first paint
+   and AppShell keeps it in step; absent means Original, whose palette is the
+   two blocks above, untouched. Every theme has a light and a dark block and
+   follows one rule: money out (--wine) stays red-family, money in (--pine) is
+   never red, orange or pink, and the accent (--gold) never reads as --wine.
+   The html background lines repeat each --paper for the pre-React frame. */
+html[data-pebble-theme="ocean"] { background-color: #EEF3F6; }
+html.pebble-dark[data-pebble-theme="ocean"] { background-color: #0F1A22; }
+html[data-pebble-theme="ocean"] .pebble-root {
+  --paper: #EEF3F6; --mist: #FFFFFF; --ink: #142230; --ink-soft: #56687A; --pine: #1E5F8C; --pine-soft: #E0ECF5; --gold: #B7792B; --gold-soft: #F5E7D2; --wine: #A33D48; --wine-soft: #F6E1E3; --line: #DCE4EA;
+  --shadow: 0 1px 2px rgba(20,34,48,0.04), 0 10px 28px -14px rgba(20,34,48,0.18);
+  --overlay-tint: rgba(238, 243, 246, 0.6);
+}
+html.pebble-dark[data-pebble-theme="ocean"] .pebble-root,
+html[data-pebble-theme="ocean"] .pebble-root.dark {
+  --paper: #0F1A22; --mist: #16242F; --ink: #E8EEF2; --ink-soft: #8DA0AF; --pine: #5FA8D8; --pine-soft: #16303F; --gold: #E0A85A; --gold-soft: #372A18; --wine: #E0898F; --wine-soft: #3B2226; --line: #253643;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --overlay-tint: rgba(15, 26, 34, 0.6);
+}
+html[data-pebble-theme="sakura"] { background-color: #F9F1F3; }
+html.pebble-dark[data-pebble-theme="sakura"] { background-color: #1C1418; }
+html[data-pebble-theme="sakura"] .pebble-root {
+  --paper: #F9F1F3; --mist: #FFFFFF; --ink: #2B1B21; --ink-soft: #735C65; --pine: #2F6B5E; --pine-soft: #E1EEEA; --gold: #B8577A; --gold-soft: #F6E0E8; --wine: #9C3B30; --wine-soft: #F5E1DD; --line: #EEDFE3;
+  --shadow: 0 1px 2px rgba(43,27,33,0.04), 0 10px 28px -14px rgba(43,27,33,0.18);
+  --overlay-tint: rgba(249, 241, 243, 0.6);
+}
+html.pebble-dark[data-pebble-theme="sakura"] .pebble-root,
+html[data-pebble-theme="sakura"] .pebble-root.dark {
+  --paper: #1C1418; --mist: #261B20; --ink: #F2E8EB; --ink-soft: #A8939B; --pine: #66B3A1; --pine-soft: #1F332E; --gold: #E68AAB; --gold-soft: #3A2229; --wine: #E08C7F; --wine-soft: #3B231F; --line: #3A2A30;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --overlay-tint: rgba(28, 20, 24, 0.6);
+}
+html[data-pebble-theme="slate"] { background-color: #F2F3F5; }
+html.pebble-dark[data-pebble-theme="slate"] { background-color: #111317; }
+html[data-pebble-theme="slate"] .pebble-root {
+  --paper: #F2F3F5; --mist: #FFFFFF; --ink: #16191F; --ink-soft: #5D6470; --pine: #3D56A6; --pine-soft: #E3E8F5; --gold: #A9853A; --gold-soft: #F3EAD6; --wine: #A63F3F; --wine-soft: #F5E2E2; --line: #E0E3E8;
+  --shadow: 0 1px 2px rgba(22,25,31,0.04), 0 10px 28px -14px rgba(22,25,31,0.18);
+  --overlay-tint: rgba(242, 243, 245, 0.6);
+}
+html.pebble-dark[data-pebble-theme="slate"] .pebble-root,
+html[data-pebble-theme="slate"] .pebble-root.dark {
+  --paper: #111317; --mist: #1A1D23; --ink: #ECEEF2; --ink-soft: #9097A3; --pine: #8EA4E8; --pine-soft: #1F2640; --gold: #D9B066; --gold-soft: #332B1B; --wine: #E48C8C; --wine-soft: #3A2123; --line: #2A2E36;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --overlay-tint: rgba(17, 19, 23, 0.6);
+}
+html[data-pebble-theme="sand"] { background-color: #F5F0E6; }
+html.pebble-dark[data-pebble-theme="sand"] { background-color: #1A1611; }
+html[data-pebble-theme="sand"] .pebble-root {
+  --paper: #F5F0E6; --mist: #FFFDF8; --ink: #2A2217; --ink-soft: #6F6454; --pine: #4F6B34; --pine-soft: #E6EDDC; --gold: #B7862C; --gold-soft: #F4E8CF; --wine: #9E3B34; --wine-soft: #F4E0DC; --line: #E6DDCB;
+  --shadow: 0 1px 2px rgba(42,34,23,0.04), 0 10px 28px -14px rgba(42,34,23,0.18);
+  --overlay-tint: rgba(245, 240, 230, 0.6);
+}
+html.pebble-dark[data-pebble-theme="sand"] .pebble-root,
+html[data-pebble-theme="sand"] .pebble-root.dark {
+  --paper: #1A1611; --mist: #241E17; --ink: #F1EADF; --ink-soft: #A89C8A; --pine: #93B06E; --pine-soft: #26301B; --gold: #E0B25C; --gold-soft: #3A2E17; --wine: #DE8A80; --wine-soft: #3B2320; --line: #3A3226;
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --overlay-tint: rgba(26, 22, 17, 0.6);
+}
 .pebble-root, .pebble-root * {
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease;
 }
@@ -496,6 +556,59 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   100% { background-position: -120% 0; }
 }
 
+/* Branded auth pages (/auth/*). The page wears .pebble-root, so Pebble's
+   palette, saved theme, dark mode and font choice apply, set before first
+   paint by the same script as the app. The library's forms read shadcn
+   variables; inside this wrapper ONLY they point at Pebble's palette, so
+   every form, button, input and error follows the chosen theme. The brand
+   text uses --paper on a --pine gradient, readable in light, dark and every
+   theme. .pebble-auth is the container the layout queries, like
+   @container content inside the app. */
+.pebble-auth {
+  container: auth / inline-size;
+  --background: var(--paper); --foreground: var(--ink);
+  --card: var(--mist); --card-foreground: var(--ink);
+  --popover: var(--mist); --popover-foreground: var(--ink);
+  --primary: var(--pine); --primary-foreground: var(--paper);
+  --secondary: var(--pine-soft); --secondary-foreground: var(--ink);
+  --muted: var(--pine-soft); --muted-foreground: var(--ink-soft);
+  --accent: var(--pine-soft); --accent-foreground: var(--ink);
+  --destructive: var(--wine);
+  --border: var(--line); --input: var(--line); --ring: var(--pine);
+  --radius: 0.8rem;
+}
+.pebble-auth-shell { min-height: 100%; display: flex; flex-direction: column; }
+.pebble-auth-brand {
+  position: relative; overflow: hidden; color: var(--paper);
+  background: linear-gradient(150deg, var(--pine), color-mix(in oklch, var(--pine) 72%, var(--gold)));
+  padding: 1.75rem 1.5rem;
+}
+.pebble-auth-brand-inner { position: relative; display: flex; flex-direction: column; gap: 0.35rem; max-width: 26rem; }
+.pebble-auth-logo { border-radius: 1rem; box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.45); margin-bottom: 0.6rem; }
+.pebble-auth-name { font-size: 2rem; font-weight: 600; line-height: 1.1; margin: 0; }
+.pebble-auth-tagline { font-size: 1.05rem; font-weight: 500; margin: 0; opacity: 0.95; }
+.pebble-auth-body { display: none; font-size: 0.92rem; line-height: 1.6; margin: 0.5rem 0 0; opacity: 0.85; }
+.pebble-auth-form { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem 3rem; }
+.pebble-auth-form > * { width: 100%; max-width: 26rem; }
+.pebble-auth-pebble {
+  position: absolute; background: var(--paper); opacity: 0.08;
+  border-radius: 48% 52% 55% 45% / 50% 45% 55% 50%;
+  animation: pebble-auth-drift 14s ease-in-out infinite alternate;
+}
+.pebble-auth-pebble.one { width: 14rem; height: 11rem; right: -4rem; top: -3rem; }
+.pebble-auth-pebble.two { width: 9rem; height: 7rem; right: 5rem; bottom: -3.5rem; animation-duration: 18s; }
+.pebble-auth-pebble.three { width: 5rem; height: 4rem; left: 55%; top: 30%; animation-duration: 11s; }
+@keyframes pebble-auth-drift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(-1.2rem, 0.8rem) rotate(8deg); }
+}
+@container auth (min-width: 860px) {
+  .pebble-auth-shell { flex-direction: row; }
+  .pebble-auth-brand { flex: 0 0 44%; display: flex; align-items: center; padding: 3rem; }
+  .pebble-auth-name { font-size: 2.8rem; }
+  .pebble-auth-body { display: block; }
+}
+
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 
@@ -505,6 +618,12 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
 .budgets-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; min-width: 0; }
 
 .goals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; min-width: 0; }
+/* Add amount (AddToGoalModal): each step rises in, the success badge pops.
+   The global reduced-motion rule turns both off. */
+@keyframes goal-step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.goal-step { animation: goal-step-in 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes goal-pop { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+.goal-done-badge { animation: goal-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* Settings: one centered column, one card per row at every width.
 

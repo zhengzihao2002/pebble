@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';
 
 /**
  * AccountView renders session-dependent content, so the server (no resolved
@@ -16,6 +17,14 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
  */
 const AccountView = dynamic(
   () => import('@neondatabase/auth-ui').then((m) => m.AccountView),
+  { ssr: false },
+);
+
+// The library's Security page is Change Password + Sessions. Its SessionsCard
+// cannot show a location, so Pebble's replaces it; the password card stays
+// the library's own, loaded client-only for the same reason as AccountView.
+const ChangePasswordCard = dynamic(
+  () => import('@neondatabase/auth-ui').then((m) => m.ChangePasswordCard),
   { ssr: false },
 );
 
@@ -34,7 +43,14 @@ export function AccountViewClient({ path }: { path: string }) {
         <ChevronLeft size={16} />
         {d.account.backToSettings}
       </Link>
-      <AccountView path={path} />
+      {path === 'security' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <ChangePasswordCard />
+          <PebbleSessionsCard />
+        </div>
+      ) : (
+        <AccountView path={path} />
+      )}
     </div>
   );
 }
