@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { AuthViewClient } from './AuthViewClient';
+import { AuthLanguageToggle } from './AuthLanguageToggle';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 
@@ -37,6 +38,7 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
             <p className="font-display pebble-auth-name">Pebble</p>
             <p className="pebble-auth-tagline">{d.authBrand.tagline}</p>
             <p className="pebble-auth-body">{d.authBrand.body}</p>
+            <AuthLanguageToggle />
           </div>
         </section>
         <section className="pebble-auth-form">

@@ -41,8 +41,10 @@ function authPath(url: string): string {
   return i === -1 ? pathname : pathname.slice(i + '/api/auth'.length);
 }
 
-function refuse(message: string) {
-  return NextResponse.json({ code: 'PEBBLE_AUTH_REFUSED', message }, { status: 403 });
+// code doubles as a localization key: the auth UI shows a translated
+// message for codes it knows (authLocalizationZh.ts), else this message.
+function refuse(message: string, code = 'PEBBLE_AUTH_REFUSED') {
+  return NextResponse.json({ code, message }, { status: 403 });
 }
 
 async function readJson(request: Request): Promise<Record<string, unknown> | null> {
@@ -69,18 +71,20 @@ export async function POST(...args: Parameters<typeof neon.POST>) {
   const path = authPath(request.url);
 
   if (REFUSED_PATHS.includes(path)) {
-    return refuse(path === '/sign-in/email-otp' ? OTP_SIGN_IN_OFF : 'This sign-in method is not available.');
+    return path === '/sign-in/email-otp'
+      ? refuse(OTP_SIGN_IN_OFF, 'EMAIL_OTP_SIGN_IN_DISABLED')
+      : refuse('This sign-in method is not available.', 'SIGN_IN_METHOD_DISABLED');
   }
 
   if (path === '/email-otp/send-verification-otp') {
     const body = await readJson(request);
-    if (body?.type === 'sign-in') return refuse(OTP_SIGN_IN_OFF);
+    if (body?.type === 'sign-in') return refuse(OTP_SIGN_IN_OFF, 'EMAIL_OTP_SIGN_IN_DISABLED');
     return neon.POST(request, ...rest);
   }
 
   if (path === '/sign-up/email') {
     const body = await readJson(request);
-    if (!body || !inviteMatches(body.inviteCode)) return refuse('Invalid invite code.');
+    if (!body || !inviteMatches(body.inviteCode)) return refuse('Invalid invite code.', 'INVALID_INVITE_CODE');
     const forwardedBody = { ...body };
     delete forwardedBody.inviteCode;
     const headers = new Headers(request.headers);

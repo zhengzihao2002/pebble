@@ -536,7 +536,10 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 45%, transparent 70%);
   background-size: 220% 100%;
-  animation: health-sheen 3.2s ease-in-out infinite;
+  /* ONE highlight: a repeating background showed a second copy trailing half
+     a pass behind, then snapped back at the loop. */
+  background-repeat: no-repeat;
+  animation: health-sheen 3.6s ease-in-out infinite;
 }
 .health-bar-bubbles { position: absolute; left: 0; bottom: 0; height: 100%; pointer-events: none; transition: width 0.7s ease; }
 .health-bar-bubble {
@@ -552,8 +555,10 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   100% { transform: translate(var(--drift), -1.9rem) scale(1.1); opacity: 0; }
 }
 @keyframes health-sheen {
+  /* Sweep in the first 65%, then rest fully off the right edge - so the loop
+     restarts out of sight instead of snapping. */
   0% { background-position: 120% 0; }
-  100% { background-position: -120% 0; }
+  65%, 100% { background-position: -120% 0; }
 }
 
 /* Branded auth pages (/auth/*). The page wears .pebble-root, so Pebble's
@@ -608,6 +613,82 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   .pebble-auth-name { font-size: 2.8rem; }
   .pebble-auth-body { display: block; }
 }
+
+/* Transfer modal: vertical From -> To connector. A soft line fades in above
+   and below a round badge; the arrow bobs gently downward. The global
+   reduced-motion rule stops the bob. */
+.transfer-flow { position: relative; display: flex; justify-content: center; align-items: center; height: 2.6rem; margin: -0.3rem 0; }
+.transfer-flow::before {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%);
+  background: linear-gradient(to bottom, transparent, var(--pine-soft) 25%, var(--pine) 50%, var(--pine-soft) 75%, transparent);
+  border-radius: 2px;
+}
+.transfer-flow-badge {
+  position: relative; width: 2rem; height: 2rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background-color: var(--pine-soft); color: var(--pine);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.transfer-flow-badge svg { animation: transfer-bob 1.8s ease-in-out infinite; }
+@keyframes transfer-bob { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
+
+/* EN / 中文 switch on the auth brand panel - a small pill on the gradient. */
+.pebble-auth-lang {
+  position: relative; align-self: flex-start; display: inline-flex; gap: 2px; padding: 2px; margin-top: 0.9rem;
+  border-radius: 99px; background: color-mix(in oklch, var(--paper) 18%, transparent);
+}
+.pebble-auth-lang button {
+  border: none; background: transparent; color: var(--paper); cursor: pointer;
+  font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 99px; opacity: 0.8;
+}
+.pebble-auth-lang button.active { background: var(--paper); color: var(--pine); opacity: 1; }
+
+/* Account deletion farewell (DeletePebbleAccountDialog). Full-screen, above
+   everything. A sad pebble sways, cries and sinks away while three lines
+   fade in, then the page leaves for sign-in. Under reduced motion the global
+   rule stops every animation, and the rule at the end shows the text at once. */
+.farewell {
+  position: fixed; inset: 0; z-index: 1000; padding: 2rem; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem;
+  background: radial-gradient(circle at 50% 38%, var(--mist), var(--paper) 70%);
+  animation: farewell-in 0.6s ease both;
+}
+.farewell-pebble {
+  width: 11rem; height: 11rem; transform-origin: 50% 90%;
+  animation: farewell-sway 2.4s ease-in-out infinite, farewell-leave 1.2s ease-in 4.2s forwards;
+}
+.farewell-body { stroke: var(--ink-soft); stroke-opacity: 0.25; stroke-width: 2; }
+.farewell-shadow { fill: var(--ink); opacity: 0.08; }
+.farewell-face { fill: none; stroke: var(--ink-soft); stroke-width: 4; stroke-linecap: round; }
+.farewell-tear {
+  fill: oklch(0.74 0.09 235); opacity: 0; transform-box: fill-box; transform-origin: center top;
+  animation: farewell-drop 1.6s ease-in infinite;
+}
+.farewell-tear.t1 { animation-delay: 0.9s; }
+.farewell-tear.t2 { animation-delay: 1.5s; }
+.farewell-line { opacity: 0; animation: farewell-text 0.8s ease forwards; }
+.farewell-line.l1 { animation-delay: 1.1s; }
+.farewell-line.l2 { animation-delay: 2.3s; }
+.farewell-line.l3 { animation-delay: 3.4s; }
+@keyframes farewell-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes farewell-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes farewell-leave { to { opacity: 0; transform: translateY(18px) scale(0.85); } }
+@keyframes farewell-drop {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(46px) scale(1); }
+}
+@keyframes farewell-text { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .farewell-line { opacity: 1; }
+}
+
+/* Text-size percentage box: exactly 3 digits wide (3ch in the mono font,
+   plus padding and border). The native spin arrows are hidden - they took
+   browser-dependent width; the slider, presets and arrow keys remain. */
+.pebble-root .text-size-input { appearance: textfield; -moz-appearance: textfield; }
+.pebble-root .text-size-input::-webkit-outer-spin-button,
+.pebble-root .text-size-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }

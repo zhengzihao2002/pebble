@@ -442,6 +442,29 @@ export const zh: typeof en = {
     action: '创建账户',
   },
 
+  deleteMe: {
+    button: '删除 Pebble 账户',
+    hint: '永久删除你的账户及其中的一切。',
+    title: '删除你的 Pebble 账户',
+    warnIntro: '这会永久删除你的 Pebble 账户及其中的一切：',
+    warnTransactions: '所有交易、转账和余额调整',
+    warnMoney: '所有账户、目标、预算和分类',
+    warnSchedules: '所有定期付款',
+    warnSignIn: '你的登录信息、会话和记录的位置',
+    warnFinal: '此操作无法撤销，也无法恢复。',
+    keep: '保留我的账户',
+    continue: '我明白，继续',
+    confirmTitle: '最后确认',
+    understand: '我明白我的账户及其所有数据将被永久删除。',
+    typeEmail: '输入你的邮箱地址（{email}）以确认',
+    countdown: '永久删除（{seconds}）',
+    confirm: '永久删除我的账户',
+    deleting: '正在删除你的账户…',
+    farewellTitle: '很遗憾看到你离开。',
+    farewellBody: '你在 Pebble 中保存的一切都已删除。',
+    farewellGoodbye: '谢谢你让 Pebble 陪伴过你。再见。',
+  },
+
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
@@ -904,6 +927,8 @@ export const zh: typeof en = {
   // ActionResult.code is undefined, so translateActionError() always falls
   // through to the server's English message until this fills in.
   serverErrors: {
+    'validation.deleteAccountEmailMismatch': '输入的邮箱与你的账户不一致。',
+    'notFound.user': '找不到你的账户。',
     'validation.accountDeleteNameMismatch': '输入的名称与账户名称不一致。',
     'validation.accountChangedSinceReview': '在你查看期间这个账户发生了变化。请查看最新内容后再试。',
     'loader.accountDeletionPreviewFailed': '无法检查这个账户。',

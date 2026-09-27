@@ -504,6 +504,30 @@ export const en = {
     action: 'Create an account',
   },
 
+  deleteMe: {
+    button: 'Delete Pebble account',
+    hint: 'Permanently delete your account and everything in it.',
+    title: 'Delete your Pebble account',
+    warnIntro: 'This permanently deletes your Pebble account and everything in it:',
+    warnTransactions: 'Every transaction, transfer and balance adjustment',
+    warnMoney: 'All of your accounts, goals, budgets and categories',
+    warnSchedules: 'Every scheduled payment',
+    warnSignIn: 'Your sign-in, sessions and recorded locations',
+    warnFinal: 'There is no undo and no recovery.',
+    keep: 'Keep my account',
+    continue: 'I understand, continue',
+    confirmTitle: 'Last chance',
+    understand: 'I understand that my account and all of its data will be permanently deleted.',
+    // {email} is the signed-in user's own address.
+    typeEmail: 'Type your email address ({email}) to confirm',
+    countdown: 'Delete forever ({seconds})',
+    confirm: 'Delete my account forever',
+    deleting: 'Deleting your account…',
+    farewellTitle: "We're sorry to see you go.",
+    farewellBody: 'Everything you kept in Pebble has been deleted.',
+    farewellGoodbye: 'Thank you for letting Pebble keep you company. Goodbye.',
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -1003,6 +1027,8 @@ export const en = {
   // ERROR, not a silent English fallback found later - the same guard
   // `zh: typeof en` gives every other key in this file.
   serverErrors: {
+    'validation.deleteAccountEmailMismatch': 'The email you typed does not match your account.',
+    'notFound.user': 'Your account could not be found.',
     'validation.accountDeleteNameMismatch': 'The name you typed does not match this account.',
     'validation.accountChangedSinceReview': 'This account changed while you were reviewing it. Check the updated details and try again.',
     'loader.accountDeletionPreviewFailed': "Couldn't check this account.",

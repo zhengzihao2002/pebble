@@ -104,4 +104,6 @@ export type ServerErrorCode =
   | 'validation.transferInactiveAccount'
   | 'validation.accountDeleteNameMismatch'
   | 'validation.accountChangedSinceReview'
-  | 'loader.accountDeletionPreviewFailed';
+  | 'loader.accountDeletionPreviewFailed'
+  | 'validation.deleteAccountEmailMismatch'
+  | 'notFound.user';

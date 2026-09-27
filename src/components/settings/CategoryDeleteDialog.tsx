@@ -56,7 +56,15 @@ export function CategoryDeleteDialog({
   // Was a per-effect-run `active` local. A manual retry is not tied to an
   // effect run, so the unmount guard has to outlive one.
   const aliveRef = useRef(true);
-  useEffect(() => () => { aliveRef.current = false; }, []);
+  // Re-armed on mount, not merely cleared on unmount - the same fix
+  // AccountMoveDialog and ModifyBudgetModal already carry. Strict Mode's dev
+  // double-invoke unmounts and remounts; a flag that is only ever cleared
+  // stays false, every result below the guard is dropped, and the dialog
+  // spins on "checking" forever.
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
 
   // Wrapped: a rejection here used to leave `loading` true forever, since
   // setLoading(false) only ran inside the .then().

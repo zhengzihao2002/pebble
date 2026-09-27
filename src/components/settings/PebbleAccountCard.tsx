@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, Shield, User } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, Shield, Trash2, User } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { SignOutButton } from '@/components/layout/SignOutButton';
+import { DeletePebbleAccountDialog } from '@/components/settings/DeletePebbleAccountDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function PebbleAccountCard() {
@@ -11,6 +13,7 @@ export function PebbleAccountCard() {
   // name, email and initials are the signed-in user's own data - never
   // translated, never transformed.
   const { d } = useTranslation();
+  const [showDelete, setShowDelete] = useState(false);
 
   // Both destinations are Better Auth UI's own account views, rendered by
   // src/app/(app)/account/[path]/page.tsx. Nothing linked to them before, so
@@ -55,6 +58,18 @@ export function PebbleAccountCard() {
       <div style={{ borderTop: '1px solid var(--line)', marginTop: '0.5rem', paddingTop: '1rem' }}>
         <SignOutButton />
       </div>
+
+      <div style={{ borderTop: '1px solid var(--line)', marginTop: '1rem', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <button
+          type="button" onClick={() => setShowDelete(true)} className="pill"
+          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.9rem', color: 'var(--wine)', borderColor: 'var(--wine)' }}
+        >
+          <Trash2 size={14} />{d.deleteMe.button}
+        </button>
+        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.deleteMe.hint}</span>
+      </div>
+
+      {showDelete && <DeletePebbleAccountDialog onClose={() => setShowDelete(false)} />}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { db, neonSql } from '@/db';
 import {
   account,
@@ -13,6 +14,7 @@ import {
   income,
   recurringRule,
   userAccount,
+  userInNeonAuth,
 } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, hasAnyTransactions, getAccounts } from '@/lib/data/queries';
@@ -839,33 +841,35 @@ async function updateCategory(
       return fail('The fallback category cannot be renamed, but you can change its icon and colour.', 'validation', 'validation.categoryFallbackCannotRename');
     }
 
-    if (trimmed !== target.name) {
-      await db
-        .update(expense)
-        .set({ category: trimmed })
-        .where(and(eq(expense.userId, userId), eq(expense.category, target.name)));
-
-      await db
-        .update(budget)
-        .set({ category: trimmed })
-        .where(and(eq(budget.userId, userId), eq(budget.category, target.name)));
-
-      // recurring_rule.category stores the NAME too, so it has to cascade with
-      // the others. Without this a rule keeps stamping the OLD name onto every
-      // transaction it materializes - and those rows then vanish from the
-      // category breakdown chart while still counting in totals. Silent, and
-      // only visible weeks later. Soft-deleted rules are included so a later
-      // undelete cannot resurrect a stale name.
-      await db
-        .update(recurringRule)
-        .set({ category: trimmed })
-        .where(and(eq(recurringRule.userId, userId), eq(recurringRule.category, target.name)));
-    }
-
-    await db
+    const categoryUpdate = db
       .update(category)
       .set({ name: trimmed, iconKey: input.iconKey, color: input.color })
       .where(and(eq(category.userId, userId), eq(category.id, input.id)));
+
+    if (trimmed !== target.name) {
+      // ONE transaction (batch). Transactions, budgets and rules store the
+      // category NAME, so a rename cascades to all of them - and a failure
+      // part-way used to leave transactions under a name no category had,
+      // dropping them out of every category list and breakdown.
+      //
+      // recurring_rule.category included: without it a rule keeps stamping
+      // the OLD name onto every transaction it materializes. Soft-deleted
+      // rules too, so a later undelete cannot resurrect a stale name.
+      await db.batch([
+        db.update(expense)
+          .set({ category: trimmed })
+          .where(and(eq(expense.userId, userId), eq(expense.category, target.name))),
+        db.update(budget)
+          .set({ category: trimmed })
+          .where(and(eq(budget.userId, userId), eq(budget.category, target.name))),
+        db.update(recurringRule)
+          .set({ category: trimmed })
+          .where(and(eq(recurringRule.userId, userId), eq(recurringRule.category, target.name))),
+        categoryUpdate,
+      ]);
+    } else {
+      await categoryUpdate;
+    }
 
     revalidateAll();
     return { ok: true };
@@ -963,104 +967,57 @@ async function deleteCategory(
     if (!target) return fail('That category no longer exists.', 'validation', 'notFound.category');
     if (target.isSystem) return fail('The fallback category cannot be deleted.', 'validation', 'validation.categoryFallbackCannotDelete');
 
-    const usage = await db
-      .select({ id: expense.id })
-      .from(expense)
-      .where(and(eq(expense.userId, userId), eq(expense.category, target.name)));
+    const plan = input.plan;
+    const validNames = new Set(existing.filter((c) => c.id !== target.id).map((c) => c.name));
+
+    // READ everything, CHECK everything, and only then WRITE - in one
+    // transaction. The earlier version reassigned transactions first and only
+    // afterwards refused over scheduled payments, leaving them moved while the
+    // category survived.
+    const [usage, referencingRules] = await Promise.all([
+      db.select({ id: expense.id })
+        .from(expense)
+        .where(and(eq(expense.userId, userId), eq(expense.category, target.name))),
+      // Recurring rules are forward-looking instructions, not history, so they
+      // cannot be left pointing at a category that is about to disappear.
+      db.select({ id: recurringRule.id, description: recurringRule.description })
+        .from(recurringRule)
+        .where(and(
+          eq(recurringRule.userId, userId),
+          eq(recurringRule.category, target.name),
+          ne(recurringRule.status, 'deleted'),
+        )),
+    ]);
 
     if (usage.length > 0) {
-      const plan = input.plan;
       if (!plan) {
         return fail('Choose where these transactions should go before deleting.', 'validation', 'validation.categoryDeleteChooseDestination');
       }
-
-      const validNames = new Set(
-        existing.filter((c) => c.id !== target.id).map((c) => c.name),
-      );
-
       if (plan.mode === 'bulk') {
         if (!validNames.has(plan.reassignToName)) {
           return fail('That destination category no longer exists.', 'validation', 'notFound.categoryDestination');
         }
-        await db
-          .update(expense)
-          .set({ category: plan.reassignToName })
-          .where(and(eq(expense.userId, userId), eq(expense.category, target.name)));
       } else {
         // Every affected transaction must be accounted for before anything is
-        // written. A partial assignment would leave transactions pointing at a
-        // category about to be deleted.
+        // written: a partial assignment would leave transactions pointing at
+        // a category about to be deleted.
         for (const row of usage) {
           const destination = plan.assignments[row.id];
           if (!destination || !validNames.has(destination)) {
             return fail('Every transaction needs a destination category before deleting.', 'validation', 'validation.categoryDeleteAllNeedDestination');
           }
         }
-
-        // Grouped by destination so this costs one statement per distinct
-        // target rather than one per transaction - neon-http sends each
-        // statement as its own HTTP round trip.
-        const byDestination = new Map<string, string[]>();
-        for (const row of usage) {
-          const destination = plan.assignments[row.id];
-          const list = byDestination.get(destination) ?? [];
-          list.push(row.id);
-          byDestination.set(destination, list);
-        }
-
-        for (const [destination, ids] of byDestination) {
-          await db
-            .update(expense)
-            .set({ category: destination })
-            .where(and(eq(expense.userId, userId), inArray(expense.id, ids)));
-        }
       }
     }
 
-    // Recurring rules are forward-looking instructions, not history, so they
-    // cannot be left pointing at a category that is about to disappear.
-    //
-    // Bulk reassign: the user has already named one destination for everything
-    // in this category, so applying it to rules matches their intent.
-    // Otherwise: refuse. Silently repointing a rule at the fallback category
-    // would misfile every FUTURE payment it creates, indefinitely and
-    // invisibly - much worse than making the user decide now.
-    const referencingRules = await db
-      .select({ id: recurringRule.id, description: recurringRule.description })
-      .from(recurringRule)
-      .where(
-        and(
-          eq(recurringRule.userId, userId),
-          eq(recurringRule.category, target.name),
-          ne(recurringRule.status, 'deleted'),
-        ),
-      );
-
+    // Bulk reassign: the user named one destination for everything in this
+    // category, so it applies to rules too. Otherwise refuse: silently
+    // repointing a rule at the fallback would misfile every FUTURE payment it
+    // creates, indefinitely and invisibly.
     if (referencingRules.length > 0) {
-      const plan = input.plan;
-
-      if (plan && plan.mode === 'bulk') {
-        const stillValid = existing.some(
-          (c) => c.id !== target.id && c.name === plan.reassignToName,
-        );
-        if (!stillValid) return fail('That destination category no longer exists.', 'validation', 'notFound.categoryDestination');
-
-        await db
-          .update(recurringRule)
-          .set({ category: plan.reassignToName })
-          .where(
-            and(
-              eq(recurringRule.userId, userId),
-              eq(recurringRule.category, target.name),
-              ne(recurringRule.status, 'deleted'),
-            ),
-          );
-      } else {
-        // ⚠️ ARRAY PARAM, deliberately NOT pre-joined with ', ' here. Chinese
-        // joins a list with 、not a comma-space, and that is a display
-        // decision the SERVER should not make. The raw array of descriptions
-        // (user data) travels in params.names; translateActionError() on the
-        // client joins it with the locale-correct separator.
+      if (!plan || plan.mode !== 'bulk') {
+        // ⚠️ ARRAY PARAM, deliberately NOT pre-joined: Chinese joins a list
+        // with 、, a display decision the client makes (translateActionError).
         const names = referencingRules.map((r) => r.description);
         return fail(
           `These scheduled payments still use this category: ${names.join(', ')}. Update or remove them first.`,
@@ -1069,15 +1026,49 @@ async function deleteCategory(
           { names },
         );
       }
+      if (!validNames.has(plan.reassignToName)) {
+        return fail('That destination category no longer exists.', 'validation', 'notFound.categoryDestination');
+      }
     }
 
-    await db
-      .delete(budget)
-      .where(and(eq(budget.userId, userId), eq(budget.category, target.name)));
+    // Every check passed. ONE transaction: reassign, repoint rules, drop the
+    // category's budgets, delete it. All or nothing.
+    const writes: unknown[] = [];
+    if (usage.length > 0 && plan) {
+      if (plan.mode === 'bulk') {
+        writes.push(db.update(expense)
+          .set({ category: plan.reassignToName })
+          .where(and(eq(expense.userId, userId), eq(expense.category, target.name))));
+      } else {
+        // Grouped by destination: one statement per distinct target rather
+        // than one per transaction.
+        const byDestination = new Map<string, string[]>();
+        for (const row of usage) {
+          const destination = plan.assignments[row.id];
+          const list = byDestination.get(destination) ?? [];
+          list.push(row.id);
+          byDestination.set(destination, list);
+        }
+        for (const [destination, ids] of byDestination) {
+          writes.push(db.update(expense)
+            .set({ category: destination })
+            .where(and(eq(expense.userId, userId), inArray(expense.id, ids))));
+        }
+      }
+    }
+    if (referencingRules.length > 0 && plan && plan.mode === 'bulk') {
+      writes.push(db.update(recurringRule)
+        .set({ category: plan.reassignToName })
+        .where(and(
+          eq(recurringRule.userId, userId),
+          eq(recurringRule.category, target.name),
+          ne(recurringRule.status, 'deleted'),
+        )));
+    }
+    writes.push(db.delete(budget).where(and(eq(budget.userId, userId), eq(budget.category, target.name))));
+    writes.push(db.delete(category).where(and(eq(category.userId, userId), eq(category.id, input.id))));
 
-    await db
-      .delete(category)
-      .where(and(eq(category.userId, userId), eq(category.id, input.id)));
+    await db.batch(writes as unknown as Parameters<typeof db.batch>[0]);
 
     revalidateAll();
     return { ok: true };
@@ -2035,12 +2026,28 @@ async function hibernateAccount(userId: string, accountId: string): Promise<Acti
       );
     }
 
-    await db
+    const hibernated = await db
       .update(account)
       // isPreferred cleared with it: a preselected account that rejects new
       // transactions would be broken by construction.
       .set({ status: 'hibernated', isPreferred: false, updatedAt: new Date().toISOString() })
-      .where(and(eq(account.userId, userId), eq(account.id, accountId)));
+      .where(and(
+        eq(account.userId, userId),
+        eq(account.id, accountId),
+        // Re-checked by the database AT THE MOMENT OF WRITING: a scheduled
+        // payment created in another tab after the check above must not end
+        // up on a frozen account, where catch-up would keep adding to it.
+        sql`NOT EXISTS (SELECT 1 FROM recurring_rule r WHERE r.user_id = ${userId}::uuid AND r.account_id = ${accountId} AND r.status <> 'deleted')`,
+      ))
+      .returning({ id: account.id });
+
+    if (hibernated.length === 0) {
+      return fail(
+        'This account still has scheduled payments. Delete or move them first.',
+        'validation',
+        'validation.accountHasRules',
+      );
+    }
 
     revalidateAll();
     return { ok: true };
@@ -2570,6 +2577,62 @@ async function moveAndDeleteAccount(
 export const getAccountDeletionPreviewAction = withSessionUser(loadAccountDeletionPreview);
 export const deleteAccountWithRecordsAction = withSessionUser(deleteAccountWithRecords);
 export const moveAndDeleteAccountAction = withSessionUser(moveAndDeleteAccount);
+
+/**
+ * Deletes the signed-in user's Pebble account and EVERYTHING they own.
+ *
+ * Neon Auth's own delete-user endpoint is disabled (it answers 404), so the
+ * user row is deleted here. Every Pebble table - and Neon's sessions and
+ * sign-in records - references neon_auth."user" ON DELETE CASCADE (verified
+ * against the live database), so ONE statement removes every row carrying
+ * this user's id and nothing else: no path exists to another user's data.
+ *
+ * The id comes from the session (withSessionUser), never from the browser.
+ * The typed email must match exactly. One transaction behind the per-user
+ * lock; any failure rolls it all back. The browser's sign-in cookies are
+ * cleared here because Neon, which would normally do it, is not involved.
+ */
+async function deletePebbleAccount(userId: string, input: { confirmEmail: string }): Promise<ActionResult> {
+  try {
+    const rows = await db
+      .select({ email: userInNeonAuth.email })
+      .from(userInNeonAuth)
+      .where(eq(userInNeonAuth.id, userId))
+      .limit(1);
+    const me = rows[0];
+    if (!me) return fail('Your account could not be found.', 'validation', 'notFound.user');
+    if (typeof input.confirmEmail !== 'string'
+      || input.confirmEmail.trim().toLowerCase() !== me.email.trim().toLowerCase()) {
+      return fail('The email you typed does not match your account.', 'validation', 'validation.deleteAccountEmailMismatch');
+    }
+
+    const results = await neonSql.transaction(
+      [
+        userWriteLockStatement(userId),
+        neonSql`DELETE FROM neon_auth."user" WHERE id = ${userId}::uuid RETURNING id`,
+      ],
+      { isolationLevel: 'ReadCommitted' },
+    );
+    const deleted = results[1] as unknown;
+    if (!Array.isArray(deleted) || deleted.length !== 1) {
+      return fail('Your account could not be found.', 'validation', 'notFound.user');
+    }
+
+    // Expire every auth cookie on this browser. Secure matches the
+    // __Secure- names Neon Auth uses.
+    const jar = await cookies();
+    for (const c of jar.getAll()) {
+      if (/neon-auth|better-auth/i.test(c.name)) {
+        jar.set(c.name, '', { path: '/', maxAge: 0, secure: true, httpOnly: true, sameSite: 'lax' });
+      }
+    }
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('deletePebbleAccountAction', error);
+  }
+}
+
+export const deletePebbleAccountAction = withSessionUser(deletePebbleAccount);
 /**
  * Sets the account that transaction forms preselect.
  *

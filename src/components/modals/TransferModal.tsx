@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X, ArrowRight } from 'lucide-react';
+import { X, ArrowDown } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
@@ -132,8 +132,10 @@ export function TransferModal({ onClose }: TransferModalProps) {
             <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--ink-soft)' }}>
-            <ArrowRight size={16} />
+          {/* From sits ABOVE To, so the flow reads top to bottom. Decorative:
+              the From / To labels already carry the meaning. */}
+          <div className="transfer-flow" aria-hidden="true">
+            <span className="transfer-flow-badge"><ArrowDown size={16} strokeWidth={2.4} /></span>
           </div>
 
           <div style={labelStyle}>

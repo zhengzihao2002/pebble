@@ -1,0 +1,139 @@
+import type { ComponentProps } from 'react';
+import type { NeonAuthUIProvider } from '@neondatabase/auth-ui';
+
+/**
+ * Chinese for the auth library's sign-in / sign-up / password / verification
+ * screens and the Security page. The library ships no Chinese. Only strings
+ * Pebble's pages actually show are translated; anything missing falls back to
+ * the library's English. Typed from the provider's own localization prop, so
+ * a misspelt key fails tsc.
+ */
+type AuthLocalization = NonNullable<ComponentProps<typeof NeonAuthUIProvider>['localization']>;
+
+export const AUTH_LOCALIZATION_ZH: AuthLocalization = {
+  // Forms
+  SIGN_IN: '登录',
+  SIGN_IN_ACTION: '登录',
+  SIGN_IN_DESCRIPTION: '输入你的邮箱和密码登录',
+  SIGN_IN_WITH: '使用以下方式登录',
+  SIGN_OUT: '退出登录',
+  SIGN_UP: '注册',
+  SIGN_UP_ACTION: '创建账户',
+  SIGN_UP_DESCRIPTION: '填写以下信息创建账户',
+  SIGN_UP_EMAIL: '请查收邮件，完成验证。',
+  DONT_HAVE_AN_ACCOUNT: '还没有账户？',
+  ALREADY_HAVE_AN_ACCOUNT: '已有账户？',
+  EMAIL: '邮箱',
+  EMAIL_PLACEHOLDER: 'm@example.com',
+  EMAIL_REQUIRED: '请输入邮箱地址',
+  EMAIL_DESCRIPTION: '输入你用于登录的邮箱地址。',
+  EMAIL_INSTRUCTIONS: '请输入有效的邮箱地址。',
+  NAME: '名字',
+  NAME_PLACEHOLDER: '名字',
+  NAME_DESCRIPTION: '请输入你的名字或显示名称。',
+  NAME_INSTRUCTIONS: '最多 32 个字符。',
+  PASSWORD: '密码',
+  PASSWORD_PLACEHOLDER: '密码',
+  PASSWORD_REQUIRED: '请输入密码',
+  CONFIRM_PASSWORD: '确认密码',
+  CONFIRM_PASSWORD_PLACEHOLDER: '再次输入密码',
+  CONFIRM_PASSWORD_REQUIRED: '请确认密码',
+  PASSWORDS_DO_NOT_MATCH: '两次输入的密码不一致',
+  REMEMBER_ME: '记住我',
+  OPTIONAL_BRACKETS: '（选填）',
+  IS_REQUIRED: '为必填项',
+  IS_INVALID: '无效',
+  IS_THE_SAME: '与原来相同',
+  OR_CONTINUE_WITH: '或使用以下方式继续',
+  BY_CONTINUING_YOU_AGREE: '继续即表示你同意',
+  PRIVACY_POLICY: '隐私政策',
+  TERMS_OF_SERVICE: '服务条款',
+  // Forgot / reset password
+  FORGOT_PASSWORD: '忘记密码',
+  FORGOT_PASSWORD_LINK: '忘记密码？',
+  FORGOT_PASSWORD_ACTION: '发送验证码',
+  FORGOT_PASSWORD_DESCRIPTION: '输入你的邮箱以重置密码',
+  FORGOT_PASSWORD_EMAIL: '请查收邮件中的密码重置验证码。',
+  RESET_PASSWORD: '重置密码',
+  RESET_PASSWORD_ACTION: '保存新密码',
+  RESET_PASSWORD_DESCRIPTION: '在下方输入你的新密码',
+  RESET_PASSWORD_SUCCESS: '密码已重置',
+  NEW_PASSWORD: '新密码',
+  NEW_PASSWORD_PLACEHOLDER: '新密码',
+  NEW_PASSWORD_REQUIRED: '请输入新密码',
+  // Email codes and verification
+  EMAIL_OTP: '邮箱验证码',
+  EMAIL_OTP_SEND_ACTION: '发送验证码',
+  EMAIL_OTP_VERIFY_ACTION: '验证',
+  EMAIL_OTP_DESCRIPTION: '输入你的邮箱以接收验证码',
+  EMAIL_OTP_VERIFICATION_SENT: '请查收邮件中的验证码。',
+  ONE_TIME_PASSWORD: '验证码',
+  RESEND_CODE: '重新发送验证码',
+  RESEND_VERIFICATION_EMAIL: '重新发送验证邮件',
+  SEND_VERIFICATION_CODE: '发送验证码',
+  EMAIL_VERIFICATION: '验证邮箱',
+  EMAIL_VERIFICATION_DESCRIPTION: '请输入发送到你邮箱的验证码。',
+  EMAIL_VERIFICATION_SUCCESS: '邮箱验证成功',
+  VERIFY_YOUR_EMAIL: '验证你的邮箱',
+  VERIFY_YOUR_EMAIL_DESCRIPTION: '请查收邮件中的验证码。没有收到？',
+  EMAIL_VERIFY_CHANGE: '请查收邮件以确认此更改。',
+  // Security page
+  CHANGE_PASSWORD: '修改密码',
+  CHANGE_PASSWORD_DESCRIPTION: '输入当前密码和新密码。',
+  CHANGE_PASSWORD_INSTRUCTIONS: '请使用至少 8 个字符。',
+  CHANGE_PASSWORD_SUCCESS: '密码已修改',
+  CURRENT_PASSWORD: '当前密码',
+  CURRENT_PASSWORD_PLACEHOLDER: '当前密码',
+  CURRENT_SESSION: '当前会话',
+  SESSIONS: '登录会话',
+  SESSIONS_DESCRIPTION: '管理你的活跃会话并撤销访问。',
+  SESSION_NOT_FRESH: '为了安全，请重新登录后再试。',
+  SECURITY: '安全',
+  SETTINGS: '设置',
+  ACCOUNT: '账户',
+  // Common buttons
+  CONTINUE: '继续',
+  CANCEL: '取消',
+  SAVE: '保存',
+  DONE: '完成',
+  UPDATE: '更新',
+  DELETE: '删除',
+  REVOKE: '撤销',
+  GO_BACK: '返回',
+  REQUEST_FAILED: '请求失败',
+  UPDATED_SUCCESSFULLY: '更新成功',
+  // Errors
+  INVALID_EMAIL_OR_PASSWORD: '邮箱或密码不正确',
+  INVALID_PASSWORD: '密码不正确',
+  INVALID_EMAIL: '邮箱地址无效',
+  EMAIL_NOT_VERIFIED: '邮箱尚未验证',
+  EMAIL_VERIFICATION_REQUIRED: '请先验证你的邮箱',
+  USER_ALREADY_EXISTS: '该邮箱已注册',
+  USER_NOT_FOUND: '未找到该用户',
+  USER_EMAIL_NOT_FOUND: '未找到该邮箱',
+  PASSWORD_TOO_SHORT: '密码太短',
+  PASSWORD_TOO_LONG: '密码太长',
+  INVALID_OTP: '验证码不正确',
+  INVALID_CODE: '验证码不正确',
+  OTP_EXPIRED: '验证码已过期',
+  OTP_HAS_EXPIRED: '验证码已过期',
+  TOO_MANY_ATTEMPTS: '尝试次数过多，请稍后再试',
+  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: '尝试次数过多，请重新获取验证码',
+  RATE_LIMIT_EXCEEDED: '操作过于频繁，请稍后再试',
+  SESSION_EXPIRED: '会话已过期，请重新登录',
+  INVALID_TOKEN: '链接无效或已过期',
+  FAILED_TO_CREATE_USER: '无法创建账户',
+  CREDENTIAL_ACCOUNT_NOT_FOUND: '未找到密码登录方式',
+  UNEXPECTED_ERROR: '出现意外错误，请重试',
+  UNKNOWN_ERROR: '出现未知错误，请重试',
+};
+
+/**
+ * Pebble's own /api/auth gate refusals, keyed by the codes the gate returns.
+ * Not library keys, so kept apart from the typed map above.
+ */
+export const AUTH_GATE_MESSAGES_ZH: Record<string, string> = {
+  INVALID_INVITE_CODE: '邀请码无效。',
+  EMAIL_OTP_SIGN_IN_DISABLED: '已关闭邮箱验证码登录。请使用密码登录，或使用“忘记密码”。',
+  SIGN_IN_METHOD_DISABLED: '此登录方式不可用。',
+};

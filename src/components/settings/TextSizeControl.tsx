@@ -42,8 +42,8 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
               const v = Number(e.target.value);
               if (!Number.isNaN(v)) onChange(Math.min(150, Math.max(80, v)));
             }}
-            className="font-mono-tab"
-            style={{ width: 54, padding: '0.35rem 0.4rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', textAlign: 'right', boxSizing: 'border-box' }}
+            className="font-mono-tab text-size-input"
+            style={{ width: 'calc(3ch + 0.8rem + 2px)', padding: '0.35rem 0.4rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', textAlign: 'right', boxSizing: 'border-box' }}
           />
           <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>%</span>
         </div>
