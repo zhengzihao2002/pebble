@@ -578,6 +578,9 @@ export const en = {
     securityLink: 'Security',
     securityHint: 'Password and active sessions',
     backToSettings: 'Back to Settings',
+    profile: 'Profile',
+    security: 'Security',
+    navLabel: 'Pebble account',
   },
 
   modifyBalance: {

@@ -774,6 +774,38 @@ html.pebble-welcoming::after {
 /* The Privacy Notice link inside the sign-up checkbox label. */
 .pebble-auth-link { color: var(--pine); text-decoration: underline; text-underline-offset: 2px; }
 
+/* Pebble account pages (/account/...). The auth library's cards, mapped onto
+   Pebble's palette - the same idea as .pebble-auth on the sign-in pages.
+   Pebble variables follow the theme and dark mode, so these do too. */
+.pebble-account {
+  --background: var(--paper); --foreground: var(--ink);
+  --card: var(--mist); --card-foreground: var(--ink);
+  --popover: var(--mist); --popover-foreground: var(--ink);
+  --primary: var(--pine); --primary-foreground: var(--paper);
+  --secondary: var(--pine-soft); --secondary-foreground: var(--ink);
+  --muted: var(--paper); --muted-foreground: var(--ink-soft);
+  --accent: var(--pine-soft); --accent-foreground: var(--ink);
+  --destructive: var(--wine);
+  --border: var(--line); --input: var(--line); --ring: var(--pine);
+  --radius: 0.75rem;
+  color: var(--ink);
+}
+.pebble-account [data-slot="card"] {
+  background-color: var(--mist); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow);
+}
+.pebble-account [data-slot="card-footer"] { background-color: var(--paper); border-top: 1px solid var(--line); }
+.pebble-account [data-slot="input"] { background-color: var(--paper); color: var(--ink); border-color: var(--line); }
+/* The shared sub-nav: back to Settings, then Profile / Security. */
+.account-subnav { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.account-subnav-back { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; color: var(--ink-soft); text-decoration: none; }
+.account-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 99px; background: var(--mist); border: 1px solid var(--line); }
+.account-tabs a {
+  display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.95rem; border-radius: 99px;
+  font-size: 0.85rem; font-weight: 500; color: var(--ink-soft); text-decoration: none;
+}
+.account-tabs a[aria-current="page"] { background: var(--pine); color: var(--paper); }
+
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 

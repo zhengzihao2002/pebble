@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Shield, User } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';
 
@@ -11,9 +11,6 @@ import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';
  * session) emits skeletons while the client (cookie in hand) resolves
  * immediately - a guaranteed hydration mismatch. ssr: false skips the server
  * render entirely rather than papering over the difference.
- *
- * Not an issue before this route moved into (app): it was statically
- * generated, so there was no per-request server render to disagree with.
  */
 const AccountView = dynamic(
   () => import('@neondatabase/auth-ui').then((m) => m.AccountView),
@@ -28,28 +25,49 @@ const ChangePasswordCard = dynamic(
   { ssr: false },
 );
 
+const TABS = [
+  { path: 'settings', icon: User },
+  { path: 'security', icon: Shield },
+] as const;
+
+/**
+ * .pebble-account maps the auth library's colour variables onto Pebble's
+ * palette (globals.css), so its cards follow the theme and dark mode like
+ * every other card.
+ *
+ * ONE sub-nav, drawn by Pebble on both pages. The library's own nav only
+ * existed on Profile (AccountView) - Security is custom, so it vanished
+ * there. hideNav turns the library's off so both pages match.
+ */
 export function AccountViewClient({ path }: { path: string }) {
   const { d } = useTranslation();
+  const label = { settings: d.account.profile, security: d.account.security };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* Settings is the only entry point to these views - the sidebar has no
-          Account item - so a fixed link back is more honest than relying on
-          browser history. */}
-      <Link
-        href="/settings"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--ink-soft)', textDecoration: 'none', alignSelf: 'flex-start' }}
-      >
-        <ChevronLeft size={16} />
-        {d.account.backToSettings}
-      </Link>
+    <div className="pebble-account" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <nav className="account-subnav" aria-label={d.account.navLabel}>
+        {/* Settings is the only entry point to these views - the sidebar has
+            no Account item - so a fixed link back beats browser history. */}
+        <Link href="/settings" className="account-subnav-back">
+          <ChevronLeft size={16} />
+          {d.account.backToSettings}
+        </Link>
+        <div className="account-tabs">
+          {TABS.map(({ path: tab, icon: Icon }) => (
+            <Link key={tab} href={`/account/${tab}`} aria-current={path === tab ? 'page' : undefined}>
+              <Icon size={14} />
+              {label[tab]}
+            </Link>
+          ))}
+        </div>
+      </nav>
       {path === 'security' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <ChangePasswordCard />
           <PebbleSessionsCard />
         </div>
       ) : (
-        <AccountView path={path} />
+        <AccountView path={path} hideNav />
       )}
     </div>
   );

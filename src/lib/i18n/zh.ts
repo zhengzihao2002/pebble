@@ -507,6 +507,9 @@ export const zh: typeof en = {
     securityLink: '安全',
     securityHint: '密码与登录设备',
     backToSettings: '返回设置',
+    profile: '个人资料',
+    security: '安全',
+    navLabel: 'Pebble 账户',
   },
 
   modifyBalance: {
