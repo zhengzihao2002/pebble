@@ -30,13 +30,29 @@ import { AUTH_GATE_MESSAGES_ZH, AUTH_LOCALIZATION_ZH } from '@/lib/i18n/authLoca
 // email-code SIGN-IN is refused by that same gate.
 const ADDITIONAL_FIELDS_EN = {
   inviteCode: { label: 'Invite code', placeholder: 'Enter your invite code', required: true, type: 'string' as const },
+  // Consent. Also enforced by the /api/auth gate, which refuses sign-up
+  // without it. The link opens in a new tab so the form keeps its input.
+  privacyAccepted: {
+    label: <>I have read and agree to the <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">Privacy Notice</a></>,
+    required: true,
+    // Own message: the library otherwise builds "<label> is required", and
+    // this label is JSX (it holds the link), which printed [object Object].
+    errorMessage: { required: 'Please read and agree to the Privacy Notice.' },
+    type: 'boolean' as const,
+  },
 };
 const ADDITIONAL_FIELDS_ZH = {
   inviteCode: { label: '邀请码', placeholder: '输入你的邀请码', required: true, type: 'string' as const },
+  privacyAccepted: {
+    label: <>我已阅读并同意<a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">隐私声明</a></>,
+    required: true,
+    errorMessage: { required: '请阅读并同意隐私声明。' },
+    type: 'boolean' as const,
+  },
 };
 // The library's own strings plus the /api/auth gate's refusal codes.
 const LOCALIZATION_ZH = { ...AUTH_LOCALIZATION_ZH, ...AUTH_GATE_MESSAGES_ZH } as typeof AUTH_LOCALIZATION_ZH;
-const SIGN_UP = { fields: ['name', 'inviteCode'] };
+const SIGN_UP = { fields: ['name', 'inviteCode', 'privacyAccepted'] };
 // Verification is a SEPARATE switch from code sign-in. Neon requires new
 // accounts to verify their email and emails a code; this shows the box to
 // type it into. The /api/auth gate already allows the verification

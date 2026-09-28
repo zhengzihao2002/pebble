@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { AuthViewClient } from './AuthViewClient';
 import { AuthLanguageToggle } from './AuthLanguageToggle';
+import { WelcomeArm } from './WelcomeArm';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 
@@ -10,9 +11,10 @@ export const dynamicParams = false;
 /**
  * Pebble's sign-in, sign-up and password pages.
  *
- * The wrapper wears .pebble-root, so Pebble's palette, the saved theme, dark
- * mode and font choice all apply - set before first paint by the pre-init
- * script in layout.tsx, exactly as inside the app. The library's forms are
+ * The wrapper wears .pebble-root, so Pebble's palette applies - but always
+ * the ORIGINAL theme and default fonts, following the device's light/dark
+ * setting (the pre-init script in layout.tsx and HtmlPreferenceSync skip
+ * saved looks on /auth/). The saved language still applies. The forms are
  * RECOLOURED, not rebuilt: .pebble-auth in globals.css points their shadcn
  * variables at Pebble's palette. Neon's forms and logic are untouched.
  */
@@ -39,6 +41,7 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
             <p className="pebble-auth-tagline">{d.authBrand.tagline}</p>
             <p className="pebble-auth-body">{d.authBrand.body}</p>
             <AuthLanguageToggle />
+            <WelcomeArm />
           </div>
         </section>
         <section className="pebble-auth-form">

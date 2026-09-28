@@ -88,6 +88,7 @@ export const en = {
     // is how the toggle already reads. Do not turn them into imperatives.
     darkMode: 'Dark Mode',
     lightMode: 'Light Mode',
+    system: 'System',
   },
 
   auth: {
@@ -528,6 +529,34 @@ export const en = {
     farewellGoodbye: 'Thank you for letting Pebble keep you company. Goodbye.',
   },
 
+  safetyLocks: {
+    title: 'Safety locks',
+    blurb: 'A lock disables its action so it cannot happen by accident. Turn it off here whenever you need it.',
+    deletePebbleAccount: 'Deleting your Pebble account',
+    deleteAccounts: 'Deleting bank and cash accounts',
+    deleteTransactions: 'Deleting transactions, transfers and adjustments',
+    deleteCategories: 'Deleting categories',
+    lockedHint: 'Locked in Settings → Safety locks',
+  },
+
+  welcome: {
+    // {name} is the user's own first name - user data.
+    greeting: 'Welcome back, {name}.',
+    // First sign-in after signing up.
+    greetingNew: 'Welcome to Pebble, {name}.',
+    // Neutral: shown only in the instant before the session (and so the
+    // name, and whether the account is new) is known.
+    greetingNoName: 'Welcome.',
+    tagline: 'Your wealth, in order',
+    settingTitle: 'Welcome animation',
+    settingHint: 'A short welcome each time you sign in.',
+    preview: 'Preview',
+  },
+
+  privacy: {
+    link: 'Privacy Notice',
+  },
+
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
@@ -642,8 +671,10 @@ export const en = {
 
   appearance: {
     title: 'Appearance',
-    darkMode: 'Dark mode',
-    hint: 'Switch to a darker color scheme',
+    blurb: 'Light, dark, or follow this device. The sidebar button switches between light and dark; System is chosen here.',
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System',
   },
 
   // Labels only. The stored values stay 'searchable' / 'plain' in every locale.

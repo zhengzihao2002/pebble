@@ -16,6 +16,7 @@ import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from '@/data/seed';
 import { CategoryDeleteDialog } from './CategoryDeleteDialog';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useSafetyLock } from '@/lib/useSafetyLock';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
 const inputStyle: React.CSSProperties = {
@@ -95,6 +96,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (color: str
 }
 
 export function CategoryManagerCard() {
+  const deleteLocked = useSafetyLock('deleteCategories');
   // ⚠️ Category NAMES are user data. draft.name, c.name and everything sent
   // to createCategoryAction/updateCategoryAction pass through untranslated.
   // iconKey and color are looked-up values, never labels.
@@ -222,7 +224,7 @@ export function CategoryManagerCard() {
                     <Pencil size={14} />
                   </button>
                   {!c.isSystem && (
-                    <button type="button" onClick={() => setDeleteTarget(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
+                    <button type="button" onClick={() => setDeleteTarget(c)} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0, opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
                       <Trash2 size={14} />
                     </button>
                   )}

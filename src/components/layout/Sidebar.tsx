@@ -1,7 +1,8 @@
 'use client';
 
-import { Moon, Sun, Banknote } from 'lucide-react';
+import { Monitor, Moon, Sun, Banknote } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { useResolvedDark } from '@/lib/useResolvedDark';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
@@ -9,8 +10,12 @@ import { navItems } from './navItems';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function Sidebar() {
-  const darkMode = usePebbleStore((s) => s.darkMode);
-  const setDarkMode = usePebbleStore((s) => s.setDarkMode);
+  const appearance = usePebbleStore((s) => s.appearance);
+  const setAppearance = usePebbleStore((s) => s.setAppearance);
+  const darkMode = useResolvedDark();
+  // On System the button says so. A click leaves System for the OPPOSITE
+  // of what is on screen; returning to System happens only in Settings.
+  const onSystem = appearance === 'system';
   const { name, email, initials } = useCurrentUser();
   const { d } = useTranslation();
 
@@ -28,9 +33,9 @@ export function Sidebar() {
         ))}
       </nav>
       <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <button onClick={() => setDarkMode(!darkMode)} className="nav-btn">
-          {darkMode ? <Moon size={18} /> : <Sun size={18} />}
-          {darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}
+        <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn">
+          {onSystem ? <Monitor size={18} /> : darkMode ? <Moon size={18} /> : <Sun size={18} />}
+          {onSystem ? d.sidebar.system : darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}
         </button>
         <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>

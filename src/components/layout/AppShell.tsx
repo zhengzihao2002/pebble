@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
-import { usePebbleStore } from '@/store/usePebbleStore';
+import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
+import { useResolvedDark } from '@/lib/useResolvedDark';
+import { authClient } from '@/lib/auth/client';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
-import { LEGACY_STORAGE_KEY } from '@/store/storageKeys';
+import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
@@ -17,15 +19,26 @@ import { ModifyBudgetModal } from '@/components/modals/ModifyBudgetModal';
 import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { TransferModal } from '@/components/modals/TransferModal';
+import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const darkMode = usePebbleStore((s) => s.darkMode);
+  // Resolved: Light, Dark, or the device's setting when on System.
+  const darkMode = useResolvedDark();
   const textSize = usePebbleStore((s) => s.textSize);
   const locale = usePebbleStore((s) => s.locale);
   const fontChoice = usePebbleStore((s) => s.fontChoice);
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
+
+  // Loads THIS user's saved preferences (per-user storage - see
+  // switchPebbleUser). Until the session resolves, the most recent user's are
+  // shown, which on a single-user device is the same person.
+  const { data: sessionData } = authClient.useSession();
+  const sessionUserId = sessionData?.user?.id;
+  useEffect(() => {
+    if (sessionUserId) void switchPebbleUser(sessionUserId);
+  }, [sessionUserId]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
@@ -39,6 +52,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Same reasoning as the modals above: the trigger lives in Header.
   const [showTransferModal, setShowTransferModal] = useState(false);
 
+  // Welcome animation: armed by the auth pages (WelcomeArm), played once on
+  // the first app page after signing in, then the flag is cleared. The
+  // pre-paint cover (html.pebble-welcoming) hides the app until it starts.
+  const [welcome, setWelcome] = useState(false);
+  const closeWelcome = useCallback(() => setWelcome(false), []);
+  useEffect(() => {
+    let pending = false;
+    try {
+      pending = window.sessionStorage.getItem(WELCOME_PENDING_KEY) === '1';
+      window.sessionStorage.removeItem(WELCOME_PENDING_KEY);
+    } catch { /* storage unavailable */ }
+    if (pending && usePebbleStore.getState().showWelcome !== false) setWelcome(true);
+    else document.documentElement.classList.remove('pebble-welcoming');
+  }, []);
+  // Settings' Preview button.
+  useEffect(() => {
+    const preview = () => setWelcome(true);
+    window.addEventListener(WELCOME_PREVIEW_EVENT, preview);
+    return () => window.removeEventListener(WELCOME_PREVIEW_EVENT, preview);
+  }, []);
+
   // Same effect the original top-level App component had: text-size
   // setting scales the document's root font size, which every rem-based
   // measurement throughout Pebble is relative to.
@@ -51,6 +85,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   // this keeps the two in step rather than replacing either.
   useEffect(() => {
     document.documentElement.classList.toggle('pebble-dark', darkMode);
+  }, [darkMode]);
+
+  // .dark on the root div is set HERE, not in its className: the resolved
+  // mode can differ between the server render (which cannot see the device)
+  // and the first client render, and React does not patch attribute
+  // mismatches - it would leave a stale class it believes is current. React
+  // renders a fixed className, so it never strips this one. Until this runs,
+  // html.pebble-dark from the pre-paint script covers the palette.
+  useEffect(() => {
+    rootRef.current?.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
   // Mirrors the font choice onto <html>, as darkMode is above: the pre-paint
@@ -183,7 +227,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={rootRef} className={`pebble-root themed-scroll ${darkMode ? 'dark' : ''}`}>
+    <div ref={rootRef} className="pebble-root themed-scroll">
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">
@@ -204,6 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
       {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
       {showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
+      {welcome && <WelcomeOverlay onDone={closeWelcome} />}
     </div>
   );
 }

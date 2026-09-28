@@ -15,6 +15,7 @@ import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFiel
 import { isDescriptionEdited, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useSafetyLock } from '@/lib/useSafetyLock';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
 import { renderTemplate } from '@/lib/i18n/RichText';
@@ -38,6 +39,7 @@ const labelStyle: React.CSSProperties = {
 type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 
 export function TransactionDetailModal({ txn, onClose, categoryMeta }: TransactionDetailModalProps) {
+  const deleteLocked = useSafetyLock('deleteTransactions');
   const { d, t, locale } = useTranslation();
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
@@ -287,7 +289,7 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
   };
 
   const handleDelete = async () => {
-    if (busy) return;
+    if (busy || deleteLocked) return;
     setBusy(true);
     setError(null);
     const result = txn.type === 'adjustment'
@@ -411,10 +413,13 @@ export function TransactionDetailModal({ txn, onClose, categoryMeta }: Transacti
                   <Pencil size={14} />{d.txnDetail.edit}
                 </button>
               )}
-              <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}>
                 <Trash2 size={14} />{d.txnDetail.delete}
               </button>
             </div>
+            {deleteLocked && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '0.5rem', textAlign: 'center' }}>{d.safetyLocks.lockedHint}</p>
+            )}
           </>
         )}
 

@@ -8,6 +8,7 @@ import { FontControl } from '@/components/settings/FontControl';
 import { ThemeControl } from '@/components/settings/ThemeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { HealthBarControl } from '@/components/settings/HealthBarControl';
+import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
 import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
@@ -17,6 +18,7 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
+import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
 import { SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
 
 interface SettingsClientProps {
@@ -44,8 +46,8 @@ export function SettingsClient({
   const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
   const setTextSize = usePebbleStore((s) => s.setTextSize);
-  const darkMode = usePebbleStore((s) => s.darkMode);
-  const setDarkMode = usePebbleStore((s) => s.setDarkMode);
+  const appearance = usePebbleStore((s) => s.appearance);
+  const setAppearance = usePebbleStore((s) => s.setAppearance);
   const locale = usePebbleStore((s) => s.locale);
   const setLocale = usePebbleStore((s) => s.setLocale);
   const selectMode = usePebbleStore((s) => s.selectMode);
@@ -87,8 +89,9 @@ export function SettingsClient({
             fontChoice={fontChoice} onChange={setFontChoice}
             cjkFontChoice={cjkFontChoice} onCjkChange={setCjkFontChoice}
           />
-          <AppearanceControl darkMode={darkMode} onChange={setDarkMode} />
+          <AppearanceControl appearance={appearance} onChange={setAppearance} />
           <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
+          <WelcomeAnimationControl />
         </>
       ),
     },
@@ -116,7 +119,12 @@ export function SettingsClient({
       id: 'settings-pebble-account',
       // Reuses the card's own title rather than a near-duplicate key.
       title: d.account.title,
-      cards: <PebbleAccountCard />,
+      cards: (
+        <>
+          <SafetyLocksControl />
+          <PebbleAccountCard />
+        </>
+      ),
     },
   ];
 

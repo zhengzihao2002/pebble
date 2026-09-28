@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/format';
 import { AccountMoveDialog } from '@/components/settings/AccountMoveDialog';
 import { AccountDeleteDialog } from '@/components/settings/AccountDeleteDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useSafetyLock } from '@/lib/useSafetyLock';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface AccountsCardProps {
@@ -42,6 +43,7 @@ const labelStyle: React.CSSProperties = {
  * the dictionary, unlike the fixed Checking/Cash pair they replaced.
  */
 export function AccountsCard({ accounts, balancesByAccount, hasRecords }: AccountsCardProps) {
+  const deleteLocked = useSafetyLock('deleteAccounts');
   const { d, t, locale } = useTranslation();
 
   // Hibernated accounts ARE listed: they hold real balances that still count
@@ -186,10 +188,10 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   >
                     {a.status === 'hibernated' ? <Sun size={15} /> : <Moon size={15} />}
                   </button>
-                  <button
+                  <button disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined}
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
                     aria-label={t(d.accounts.deleteLabel, { name: a.name })}
-                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
                   >
                     <Trash2 size={15} />
                   </button>

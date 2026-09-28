@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSafetyLock } from '@/lib/useSafetyLock';
 import { ChevronRight, Shield, Trash2, User } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { SignOutButton } from '@/components/layout/SignOutButton';
@@ -14,6 +15,7 @@ export function PebbleAccountCard() {
   // translated, never transformed.
   const { d } = useTranslation();
   const [showDelete, setShowDelete] = useState(false);
+  const deleteLocked = useSafetyLock('deletePebbleAccount');
 
   // Both destinations are Better Auth UI's own account views, rendered by
   // src/app/(app)/account/[path]/page.tsx. Nothing linked to them before, so
@@ -61,13 +63,17 @@ export function PebbleAccountCard() {
 
       <div style={{ borderTop: '1px solid var(--line)', marginTop: '1rem', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         <button
-          type="button" onClick={() => setShowDelete(true)} className="pill"
-          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.9rem', color: 'var(--wine)', borderColor: 'var(--wine)' }}
+          type="button" onClick={() => setShowDelete(true)} disabled={deleteLocked} className="pill"
+          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.5rem 0.9rem', color: 'var(--wine)', borderColor: 'var(--wine)', opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
         >
           <Trash2 size={14} />{d.deleteMe.button}
         </button>
-        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.deleteMe.hint}</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{deleteLocked ? d.safetyLocks.lockedHint : d.deleteMe.hint}</span>
       </div>
+
+      <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: '1rem', fontSize: '0.78rem', color: 'var(--pine)' }}>
+        {d.privacy.link}
+      </a>
 
       {showDelete && <DeletePebbleAccountDialog onClose={() => setShowDelete(false)} />}
     </div>

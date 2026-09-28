@@ -61,6 +61,7 @@ export const zh: typeof en = {
   sidebar: {
     darkMode: '深色模式',
     lightMode: '浅色模式',
+    system: '跟随系统',
   },
 
   auth: {
@@ -465,6 +466,30 @@ export const zh: typeof en = {
     farewellGoodbye: '谢谢你让 Pebble 陪伴过你。再见。',
   },
 
+  safetyLocks: {
+    title: '安全锁',
+    blurb: '开启后，对应的操作会被禁用，避免误触。需要时可随时在此关闭。',
+    deletePebbleAccount: '删除 Pebble 账户',
+    deleteAccounts: '删除银行和现金账户',
+    deleteTransactions: '删除交易、转账和余额调整',
+    deleteCategories: '删除分类',
+    lockedHint: '已在“设置 → 安全锁”中锁定',
+  },
+
+  welcome: {
+    greeting: '欢迎回来，{name}。',
+    greetingNew: '欢迎来到 Pebble，{name}。',
+    greetingNoName: '欢迎。',
+    tagline: '你的财富，井然有序',
+    settingTitle: '登录动画',
+    settingHint: '每次登录时播放一段简短的欢迎动画。',
+    preview: '预览',
+  },
+
+  privacy: {
+    link: '隐私声明',
+  },
+
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
@@ -564,8 +589,10 @@ export const zh: typeof en = {
 
   appearance: {
     title: '外观',
-    darkMode: '深色模式',
-    hint: '切换为深色配色方案',
+    blurb: '浅色、深色，或跟随此设备。侧边栏按钮可在浅色和深色之间切换；“跟随系统”需在此处选择。',
+    light: '浅色',
+    dark: '深色',
+    system: '跟随系统',
   },
 
   selectMode: {

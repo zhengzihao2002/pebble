@@ -9,7 +9,7 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
-import { usePebbleStore } from '@/store/usePebbleStore';
+import { forgetActivePebbleUser } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -65,7 +65,8 @@ export function DeletePebbleAccountDialog({ onClose }: { onClose: () => void }) 
       setErrorKind(result.kind);
       return;
     }
-    usePebbleStore.getState().resetFilterPrefs();
+    // This user's saved browser preferences go with the account.
+    forgetActivePebbleUser();
     setStep('farewell');
   };
 

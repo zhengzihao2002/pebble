@@ -136,4 +136,5 @@ export const AUTH_GATE_MESSAGES_ZH: Record<string, string> = {
   INVALID_INVITE_CODE: '邀请码无效。',
   EMAIL_OTP_SIGN_IN_DISABLED: '已关闭邮箱验证码登录。请使用密码登录，或使用“忘记密码”。',
   SIGN_IN_METHOD_DISABLED: '此登录方式不可用。',
+  PRIVACY_NOT_ACCEPTED: '创建账户前须同意隐私声明。',
 };

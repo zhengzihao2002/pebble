@@ -690,6 +690,90 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
 .pebble-root .text-size-input::-webkit-outer-spin-button,
 .pebble-root .text-size-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
+/* Welcome animation (WelcomeOverlay). The same deep backdrop in every theme,
+   on purpose - a constant signature. The html::after cover is painted by the
+   pre-paint script's pebble-welcoming class so the app never shows first; it
+   fades by itself after 3 s as a safety net, so no page can be stuck behind it. */
+html.pebble-welcoming::after {
+  content: ''; position: fixed; inset: 0; z-index: 1000; background: #0B1512;
+  animation: welcome-cover-out 0.3s ease 3s forwards;
+}
+@keyframes welcome-cover-out { to { opacity: 0; visibility: hidden; } }
+.welcome {
+  position: fixed; inset: 0; z-index: 1000; cursor: pointer; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 42%, #173A2E 0%, #0B1512 62%, #060B09 100%);
+  color: #F4EFE3;
+  animation: welcome-out 0.55s cubic-bezier(0.7, 0, 0.84, 0) 1.95s forwards;
+}
+.welcome-glow {
+  position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 95, 0.18), transparent 60%);
+  animation: welcome-glow 2.4s ease-out both;
+}
+.welcome-stage { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 2rem; text-align: center; }
+.welcome-logo {
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 95, 0.35);
+  animation: welcome-logo-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both, welcome-logo-out 0.5s ease-in 1.9s forwards;
+}
+.welcome-name { font-size: 2.6rem; font-weight: 600; letter-spacing: 0.02em; margin: 0.4rem 0 0; animation: welcome-name 1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both; }
+.welcome-line {
+  display: block; width: min(16rem, 60vw); height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF5F, transparent);
+  animation: welcome-line 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+.welcome-greeting { font-size: 1.35rem; font-weight: 500; margin: 0.5rem 0 0; animation: welcome-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both; }
+.welcome-tagline {
+  margin: 0; font-size: 0.72rem; letter-spacing: 0.32em; text-transform: uppercase;
+  background: linear-gradient(100deg, #B8914A 20%, #F3DFA6 45%, #B8914A 70%);
+  background-size: 220% 100%; background-repeat: no-repeat;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: welcome-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.05s both, welcome-shimmer 1.6s ease-in-out 1.2s both;
+}
+@keyframes welcome-glow { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes welcome-logo-in { from { opacity: 0; transform: translateX(-60px) scale(0.9); filter: blur(12px); } to { opacity: 1; transform: none; filter: blur(0); } }
+@keyframes welcome-logo-out { to { opacity: 0; transform: translateX(60px) scale(0.95); filter: blur(8px); } }
+@keyframes welcome-name { from { opacity: 0; letter-spacing: 0.35em; filter: blur(6px); } to { opacity: 1; letter-spacing: 0.02em; filter: blur(0); } }
+@keyframes welcome-line { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+@keyframes welcome-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes welcome-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@keyframes welcome-out { to { opacity: 0; transform: translateY(-3%) scale(1.02); visibility: hidden; } }
+
+/* Privacy Notice page (/auth/privacy). */
+.privacy-page { min-height: 100vh; background: var(--paper); color: var(--ink); padding: 2.5rem 1.25rem 4rem; box-sizing: border-box; }
+.privacy-article { max-width: 46rem; margin: 0 auto; font-size: 0.95rem; line-height: 1.7; }
+.privacy-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.privacy-brand { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.3rem; font-weight: 600; }
+.privacy-article h1 { font-size: 2rem; font-weight: 600; margin: 0 0 0.25rem; }
+.privacy-updated { color: var(--ink-soft); font-size: 0.85rem; margin: 0 0 1.5rem; }
+.privacy-article h2 { font-size: 1.1rem; font-weight: 600; margin: 2rem 0 0.6rem; }
+.privacy-article p { margin: 0 0 0.8rem; }
+.privacy-article ul { margin: 0 0 0.8rem; padding-left: 1.25rem; }
+.privacy-article li { margin-bottom: 0.45rem; }
+.privacy-back { display: inline-block; margin-top: 2rem; color: var(--pine); font-weight: 500; }
+/* The language switch was styled for the green brand panel; here it sits on paper. */
+.privacy-page .pebble-auth-lang { margin-top: 0; background: var(--mist); border: 1px solid var(--line); }
+.privacy-page .pebble-auth-lang button { color: var(--ink); }
+.privacy-page .pebble-auth-lang button.active { background: var(--pine); color: var(--paper); }
+/* consent-message-below: the sign-up consent checkbox's "required" message
+   goes on its OWN LINE under the checkbox, never beside the Privacy Notice
+   link. Scoped to a container holding both a checkbox and a form message
+   (shadcn FormMessage ids end in -form-item-message), so no other field
+   changes. */
+.pebble-auth :has(> [id$="-form-item-message"]):has([role="checkbox"]) {
+  flex-wrap: wrap;
+}
+.pebble-auth :has([role="checkbox"]) > [id$="-form-item-message"] {
+  flex-basis: 100%;
+  width: 100%;
+  order: 99;
+  margin: 0.35rem 0 0;
+  padding-left: 1.75rem;
+}
+/* The Privacy Notice link inside the sign-up checkbox label. */
+.pebble-auth-link { color: var(--pine); text-decoration: underline; text-underline-offset: 2px; }
+
 .dash-charts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
 @container content (min-width: 640px) { .dash-charts-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
 

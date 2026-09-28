@@ -1,10 +1,12 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
 import type { Locale } from '@/lib/i18n/locale';
-import { PEBBLE_UI_STORAGE_KEY } from './storageKeys';
+import { LAST_USER_KEY, PEBBLE_UI_STORAGE_KEY, userStorageKey } from './storageKeys';
 import type { CjkFontChoice, FontChoice } from '@/lib/fontChoice';
 import type { ThemeChoice } from '@/lib/themeChoice';
+import type { Appearance } from '@/lib/appearance';
+import { DEFAULT_SAFETY_LOCKS, type SafetyLockKey, type SafetyLocks } from '@/lib/safetyLocks';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 
 /**
@@ -12,21 +14,20 @@ import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
  *
  * All financial data - expenses, income, balances, budgets, goals - lives in
  * Postgres, scoped to the authenticated user, and is fetched by Server
- * Components. It must never be reintroduced here: localStorage is per-device
- * and per-browser, not per-user, so financial data stored here would leak
- * between accounts signing in on the same machine.
+ * Components. It must never be reintroduced here.
  *
- * darkMode and textSize stay because they are genuinely device preferences:
- * the right text size on a phone is not the right one on a desktop, and
- * neither is worth a database round trip on every page load.
+ * PER USER. Each signed-in user gets their own localStorage entry
+ * (`pebble-ui:<userId>`), so two people on one device never see or overwrite
+ * each other's preferences - see switchPebbleUser below. This is separation,
+ * not security: anyone with the browser profile can read localStorage.
  */
 // Dashboard selector state. Three separate widgets write into one object, so
 // the setter merges a patch rather than replacing - otherwise whichever
 // component wrote last would clear the other two.
 //
-// The sub-period fields are nullable: null means "not chosen on this device
-// yet", and each widget then resolves its own default from the periods
-// actually present in the data.
+// The sub-period fields are nullable: null means "not chosen yet", and each
+// widget then resolves its own default from the periods actually present in
+// the data.
 export interface DashboardPrefs {
   statsMode: string;
   statsPeriod: string | null;
@@ -50,63 +51,55 @@ export type IncomeEstimateMode = 'system' | 'manual';
 // paycheck's worth for anyone paid that way.
 export type ManualIncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'yearly';
 
-
 // Which picker Pebble's dropdowns use. 'searchable' is the type-to-filter
-// combobox; 'plain' is the browser's native <select>. A device preference
-// like the ones above: nothing here reaches Postgres.
+// combobox; 'plain' is the browser's native <select>.
 export type SelectMode = 'searchable' | 'plain';
 
-interface PebbleUIState {
-  darkMode: boolean;
+interface PebblePrefs {
+  // Light, Dark, or System (follows the device live - useResolvedDark).
+  appearance: Appearance;
   textSize: number;
-  // Display language. A DEVICE preference like the two above: it changes
-  // nothing that is stored, compared or sent to Postgres. AppShell mirrors it
-  // into the pebble-lang cookie so Server Components can read it too.
+  // Display language. Changes nothing that is stored, compared or sent to
+  // Postgres. AppShell mirrors it into the pebble-lang cookie so Server
+  // Components can read it too.
   locale: Locale;
-  // null means never set on this device: the Reports screen then resolves its
-  // own date-based defaults rather than falling back to a stored month that
-  // could be years old. Filter choices qualify as device preferences - they
-  // describe how you like to look at the data, not the data itself.
+  // null means never set: the Reports screen then resolves its own
+  // date-based defaults rather than falling back to a stored month that
+  // could be years old.
   reportFilters: ReportFilterPrefs | null;
   dashboardPrefs: Partial<DashboardPrefs> | null;
-  // Analysis page preferences. Structural and string-typed on purpose:
-  // localStorage can hold a window key written by an older or newer build,
-  // so the page validates it on restore rather than trusting the type.
+  // Structural and string-typed on purpose: localStorage can hold a window
+  // key written by an older or newer build, so the page validates it on
+  // restore rather than trusting the type.
   analysisPrefs: { window?: string } | null;
-  // Event -> sound file id, or null for silence. Always present rather than
-  // nullable like the two above: those use null for "never set on this
-  // device" because they resolve their own date-based defaults, whereas sound
-  // has one universal default (silence) and needs no such distinction.
-  //
-  // A stored id whose file was later renamed or deleted resolves to nothing in
-  // findSoundFile() and plays silence - no error, no cleanup needed.
+  // Event -> sound file id, or null for silence. A stored id whose file was
+  // later renamed or deleted resolves to nothing in findSoundFile() and plays
+  // silence - no error, no cleanup needed.
   soundPrefs: Record<SoundEvent, string | null>;
-  // Which of the two "estimated annual income" sources Modify Budget shows -
-  // a device preference, exactly like the prefs above: it changes nothing
-  // that is stored or sent to Postgres, only what number the modal displays
-  // while you are setting budgets.
   incomeEstimateMode: IncomeEstimateMode;
   // How often the manually entered paycheck arrives. The AMOUNT itself is
-  // deliberately NOT stored: it is a personal figure, and this storage is per
-  // device, shared by everyone who signs in on it. The amount lives in
-  // ModifyBudgetModal's own state and is re-imported each time it opens.
+  // deliberately NOT stored - it lives in ModifyBudgetModal's own state and
+  // is re-imported each time it opens.
   manualIncomeFrequency: ManualIncomeFrequency;
   // Read through SelectField, never by individual call sites. Any stored
-  // value other than 'plain' is treated as 'searchable' there, so a key
-  // written by an older or newer build cannot break a form.
+  // value other than 'plain' is treated as 'searchable' there.
   selectMode: SelectMode;
-  // Typeface for text and headings. Validated where it is applied (AppShell
-  // and the pre-paint script), so a value from an older or newer build falls
-  // back to the default font instead of matching no CSS rule.
+  // Validated where applied (AppShell and the pre-paint script), so a value
+  // from an older or newer build falls back instead of matching no CSS rule.
   fontChoice: FontChoice;
-  // The CHINESE face, independent of the Latin one above - both always apply,
-  // each to its own characters. Validated where applied, like the Latin one.
   cjkFontChoice: CjkFontChoice;
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
-  // Colour theme, independent of darkMode. Validated where applied.
   themeChoice: ThemeChoice;
-  setDarkMode: (value: boolean) => void;
+  // Per-user switches disabling risky buttons. Read through isLocked(), so a
+  // lock missing from older saved settings takes its default.
+  safetyLocks: Partial<SafetyLocks>;
+  // Welcome animation after signing in. On by default.
+  showWelcome: boolean;
+}
+
+interface PebbleUIState extends PebblePrefs {
+  setAppearance: (value: Appearance) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
   setReportFilters: (value: ReportFilterPrefs) => void;
@@ -119,46 +112,67 @@ interface PebbleUIState {
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
-  resetFilterPrefs: () => void;
   setThemeChoice: (value: ThemeChoice) => void;
+  setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
+  setShowWelcome: (value: boolean) => void;
 }
 
-const noopStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
+// Static, date-free defaults: the server render and the first client render
+// must agree exactly, and persist rehydrates after. Also the base every
+// rehydrate starts from (see merge below), so switching to a user with
+// nothing saved yields defaults - never the previous user's values.
+const DEFAULT_PREFS: PebblePrefs = {
+  appearance: 'system',
+  textSize: 100,
+  locale: 'en',
+  reportFilters: null,
+  dashboardPrefs: null,
+  analysisPrefs: null,
+  soundPrefs: emptySoundPrefs(),
+  incomeEstimateMode: 'system',
+  manualIncomeFrequency: 'monthly',
+  selectMode: 'searchable',
+  fontChoice: 'default',
+  cjkFontChoice: 'sans',
+  showHealthBar: false,
+  themeChoice: 'original',
+  safetyLocks: DEFAULT_SAFETY_LOCKS,
+  showWelcome: true,
+};
+
+// ---- Per-user storage -------------------------------------------------------
+// Each user's preferences live under `pebble-ui:<userId>`. LAST_USER_KEY
+// points at the most recent user, so the pre-paint script and the signed-out
+// pages - which run before anyone is known - show that user's look. Before
+// any user is known on a device, the bare `pebble-ui` key is used; the first
+// user to sign in claims it (which also migrates the old shared entry).
+let activeUserId: string | null = null;
+if (typeof window !== 'undefined') {
+  try { activeUserId = window.localStorage.getItem(LAST_USER_KEY); } catch { activeUserId = null; }
+}
+
+const keyFor = (name: string) => (activeUserId ? `${name}:${activeUserId}` : name);
+
+const perUserStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === 'undefined') return null;
+    try { return window.localStorage.getItem(keyFor(name)); } catch { return null; }
+  },
+  setItem: (name, value) => {
+    if (typeof window === 'undefined') return;
+    try { window.localStorage.setItem(keyFor(name), value); } catch { /* storage unavailable */ }
+  },
+  removeItem: (name) => {
+    if (typeof window === 'undefined') return;
+    try { window.localStorage.removeItem(keyFor(name)); } catch { /* storage unavailable */ }
+  },
 };
 
 export const usePebbleStore = create<PebbleUIState>()(
   persist(
     (set) => ({
-      darkMode: false,
-      textSize: 100,
-      // Static, matching every other initial value here: the server and the
-      // first client render must agree exactly, and persist rehydrates after.
-      locale: 'en',
-      reportFilters: null,
-      dashboardPrefs: null,
-      analysisPrefs: null,
-      // Static and date-free, matching the pattern used throughout: server and
-      // first client render must agree exactly, and persist rehydrates after.
-      soundPrefs: emptySoundPrefs(),
-      // Static, matching every other initial value here.
-      incomeEstimateMode: 'system',
-      manualIncomeFrequency: 'monthly',
-      // Static, matching every other initial value here. 'searchable' is the
-      // behaviour before this preference existed, so an upgrade changes nothing.
-      selectMode: 'searchable',
-      // Static, matching every other initial value here. 'default' is the
-      // look before this preference existed, so an upgrade changes nothing.
-      fontChoice: 'default',
-      // Static; 'sans' is the Chinese face from before this preference existed.
-      cjkFontChoice: 'sans',
-      // Static, and off: an upgrade must not add anything to the dashboard.
-      showHealthBar: false,
-      // Static; 'original' is the look from before themes existed.
-      themeChoice: 'original',
-      setDarkMode: (value) => set({ darkMode: value }),
+      ...DEFAULT_PREFS,
+      setAppearance: (value) => set({ appearance: value }),
       setLocale: (value) => set({ locale: value }),
       setTextSize: (value) => set({ textSize: value }),
       setReportFilters: (value) => set({ reportFilters: value }),
@@ -174,27 +188,25 @@ export const usePebbleStore = create<PebbleUIState>()(
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setThemeChoice: (value) => set({ themeChoice: value }),
-      // Called only after a SUCCESSFUL sign-out (src/lib/auth/signOut.ts).
-      // These describe one person's way of looking at their own data; the
-      // next person on this browser should not inherit them. Device
-      // preferences (theme, fonts, text size, language, sounds) stay.
-      resetFilterPrefs: () => set({ reportFilters: null, dashboardPrefs: null, analysisPrefs: null }),
+      setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
+      setShowWelcome: (value) => set({ showWelcome: value }),
     }),
     {
-      // Deliberately a NEW key. The old 'pebble-storage' entry held
-      // transactions and balances from before the database migration. It is
-      // never read, and AppShell now deletes it on load (LEGACY_STORAGE_KEY
-      // in storageKeys.ts).
-      // Imported, not literal: the pre-paint theme script in layout.tsx reads
-      // this exact key, and a rename that missed it would silently restore the
-      // dark-mode flash.
+      // Per-user key prefix - see perUserStorage. Imported, not literal: the
+      // pre-paint theme script in layout.tsx reads the same keys.
       name: PEBBLE_UI_STORAGE_KEY,
-      storage: createJSONStorage(() => (typeof window !== 'undefined' ? window.localStorage : noopStorage)),
-      // v1: the typed income AMOUNT stopped being stored - personal data in
-      // shared per-device storage. Keeps a valid frequency, drops the rest.
-      // persist writes the migrated state straight back, so the old amount
-      // leaves localStorage on the first load of this build.
-      version: 1,
+      storage: createJSONStorage(() => perUserStorage),
+      // Defaults FIRST, then what is saved. The default merge started from
+      // the current in-memory state, which after switching users is the
+      // PREVIOUS user's - a user with nothing saved would have inherited it.
+      merge: (persisted, current) => ({
+        ...current,
+        ...DEFAULT_PREFS,
+        ...((persisted ?? {}) as Partial<PebblePrefs>),
+      }),
+      // v1: the typed income AMOUNT stopped being stored. Keeps a valid
+      // frequency, drops the rest; persist writes the migrated state back.
+      version: 2,
       migrate: (persisted, version) => {
         const state = { ...((persisted ?? {}) as Record<string, unknown>) };
         if (version < 1) {
@@ -205,15 +217,20 @@ export const usePebbleStore = create<PebbleUIState>()(
           }
           delete state.manualIncomePrefs;
         }
+        // v2: the dark-mode switch became Light / Dark / System. Existing
+        // users keep exactly what they had; a user new to a device gets
+        // System from the defaults.
+        if (version < 2) {
+          if (typeof state.darkMode === 'boolean') state.appearance = state.darkMode ? 'dark' : 'light';
+          delete state.darkMode;
+        }
         return state as unknown as PebbleUIState;
       },
-      // darkMode MUST stay here - the pre-paint script reads it from the
-      // persisted envelope (see DARK_MODE_FIELD in storageKeys.ts).
-      partialize: (state) => ({
-        darkMode: state.darkMode,
+      // appearance, locale, fontChoice, cjkFontChoice and themeChoice MUST stay
+      // here - the pre-paint script reads them (see storageKeys.ts).
+      partialize: (state): PebblePrefs => ({
+        appearance: state.appearance,
         textSize: state.textSize,
-        // Omitting this persists nothing and reports no error - the language
-        // would simply reset on every reload.
         locale: state.locale,
         reportFilters: state.reportFilters,
         dashboardPrefs: state.dashboardPrefs,
@@ -221,17 +238,50 @@ export const usePebbleStore = create<PebbleUIState>()(
         soundPrefs: state.soundPrefs,
         incomeEstimateMode: state.incomeEstimateMode,
         manualIncomeFrequency: state.manualIncomeFrequency,
-        // Omitting this persists nothing and reports no error - the picker
-        // choice would simply reset on every reload.
         selectMode: state.selectMode,
-        // The pre-paint script reads this field (FONT_FIELD in storageKeys.ts).
         fontChoice: state.fontChoice,
-        // Also read by the pre-paint script (CJK_FONT_FIELD in storageKeys.ts).
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
-        // Also read by the pre-paint script (THEME_FIELD in storageKeys.ts).
         themeChoice: state.themeChoice,
+        safetyLocks: state.safetyLocks,
+        // Also read by the pre-paint script (SHOW_WELCOME_FIELD).
+        showWelcome: state.showWelcome,
       }),
     }
   )
 );
+
+/**
+ * Loads THIS user's saved preferences. Called by AppShell once the session
+ * knows who is signed in. A user new to this device claims the shared
+ * pre-sign-in entry if there is one (which migrates the old shared key), or
+ * otherwise starts from defaults - the merge above guarantees nothing carries
+ * over from whoever used the device before.
+ */
+export async function switchPebbleUser(userId: string): Promise<void> {
+  if (typeof window === 'undefined' || !userId || activeUserId === userId) return;
+  try {
+    const ls = window.localStorage;
+    const own = userStorageKey(userId);
+    if (ls.getItem(own) === null) {
+      const shared = ls.getItem(PEBBLE_UI_STORAGE_KEY);
+      if (shared !== null) {
+        ls.setItem(own, shared);
+        ls.removeItem(PEBBLE_UI_STORAGE_KEY);
+      }
+    }
+    ls.setItem(LAST_USER_KEY, userId);
+  } catch { /* storage unavailable: preferences simply will not persist */ }
+  activeUserId = userId;
+  await usePebbleStore.persist.rehydrate();
+}
+
+/** Removes the active user's saved preferences (their account was deleted). */
+export function forgetActivePebbleUser(): void {
+  if (typeof window === 'undefined' || !activeUserId) return;
+  try {
+    window.localStorage.removeItem(userStorageKey(activeUserId));
+    if (window.localStorage.getItem(LAST_USER_KEY) === activeUserId) window.localStorage.removeItem(LAST_USER_KEY);
+  } catch { /* storage unavailable */ }
+  activeUserId = null;
+}
