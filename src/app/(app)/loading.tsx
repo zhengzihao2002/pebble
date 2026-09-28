@@ -29,7 +29,10 @@ export default function AppGroupLoading() {
           read the locale, so LoadingBlock - which is a client component -
           resolves the default from the dictionary itself. Passing one here
           would hardcode English into the fallback for every route. */}
-      <LoadingBlock minHeight={440} size={56} labelSize="0.95rem" />
+      {/* Centred in the VISIBLE content area: the screen minus the header
+          and the phone bottom nav. A fixed 440px box sat the spinner above
+          the middle of any normal screen. */}
+      <LoadingBlock minHeight="calc(100dvh - 12rem)" size={88} labelSize="1.05rem" />
     </div>
   );
 }

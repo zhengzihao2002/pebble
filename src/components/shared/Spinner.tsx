@@ -94,7 +94,7 @@ export function LoadingBlock({
   // (app) route fallback passes its own value.
   size = 22,
   labelSize = '0.8rem',
-}: { label?: string; minHeight?: number; size?: number; labelSize?: string }) {
+}: { label?: string; minHeight?: number | string; size?: number; labelSize?: string }) {
   const { d } = useTranslation();
   const text = label ?? d.common.loading;
   return (
