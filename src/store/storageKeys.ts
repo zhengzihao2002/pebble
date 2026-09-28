@@ -58,6 +58,9 @@ export const CJK_FONT_FIELD = 'cjkFontChoice';
 /** Field the pre-paint script reads for the colour theme. Must stay in partialize(). */
 export const THEME_FIELD = 'themeChoice';
 
+/** Field the pre-paint script reads to size the page before first paint. */
+export const TEXT_SIZE_FIELD = 'textSize';
+
 /** Field the pre-paint script reads: false means no welcome animation. */
 export const SHOW_WELCOME_FIELD = 'showWelcome';
 

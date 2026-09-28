@@ -944,3 +944,42 @@ html.pebble-welcoming::after {
 @media (prefers-reduced-motion: reduce) {
   .pebble-root * { transition: none !important; animation: none !important; }
 }
+
+/* pill-nav-vertical: the desktop sidebar's page nav and the Settings sub-nav,
+   styled like the Pebble account Profile / Security switch (.account-tabs)
+   but stacked vertically - a mist panel holding capsule pills, the current
+   item filled pine. Appended at the END of the file so it wins over the
+   original rules above.
+
+   Sidebar: only the page links inside <nav> - the Light/Dark and Sign-out
+   buttons sit outside it and keep their look. The <nav> is set inline to
+   flex: 1 (to push the account block down); with a background that would
+   stretch the panel to the bottom of the screen, so it is sized to its items
+   and margin-bottom: auto keeps the account block where it was. !important
+   only because those two values are inline in Sidebar.tsx. */
+.pebble-root .pebble-sidebar nav {
+  flex: 0 0 auto !important;
+  gap: 2px !important;
+  margin-bottom: auto;
+  padding: 4px;
+  border-radius: 1.25rem;
+  background-color: var(--mist);
+  border: 1px solid var(--line);
+}
+.pebble-root .pebble-sidebar nav .nav-btn { border-radius: 99px; }
+
+/* Settings sub-nav. Hidden on narrow screens as before (container query above). */
+.pebble-root .settings-nav .settings-nav-list {
+  gap: 2px;
+  padding: 4px;
+  border-radius: 1.25rem;
+  background-color: var(--mist);
+  border: 1px solid var(--line);
+}
+.pebble-root .settings-nav .settings-nav-btn { border-radius: 99px; }
+.pebble-root .settings-nav .settings-nav-btn.active,
+.pebble-root .settings-nav .settings-nav-btn.active:hover {
+  background-color: var(--pine);
+  color: var(--paper);
+  box-shadow: none;
+}
