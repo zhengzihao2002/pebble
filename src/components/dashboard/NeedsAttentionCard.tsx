@@ -34,7 +34,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta }: NeedsAttentio
     <div className="card" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.needsAttention.title}</h3>
-        <Link href="/budgets" className="link-btn">{d.common.seeAll} <ChevronRight size={14} /></Link>
+        <Link href="/budgets" prefetch={false} className="link-btn">{d.common.seeAll} <ChevronRight size={14} /></Link>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
         {topBudgets.map((b) => <BudgetRow key={b.name} {...b} />)}

@@ -61,7 +61,7 @@ export function BottomNav() {
           const active = isNavItemActive(pathname, item.href);
           return (
             <Link
-              key={item.href} href={item.href}
+              key={item.href} href={item.href} prefetch={false}
               className={`bottom-nav-btn ${active ? 'active' : ''}`}
               style={{ textDecoration: 'none' }}
             >
@@ -82,7 +82,7 @@ export function BottomNav() {
                   const active = isNavItemActive(pathname, item.href);
                   return (
                     <Link
-                      key={item.href} href={item.href}
+                      key={item.href} href={item.href} prefetch={false}
                       className={`bottom-nav-btn ${active ? 'active' : ''}`}
                       // Not keyboard-reachable while collapsed: the element
                       // stays mounted so it can animate, but it is not a

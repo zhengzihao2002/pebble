@@ -54,7 +54,7 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
             shortfall: <strong style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>,
           })}
         </p>
-        <Link href="/goals" className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
+        <Link href="/goals" prefetch={false} className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
           {d.goalOverspend.reviewGoals} <ChevronRight size={14} />
         </Link>
       </div>

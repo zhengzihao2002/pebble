@@ -45,6 +45,7 @@ export function PebbleAccountCard() {
           <Link
             key={href}
             href={href}
+            prefetch={false}
             style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0', color: 'var(--ink)', textDecoration: 'none' }}
           >
             <Icon size={18} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
