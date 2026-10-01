@@ -1496,3 +1496,25 @@ html.pebble-welcoming::after {
    across the card instead of bunching at the left of each column. */
 .pebble-root .card .stat-tab { text-align: center; }
 .pebble-root .card .stat-tab > div { justify-content: center; }
+
+/* Stats figures never wrap (a negative amount used to break after its minus
+   sign). Each cell is a size container and the figure scales with it. */
+.pebble-root .pb-stats-cell { container-type: inline-size; }
+.pebble-root .pb-stats-value {
+  white-space: nowrap; overflow-wrap: normal;
+  font-size: clamp(1rem, 15cqi, 1.4rem);
+}
+
+/* Dialog scrim: the dimming fades, the blur does not. Animating the overlay's
+   opacity while it carried the blur made Safari on a real phone show a darker
+   blur that then lightened. The card animations are unchanged. */
+@keyframes pb-scrim-in {
+  from { background-color: color-mix(in srgb, var(--backdrop) 0%, transparent); }
+  to { background-color: var(--backdrop); }
+}
+@keyframes pb-scrim-out {
+  from { background-color: var(--backdrop); }
+  to { background-color: color-mix(in srgb, var(--backdrop) 0%, transparent); }
+}
+.pebble-root .pb-modal-overlay { animation: pb-scrim-in var(--pb-dur-std) var(--pb-ease-out) both; }
+.pebble-root .pb-modal-overlay.closing { animation: pb-scrim-out var(--pb-dur-exit) var(--pb-ease-in) both; }
