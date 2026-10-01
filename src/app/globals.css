@@ -221,11 +221,7 @@ html.no-theme-transition * {
 }
 
 .pebble-root {
-  --paper: #F1F3EE; --mist: #FFFFFF; --ink: #17241F; --ink-soft: #5B6660;
-  --pine: #1F5A45; --pine-soft: #E3EDE8; --gold: #AD7B2E; --gold-soft: #F4E8D4;
-  --wine: #8C3D42; --wine-soft: #F3E2E2; --line: #E1E4DD;
-  --shadow: 0 1px 2px rgba(23,36,32,0.04), 0 10px 28px -14px rgba(23,36,32,0.18);
-  --overlay-tint: rgba(241, 243, 238, 0.6);
+  /* Palette tokens are generated: see the generated-themes block below. */
   /* CJK fallback for all three type stacks.
 
      SYSTEM FONTS, NOT A WEBFONT, deliberately. A Noto Sans SC download is
@@ -241,9 +237,12 @@ html.no-theme-transition * {
      faithful pairing for Fraunces, but CJK serifs render thin and weak at UI
      sizes on screen and Chinese UI convention is sans regardless. */
   --cjk: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC";
-  transition: --paper 0.3s ease, --mist 0.3s ease,
-    --pine 0.3s ease, --pine-soft 0.3s ease, --gold 0.3s ease, --gold-soft 0.3s ease,
-    --wine 0.3s ease, --wine-soft 0.3s ease, --line 0.3s ease, --overlay-tint 0.3s ease;
+  transition: --paper var(--pb-dur-theme) ease, --mist var(--pb-dur-theme) ease,
+    --ink var(--pb-dur-theme) ease, --ink-soft var(--pb-dur-theme) ease, --ink-faint var(--pb-dur-theme) ease,
+    --pine var(--pb-dur-theme) ease, --pine-soft var(--pb-dur-theme) ease, --pine-strong var(--pb-dur-theme) ease,
+    --gold var(--pb-dur-theme) ease, --gold-soft var(--pb-dur-theme) ease,
+    --wine var(--pb-dur-theme) ease, --wine-soft var(--pb-dur-theme) ease, --line var(--pb-dur-theme) ease,
+    --overlay-tint var(--pb-dur-theme) ease, --backdrop var(--pb-dur-theme) ease;
   /* Tells the browser which palette to draw NATIVE widget internals in:
      the date field's calendar icon and popup, number spinners, <select>
      popups, checkboxes and scrollbar corners. Those are browser-drawn and do
@@ -291,79 +290,109 @@ html.no-theme-transition * {
    frame on load. */
 .pebble-root.dark,
 .pebble-dark .pebble-root {
-  --paper: #121C18; --mist: #1A2621; --ink: #ECEFEA; --ink-soft: #8FA097;
-  --pine: #57A487; --pine-soft: #1E362C; --gold: #DFA657; --gold-soft: #382C1A;
-  --wine: #D48A8F; --wine-soft: #3A2426; --line: #2A3830;
-  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
-  --overlay-tint: rgba(18, 28, 24, 0.6);
+  /* Palette tokens are generated: see the generated-themes block below. */
   /* Pairs with the light declaration above. Both selectors are needed for the
      same reason the palette needs both: .pebble-root.dark is set by AppShell
      after hydration, .pebble-dark .pebble-root by the pre-paint script. */
   color-scheme: dark;
 }
-/* Colour themes (Settings > Appearance). GENERATED from one table, which
-   also generated the preview tiles in ThemeControl.tsx - keep them in step.
-   The pre-paint script sets data-pebble-theme on <html> before first paint
-   and AppShell keeps it in step; absent means Original, whose palette is the
-   two blocks above, untouched. Every theme has a light and a dark block and
-   follows one rule: money out (--wine) stays red-family, money in (--pine) is
-   never red, orange or pink, and the accent (--gold) never reads as --wine.
-   The html background lines repeat each --paper for the pre-React frame. */
+/* @generated-themes:start
+   Written by scripts/generate-themes.mjs from its THEMES table. Do not edit
+   by hand: change the table and run npm run themes. The script refuses to
+   write if a contrast or colour-meaning rule fails: money out (wine) stays
+   red-family, money in (pine) is never red, orange or pink, and the accent
+   (gold) never reads as wine. Absent data-pebble-theme means Original. The
+   html background lines repeat each paper colour for the pre-React frame. */
+@property --ink-faint { syntax: '<color>'; inherits: true; initial-value: #848C87; }
+@property --pine-strong { syntax: '<color>'; inherits: true; initial-value: #1E513F; }
+@property --backdrop { syntax: '<color>'; inherits: true; initial-value: rgba(23, 36, 31, 0.28); }
+.pebble-root {
+  --paper: #F1F3EE; --mist: #FFFFFF; --ink: #17241F; --ink-soft: #5B6660; --pine: #1F5A45; --pine-soft: #E3EDE8; --gold: #AD7B2E; --gold-soft: #F4E8D4; --wine: #8C3D42; --wine-soft: #F3E2E2; --line: #E1E4DD;
+  --ink-faint: #848C87; --pine-strong: #1E513F; --backdrop: rgba(23, 36, 31, 0.28);
+  --shadow: 0 1px 2px rgba(23,36,32,0.04), 0 10px 28px -14px rgba(23,36,32,0.18);
+  --shadow-float: 0 2px 6px rgba(23,36,32,0.06), 0 28px 64px -24px rgba(23,36,32,0.38);
+  --overlay-tint: rgba(241, 243, 238, 0.6);
+}
+.pebble-root.dark,
+.pebble-dark .pebble-root {
+  --paper: #121C18; --mist: #1A2621; --ink: #ECEFEA; --ink-soft: #8FA097; --pine: #57A487; --pine-soft: #1E362C; --gold: #DFA657; --gold-soft: #382C1A; --wine: #D48A8F; --wine-soft: #3A2426; --line: #2A3830;
+  --ink-faint: #69706C; --pine-strong: #6FB097; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(18, 28, 24, 0.6);
+}
 html[data-pebble-theme="ocean"] { background-color: #EEF3F6; }
 html.pebble-dark[data-pebble-theme="ocean"] { background-color: #0F1A22; }
 html[data-pebble-theme="ocean"] .pebble-root {
   --paper: #EEF3F6; --mist: #FFFFFF; --ink: #142230; --ink-soft: #56687A; --pine: #1E5F8C; --pine-soft: #E0ECF5; --gold: #B7792B; --gold-soft: #F5E7D2; --wine: #A33D48; --wine-soft: #F6E1E3; --line: #DCE4EA;
+  --ink-faint: #818B93; --pine-strong: #1C557D; --backdrop: rgba(20, 34, 48, 0.28);
   --shadow: 0 1px 2px rgba(20,34,48,0.04), 0 10px 28px -14px rgba(20,34,48,0.18);
+  --shadow-float: 0 2px 6px rgba(20,34,48,0.06), 0 28px 64px -24px rgba(20,34,48,0.38);
   --overlay-tint: rgba(238, 243, 246, 0.6);
 }
 html.pebble-dark[data-pebble-theme="ocean"] .pebble-root,
 html[data-pebble-theme="ocean"] .pebble-root.dark {
   --paper: #0F1A22; --mist: #16242F; --ink: #E8EEF2; --ink-soft: #8DA0AF; --pine: #5FA8D8; --pine-soft: #16303F; --gold: #E0A85A; --gold-soft: #372A18; --wine: #E0898F; --wine-soft: #3B2226; --line: #253643;
+  --ink-faint: #666F75; --pine-strong: #75B3DC; --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(15, 26, 34, 0.6);
 }
 html[data-pebble-theme="sakura"] { background-color: #F9F1F3; }
 html.pebble-dark[data-pebble-theme="sakura"] { background-color: #1C1418; }
 html[data-pebble-theme="sakura"] .pebble-root {
   --paper: #F9F1F3; --mist: #FFFFFF; --ink: #2B1B21; --ink-soft: #735C65; --pine: #2F6B5E; --pine-soft: #E1EEEA; --gold: #B8577A; --gold-soft: #F6E0E8; --wine: #9C3B30; --wine-soft: #F5E1DD; --line: #EEDFE3;
+  --ink-faint: #94888C; --pine-strong: #2E5E54; --backdrop: rgba(43, 27, 33, 0.28);
   --shadow: 0 1px 2px rgba(43,27,33,0.04), 0 10px 28px -14px rgba(43,27,33,0.18);
+  --shadow-float: 0 2px 6px rgba(43,27,33,0.06), 0 28px 64px -24px rgba(43,27,33,0.38);
   --overlay-tint: rgba(249, 241, 243, 0.6);
 }
 html.pebble-dark[data-pebble-theme="sakura"] .pebble-root,
 html[data-pebble-theme="sakura"] .pebble-root.dark {
   --paper: #1C1418; --mist: #261B20; --ink: #F2E8EB; --ink-soft: #A8939B; --pine: #66B3A1; --pine-soft: #1F332E; --gold: #E68AAB; --gold-soft: #3A2229; --wine: #E08C7F; --wine-soft: #3B231F; --line: #3A2A30;
+  --ink-faint: #72696C; --pine-strong: #7CBBAD; --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(28, 20, 24, 0.6);
 }
 html[data-pebble-theme="slate"] { background-color: #F2F3F5; }
 html.pebble-dark[data-pebble-theme="slate"] { background-color: #111317; }
 html[data-pebble-theme="slate"] .pebble-root {
   --paper: #F2F3F5; --mist: #FFFFFF; --ink: #16191F; --ink-soft: #5D6470; --pine: #3D56A6; --pine-soft: #E3E8F5; --gold: #A9853A; --gold-soft: #F3EAD6; --wine: #A63F3F; --wine-soft: #F5E2E2; --line: #E0E3E8;
+  --ink-faint: #888A8E; --pine-strong: #374C90; --backdrop: rgba(22, 25, 31, 0.28);
   --shadow: 0 1px 2px rgba(22,25,31,0.04), 0 10px 28px -14px rgba(22,25,31,0.18);
+  --shadow-float: 0 2px 6px rgba(22,25,31,0.06), 0 28px 64px -24px rgba(22,25,31,0.38);
   --overlay-tint: rgba(242, 243, 245, 0.6);
 }
 html.pebble-dark[data-pebble-theme="slate"] .pebble-root,
 html[data-pebble-theme="slate"] .pebble-root.dark {
   --paper: #111317; --mist: #1A1D23; --ink: #ECEEF2; --ink-soft: #9097A3; --pine: #8EA4E8; --pine-soft: #1F2640; --gold: #D9B066; --gold-soft: #332B1B; --wine: #E48C8C; --wine-soft: #3A2123; --line: #2A2E36;
+  --ink-faint: #696B6F; --pine-strong: #9DB0EA; --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(17, 19, 23, 0.6);
 }
 html[data-pebble-theme="sand"] { background-color: #F5F0E6; }
 html.pebble-dark[data-pebble-theme="sand"] { background-color: #1A1611; }
 html[data-pebble-theme="sand"] .pebble-root {
   --paper: #F5F0E6; --mist: #FFFDF8; --ink: #2A2217; --ink-soft: #6F6454; --pine: #4F6B34; --pine-soft: #E6EDDC; --gold: #B7862C; --gold-soft: #F4E8CF; --wine: #9E3B34; --wine-soft: #F4E0DC; --line: #E6DDCB;
+  --ink-faint: #8D877C; --pine-strong: #495F2F; --backdrop: rgba(42, 34, 23, 0.28);
   --shadow: 0 1px 2px rgba(42,34,23,0.04), 0 10px 28px -14px rgba(42,34,23,0.18);
+  --shadow-float: 0 2px 6px rgba(42,34,23,0.06), 0 28px 64px -24px rgba(42,34,23,0.38);
   --overlay-tint: rgba(245, 240, 230, 0.6);
 }
 html.pebble-dark[data-pebble-theme="sand"] .pebble-root,
 html[data-pebble-theme="sand"] .pebble-root.dark {
   --paper: #1A1611; --mist: #241E17; --ink: #F1EADF; --ink-soft: #A89C8A; --pine: #93B06E; --pine-soft: #26301B; --gold: #E0B25C; --gold-soft: #3A2E17; --wine: #DE8A80; --wine-soft: #3B2320; --line: #3A3226;
+  --ink-faint: #706B63; --pine-strong: #A2B980; --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(26, 22, 17, 0.6);
 }
-.pebble-root, .pebble-root * {
-  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease;
-}
+/* @generated-themes:end */
+/* No universal transition: theme switches fade through the registered colour
+   tokens on .pebble-root, and interaction timing lives in the motion section
+   at the end of this file. */
 /* Font choice (Settings > Appearance). The pre-paint script in layout.tsx
    sets data-pebble-font on <html> before first paint and AppShell keeps it in
    step; absent means Default, so the rule above is untouched and the default
@@ -941,9 +970,7 @@ html.pebble-welcoming::after {
 .pebble-root button:focus-visible, .pebble-root input:focus-visible, .pebble-root select:focus-visible {
   outline: 2px solid var(--pine); outline-offset: 2px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .pebble-root * { transition: none !important; animation: none !important; }
-}
+/* Reduced motion: see the motion section at the end of this file. */
 
 /* pill-nav-vertical: the desktop sidebar's page nav and the Settings sub-nav,
    styled like the Pebble account Profile / Security switch (.account-tabs)
@@ -982,4 +1009,220 @@ html.pebble-welcoming::after {
   background-color: var(--pine);
   color: var(--paper);
   box-shadow: none;
+}
+
+/* ------------------------------------------------------------
+   Dialogs (ModalFrame). Motion is transform and opacity only; the
+   reduced-motion block above collapses it to an instant change.
+   ------------------------------------------------------------ */
+@keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pb-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pb-modal-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes pb-modal-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.98); } }
+
+.pebble-root .pb-modal-overlay {
+  position: fixed; inset: 0; display: flex; padding: 1rem; overflow-y: auto;
+  background-color: var(--backdrop);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  animation: pb-fade-in var(--pb-dur-std) var(--pb-ease-out) both;
+}
+/* margin: auto centres the card and, unlike align-items: center, never
+   pushes a card taller than the screen above the top edge. */
+.pebble-root .pb-modal-card {
+  position: relative; width: 100%; margin: auto; box-sizing: border-box;
+  display: flex; flex-direction: column; max-height: calc(100dvh - 2rem);
+  padding: 1.75rem; container: pb-modal / inline-size;
+  border-radius: 2rem; box-shadow: var(--shadow-float);
+  animation: pb-modal-in 260ms var(--pb-ease-out) both;
+}
+/* The part of a dialog that scrolls when it is taller than the screen.
+   The small negative margin keeps focus rings on its edges visible. */
+.pebble-root .pb-modal-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: -0.25rem -0.5rem; padding: 0.25rem 0.5rem;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+@media (max-width: 559.98px) {
+  .pebble-root .pb-modal-overlay { padding: 0.75rem; }
+  .pebble-root .pb-modal-card { padding: 1.25rem; max-height: calc(100dvh - 1.5rem); }
+}
+.pebble-root .pb-modal-card:focus { outline: none; }
+.pebble-root .pb-modal-overlay.closing { animation: pb-fade-out var(--pb-dur-exit) var(--pb-ease-in) both; }
+.pebble-root .pb-modal-overlay.closing .pb-modal-card { animation: pb-modal-out var(--pb-dur-exit) var(--pb-ease-in) both; }
+
+/* ============================================================
+   Design tokens and motion (redesign, Phase 2).
+
+   Prefixed pb- on purpose: the auth library's Tailwind utilities read the
+   unprefixed names (radius-md, text-sm, ease-out) from this same tree, and
+   Tailwind's defaults differ, so defining those here would restyle the
+   sign-in pages.
+   ============================================================ */
+.pebble-root {
+  /* Type scale in rem, so the text-size preference scales it. Nothing that
+     can render Chinese goes below the smallest step. */
+  --pb-text-xs: 0.75rem; --pb-text-sm: 0.8125rem; --pb-text-md: 0.9375rem;
+  --pb-text-lg: 1.125rem; --pb-text-xl: 1.5rem; --pb-text-2xl: 2rem;
+  --pb-space-1: 0.25rem; --pb-space-2: 0.5rem; --pb-space-3: 0.75rem; --pb-space-4: 1rem;
+  --pb-space-5: 1.5rem; --pb-space-6: 2rem; --pb-space-7: 3rem;
+  --pb-radius-md: 0.75rem; --pb-radius-lg: 1.25rem; --pb-radius-xl: 1.75rem; --pb-radius-pill: 999px;
+  /* The organic shape from the sign-in page's drifting pebbles. */
+  --pb-pebble: 48% 52% 55% 45% / 50% 45% 55% 50%;
+  /* Motion: micro for hover and focus; std for steps, popovers and dialogs;
+     emph for emphasis; exit for anything leaving (always quicker than it
+     arrived); theme for palette switches. */
+  --pb-dur-micro: 120ms; --pb-dur-std: 220ms; --pb-dur-emph: 420ms;
+  --pb-dur-exit: 160ms; --pb-dur-theme: 300ms;
+  --pb-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --pb-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --pb-ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+/* Interaction timing for buttons and links. The navigation keeps its own
+   rules, and there is deliberately no press-scale. */
+.pebble-root .link-btn {
+  transition-duration: var(--pb-dur-micro);
+  transition-timing-function: var(--pb-ease-out);
+}
+.pebble-root :is(.pill, .btn-primary, .icon-btn) {
+  transition-property: background-color, color, border-color, opacity;
+  transition-duration: var(--pb-dur-micro);
+  transition-timing-function: var(--pb-ease-out);
+}
+.pebble-root .txn-row-interactive { transition: background-color var(--pb-dur-micro) var(--pb-ease-out); }
+
+@keyframes pebble-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Reduced motion, in one place. Every animation and transition jumps to its
+   end state at once, so anything that ends visible is shown and loops stop.
+   The welcome and farewell animations keep the behaviour they were built
+   with (shown still; their components shorten the timing). The spinner
+   pulses instead of freezing, since a still spinner reads as a hung app. */
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root *:not(:is(.welcome, .welcome *, .farewell, .farewell *)),
+  .pebble-root *:not(:is(.welcome, .welcome *, .farewell, .farewell *))::before,
+  .pebble-root *:not(:is(.welcome, .welcome *, .farewell, .farewell *))::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+  .pebble-root :is(.welcome, .welcome *, .farewell, .farewell *) {
+    transition: none !important;
+    animation: none !important;
+  }
+  .pebble-root svg[role="status"] {
+    animation: pebble-pulse 1.6s ease-in-out infinite !important;
+  }
+}
+
+/* Dialog forms: one column, two once the card itself is wide enough. A
+   container query on the card rather than the screen, so a form in a
+   narrow card stays single-column everywhere. pb-span-2 takes a full row. */
+.pebble-root .pb-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.pebble-root .pb-span-2 { grid-column: 1 / -1; }
+@container pb-modal (min-width: 520px) {
+  .pebble-root .pb-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1.25rem; }
+}
+
+/* A choice between a few options that should read as things, not as a
+   switch: the income categories. Outlined, icon above label; the chosen one
+   is outlined in pine on a soft pine fill. */
+.pebble-root .pb-choice-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.8rem 0.5rem; border-radius: 0.9rem;
+  border: 1px solid var(--line); background-color: var(--paper); color: var(--ink-soft);
+  font-size: 0.82rem; font-weight: 500;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-choice-tile:hover { border-color: var(--pine); color: var(--pine); }
+.pebble-root .pb-choice-tile.active {
+  border-color: var(--pine); background-color: var(--pine-soft); color: var(--pine);
+  font-weight: 600; box-shadow: inset 0 0 0 1px var(--pine);
+}
+
+/* Mobile bar: the centre add button - the header's add button, moved to the
+   middle of the bar on phones. Pine on the white bar so it stands apart,
+   raised above the bar's edge, ringed in the bar's own colour. The plus
+   turns into a cross while its menu is open. */
+.pebble-root .bottom-nav-add {
+  position: relative; z-index: 1;
+  width: 3.25rem; height: 3.25rem; margin-top: -1.35rem; flex-shrink: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 4px solid var(--mist);
+  background-color: var(--pine); color: var(--paper);
+  box-shadow: var(--shadow-float);
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .bottom-nav-add[aria-expanded="true"] { background-color: var(--pine-strong); }
+.pebble-root .bottom-nav-add svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .bottom-nav-add[aria-expanded="true"] svg { transform: rotate(45deg); }
+/* On phones the header's add button lives in the bar instead. The same
+   760px line as the bar itself; !important because Header.tsx sets the
+   container's display inline. */
+@media (max-width: 759.98px) {
+  .pebble-root .header-actions { display: none !important; }
+}
+
+/* Mobile bar: the centre button's menu. Its box is clipped at the TOP EDGE OF
+   THE BAR, and the panel inside slides up from beneath that edge when it
+   opens and back down behind it when it closes, so it emerges from under the
+   bar rather than appearing in place. The button is raised above it
+   (z-index), so the menu passes behind the button too.
+
+   bottom: 100% is the cell's top, which sits 0.4rem (the bar's padding) plus
+   its 1px border below the bar's outer edge. Exits are quicker than
+   entrances. Reduced motion collapses every duration, so it just appears. */
+.pebble-root .pebble-add-menu {
+  position: absolute; left: 50%; bottom: calc(100% + 0.4rem + 1px);
+  width: max-content; transform: translateX(-50%);
+  /* Room inside the clip for the panel's shadow. */
+  padding: 1rem 1rem 0;
+  overflow: hidden; pointer-events: none;
+  visibility: hidden; transition: visibility 0s linear var(--pb-dur-std);
+}
+.pebble-root .pebble-add-menu.open { pointer-events: auto; visibility: visible; transition-delay: 0s; }
+.pebble-root .pebble-add-menu .pebble-bottom-nav-stack-panel {
+  transform: translateY(calc(100% + 2.5rem));
+  transition: transform var(--pb-dur-std) var(--pb-ease-in);
+}
+.pebble-root .pebble-add-menu.open .pebble-bottom-nav-stack-panel {
+  transform: none;
+  transition: transform 320ms var(--pb-ease-out);
+}
+
+/* While a dialog animates its height (ModalFrame), its scroll area would
+   briefly overflow and flash a scrollbar. It is hidden for those 260ms. */
+.pebble-root .pb-modal-card.pb-resizing .pb-modal-body { overflow-y: hidden; }
+
+/* Expense / Income switch. One track, one thumb that slides between the two
+   sides with a slight spring, wine under Expense and pine under Income -
+   the same colours the app uses for money out and money in, with the same
+   arrows as the Dashboard's Spending and Income figures. The thumb moves
+   by transform only. Text on wine and on pine is a checked contrast pair
+   in every palette (scripts/generate-themes.mjs). */
+.pebble-root .pb-kind-switch {
+  position: relative; isolation: isolate;
+  display: inline-grid; grid-template-columns: 1fr 1fr;
+  padding: 4px; border-radius: 999px;
+  background-color: var(--paper); border: 1px solid var(--line);
+}
+.pebble-root .pb-kind-switch button {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  min-width: 8rem; padding: 0.6rem 1.15rem;
+  border: 0; border-radius: 999px; background: transparent;
+  font: inherit; font-size: 0.88rem; font-weight: 600; color: var(--ink-soft);
+  transition: color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-kind-switch button:hover { color: var(--ink); }
+.pebble-root .pb-kind-switch button[aria-checked="true"] { color: var(--paper); }
+.pebble-root .pb-kind-thumb {
+  position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
+  border-radius: 999px; background-color: var(--wine); box-shadow: var(--shadow);
+  transition: transform 340ms cubic-bezier(0.34, 1.36, 0.64, 1), background-color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-kind-switch[data-kind="income"] .pb-kind-thumb {
+  transform: translateX(100%); background-color: var(--pine);
 }

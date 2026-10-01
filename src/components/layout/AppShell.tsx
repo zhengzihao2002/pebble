@@ -240,7 +240,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
           <main className="pebble-main">{children}</main>
         </div>
-        <BottomNav />
+        <BottomNav
+          onAddTransactionClick={() => setShowAddModal(true)}
+          onTransferClick={() => setShowTransferModal(true)}
+          onModifyBudgetClick={() => setShowModifyBudgetModal(true)}
+          onAddGoalClick={() => setShowAddGoalModal(true)}
+          onAddScheduleClick={() => setShowAddScheduleModal(true)}
+        />
       </div>
 
       {showAddModal && <AddTransactionModal onClose={() => setShowAddModal(false)} />}

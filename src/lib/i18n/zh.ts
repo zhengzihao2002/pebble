@@ -1125,4 +1125,12 @@ export const zh: typeof en = {
     emptyTitle: '还没有目标',
     emptyHint: '点击上方的“{action}”来创建一个。',
   },
+  saveSuccess: {
+    expenseAdded: '支出已记录',
+    incomeAdded: '收入已记录',
+    // {amount} moves to after the verb in Chinese - the reason these are
+    // templates rather than joined halves.
+    expenseSummary: '从 {account} 支出 {amount}，分类：{category}',
+    incomeSummary: '{amount} 已存入 {account}',
+  },
 };

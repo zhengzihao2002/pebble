@@ -12,7 +12,7 @@ interface AppearanceControlProps {
 // Fixed Original-theme colours, so each tile reads plainly as light or dark
 // whatever theme is active. System is drawn half and half.
 const LIGHT = { bg: '#F1F3EE', card: '#FFFFFF', bar: '#1F5A45' };
-const DARK = { bg: '#121C18', card: '#1C2A24', bar: '#6FBF9A' };
+const DARK = { bg: '#121C18', card: '#1A2621', bar: '#57A487' };
 
 const ICONS = { light: Sun, dark: Moon, system: Monitor } as const;
 

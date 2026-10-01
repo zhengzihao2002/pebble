@@ -32,7 +32,9 @@ export const navItems: NavItem[] = [
 ];
 
 /**
- * The four that stay visible in the mobile bar; the rest live behind "More".
+ * The three that stay visible in the mobile bar; the rest live behind "More".
+ * The bar's centre slot is the add button (BottomNav), which is why there
+ * are three rather than four: Settings moved behind More to make room.
  *
  * WHY A FIXED FOUR. The bar used to hold all eight with overflow-x: auto, so
  * reaching the later items meant swiping horizontally at the very bottom edge
@@ -47,7 +49,6 @@ export const PRIMARY_NAV_HREFS: readonly string[] = [
   '/dashboard',
   '/transactions',
   '/reports',
-  '/settings',
 ];
 
 export const primaryNavItems = navItems.filter((i) => PRIMARY_NAV_HREFS.includes(i.href));

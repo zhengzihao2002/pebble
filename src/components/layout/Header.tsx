@@ -141,7 +141,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
           {current.action && handleActionClick && (
-            <div ref={actionsRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div ref={actionsRef} className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               {/* Drops BELOW the header rather than expanding sideways: a
                   horizontal expansion pushes the page title back under an
                   ellipsis, which is the problem this exists to solve.

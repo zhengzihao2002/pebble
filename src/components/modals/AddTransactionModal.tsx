@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Briefcase, Coins, X } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction } from '@/lib/actions/pebble';
@@ -49,6 +51,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // the form stays mounted behind the confirm, so the write re-derives its
   // payload from the same state rather than from a copy taken earlier.
   const [pendingShortfall, setPendingShortfall] = useState<number | null>(null);
+  // Set ONLY in the confirmed-success branch of performSave, below the
+  // failure return. A snapshot of the saved entry's wording, so the lines in
+  // the confirmation cannot shift when the page re-renders underneath.
+  const [success, setSuccess] = useState<{ title: string; summary: string } | null>(null);
   // Full items, not just names: the combobox shows each category's icon and
   // colour, and those live on CategoryItem. Icons are resolved here on the
   // client from iconKey - they cannot cross the RSC boundary.
@@ -154,12 +160,16 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
+  // The amount field, styled like Add to goal's: the figure is what this form
+  // is for, so it is the largest thing on it.
+  const bigAmountStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', border: '1px solid var(--line)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)' };
+  const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' };
 
   // A save in flight must not be cancellable. The write continues regardless,
   // so closing here would read as success for something still unresolved and
-  // would leave any error with nowhere to land. LoadingOverlay covers the card
-  // only - the backdrop and the X sit outside it, so they need their own guard.
-  const requestClose = () => { if (saving) return; onClose(); };
+  // would leave any error with nowhere to land. ModalFrame's busy prop now
+  // enforces this for Escape, the backdrop and the X alike; LoadingOverlay
+  // still covers the card itself.
 
   const performSave = async () => {
     // Try again and the goal-dip confirm call this directly, past
@@ -191,7 +201,19 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     // Below the failure return, so a failed write can never play a success
     // sound. Fire-and-forget - playback cannot delay the close.
     playEventSound(type === 'expense' ? 'expenseSaved' : 'incomeSaved');
-    onClose();
+    // Also below the failure return: the confirmation only ever appears for a
+    // write the server confirmed. The amounts are the ones just submitted,
+    // formatted the same way, never a recomputed balance.
+    const accountLabel = accountOptions.find((o) => o.value === accountId)?.label ?? '';
+    setSuccess(type === 'expense'
+      ? {
+          title: d.saveSuccess.expenseAdded,
+          summary: t(d.saveSuccess.expenseSummary, { amount: formatCurrency(Number(amount)), category, account: accountLabel }),
+        }
+      : {
+          title: d.saveSuccess.incomeAdded,
+          summary: t(d.saveSuccess.incomeSummary, { amount: formatCurrency(Number(netPay)), account: accountLabel }),
+        });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -252,17 +274,20 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const dipsParts = d.addTxn.dipsBody.split('{amount}');
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={requestClose}
-    >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+    <ModalFrame onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640}>
+      {(close) => (
+      <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
-          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.addTxn.title}</h2>
-          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
+          <h2 id="add-txn-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.addTxn.title}</h2>
+          <button onClick={close} disabled={saving} aria-label={d.common.close} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
         </div>
-        {pendingShortfall !== null ? (
+        {/* The only part that scrolls when the card is taller than the screen:
+            the header and its close button stay in view. */}
+        <div className="pb-modal-body">
+        {success ? (
+          <SaveSuccess title={success.title} body={success.summary} onDone={close} />
+        ) : pendingShortfall !== null ? (
           <div>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.addTxn.dipsTitle}</p>
             <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
@@ -279,33 +304,145 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             </div>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {/* The array holds the STORED values; the dictionary is indexed by
+        <form onSubmit={handleSubmit} className="pb-form-grid">
+          {/* One column on a phone; two once the card is wide enough (the
+              container query in globals.css). Fields that need a whole row
+              carry the span class. */}
+          <div className="pb-span-2" style={{ display: 'flex', justifyContent: 'center' }}>
+            {/* A two-way switch: the thumb slides to the chosen side (wine for
+                money out, pine for money in). Arrow keys flip it as well.
+
+                The array holds the STORED values; the dictionary is indexed by
                 them. setType therefore always receives the English literal.
                 capitalize is left on for English - it is a no-op in Chinese. */}
-            {(['expense', 'income'] as const).map((k) => (
-              <button
-                key={k} type="button" onClick={() => setType(k)}
-                className={`pill ${type === k ? 'active' : ''}`}
-                style={{ flex: 1, textTransform: 'capitalize', padding: '0.55rem' }}
-              >
-                {d.enums.kind[k]}
-              </button>
-            ))}
+            <div
+              role="radiogroup"
+              className="pb-kind-switch"
+              data-kind={type}
+              onKeyDown={(e) => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                e.preventDefault();
+                const next = type === 'expense' ? 'income' : 'expense';
+                setType(next);
+                e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
+              }}
+            >
+              <span className="pb-kind-thumb" aria-hidden="true" />
+              {(['expense', 'income'] as const).map((k) => {
+                const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
+                return (
+                  <button
+                    key={k} type="button" role="radio" data-value={k}
+                    aria-checked={type === k} tabIndex={type === k ? 0 : -1}
+                    onClick={() => setType(k)}
+                    style={{ textTransform: 'capitalize' }}
+                  >
+                    <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                    {d.enums.kind[k]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <TitleDescriptionFields
-            title={title}
-            description={description}
-            onTitleChange={setTitle}
-            onDescriptionChange={setDescription}
-            inputStyle={inputStyle}
-            labelStyle={labelStyle}
-            optionalLabel={d.txnDetail.optional}
-          />
-
+          {/* The amount comes first: it is what the form is for. For income the
+              Standard / Side cash choice sits above it, because it decides
+              which amount fields there are. */}
           {type === 'expense' ? (
+            <label style={labelStyle} className="pb-span-2">
+              {d.addTxn.amount}
+              <div style={{ position: 'relative' }}>
+                {/* Stays '$' in every locale: these are the user's real US
+                    dollars, and formatCurrency() is pinned to en-US too. */}
+                <span className="font-display" style={bigDollarStyle}>$</span>
+                <input
+                  type="number" inputMode="decimal" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required
+                  className="font-mono-tab" style={bigAmountStyle}
+                />
+              </div>
+            </label>
+          ) : (
+            <>
+              <label style={labelStyle} className="pb-span-2">
+                {d.addTxn.category}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
+                  {/* ⚠️ Same pattern, and the most important instance of it.
+                      'Standard Income' and 'Side Cash' are matched as literals
+                      by isSideCash() and by the income filters in stats.ts.
+                      Tiles with an icon rather than pills, so this choice does
+                      not look like the Expense / Income switch above it. */}
+                  {(['Standard Income', 'Side Cash'] as const).map((c) => {
+                    const Icon = c === 'Standard Income' ? Briefcase : Coins;
+                    return (
+                      <button
+                        key={c} type="button" onClick={() => setIncomeCategory(c)}
+                        aria-pressed={incomeCategory === c}
+                        className={`pb-choice-tile ${incomeCategory === c ? 'active' : ''}`}
+                      >
+                        <Icon size={20} aria-hidden="true" />
+                        <span>{d.enums.incomeCategory[c]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {isSideCashSelected && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45 }}>
+                    {d.addTxn.sideCashNote}
+                  </span>
+                )}
+              </label>
+              {!isSideCashSelected && (
+                <label style={labelStyle}>
+                  {d.addTxn.payBefore}
+                  <div style={{ position: 'relative' }}>
+                    <span className="font-display" style={bigDollarStyle}>$</span>
+                    <input
+                      type="number" inputMode="decimal" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} placeholder="0.00"
+                      className="font-mono-tab" style={bigAmountStyle}
+                    />
+                  </div>
+                </label>
+              )}
+              {/* Beside pay-before when there is one; the whole row for side cash. */}
+              <label style={labelStyle} className={isSideCashSelected ? 'pb-span-2' : undefined}>
+                {isSideCashSelected ? d.addTxn.amount : d.addTxn.payAfter}
+                <div style={{ position: 'relative' }}>
+                  <span className="font-display" style={bigDollarStyle}>$</span>
+                  <input
+                    type="number" inputMode="decimal" min="0" step="0.01" value={netPay} onChange={(e) => setNetPay(e.target.value)} placeholder="0.00" required
+                    className="font-mono-tab"
+                    style={{ ...bigAmountStyle, border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
+                  />
+                </div>
+              </label>
+              {netExceedsGross ? (
+                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
+                  {d.addTxn.netExceedsGross}
+                </p>
+              ) : showDeductionPreview && (
+                <div className="pb-span-2" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                  <span>{d.addTxn.deductions}</span>
+                  <span className="font-mono-tab" style={{ fontWeight: 500 }}>
+                    {deductionPct(draftGross, draftNet).toFixed(1)}%
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="pb-span-2" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <TitleDescriptionFields
+              title={title}
+              description={description}
+              onTitleChange={setTitle}
+              onDescriptionChange={setDescription}
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+              optionalLabel={d.txnDetail.optional}
+            />
+          </div>
+
+          {type === 'expense' && (
             <>
               {/* A div, not a label: <label> forwards clicks to its control, and
                   the dropdown renders inside this block - clicking an option
@@ -332,81 +469,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 )}
               </div>
               <label style={labelStyle}>
-                {d.addTxn.tag} <span style={{ opacity: 0.7 }}>{d.addTxn.tagHint}</span>
+                <span>{d.addTxn.tag} <span style={{ opacity: 0.7 }}>{d.addTxn.tagHint}</span></span>
                 <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder={d.addTxn.tagPlaceholder} style={inputStyle} />
               </label>
-              <label style={labelStyle}>
-                {d.addTxn.amount}
-                <div style={{ position: 'relative' }}>
-                  {/* Stays '$' in every locale: these are the user's real US
-                      dollars, and formatCurrency() is pinned to en-US too. */}
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
-                  <input
-                    type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required
-                    className="font-mono-tab" style={{ ...inputStyle, width: '100%', paddingLeft: '1.6rem' }}
-                  />
-                </div>
-              </label>
-            </>
-          ) : (
-            <>
-              <label style={labelStyle}>
-                {d.addTxn.category}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {/* ⚠️ Same pattern, and the most important instance of it.
-                      'Standard Income' and 'Side Cash' are matched as literals
-                      by isSideCash() and by the income filters in stats.ts. */}
-                  {(['Standard Income', 'Side Cash'] as const).map((c) => (
-                    <button
-                      key={c} type="button" onClick={() => setIncomeCategory(c)}
-                      className={`pill ${incomeCategory === c ? 'active' : ''}`}
-                      style={{ flex: 1, padding: '0.55rem' }}
-                    >
-                      {d.enums.incomeCategory[c]}
-                    </button>
-                  ))}
-                </div>
-                {isSideCashSelected && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45 }}>
-                    {d.addTxn.sideCashNote}
-                  </span>
-                )}
-              </label>
-              {!isSideCashSelected && (
-                <label style={labelStyle}>
-                  {d.addTxn.payBefore}
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
-                    <input
-                      type="number" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} placeholder="0.00"
-                      className="font-mono-tab" style={{ ...inputStyle, width: '100%', paddingLeft: '1.6rem' }}
-                    />
-                  </div>
-                </label>
-              )}
-              <label style={labelStyle}>
-                {isSideCashSelected ? d.addTxn.amount : d.addTxn.payAfter}
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' }}>$</span>
-                  <input
-                    type="number" min="0" step="0.01" value={netPay} onChange={(e) => setNetPay(e.target.value)} placeholder="0.00" required
-                    className="font-mono-tab"
-                    style={{ ...inputStyle, width: '100%', paddingLeft: '1.6rem', border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
-                  />
-                </div>
-              </label>
-              {netExceedsGross ? (
-                <p style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
-                  {d.addTxn.netExceedsGross}
-                </p>
-              ) : showDeductionPreview && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-                  <span>{d.addTxn.deductions}</span>
-                  <span className="font-mono-tab" style={{ fontWeight: 500 }}>
-                    {deductionPct(draftGross, draftNet).toFixed(1)}%
-                  </span>
-                </div>
-              )}
             </>
           )}
 
@@ -431,17 +496,23 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               ariaLabel={d.addTxn.paymentMethod}
             />
             {accountError && <ActionError message={accountError} />}
-            {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
+            {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={close} />}
           </label>
 
-          <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
+          {saveError && (
+            <div className="pb-span-2">
+              <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
+            </div>
+          )}
 
-          <button type="submit" disabled={saving || netExceedsGross} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button type="submit" disabled={saving || netExceedsGross} className="btn-primary pb-span-2" style={{ width: '100%', marginTop: '0.5rem', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
           </button>
         </form>
         )}
-      </div>
-    </div>
+        </div>
+      </>
+      )}
+    </ModalFrame>
   );
 }

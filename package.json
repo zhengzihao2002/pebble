@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sounds": "node scripts/generate-sound-manifest.mjs"
+    "sounds": "node scripts/generate-sound-manifest.mjs",
+    "themes": "node scripts/generate-themes.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

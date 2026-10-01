@@ -1245,4 +1245,13 @@ export const en = {
     // concatenated so the quoted name can sit anywhere in the sentence.
     emptyHint: 'Use “{action}” above to set one up.',
   },
+  // Shared save confirmation (SaveSuccess). Summaries repeat what the
+  // person entered - never a computed balance. {account} is the account's
+  // own name and {category} is user data: both are inserted untranslated.
+  saveSuccess: {
+    expenseAdded: 'Expense added',
+    incomeAdded: 'Income added',
+    expenseSummary: '{amount} on {category}, from {account}',
+    incomeSummary: '{amount} into {account}',
+  },
 };

@@ -75,7 +75,7 @@ export function TitleDescriptionFields({
       </label>
 
       <label style={labelStyle}>
-        {d.titleDescription.description} <span style={{ opacity: 0.7 }}>{optionalLabel}</span>
+        <span>{d.titleDescription.description} <span style={{ opacity: 0.7 }}>{optionalLabel}</span></span>
         <textarea
           ref={descriptionRef}
           value={description}
