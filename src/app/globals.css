@@ -1518,3 +1518,9 @@ html.pebble-welcoming::after {
 }
 .pebble-root .pb-modal-overlay { animation: pb-scrim-in var(--pb-dur-std) var(--pb-ease-out) both; }
 .pebble-root .pb-modal-overlay.closing { animation: pb-scrim-out var(--pb-dur-exit) var(--pb-ease-in) both; }
+
+/* The overlay never scrolls: the card is capped at the screen height and its
+   body scrolls inside it. With overflow-y: auto, Safari measured the content
+   taller than the overlay for a moment, showed a scrollbar, and the repaint
+   flashed the backdrop tint. Appended after the base rule, so it wins. */
+.pebble-root .pb-modal-overlay { overflow: hidden; }
