@@ -157,7 +157,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
   // is exactly one sign glyph however formatCurrency treats negatives, and a
   // zero shows neither sign nor a verdict colour.
   const amountSign = isAdjustment
-    ? (txn.amount > 0 ? '+' : txn.amount < 0 ? '-' : '')
+    ? (txn.amount > 0 ? '+' : txn.amount < 0 ? '\u2212' : '')
     : (isIncome ? '+' : '');
   const amountColor = isAdjustment
     ? (txn.amount > 0 ? 'var(--pine)' : txn.amount < 0 ? 'var(--wine)' : 'var(--ink-soft)')

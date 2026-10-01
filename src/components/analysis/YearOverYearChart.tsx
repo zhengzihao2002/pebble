@@ -5,10 +5,11 @@ import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { YearStats } from '@/lib/analysis/projection';
 
-// Hex literals, not var(): Recharts renders SVG attributes that do not resolve
-// CSS custom properties in every context. Matches the dashboard charts.
-const PINE = '#1F5A45';
-const WINE = '#8C3A46';
+// Theme tokens, not hex: var() resolves in these SVG attributes, so the bars
+// and legend swatches follow the theme and dark mode.
+const PINE = 'var(--pine)';
+const WINE = 'var(--wine)';
+const CURSOR = 'color-mix(in srgb, var(--pine) 8%, transparent)';
 
 export function YearOverYearChart({ data }: { data: YearStats[] }) {
   const { d: dict } = useTranslation();
@@ -28,7 +29,7 @@ export function YearOverYearChart({ data }: { data: YearStats[] }) {
   }));
 
   return (
-    <div style={{ width: '100%', height: 240 }}>
+    <div className="pb-chart-fade" style={{ width: '100%', height: 240 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
           <XAxis
@@ -37,14 +38,12 @@ export function YearOverYearChart({ data }: { data: YearStats[] }) {
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip
-            cursor={{ fill: 'rgba(31,90,69,0.08)' }}
-            formatter={(v) => formatCurrency(Number(v))}
-            contentStyle={{ borderRadius: 10, fontSize: 13 }}
-          />
+          {/* Colours, border and size come from the global
+              .recharts-default-tooltip rule in globals.css. */}
+          <Tooltip cursor={{ fill: CURSOR }} formatter={(v) => formatCurrency(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[6, 6, 0, 0]} />
-          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[6, 6, 0, 0]} />
+          <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[6, 6, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[6, 6, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

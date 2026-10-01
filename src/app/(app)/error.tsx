@@ -83,7 +83,7 @@ export default function AppGroupError({
 
         {error.digest && (
           <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginTop: '1.2rem', opacity: 0.75 }}>
-            {d.error.reference} <span className="font-mono-tab">{error.digest}</span>
+            {d.error.reference} <span className="font-code">{error.digest}</span>
           </p>
         )}
       </div>

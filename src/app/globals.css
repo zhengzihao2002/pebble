@@ -229,8 +229,8 @@ html.no-theme-transition * {
      Microsoft YaHei (Windows) are both good faces already installed.
 
      Font fallback is PER GLYPH, not per element, so this changes nothing for
-     Latin text: digits still resolve to IBM Plex Mono and .font-mono-tab's
-     tabular-nums keeps working on every money figure, date and percentage.
+     Latin text: digits come from the Latin body face, and .font-mono-tab's
+     tabular-nums keeps them aligned on every money figure, date and percentage.
      Only characters the primary face lacks reach this list.
 
      A CJK SANS is used even for .font-display. Songti SC would be the
@@ -398,9 +398,9 @@ html[data-pebble-theme="sand"] .pebble-root.dark {
    step; absent means Default, so the rule above is untouched and the default
    look cannot change. Each override sets the body family on .pebble-root
    (inherited everywhere, portals included) and a heading variable that
-   .font-display falls back from. Numbers are deliberately NOT included:
-   .font-mono-tab keeps IBM Plex Mono so amounts stay column-aligned. Chinese
-   falls through to var(--cjk) in every case. */
+   .font-display falls back from. Numbers follow the chosen face too:
+   .font-mono-tab inherits it and adds tabular figures, so amounts stay
+   column-aligned. Chinese falls through to var(--cjk) in every case. */
 html[data-pebble-font="system"] .pebble-root {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, var(--cjk), sans-serif;
   --pebble-font-display: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
@@ -418,7 +418,13 @@ html[data-pebble-font="legible"] .pebble-root { font-family: var(--font-atkinson
 html[data-pebble-cjk="serif"] .pebble-root { --cjk: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", var(--font-noto-serif-sc), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC"; }
 html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC"; }
 .pebble-root .font-display { font-family: var(--pebble-font-display, var(--font-fraunces)), var(--cjk), Georgia, serif; }
-.pebble-root .font-mono-tab { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+/* Figures: the body face with tabular, lining digits, so columns align in
+   every font choice (Nunito's digits are equal-width already; Work Sans,
+   Source Serif 4 and Atkinson have tnum). The name is historical - this is
+   no longer monospace. Fraunces has no tabular digits: hero figures only.
+   .font-code keeps the monospace face for paths, commands and error codes. */
+.pebble-root .font-mono-tab { font-family: inherit; font-variant-numeric: tabular-nums lining-nums; }
+.pebble-root .font-code { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; }
 .pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow); }
 .pebble-root button { font-family: inherit; cursor: pointer; }
 .pebble-root input, .pebble-root select { font-family: inherit; }
@@ -712,7 +718,7 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   .farewell-line { opacity: 1; }
 }
 
-/* Text-size percentage box: exactly 3 digits wide (3ch in the mono font,
+/* Text-size percentage box: exactly 3 digits wide (3ch with tabular digits,
    plus padding and border). The native spin arrows are hidden - they took
    browser-dependent width; the slider, presets and arrow keys remain. */
 .pebble-root .text-size-input { appearance: textfield; -moz-appearance: textfield; }
@@ -1356,3 +1362,9 @@ html.pebble-welcoming::after {
    false values. Opacity only; the reduced-motion block covers it. */
 @keyframes pb-chart-in { from { opacity: 0; } to { opacity: 1; } }
 .pebble-root .pb-chart-fade { animation: pb-chart-in var(--pb-dur-emph) var(--pb-ease-out) both; }
+
+/* Chart tooltips: one size and spacing for every chart (the per-chart inline
+   styles were removed). !important because Recharts sets its own padding
+   inline. Values in tabular figures so amounts line up. */
+.pebble-root .recharts-default-tooltip { padding: 0.55rem 0.75rem !important; font-size: var(--pb-text-sm); }
+.pebble-root .recharts-default-tooltip .recharts-tooltip-item-value { font-variant-numeric: tabular-nums; }

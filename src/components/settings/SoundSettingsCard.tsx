@@ -45,9 +45,9 @@ export function SoundSettingsCard() {
             .split(/(\{path\}|\{command\})/g)
             .map((part, i) =>
               part === '{path}'
-                ? <span key={i} className="font-mono-tab">public/sounds</span>
+                ? <span key={i} className="font-code">public/sounds</span>
                 : part === '{command}'
-                  ? <span key={i} className="font-mono-tab">npm run sounds</span>
+                  ? <span key={i} className="font-code">npm run sounds</span>
                   : <span key={i}>{part}</span>,
             )}
         </p>

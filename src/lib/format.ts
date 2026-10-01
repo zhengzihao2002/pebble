@@ -51,9 +51,10 @@ export function parseLocalDate(dateStr: string): Date {
 // These are the user's actual US dollars. Rendering them as ¥ would
 // misrepresent real money, and 'en-US' grouping is identical to 'zh-CN'
 // grouping anyway, so a locale here could only ever make things worse.
+// DISPLAY ONLY. Negatives use a true minus sign (U+2212), not a hyphen.
 export function formatCurrency(n: number): string {
   return n < 0
-    ? `-$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ? `\u2212$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
