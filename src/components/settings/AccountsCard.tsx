@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Landmark, Coins, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Landmark, Coins, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
 import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -26,6 +26,14 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--line)', fontSize: '0.87rem', color: 'var(--ink)',
   backgroundColor: 'var(--paper)', boxSizing: 'border-box',
 };
+
+// Visually hidden, still read by screen readers.
+const srOnly: React.CSSProperties = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+  overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0,
+};
+
+const SAVED_HOLD_MS = 1600;
 
 const labelStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '0.35rem',
@@ -60,6 +68,25 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
   const [moveSource, setMoveSource] = useState<Account | null>(null);
+  // The row whose save the server just confirmed. Set ONLY below the failure
+  // return of a write; shows a small check on that row for a moment.
+  const [savedId, setSavedId] = useState<string | null>(null);
+  // Ids present before a create, so the new row can be found once the page
+  // hands down the refreshed list.
+  const pendingNew = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!savedId) return;
+    const id = window.setTimeout(() => setSavedId(null), SAVED_HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [savedId]);
+
+  useEffect(() => {
+    const before = pendingNew.current;
+    if (!before) return;
+    const fresh = accounts.find((a) => !before.has(a.id));
+    if (fresh) { pendingNew.current = null; setSavedId(fresh.id); }
+  }, [accounts]);
 
   const resetForm = () => {
     setName(''); setKind('bank'); setLast4('');
@@ -70,25 +97,34 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     if (saving) return;
     setSaving(true);
     setError(null);
+    setSavedId(null);
+    const idsBefore = new Set(accounts.map((a) => a.id));
     const result = await callAction(() => createAccountAction({ name, kind, last4 }));
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
+    // Below the failure return: the new row is marked when the list refreshes.
+    pendingNew.current = idsBefore;
     resetForm();
   };
 
-  const runAccountAction = async (run: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>) => {
+  const runAccountAction = async (accountId: string, run: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>) => {
     if (saving) return;
     setSaving(true);
     setError(null);
+    setSavedId(null);
     const result = await callAction(run);
     setSaving(false);
     setConfirmDelete(null);
-    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
+    // Below the failure return.
+    setSavedId(accountId);
   };
 
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
       {saving && <LoadingOverlay label={d.common.saving} />}
+      {/* Announces a confirmed save; the visible check is aria-hidden. */}
+      <span role="status" style={srOnly}>{savedId ? d.accounts.saved : ''}</span>
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.accounts.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem', lineHeight: 1.5 }}>
         {d.accounts.blurb}
@@ -137,13 +173,22 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   </p>
                 </div>
 
+                {savedId === a.id && (
+                  <span
+                    className="goal-done-badge" aria-hidden="true"
+                    style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                )}
+
                 {/* Only active accounts can be preferred - preselecting one
                     that rejects new transactions would be broken. Independent
                     of isDefault: Checking and Cash CAN be preferred. */}
                 {a.status === 'active' && (
                   <button
                     type="button"
-                    onClick={() => runAccountAction(() => setPreferredAccountAction(a.id))}
+                    onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id))}
                     className="icon-btn"
                     aria-pressed={a.isPreferred}
                     aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
@@ -179,7 +224,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 <div style={{ display: 'flex', gap: '0.35rem' }}>
                   <button
                     type="button"
-                    onClick={() => runAccountAction(() => (
+                    onClick={() => runAccountAction(a.id, () => (
                       a.status === 'hibernated' ? wakeAccountAction(a.id) : hibernateAccountAction(a.id)
                     ))}
                     className="icon-btn"
@@ -201,6 +246,12 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           );
         })}
       </div>
+
+      {deleteLocked && visible.some((a) => !a.isDefault) && (
+        <p data-lock-hint style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: '0 0 1rem' }}>
+          {d.safetyLocks.lockedHint}
+        </p>
+      )}
 
       {adding ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>

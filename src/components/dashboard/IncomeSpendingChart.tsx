@@ -8,6 +8,7 @@ import {
 import type { Transaction } from '@/types';
 import { buildTrendData, getAvailablePeriods } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
+import { formatCompactCurrency } from '@/lib/chartFormat';
 import { TREND_MODES } from '@/data/seed';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -68,7 +69,7 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
   const trendData = buildTrendData(transactions, trendMode, trendYear, locale);
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
+    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.trendChart.title}</h3>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -89,12 +90,14 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
         </div>
       </div>
       {trendData.length === 0 ? (
-        <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
+        <div style={{ flex: 1, minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
           {d.trendChart.noData}
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -18, bottom: 0 }}>
+      <div className="pb-chart-fade pb-chart-fill" style={{ flex: 1, minHeight: 220, position: 'relative' }}>
+      <div style={{ position: 'absolute', inset: 0 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={trendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#1F5A45" stopOpacity={0.35} />
@@ -107,12 +110,14 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} width={38} />
+          <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={48} />
           <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{ borderRadius: 10, fontSize: 13 }} />
-          <Area type="monotone" dataKey="income" name={d.dashboard.income} stroke="#1F5A45" fill="url(#incomeGrad)" strokeWidth={2} />
-          <Area type="monotone" dataKey="spending" name={d.dashboard.spending} stroke="#AD7B2E" fill="url(#spendGrad)" strokeWidth={2} />
+          <Area type="monotone" dataKey="income" name={d.dashboard.income} stroke="#1F5A45" fill="url(#incomeGrad)" strokeWidth={2} isAnimationActive={false} />
+          <Area type="monotone" dataKey="spending" name={d.dashboard.spending} stroke="#AD7B2E" fill="url(#spendGrad)" strokeWidth={2} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
+      </div>
       )}
       <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 99, backgroundColor: '#1F5A45' }} />{d.dashboard.income}</span>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Briefcase, Coins, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Briefcase, Coins } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
@@ -41,7 +42,14 @@ interface AddTransactionModalProps {
  *
  * A transaction added in Chinese must store byte-identical values to one
  * added in English.
+ *
+ * LAYOUT. Three regions inside ModalFrame's card: head (title, close, the
+ * Expense/Income switch) and foot (error, submit) never scroll; only the
+ * body between them does. The submit button sits in the foot but belongs to
+ * the form in the body through the form attribute.
  */
+const FORM_ID = 'add-txn-form';
+
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const { d, t, locale } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -273,77 +281,78 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // later - which two concatenated half-strings could not do.
   const dipsParts = d.addTxn.dipsBody.split('{amount}');
 
+  const showForm = !success && pendingShortfall === null;
+
   return (
     <ModalFrame onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640}>
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.3rem' }}>
-          <h2 id="add-txn-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.addTxn.title}</h2>
-          <button onClick={close} disabled={saving} aria-label={d.common.close} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
+
+        {/* HEAD: never scrolls. The switch shows only on the form itself. */}
+        <div className="pb-modal-head">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 id="add-txn-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.addTxn.title}</h2>
+            <ModalCloseButton onClick={close} disabled={saving} />
+          </div>
+          {showForm && (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              {/* A two-way switch: the thumb slides to the chosen side (wine for
+                  money out, pine for money in). Arrow keys flip it as well.
+
+                  The array holds the STORED values; the dictionary is indexed by
+                  them. setType therefore always receives the English literal.
+                  capitalize is left on for English - it is a no-op in Chinese. */}
+              <div
+                role="radiogroup"
+                className="pb-kind-switch"
+                data-kind={type}
+                onKeyDown={(e) => {
+                  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                  e.preventDefault();
+                  const next = type === 'expense' ? 'income' : 'expense';
+                  setType(next);
+                  e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
+                }}
+              >
+                <span className="pb-kind-thumb" aria-hidden="true" />
+                {(['expense', 'income'] as const).map((k) => {
+                  const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
+                  return (
+                    <button
+                      key={k} type="button" role="radio" data-value={k}
+                      aria-checked={type === k} tabIndex={type === k ? 0 : -1}
+                      onClick={() => setType(k)}
+                      style={{ textTransform: 'capitalize' }}
+                    >
+                      <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                      {d.enums.kind[k]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-        {/* The only part that scrolls when the card is taller than the screen:
-            the header and its close button stay in view. */}
+
+        {/* BODY: the only part that scrolls. */}
         <div className="pb-modal-body">
         {success ? (
           <SaveSuccess title={success.title} body={success.summary} onDone={close} />
         ) : pendingShortfall !== null ? (
           <div>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.addTxn.dipsTitle}</p>
-            <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
+            <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
               {dipsParts[0]}
               <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>{formatCurrency(pendingShortfall)}</span>
               {dipsParts[1]}
             </p>
-            <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} style={{ marginBottom: '0.9rem' }} />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => setPendingShortfall(null)} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.addTxn.goBack}</button>
-              <button type="button" onClick={performSave} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: saving ? 0.6 : 1 }}>
-                {saving ? d.common.saving : d.addTxn.proceed}
-              </button>
-            </div>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} className="pb-form-grid">
+        <form id={FORM_ID} onSubmit={handleSubmit} className="pb-form-grid">
           {/* One column on a phone; two once the card is wide enough (the
               container query in globals.css). Fields that need a whole row
               carry the span class. */}
-          <div className="pb-span-2" style={{ display: 'flex', justifyContent: 'center' }}>
-            {/* A two-way switch: the thumb slides to the chosen side (wine for
-                money out, pine for money in). Arrow keys flip it as well.
-
-                The array holds the STORED values; the dictionary is indexed by
-                them. setType therefore always receives the English literal.
-                capitalize is left on for English - it is a no-op in Chinese. */}
-            <div
-              role="radiogroup"
-              className="pb-kind-switch"
-              data-kind={type}
-              onKeyDown={(e) => {
-                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-                e.preventDefault();
-                const next = type === 'expense' ? 'income' : 'expense';
-                setType(next);
-                e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
-              }}
-            >
-              <span className="pb-kind-thumb" aria-hidden="true" />
-              {(['expense', 'income'] as const).map((k) => {
-                const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
-                return (
-                  <button
-                    key={k} type="button" role="radio" data-value={k}
-                    aria-checked={type === k} tabIndex={type === k ? 0 : -1}
-                    onClick={() => setType(k)}
-                    style={{ textTransform: 'capitalize' }}
-                  >
-                    <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
-                    {d.enums.kind[k]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* The amount comes first: it is what the form is for. For income the
               Standard / Side cash choice sits above it, because it decides
@@ -498,19 +507,32 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             {accountError && <ActionError message={accountError} />}
             {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={close} />}
           </label>
-
-          {saveError && (
-            <div className="pb-span-2">
-              <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
-            </div>
-          )}
-
-          <button type="submit" disabled={saving || netExceedsGross} className="btn-primary pb-span-2" style={{ width: '100%', marginTop: '0.5rem', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
-          </button>
         </form>
         )}
         </div>
+
+        {/* FOOT: never scrolls. The error sits directly above the buttons so a
+            failed save is visible without scrolling. Absent on the
+            confirmation. */}
+        {!success && (
+          <div className="pb-modal-foot">
+            {saveError && (
+              <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
+            )}
+            {pendingShortfall !== null ? (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" onClick={() => setPendingShortfall(null)} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.addTxn.goBack}</button>
+                <button type="button" onClick={performSave} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', opacity: saving ? 0.6 : 1 }}>
+                  {saving ? d.common.saving : d.addTxn.proceed}
+                </button>
+              </div>
+            ) : (
+              <button type="submit" form={FORM_ID} disabled={saving || netExceedsGross} className="btn-primary" style={{ width: '100%', padding: '0.72rem', opacity: saving || netExceedsGross ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
+              </button>
+            )}
+          </div>
+        )}
       </>
       )}
     </ModalFrame>

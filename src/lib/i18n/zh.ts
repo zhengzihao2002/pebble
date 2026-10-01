@@ -136,6 +136,9 @@ export const zh: typeof en = {
     confirmTitle: '确定删除 {name}？',
     confirmBody: '此操作不可撤销，且不留任何痕迹。只有没有交易、调整和定期收支的账户才能删除。',
     confirmDelete: '删除账户',
+    saved: '已保存',
+    moved: '记录已移动',
+    movedTo: '已移至 {account}',
   },
 
   transfer: {
@@ -149,6 +152,8 @@ export const zh: typeof en = {
     notePlaceholder: '例如：ATM 取现',
     sameAccount: '请选择两个不同的账户。',
     submit: '转账',
+    done: '转账完成',
+    summary: '已将 {amount} 从 {from} 转至 {to}',
   },
 
   settings: {
@@ -345,6 +350,8 @@ export const zh: typeof en = {
     deleteBody: '{date} 的 {description}（{amount}）将被彻底移除，如同从未记录过。你的余额会相应调整。此操作无法撤销。',
     keepIt: '保留',
     deleting: '删除中…',
+    updated: '交易已更新',
+    updatedSummary: '{title} · {amount}',
   },
 
   titleDescription: {
@@ -528,6 +535,9 @@ export const zh: typeof en = {
     adjustment: '调整',
     recorded: '调整已记录。',
     record: '记录调整',
+    done: '调整已记录',
+    doneSetTo: '{account}已设为 {amount}',
+    doneChangedBy: '{account}已调整 {amount}',
   },
 
   categoryManager: {
@@ -548,6 +558,7 @@ export const zh: typeof en = {
     // {name} 是用户自己的分类名，原样插入，不翻译。
     editAria: '编辑{name}',
     deleteAria: '删除{name}',
+    saved: '已保存',
   },
 
   categoryDelete: {

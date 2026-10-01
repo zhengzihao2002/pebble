@@ -36,6 +36,10 @@ const RESIZE_MIN_PX = 24;
 // Open frames, innermost last: Escape closes only the top one.
 const openFrames: symbol[] = [];
 
+// What Tab can land on inside a dialog. Filtered further at run time:
+// disabled, hidden, inert and tabindex="-1" elements are skipped.
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
+
 interface ModalFrameProps {
   onClose: () => void;
   busy?: boolean;
@@ -116,10 +120,62 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     return () => { observer.disconnect(); running?.cancel(); };
   }, []);
 
+  // Phones: the on-screen keyboard shrinks the visual viewport but not dvh, so
+  // a pinned submit button would sit behind it. The overlay's height and top
+  // follow the visual viewport instead (CSS variables read in globals.css).
+  // Skipped while pinch-zoomed, when the visual viewport is smaller on purpose.
+  // Event listeners only: no timers, no requests.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const overlay = cardRef.current?.parentElement;
+    if (!vv || !overlay) return;
+    const sync = () => {
+      if (Math.abs(vv.scale - 1) > 0.01) return;
+      overlay.style.setProperty('--pb-vvh', `${vv.height}px`);
+      overlay.style.setProperty('--pb-vvt', `${vv.offsetTop}px`);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, []);
+
   useEffect(() => {
     const id = Symbol('modal');
     openFrames.push(id);
+    // Focus trap: Tab and Shift+Tab wrap inside the topmost frame. Focus in
+    // a dropdown list that portals outside the card is left alone; focus
+    // that fell to <body> (a button that disabled itself) is brought back.
+    const trapTab = (e: KeyboardEvent) => {
+      const card = cardRef.current;
+      if (!card) return;
+      const active = document.activeElement;
+      const inside = active instanceof Node && card.contains(active);
+      if (!inside && active && active !== document.body) return;
+      const items = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) =>
+        el !== card
+        && !el.hasAttribute('disabled')
+        && el.getAttribute('tabindex') !== '-1'
+        && el.getAttribute('aria-hidden') !== 'true'
+        && !el.closest('[inert]')
+        && el.getClientRects().length > 0,
+      );
+      if (items.length === 0) { e.preventDefault(); card.focus({ preventScroll: true }); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!inside) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+      if (e.shiftKey && (active === first || active === card)) { e.preventDefault(); last.focus(); return; }
+      if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && !e.defaultPrevented) {
+        if (openFrames[openFrames.length - 1] === id) trapTab(e);
+        return;
+      }
       if (e.key !== 'Escape' || e.isComposing || e.defaultPrevented) return;
       if (openFrames[openFrames.length - 1] !== id) return;
       // An open dropdown inside the dialog gets Escape first.

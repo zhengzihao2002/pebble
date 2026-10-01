@@ -13,9 +13,9 @@ const GOLD = '#AD7B2E';
 export function DeductionChart({ data }: { data: MonthlyDeduction[] }) {
   const { d: dict } = useTranslation();
   return (
-    <div style={{ width: '100%', height: 200 }}>
+    <div className="pb-chart-fade" style={{ width: '100%', height: 200 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+        <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
@@ -28,7 +28,7 @@ export function DeductionChart({ data }: { data: MonthlyDeduction[] }) {
             tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
             axisLine={false}
             tickLine={false}
-            width={44}
+            width={40}
             tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
           />
           <Tooltip
@@ -47,6 +47,7 @@ export function DeductionChart({ data }: { data: MonthlyDeduction[] }) {
             strokeWidth={2}
             dot={{ r: 3, fill: GOLD }}
             connectNulls={false}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>

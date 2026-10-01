@@ -1226,3 +1226,133 @@ html.pebble-welcoming::after {
 .pebble-root .pb-kind-switch[data-kind="income"] .pb-kind-thumb {
   transform: translateX(100%); background-color: var(--pine);
 }
+
+/* Modal close dot (ModalCloseButton): soft wine dot, cross always visible,
+   solid wine on hover. Hit area about 44px on every device. */
+.pebble-root .pb-close-dot {
+  position: relative; flex: none;
+  width: 1.75rem; height: 1.75rem; padding: 0; border: none; border-radius: 50%;
+  background-color: var(--wine-soft); color: var(--wine);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wine) 40%, transparent);
+  display: inline-grid; place-items: center; cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-close-dot::after { content: ''; position: absolute; inset: -0.5rem; border-radius: 50%; }
+.pebble-root .pb-close-dot svg { pointer-events: none; }
+@media (hover: hover) {
+  .pebble-root .pb-close-dot:hover:not(:disabled) { background-color: var(--wine); color: var(--paper); }
+}
+.pebble-root .pb-close-dot:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+.pebble-root .pb-close-dot:disabled { opacity: 0.4; cursor: default; }
+@media (pointer: coarse) {
+  .pebble-root .pb-close-dot { width: 2rem; height: 2rem; }
+  .pebble-root .pb-close-dot::after { inset: -0.4rem; }
+}
+
+/* Dialog regions (ModalFrame children): head and foot stay put, the body
+   scrolls. Appended after the earlier card rules on purpose: the overrides
+   below have the same specificity and win by order. */
+.pebble-root .pb-modal-head {
+  flex: none; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1rem;
+}
+.pebble-root .pb-modal-body { flex: 1 1 auto; min-height: 0; }
+.pebble-root .pb-modal-foot {
+  flex: none; display: flex; flex-direction: column; gap: 0.75rem;
+  margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+}
+
+/* Phones: the on-screen keyboard shrinks the visual viewport but not dvh.
+   ModalFrame copies the visual viewport's height and offset into these
+   variables; without them (desktop, old browsers) the dvh values apply. */
+.pebble-root .pb-modal-overlay {
+  top: var(--pb-vvt, 0px); bottom: auto; height: var(--pb-vvh, 100%);
+}
+.pebble-root .pb-modal-card { max-height: calc(var(--pb-vvh, 100dvh) - 2rem); }
+@media (max-width: 559.98px) {
+  .pebble-root .pb-modal-card { max-height: calc(var(--pb-vvh, 100dvh) - 1.5rem); }
+}
+
+/* Expense / Income switch: flexible width, so the largest text size cannot
+   push the two buttons past a phone card. */
+.pebble-root .pb-kind-switch { width: min(100%, 17rem); max-width: 100%; }
+.pebble-root .pb-kind-switch button { min-width: 0; white-space: nowrap; }
+
+/* Transfer route (TransferModal): From and To are equal blocks with an arrow
+   badge between them. Stacked on a narrow card (arrow points down), side by
+   side on a wide one (arrow points right). One icon, rotated by the same
+   container query that sets the layout, so it cannot disagree with it. */
+.pebble-root .pb-transfer-route {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-items: stretch;
+}
+.pebble-root .pb-transfer-account {
+  display: flex; flex-direction: column; gap: 0.35rem; min-width: 0;
+  font-size: 0.8rem; color: var(--ink-soft);
+}
+.pebble-root .pb-transfer-badge {
+  justify-self: center; align-self: center; flex: none;
+  width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background-color: var(--pine-soft); color: var(--pine);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+/* The icon always points and moves RIGHT inside this wrapper. Stacked, the
+   wrapper turns 90deg, so the arrow points down and moves up and down. */
+.pebble-root .pb-transfer-arrow { display: grid; place-items: center; transform: rotate(90deg); }
+.pebble-root .pb-transfer-arrow svg { animation: transfer-nudge 1.8s ease-in-out infinite; }
+@keyframes transfer-nudge { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(2px); } }
+@container pb-modal (min-width: 520px) {
+  .pebble-root .pb-transfer-route { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 1rem; align-items: end; }
+  .pebble-root .pb-transfer-badge { align-self: end; margin-bottom: -0.2rem; }
+  .pebble-root .pb-transfer-arrow { transform: none; }
+}
+
+/* Stacked Transfer (narrow card). The From and To blocks stop being boxes
+   (display: contents) so their label and select become rows of the route's
+   grid. The arrow badge shares the "To" label's row: it is centred in that
+   row, so the space above and below it is equal by construction, whatever the
+   text size. Wide cards keep the side-by-side layout above. */
+@container pb-modal (max-width: 519.98px) {
+  .pebble-root .pb-transfer-route { row-gap: 0.35rem; }
+  .pebble-root .pb-transfer-account { display: contents; }
+  .pebble-root .pb-transfer-account > * { grid-column: 1; min-width: 0; }
+  .pebble-root .pb-transfer-account:first-of-type > :first-child { grid-row: 1; }
+  .pebble-root .pb-transfer-account:first-of-type > :not(:first-child) { grid-row: 2; }
+  .pebble-root .pb-transfer-account:last-of-type > :first-child { grid-row: 3; align-self: end; }
+  .pebble-root .pb-transfer-account:last-of-type > :not(:first-child) { grid-row: 4; }
+  .pebble-root .pb-transfer-badge { grid-column: 1; grid-row: 3; align-self: center; justify-self: center; margin-block: 0.4rem; z-index: 1; }
+}
+
+/* In-card confirmation (ModifyBalanceCard): covers its card, which must be
+   position: relative. Inherits the card's surface and corners, so it needs no
+   colour of its own. */
+.pebble-root .pb-inline-done {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: inherit; border-radius: inherit; cursor: pointer;
+}
+
+/* Phones: every ModalFrame dialog becomes a bottom sheet. A viewport query on
+   purpose - a container query cannot see the screen from inside a modal.
+   The card's width is set inline by ModalFrame, so max-width needs
+   !important to let the sheet reach both edges. The overlay already follows
+   the visual viewport, so the sheet sits on top of the iOS keyboard. */
+@keyframes pb-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes pb-sheet-out { from { transform: none; } to { transform: translateY(100%); } }
+@media (max-width: 559.98px) {
+  .pebble-root .pb-modal-overlay { padding: 0.75rem 0 0; }
+  .pebble-root .pb-modal-card {
+    margin: auto 0 0; max-width: none !important;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    max-height: calc(var(--pb-vvh, 100dvh) - 0.75rem);
+    animation: pb-sheet-in 260ms var(--pb-ease-out) both;
+  }
+  .pebble-root .pb-modal-overlay.closing .pb-modal-card {
+    animation: pb-sheet-out var(--pb-dur-exit) var(--pb-ease-in) both;
+  }
+}
+
+/* Charts fade in instead of growing from zero: a rising line briefly shows
+   false values. Opacity only; the reduced-motion block covers it. */
+@keyframes pb-chart-in { from { opacity: 0; } to { opacity: 1; } }
+.pebble-root .pb-chart-fade { animation: pb-chart-in var(--pb-dur-emph) var(--pb-ease-out) both; }

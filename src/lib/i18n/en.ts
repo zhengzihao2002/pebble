@@ -165,6 +165,9 @@ export const en = {
     confirmTitle: 'Delete {name}?',
     confirmBody: 'This is permanent and leaves no trace. Only an account with no transactions, adjustments or scheduled payments can be deleted.',
     confirmDelete: 'Delete account',
+    saved: 'Saved',
+    moved: 'Records moved',
+    movedTo: 'Moved to {account}',
   },
 
   transfer: {
@@ -178,6 +181,8 @@ export const en = {
     notePlaceholder: 'e.g. ATM withdrawal',
     sameAccount: 'Choose two different accounts.',
     submit: 'Transfer',
+    done: 'Transfer complete',
+    summary: '{amount} from {from} to {to}',
   },
 
   settings: {
@@ -398,6 +403,8 @@ export const en = {
     deleteBody: '{description} for {amount} on {date} will be removed as if it had never been recorded. Your balances will adjust. This cannot be undone.',
     keepIt: 'Keep it',
     deleting: 'Deleting…',
+    updated: 'Transaction updated',
+    updatedSummary: '{title} · {amount}',
   },
 
   titleDescription: {
@@ -603,6 +610,9 @@ export const en = {
     adjustment: 'Adjustment',
     recorded: 'Adjustment recorded.',
     record: 'Record adjustment',
+    done: 'Adjustment recorded',
+    doneSetTo: '{account} set to {amount}',
+    doneChangedBy: '{account} adjusted by {amount}',
   },
 
   categoryManager: {
@@ -623,6 +633,7 @@ export const en = {
     // {name} is a CATEGORY NAME - user data, inserted untranslated.
     editAria: 'Edit {name}',
     deleteAria: 'Delete {name}',
+    saved: 'Saved',
   },
 
   categoryDelete: {

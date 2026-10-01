@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import {
   createCategoryAction,
@@ -24,6 +24,15 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.87rem', color: 'var(--ink)', backgroundColor: 'var(--paper)',
   boxSizing: 'border-box', width: '100%',
 };
+
+// Visually hidden, still read by screen readers.
+const srOnly: React.CSSProperties = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+  overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0,
+};
+
+// How long the saved row's check stays (the Add to goal hold).
+const SAVED_HOLD_MS = 1600;
 
 interface DraftState {
   name: string;
@@ -110,33 +119,53 @@ export function CategoryManagerCard() {
   // A failed initial load leaves nothing to save, so retrying the save would
   // be meaningless there.
   const [loadFailed, setLoadFailed] = useState(false);
+  // After the first successful load, refreshes happen in the background: the
+  // list stays on screen and updates in place, instead of being swapped for
+  // the loading block (which made the card flash and jump after every save).
+  const loadedOnce = useRef(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ name: '', iconKey: 'Shapes', color: CATEGORY_COLOR_OPTIONS[0] });
   const [adding, setAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CategoryItem | null>(null);
+  // The row whose save the server just confirmed. Set ONLY below the failure
+  // return in submit(); shows a small check on that row for a moment.
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   // Wrapped: previously a rejected call left `loading` true forever, since
   // setLoading(false) only ran on the resolved paths. The card would sit under
   // "Loading your categories…" with no error and no way out but a page reload -
   // precisely the DB-outage case this work exists to make visible.
-  const load = async () => {
-    setLoading(true);
+  //
+  // Returns the fresh list (or null on failure) so submit() can find a newly
+  // added row. A failed background refresh keeps the list already shown.
+  const load = async (): Promise<CategoryItem[] | null> => {
+    const silent = loadedOnce.current;
+    if (!silent) setLoading(true);
     const result = await callAction(getCategoriesAction, d.categoryManager.loadFailed);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));
       setErrorKind(result.kind);
       setLoadFailed(true);
       setLoading(false);
-      return;
+      return null;
     }
     setCategories(result.categories);
     setError(null);
     setLoadFailed(false);
     setLoading(false);
+    loadedOnce.current = true;
+    return result.categories;
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // One timer for the check; a new save or unmounting clears it.
+  useEffect(() => {
+    if (!savedId) return;
+    const id = window.setTimeout(() => setSavedId(null), SAVED_HOLD_MS);
+    return () => window.clearTimeout(id);
+  }, [savedId]);
 
   const startEdit = (c: CategoryItem) => {
     setAdding(false);
@@ -156,15 +185,24 @@ export function CategoryManagerCard() {
 
   const submit = async () => {
     if (busy) return;
+    // Captured before cancel() clears them: which row to mark afterwards.
+    const wasAdding = adding;
+    const editedId = editingId;
+    const idsBefore = new Set(categories.map((c) => c.id));
     setBusy(true);
     setError(null);
-    const result = adding
+    setSavedId(null);
+    const result = wasAdding
       ? await callAction(() => createCategoryAction(draft))
-      : await callAction(() => updateCategoryAction({ id: editingId!, ...draft }));
+      : await callAction(() => updateCategoryAction({ id: editedId!, ...draft }));
     setBusy(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
+    // Below the failure return: the check only ever marks a confirmed save.
     cancel();
-    await load();
+    const fresh = await load();
+    if (!fresh) return;
+    const markId = wasAdding ? (fresh.find((c) => !idsBefore.has(c.id))?.id ?? null) : editedId;
+    setSavedId(markId);
   };
 
   const editingSystem = !adding && categories.find((c) => c.id === editingId)?.isSystem;
@@ -172,6 +210,8 @@ export function CategoryManagerCard() {
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
       {busy && <LoadingOverlay label={d.common.saving} />}
+      {/* Announces a confirmed save; the visible check is aria-hidden. */}
+      <span role="status" style={srOnly}>{savedId ? d.categoryManager.saved : ''}</span>
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.categoryManager.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
         {d.categoryManager.blurb}
@@ -220,6 +260,15 @@ export function CategoryManagerCard() {
                     {c.name}
                     {c.isSystem && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6 }}>{d.categoryManager.fallbackTag}</span>}
                   </span>
+                  {savedId === c.id && (
+                    // Smaller than the row's icon, so the row never changes height.
+                    <span
+                      className="goal-done-badge" aria-hidden="true"
+                      style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                  )}
                   <button type="button" onClick={() => startEdit(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={t(d.categoryManager.editAria, { name: c.name })}>
                     <Pencil size={14} />
                   </button>
@@ -251,6 +300,12 @@ export function CategoryManagerCard() {
                 </button>
               </div>
             </div>
+          )}
+
+          {deleteLocked && categories.some((c) => !c.isSystem) && (
+            <p data-lock-hint style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: '0 0 0.8rem' }}>
+              {d.safetyLocks.lockedHint}
+            </p>
           )}
 
           <ActionError

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRight, ArrowRightLeft, Check, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowRight, ArrowRightLeft, Trash2 } from 'lucide-react';
 import {
   deleteAccountAction,
   deleteAccountWithRecordsAction,
@@ -13,6 +13,10 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
+import { SaveSuccess } from '@/components/shared/SaveSuccess';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -35,6 +39,13 @@ const COUNTDOWN_SECONDS = 10;
  * account name and a 10-second countdown. Both destructive paths run as one
  * locked transaction with a tripwire on the server (pebble.ts): if the
  * account changed since this preview, nothing happens and the preview reloads.
+ *
+ * LAYOUT. Head (title, close) and foot (error, buttons) never scroll; the
+ * body between them is the only scroller. Every step keeps its buttons in
+ * the foot, so a long balances table can never push them out of reach.
+ *
+ * DONE. SaveSuccess (the Add to goal confirmation) holds, then calls close(),
+ * so the exit plays before onClose unmounts the dialog.
  */
 export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDeleteDialogProps) {
   const { d, t, locale } = useTranslation();
@@ -48,6 +59,17 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
   const [target, setTarget] = useState(destinations[0]?.id ?? '');
   const [typed, setTyped] = useState('');
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+
+  // Account NAMES are user data and are never translated. Same label shape
+  // as every other account picker.
+  const destinationOptions = useMemo<SelectFieldOption[]>(
+    () => destinations.map((a) => ({
+      value: a.id,
+      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allAccounts, account.id],
+  );
 
   const loadPreview = async () => {
     setStep('loading');
@@ -73,18 +95,8 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
     return () => window.clearInterval(id);
   }, [step]);
 
-  // A ref, not the prop: the page re-renders after the delete revalidates,
-  // handing a new onClose each time, which would restart the timer.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; });
-  useEffect(() => {
-    if (step !== 'done') return;
-    const id = window.setTimeout(() => onCloseRef.current(), 1600);
-    return () => window.clearTimeout(id);
-  }, [step]);
-
-  const requestClose = () => { if (busy) return; onClose(); };
-
+  // ModalFrame's busy prop blocks Escape, the backdrop and the close dot
+  // while a write is in flight; every button below is disabled the same way.
   const run = async (call: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind; code?: string }>) => {
     setBusy(true);
     setError(null);
@@ -99,6 +111,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
       }
       return;
     }
+    // Below the failure return: the confirmation only follows a confirmed delete.
     setStep('done');
   };
 
@@ -122,195 +135,200 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
   const canDestroy = secondsLeft === 0 && nameMatches && !busy;
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', fontSize: '0.85rem', padding: '0.4rem 0' };
+  const backToChoose = () => { setError(null); setStep('choose'); };
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 60, overflowY: 'auto' }}
-      onClick={requestClose}
-    >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 460, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+    <ModalFrame onClose={onClose} busy={busy} labelledBy="account-delete-title" maxWidth={520} zIndex={60}>
+      {(close) => (
+      <>
         {busy && <LoadingOverlay label={d.accounts.deleting} />}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem', gap: '0.75rem' }}>
-          {/* account.name is USER DATA and is inserted untranslated. */}
-          <h2 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>
-            {step === 'destroy' ? t(d.accounts.destroyTitle, { name: account.name }) : t(d.accounts.confirmTitle, { name: account.name })}
-          </h2>
-          <button type="button" onClick={requestClose} disabled={busy} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0 }}>
-            <X size={18} />
-          </button>
+        {/* HEAD: never scrolls. account.name is USER DATA, inserted
+            untranslated, and can be long. */}
+        <div className="pb-modal-head">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+            <h2 id="account-delete-title" className="font-display" style={{ flex: 1, minWidth: 0, fontSize: '1.15rem', fontWeight: 600, margin: 0, overflowWrap: 'anywhere' }}>
+              {step === 'destroy' ? t(d.accounts.destroyTitle, { name: account.name }) : t(d.accounts.confirmTitle, { name: account.name })}
+            </h2>
+            <ModalCloseButton onClick={close} disabled={busy} />
+          </div>
         </div>
 
-        {step === 'loading' && <LoadingBlock label={d.accounts.deleteLoading} />}
+        {/* BODY: the only scroller. */}
+        <div className="pb-modal-body themed-scroll">
+          {step === 'loading' && <LoadingBlock label={d.accounts.deleteLoading} />}
 
-        {step === 'empty' && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {step === 'empty' && (
             <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>{d.accounts.deleteEmptyBody}</p>
-            <ActionError message={error} kind={errorKind} />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={requestClose} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.cancel}</button>
-              <button type="button" onClick={() => void run(() => deleteAccountAction(account.id))} className="btn-primary" style={{ flex: 1, padding: '0.65rem', backgroundColor: 'var(--wine)' }}>
-                {d.accounts.confirmDelete}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {step === 'choose' && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-            <ActionError message={error} kind={errorKind} onRetry={preview ? undefined : () => void loadPreview()} />
-            {preview && (
-              <>
-                <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-                  {d.accounts.deleteHasRecords} <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{countsLine}</span>
-                </p>
-                <button
-                  type="button" disabled={destinations.length === 0}
-                  onClick={() => { setError(null); setStep('move'); }}
-                  style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--line)', backgroundColor: 'var(--mist)', cursor: destinations.length === 0 ? 'not-allowed' : 'pointer', opacity: destinations.length === 0 ? 0.55 : 1 }}
-                >
-                  <ArrowRightLeft size={18} style={{ color: 'var(--pine)', flexShrink: 0, marginTop: 2 }} />
-                  <span>
-                    <span style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', color: 'var(--ink)' }}>{d.accounts.optionMove}</span>
-                    <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, marginTop: 2 }}>
-                      {destinations.length === 0 ? d.accounts.noDestinations : d.accounts.optionMoveHint}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setError(null); setTyped(''); setStep('destroy'); }}
-                  style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--wine)', backgroundColor: 'var(--wine-soft)', cursor: 'pointer' }}
-                >
-                  <Trash2 size={18} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
-                  <span>
-                    <span style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', color: 'var(--wine)' }}>{d.accounts.optionDestroy}</span>
-                    <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, marginTop: 2 }}>{d.accounts.optionDestroyHint}</span>
-                  </span>
-                </button>
-              </>
-            )}
-            <button type="button" onClick={requestClose} className="pill" style={{ padding: '0.65rem' }}>{d.accounts.cancel}</button>
-          </div>
-        )}
-
-        {step === 'move' && preview && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>{d.accounts.optionMoveHint}</p>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
-              {d.accounts.moveTo}
-              <select
-                value={target} onChange={(e) => setTarget(e.target.value)}
-                style={{ padding: '0.5rem 0.6rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.87rem', color: 'var(--ink)', backgroundColor: 'var(--paper)' }}
-              >
-                {destinations.map((a) => (
-                  <option key={a.id} value={a.id}>{a.last4 ? `${a.name} ····${a.last4}` : a.name}</option>
-                ))}
-              </select>
-            </label>
-            <ActionError message={error} kind={errorKind} />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setError(null); setStep('choose'); }} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
+          {step === 'choose' && preview && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+                {d.accounts.deleteHasRecords} <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{countsLine}</span>
+              </p>
               <button
-                type="button" disabled={!target}
-                onClick={() => void run(() => moveAndDeleteAccountAction({ accountId: account.id, toAccountId: target, expectedRecordCount: preview.recordTotal }))}
-                className="btn-primary" style={{ flex: 1.3, padding: '0.65rem', opacity: target ? 1 : 0.6 }}
+                type="button" disabled={destinations.length === 0}
+                onClick={() => { setError(null); setStep('move'); }}
+                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--line)', backgroundColor: 'var(--mist)', cursor: destinations.length === 0 ? 'not-allowed' : 'pointer', opacity: destinations.length === 0 ? 0.55 : 1 }}
               >
-                {d.accounts.moveAndDelete}
+                <ArrowRightLeft size={18} style={{ color: 'var(--pine)', flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <span style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', color: 'var(--ink)' }}>{d.accounts.optionMove}</span>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, marginTop: 2 }}>
+                    {destinations.length === 0 ? d.accounts.noDestinations : d.accounts.optionMoveHint}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setError(null); setTyped(''); setStep('destroy'); }}
+                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--wine)', backgroundColor: 'var(--wine-soft)', cursor: 'pointer' }}
+              >
+                <Trash2 size={18} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <span style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', color: 'var(--wine)' }}>{d.accounts.optionDestroy}</span>
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.45, marginTop: 2 }}>{d.accounts.optionDestroyHint}</span>
+                </span>
               </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {step === 'destroy' && preview && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.6rem', padding: '0.8rem 0.9rem', borderRadius: '0.8rem', backgroundColor: 'var(--wine-soft)', color: 'var(--wine)', fontSize: '0.84rem', lineHeight: 1.5 }}>
-              <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>
-                <strong style={{ display: 'block' }}>{d.accounts.destroyWarning}</strong>
-                <span style={{ color: 'var(--ink)' }}>{countsLine}</span>
-              </span>
+          {step === 'move' && preview && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>{d.accounts.optionMoveHint}</p>
+              {/* A div, not a label: a click on the words must not reach the
+                  dropdown's input and reopen the list. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
+                <span>{d.accounts.moveTo}</span>
+                <SelectField value={target} onChange={setTarget} options={destinationOptions} ariaLabel={d.accounts.moveTo} />
+              </div>
             </div>
+          )}
 
-            <div>
-              <p style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ink-soft)', margin: '0 0 0.2rem' }}>{d.accounts.balancesTitle}</p>
-              {preview.balances.map((b) => (
-                <div key={b.accountId} style={{ ...rowStyle, borderBottom: '1px solid var(--line)' }}>
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-                  <span className="font-mono-tab" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <span style={{ color: 'var(--ink-soft)' }}>{formatCurrency(b.before)}</span>
-                    <ArrowRight size={12} style={{ color: 'var(--ink-soft)' }} />
-                    {b.after === null
-                      ? <span style={{ color: 'var(--wine)', fontWeight: 600 }}>{d.accounts.deletedLabel}</span>
-                      : <span style={{ fontWeight: 600 }}>{formatCurrency(b.after)}</span>}
-                  </span>
-                </div>
-              ))}
-              <div style={{ ...rowStyle, fontWeight: 600 }}>
-                <span>{d.accounts.totalLabel}</span>
-                <span className="font-mono-tab" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}>{formatCurrency(preview.totalBefore)}</span>
-                  <ArrowRight size={12} style={{ color: 'var(--ink-soft)' }} />
-                  <span>{formatCurrency(preview.totalAfter)}</span>
+          {step === 'destroy' && preview && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.6rem', padding: '0.8rem 0.9rem', borderRadius: '0.8rem', backgroundColor: 'var(--wine-soft)', color: 'var(--wine)', fontSize: '0.84rem', lineHeight: 1.5 }}>
+                <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  <strong style={{ display: 'block' }}>{d.accounts.destroyWarning}</strong>
+                  <span style={{ color: 'var(--ink)' }}>{countsLine}</span>
                 </span>
               </div>
-              {preview.allocated > 0 && (
-                <div style={rowStyle}>
-                  <span style={{ color: 'var(--ink-soft)' }}>{d.accounts.unallocatedLabel}</span>
+
+              <div>
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ink-soft)', margin: '0 0 0.2rem' }}>{d.accounts.balancesTitle}</p>
+                {preview.balances.map((b) => (
+                  <div key={b.accountId} style={{ ...rowStyle, borderBottom: '1px solid var(--line)' }}>
+                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
+                    <span className="font-mono-tab" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <span style={{ color: 'var(--ink-soft)' }}>{formatCurrency(b.before)}</span>
+                      <ArrowRight size={12} style={{ color: 'var(--ink-soft)' }} />
+                      {b.after === null
+                        ? <span style={{ color: 'var(--wine)', fontWeight: 600 }}>{d.accounts.deletedLabel}</span>
+                        : <span style={{ fontWeight: 600 }}>{formatCurrency(b.after)}</span>}
+                    </span>
+                  </div>
+                ))}
+                <div style={{ ...rowStyle, fontWeight: 600 }}>
+                  <span>{d.accounts.totalLabel}</span>
                   <span className="font-mono-tab" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: 'var(--ink-soft)' }}>{formatCurrency(unallocatedBefore)}</span>
+                    <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}>{formatCurrency(preview.totalBefore)}</span>
                     <ArrowRight size={12} style={{ color: 'var(--ink-soft)' }} />
-                    <span style={{ fontWeight: 600, color: unallocatedAfter < 0 ? 'var(--wine)' : 'var(--ink)' }}>{formatCurrency(unallocatedAfter)}</span>
+                    <span>{formatCurrency(preview.totalAfter)}</span>
                   </span>
                 </div>
+                {preview.allocated > 0 && (
+                  <div style={rowStyle}>
+                    <span style={{ color: 'var(--ink-soft)' }}>{d.accounts.unallocatedLabel}</span>
+                    <span className="font-mono-tab" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: 'var(--ink-soft)' }}>{formatCurrency(unallocatedBefore)}</span>
+                      <ArrowRight size={12} style={{ color: 'var(--ink-soft)' }} />
+                      <span style={{ fontWeight: 600, color: unallocatedAfter < 0 ? 'var(--wine)' : 'var(--ink)' }}>{formatCurrency(unallocatedAfter)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {preview.transferAccounts.length > 0 && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--gold)', lineHeight: 1.5, margin: 0 }}>
+                  {t(d.accounts.transferWarning, { accounts: preview.transferAccounts.join(', ') })}
+                </p>
               )}
+              {goalsShort && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.5, margin: 0 }}>
+                  {t(d.accounts.goalsWarning, { amount: formatCurrency(Math.abs(unallocatedAfter)) })}
+                </p>
+              )}
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
+                {t(d.accounts.typeName, { name: account.name })}
+                <input
+                  value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false}
+                  style={{ padding: '0.55rem 0.65rem', borderRadius: '0.55rem', border: `1px solid ${typed && !nameMatches ? 'var(--wine)' : 'var(--line)'}`, fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)' }}
+                />
+              </label>
             </div>
+          )}
 
-            {preview.transferAccounts.length > 0 && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--gold)', lineHeight: 1.5, margin: 0 }}>
-                {t(d.accounts.transferWarning, { accounts: preview.transferAccounts.join(', ') })}
-              </p>
+          {step === 'done' && (
+            <SaveSuccess title={d.accounts.deletedTitle} body={t(d.accounts.deletedBody, { name: account.name })} onDone={close} />
+          )}
+        </div>
+
+        {/* FOOT: never scrolls; the error sits directly above the buttons.
+            Absent while loading and on the confirmation. */}
+        {step !== 'loading' && step !== 'done' && (
+          <div className="pb-modal-foot">
+            {step === 'choose' ? (
+              <ActionError message={error} kind={errorKind} onRetry={preview ? undefined : () => void loadPreview()} />
+            ) : (
+              <ActionError message={error} kind={errorKind} />
             )}
-            {goalsShort && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.5, margin: 0 }}>
-                {t(d.accounts.goalsWarning, { amount: formatCurrency(Math.abs(unallocatedAfter)) })}
-              </p>
+
+            {step === 'empty' && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" onClick={close} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.cancel}</button>
+                <button type="button" onClick={() => void run(() => deleteAccountAction(account.id))} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: busy ? 0.6 : 1 }}>
+                  {d.accounts.confirmDelete}
+                </button>
+              </div>
             )}
 
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
-              {t(d.accounts.typeName, { name: account.name })}
-              <input
-                value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false}
-                style={{ padding: '0.55rem 0.65rem', borderRadius: '0.55rem', border: `1px solid ${typed && !nameMatches ? 'var(--wine)' : 'var(--line)'}`, fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)' }}
-              />
-            </label>
+            {step === 'choose' && (
+              <button type="button" onClick={close} disabled={busy} className="pill" style={{ padding: '0.65rem' }}>{d.accounts.cancel}</button>
+            )}
 
-            <ActionError message={error} kind={errorKind} />
+            {step === 'move' && preview && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" onClick={backToChoose} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
+                <button
+                  type="button" disabled={!target || busy}
+                  onClick={() => void run(() => moveAndDeleteAccountAction({ accountId: account.id, toAccountId: target, expectedRecordCount: preview.recordTotal }))}
+                  className="btn-primary" style={{ flex: 1.3, padding: '0.65rem', opacity: target && !busy ? 1 : 0.6 }}
+                >
+                  {d.accounts.moveAndDelete}
+                </button>
+              </div>
+            )}
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { setError(null); setStep('choose'); }} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
-              <button
-                type="button" disabled={!canDestroy}
-                onClick={() => void run(() => deleteAccountWithRecordsAction({ accountId: account.id, confirmName: typed, expectedRecordCount: preview.recordTotal }))}
-                className="btn-primary"
-                style={{ flex: 1.4, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: canDestroy ? 1 : 0.55 }}
-              >
-                {secondsLeft > 0 ? t(d.accounts.countdown, { seconds: secondsLeft }) : d.accounts.destroyConfirm}
-              </button>
-            </div>
+            {step === 'destroy' && preview && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" onClick={backToChoose} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
+                <button
+                  type="button" disabled={!canDestroy}
+                  onClick={() => void run(() => deleteAccountWithRecordsAction({ accountId: account.id, confirmName: typed, expectedRecordCount: preview.recordTotal }))}
+                  className="btn-primary"
+                  style={{ flex: 1.4, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: canDestroy ? 1 : 0.55 }}
+                >
+                  {secondsLeft > 0 ? t(d.accounts.countdown, { seconds: secondsLeft }) : d.accounts.destroyConfirm}
+                </button>
+              </div>
+            )}
           </div>
         )}
-
-        {step === 'done' && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', padding: '1.25rem 0', textAlign: 'center' }}>
-            <span className="goal-done-badge" style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Check size={30} />
-            </span>
-            <p className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, margin: 0 }}>{d.accounts.deletedTitle}</p>
-            <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', margin: 0 }}>{t(d.accounts.deletedBody, { name: account.name })}</p>
-          </div>
-        )}
-      </div>
-    </div>
+      </>
+      )}
+    </ModalFrame>
   );
 }

@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X, ArrowDown } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
+import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -12,7 +15,7 @@ import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
 import { composeDescription } from '@/lib/transactionDescription';
 import type { Account } from '@/lib/data/mappers';
-import { todayDateString } from '@/lib/format';
+import { formatCurrency, todayDateString } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -20,15 +23,20 @@ interface TransferModalProps {
   onClose: () => void;
 }
 
+const FORM_ID = 'transfer-form';
+
 const inputStyle: React.CSSProperties = {
-  padding: '0.55rem 0.7rem', borderRadius: '0.6rem', border: '1px solid var(--line)',
-  fontSize: '0.88rem', color: 'var(--ink)', backgroundColor: 'var(--paper)',
+  padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)',
+  fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)',
   boxSizing: 'border-box', width: '100%',
 };
 const labelStyle: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column', gap: '0.3rem',
-  fontSize: '0.78rem', color: 'var(--ink-soft)',
+  display: 'flex', flexDirection: 'column', gap: '0.35rem',
+  fontSize: '0.8rem', color: 'var(--ink-soft)',
 };
+// Same amount field as Add Transaction: the figure is what this form is for.
+const bigAmountStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', border: '1px solid var(--line)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)' };
+const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' };
 
 /**
  * Moves money between two accounts.
@@ -39,9 +47,14 @@ const labelStyle: React.CSSProperties = {
  * total balance cannot move - only its distribution.
  *
  * Both accounts must be active; hibernated accounts take no new activity.
+ *
+ * LAYOUT. From and To are two equal blocks with an arrow badge between them.
+ * Wide card: side by side, arrow points right. Narrow: stacked, arrow points
+ * down. One icon, rotated by the same container query that sets the layout.
+ * Head (title, close) and foot (error, submit) never scroll.
  */
 export function TransferModal({ onClose }: TransferModalProps) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
@@ -56,6 +69,9 @@ export function TransferModal({ onClose }: TransferModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
+  // Set ONLY after the server confirms. A snapshot of what was entered, so the
+  // confirmation cannot change when the page re-renders underneath.
+  const [success, setSuccess] = useState<{ title: string; summary: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,10 +103,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
   const amountValid = amount.trim() !== '' && Number(amount) > 0;
   const canSubmit = !!fromId && !!toId && !sameAccount && amountValid && !!date && title.trim() !== '';
 
-  const requestClose = () => { if (saving) return; onClose(); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performSave = async () => {
     if (!canSubmit || saving) return;
     setSaving(true);
     setError(null);
@@ -105,87 +118,123 @@ export function TransferModal({ onClose }: TransferModalProps) {
 
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
-    onClose();
+    // Below the failure return: the confirmation only ever follows a write the
+    // server confirmed. It shows the amount just entered, never a balance.
+    const labelOf = (id: string) => options.find((o) => o.value === id)?.label ?? '';
+    setSuccess({
+      title: d.transfer.done,
+      summary: t(d.transfer.summary, { amount: formatCurrency(Number(amount)), from: labelOf(fromId), to: labelOf(toId) }),
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void performSave();
   };
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 60, overflowY: 'auto' }}
-      onClick={requestClose}
-    >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 460, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+    <ModalFrame onClose={onClose} busy={saving} labelledBy="transfer-title" maxWidth={640} zIndex={60}>
+      {(close) => (
+      <>
         {saving && <LoadingOverlay label={d.common.saving} />}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-          <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.transfer.title}</h2>
-          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0, opacity: saving ? 0.4 : 1 }}>
-            <X size={18} />
-          </button>
+        {/* HEAD: never scrolls. */}
+        <div className="pb-modal-head">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 id="transfer-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{d.transfer.title}</h2>
+            <ModalCloseButton onClick={close} disabled={saving} />
+          </div>
         </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          {d.transfer.blurb}
-        </p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-          <div style={labelStyle}>
-            <span>{d.transfer.from}</span>
-            <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
-          </div>
+        {/* BODY: the only part that scrolls. */}
+        <div className="pb-modal-body">
+          {success ? (
+            <SaveSuccess title={success.title} body={success.summary} onDone={close} />
+          ) : (
+            <form id={FORM_ID} onSubmit={handleSubmit} className="pb-form-grid">
+              <p className="pb-span-2" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+                {d.transfer.blurb}
+              </p>
 
-          {/* From sits ABOVE To, so the flow reads top to bottom. Decorative:
-              the From / To labels already carry the meaning. */}
-          <div className="transfer-flow" aria-hidden="true">
-            <span className="transfer-flow-badge"><ArrowDown size={16} strokeWidth={2.4} /></span>
-          </div>
+              {/* Two identical blocks, each with its own label inside, so the
+                  space either side of the arrow is equal by construction. */}
+              <div className="pb-span-2 pb-transfer-route">
+                <div className="pb-transfer-account">
+                  <span>{d.transfer.from}</span>
+                  <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
+                </div>
 
-          <div style={labelStyle}>
-            <span>{d.transfer.to}</span>
-            <SelectField value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
-          </div>
+                {/* Decorative: the From / To labels carry the meaning. The icon
+                    points right; CSS turns it down when the blocks stack. */}
+                <span className="pb-transfer-badge" aria-hidden="true">
+                  <span className="pb-transfer-arrow"><ArrowRight size={22} strokeWidth={2.4} /></span>
+                </span>
 
-          {sameAccount && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
+                <div className="pb-transfer-account">
+                  <span>{d.transfer.to}</span>
+                  <SelectField value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
+                </div>
+              </div>
+
+              {sameAccount && (
+                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
+              )}
+              {accountError && <div className="pb-span-2"><ActionError message={accountError} /></div>}
+              {accountsLoaded && accounts.length === 0 && (
+                <div className="pb-span-2"><NoAccountsNotice onNavigate={close} /></div>
+              )}
+
+              <label style={labelStyle} className="pb-span-2">
+                {d.transfer.amount}
+                <div style={{ position: 'relative' }}>
+                  {/* Stays '$' in every locale, as in Add Transaction. */}
+                  <span className="font-display" style={bigDollarStyle}>$</span>
+                  <input
+                    type="number" inputMode="decimal" min="0" step="0.01" value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00" className="font-mono-tab" style={bigAmountStyle}
+                  />
+                </div>
+              </label>
+
+              <label style={labelStyle} className="pb-span-2">
+                {d.transfer.date}
+                {/* A DATE, not a locale-formatted string: 'YYYY-MM-DD' is what
+                    the server stores and compares lexicographically. */}
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
+              </label>
+
+              <div className="pb-span-2" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <TitleDescriptionFields
+                  title={title}
+                  description={description}
+                  onTitleChange={setTitle}
+                  onDescriptionChange={setDescription}
+                  inputStyle={inputStyle}
+                  labelStyle={labelStyle}
+                  optionalLabel={d.transfer.optional}
+                  titlePlaceholder={d.transfer.notePlaceholder}
+                />
+              </div>
+            </form>
           )}
-          {accountError && <ActionError message={accountError} />}
-          {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
+        </div>
 
-          <label style={labelStyle}>
-            {d.transfer.amount}
-            <input
-              type="number" min="0" step="0.01" value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00" className="font-mono-tab" style={{ ...inputStyle, textAlign: 'right' }}
-            />
-          </label>
-
-          <label style={labelStyle}>
-            {d.transfer.date}
-            {/* A DATE, not a locale-formatted string: 'YYYY-MM-DD' is what the
-                server stores and compares lexicographically. */}
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
-          </label>
-
-          <TitleDescriptionFields
-            title={title}
-            description={description}
-            onTitleChange={setTitle}
-            onDescriptionChange={setDescription}
-            inputStyle={inputStyle}
-            labelStyle={labelStyle}
-            optionalLabel={d.transfer.optional}
-            titlePlaceholder={d.transfer.notePlaceholder}
-          />
-
-          <ActionError message={error} kind={errorKind} onRetry={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)} busy={saving} />
-
-          <button
-            type="submit" disabled={saving || !canSubmit} className="btn-primary"
-            style={{ marginTop: '0.3rem', padding: '0.72rem', opacity: saving || !canSubmit ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-          >
-            {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.transfer.submit}
-          </button>
-        </form>
-      </div>
-    </div>
+        {/* FOOT: never scrolls; the error sits directly above the button.
+            Absent on the confirmation. */}
+        {!success && (
+          <div className="pb-modal-foot">
+            {error && <ActionError message={error} kind={errorKind} onRetry={performSave} busy={saving} />}
+            <button
+              type="submit" form={FORM_ID} disabled={saving || !canSubmit} className="btn-primary"
+              style={{ width: '100%', padding: '0.72rem', opacity: saving || !canSubmit ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.transfer.submit}
+            </button>
+          </div>
+        )}
+      </>
+      )}
+    </ModalFrame>
   );
 }
