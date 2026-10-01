@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { CategoryMeta, Transaction } from '@/types';
-import { buildCategoryBreakdown, getAvailablePeriods, lightenColor, darkenColor } from '@/lib/stats';
+import { buildCategoryBreakdown, getAvailablePeriods } from '@/lib/stats';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { TREND_MODES } from '@/data/seed';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -17,8 +18,41 @@ interface CategoryDonutChartProps {
   categoryMeta: CategoryMeta;
 }
 
+// Legend rows per page. The ring always shows every category; only the list
+// is paged, so a long category list cannot stretch the page (and the
+// Income vs spending card beside it).
+const PAGE_SIZE = 6;
+
+const selectStyle: React.CSSProperties = {
+  fontSize: '0.72rem', padding: '0.28rem 0.5rem', borderRadius: '0.5rem',
+  border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)',
+};
+
+/** Share of the total, display only. Tiny non-zero shares read "<0.1%". */
+function formatShare(value: number, total: number): string {
+  if (total <= 0) return '0.0%';
+  const pct = (value / total) * 100;
+  return pct > 0 && pct < 0.1 ? '<0.1%' : `${pct.toFixed(1)}%`;
+}
+
+/** Whole dollars, for the one-line description only. Display only. */
+function formatWholeDollars(n: number): string {
+  const sign = n < 0 ? '\u2212' : '';
+  return `${sign}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`;
+}
+
+/**
+ * "Where it went": a thin ring with flat slices in each category's own colour
+ * (user data, never altered), a one-line description, and a paged legend.
+ *
+ * MOTION. The whole ring glides into place (rotation, scale and fade on the
+ * ring's group, in CSS - .pb-donut-ring). Recharts' own sweep is off: it grows
+ * each slice from zero, which shows false proportions mid-animation. Starting
+ * the animation on the ring itself, not a wrapper, means it begins when the
+ * ring is actually drawn.
+ */
 export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
 
   // See DashboardClient.tsx for the full rationale behind this pattern -
   // resolved independently here since this component owns its own
@@ -35,8 +69,14 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
   const [breakdownMode, setBreakdownMode] = useState('last6');
   const [breakdownPeriod, setBreakdownPeriod] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const [page, setPage] = useState(0);
+  // 'bar' only when exactly 'bar'; anything else is the donut.
+  const breakdownChart = usePebbleStore((s) => s.breakdownChart) === 'bar' ? 'bar' : 'donut';
+  // Recharts animates in JavaScript, so the global CSS reduced-motion block
+  // cannot cover it. Read in the restore effect, never during render.
+  const [reduceMotion, setReduceMotion] = useState(false);
 
-  // latestYearOnly, matching the stat tiles above: this year's months, not
+  // latestYearOnly, matching the stats card above: this year's months, not
   // every month on record.
   const periodsForMode = (mode: string) =>
     (mode === 'month' || mode === 'quarter' || mode === 'year')
@@ -49,6 +89,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
   const handleBreakdownModeChange = (mode: string) => {
     setBreakdownMode(mode);
     setBreakdownPeriod(periodsForMode(mode)[0]?.key ?? null);
+    setPage(0);
   };
 
   const restoreRef = useRef(false);
@@ -61,6 +102,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
     const savedPeriod = saved?.breakdownPeriod ?? null;
     setBreakdownMode(mode);
     setBreakdownPeriod(avail.some((p) => p.key === savedPeriod) ? savedPeriod : (avail[0]?.key ?? null));
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     setRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,70 +113,127 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
   }, [restored, breakdownMode, breakdownPeriod]);
 
   const donutData = buildCategoryBreakdown(transactions, breakdownMode, categoryMeta, breakdownPeriod, today ?? undefined);
-  const donutTotal = donutData.reduce((s, d) => s + d.value, 0);
+  const donutTotal = donutData.reduce((s, entry) => s + entry.value, 0);
+
+  const pages = Math.max(1, Math.ceil(donutData.length / PAGE_SIZE));
+  // Clamped, so a shorter list after new data never points past its end.
+  const current = Math.min(page, pages - 1);
+  const pageRows = donutData.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  // A short page is topped up with invisible rows built like real ones, so
+  // every page is the same height and the card never shrinks.
+  const fillers = pages > 1 ? PAGE_SIZE - pageRows.length : 0;
+
+  const summary = t(donutData.length === 1 ? d.donutChart.summaryOne : d.donutChart.summaryOther, {
+    amount: formatWholeDollars(donutTotal),
+    count: donutData.length,
+  });
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.donutChart.title}</h3>
+    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.donutChart.title}</h3>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <select
-            value={breakdownMode} onChange={(e) => handleBreakdownModeChange(e.target.value)}
-            style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
-          >
+          <select value={breakdownMode} onChange={(e) => handleBreakdownModeChange(e.target.value)} style={selectStyle} aria-label={d.donutChart.title}>
             {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{modeLabel(m.value, m.label)}</option>)}
           </select>
           {needsSubPeriod && availablePeriods.length > 0 && (
-            <select
-              value={breakdownPeriod || ''} onChange={(e) => setBreakdownPeriod(e.target.value)}
-              style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
-            >
+            <select value={breakdownPeriod || ''} onChange={(e) => { setBreakdownPeriod(e.target.value); setPage(0); }} style={selectStyle} aria-label={d.donutChart.title}>
               {availablePeriods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
           )}
         </div>
       </div>
 
-      {donutData.length === 0 ? (
-        <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
+      {!restored ? (
+        // Waits for the saved mode to be restored, so the ring draws once.
+        <div style={{ flex: 1, minHeight: 240 }} />
+      ) : donutData.length === 0 ? (
+        <div style={{ flex: 1, minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
           {d.donutChart.noData}
         </div>
       ) : (
         <>
-          <div style={{ position: 'relative', filter: 'drop-shadow(0 12px 18px rgba(23,36,32,0.16))' }}>
-            <ResponsiveContainer width="100%" height={260}>
+          {breakdownChart === 'bar' ? (
+            <div style={{ margin: '0.75rem 0 0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.6rem' }}>
+                <span style={{ fontSize: 'var(--pb-text-sm)', color: 'var(--ink-soft)' }}>{d.donutChart.total}</span>
+                <span className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(donutTotal)}</span>
+              </div>
+              {/* Segment widths are each category's share of the total - true
+                  proportions at every moment; the reveal is a wipe, not growth. */}
+              <div key={`${breakdownMode}-${breakdownPeriod ?? ''}`} className="pb-bar-track" role="img" aria-label={summary}>
+                {donutData.map((entry) => (
+                  <span
+                    key={entry.name} className="pb-bar-seg"
+                    style={{ flexGrow: entry.value, backgroundColor: entry.color }}
+                    title={`${entry.name}: ${formatCurrency(entry.value)}`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+          <div className="pb-donut-ring" style={{ position: 'relative' }}>
+            <ResponsiveContainer width="100%" height={240}>
               <PieChart>
-                <defs>
-                  {donutData.map((entry, i) => (
-                    <radialGradient key={i} id={`pieGrad${i}`} cx="35%" cy="32%" r="70%">
-                      <stop offset="0%" stopColor={lightenColor(entry.color, 0.45)} />
-                      <stop offset="65%" stopColor={entry.color} />
-                      <stop offset="100%" stopColor={darkenColor(entry.color, 0.18)} />
-                    </radialGradient>
-                  ))}
-                </defs>
-                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={68} outerRadius={110} paddingAngle={2} strokeWidth={0}>
-                  {donutData.map((entry, i) => <Cell key={i} fill={`url(#pieGrad${i})`} />)}
+                <Pie
+                  key={`${breakdownMode}-${breakdownPeriod ?? ''}`}
+                  data={donutData} dataKey="value" nameKey="name"
+                  innerRadius={82} outerRadius={100} paddingAngle={2} cornerRadius={3}
+                  strokeWidth={0} isAnimationActive={!reduceMotion} animationDuration={1600} animationEasing="cubic-bezier(0.65, 0, 0.35, 1)"
+                >
+                  {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{ borderRadius: 10, fontSize: 13 }} />
+                {/* Colours, border and size come from the global
+                    .recharts-default-tooltip rule in globals.css. */}
+                <Tooltip formatter={(v) => formatCurrency(Number(v))} />
               </PieChart>
             </ResponsiveContainer>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
-              <p style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{d.donutChart.total}</p>
-              <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600 }}>{formatCurrency(donutTotal)}</p>
+            <div className="pb-donut-center">
+              <p style={{ fontSize: 'var(--pb-text-sm)', color: 'var(--ink-soft)', margin: 0 }}>{d.donutChart.total}</p>
+              <p className="font-mono-tab" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>{formatCurrency(donutTotal)}</p>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem 1rem', marginTop: '1.1rem', fontSize: '0.78rem' }}>
-            {donutData.map((d) => (
-              <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-soft)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: d.color, flexShrink: 0 }} />
-                  {d.name}
-                </span>
-                <span className="font-mono-tab" style={{ fontWeight: 500, flexShrink: 0 }}>{formatCurrency(d.value)}</span>
-              </div>
+          )}
+
+          <p className="pb-donut-summary">{summary}</p>
+
+          <ul className="pb-donut-legend">
+            {pageRows.map((entry) => (
+              <li key={entry.name} className="pb-donut-row">
+                <span className="pb-donut-dot" style={{ backgroundColor: entry.color }} aria-hidden="true" />
+                {/* Category names are user data, shown exactly as stored. */}
+                <span className="pb-donut-name">{entry.name}</span>
+                <span className="pb-donut-share font-mono-tab">{formatShare(entry.value, donutTotal)}</span>
+                <span className="pb-donut-amount font-mono-tab">{formatCurrency(entry.value)}</span>
+              </li>
             ))}
-          </div>
+            {Array.from({ length: fillers }, (_, i) => (
+              <li key={`filler-${i}`} className="pb-donut-row pb-donut-filler" aria-hidden="true">
+                <span className="pb-donut-dot" />
+                <span className="pb-donut-name">&nbsp;</span>
+                <span />
+                <span />
+              </li>
+            ))}
+          </ul>
+
+          {pages > 1 && (
+            <div className="pb-donut-pager">
+              <button
+                type="button" className="icon-btn" onClick={() => setPage(current - 1)} disabled={current === 0}
+                aria-label={d.donutChart.prevPage} style={{ width: 30, height: 30, borderRadius: '50%', opacity: current === 0 ? 0.4 : 1 }}
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <span className="font-mono-tab" aria-live="polite">{current + 1} / {pages}</span>
+              <button
+                type="button" className="icon-btn" onClick={() => setPage(current + 1)} disabled={current === pages - 1}
+                aria-label={d.donutChart.nextPage} style={{ width: 30, height: 30, borderRadius: '50%', opacity: current === pages - 1 ? 0.4 : 1 }}
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

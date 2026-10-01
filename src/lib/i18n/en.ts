@@ -733,6 +733,7 @@ export const en = {
   },
 
   dashboard: {
+    periodTitle: 'This period',
     byAccount: 'Balance by account',
     moreAccounts: '+{count} more',
     balanceTitle: 'Your balance, today',
@@ -770,7 +771,18 @@ export const en = {
     noData: 'No data for this period',
   },
 
+  chartType: {
+    title: 'Spending chart',
+    hint: 'How the Dashboard shows where your spending went.',
+    donut: 'Donut',
+    bar: 'Bar',
+  },
+
   donutChart: {
+    summaryOne: '{amount} in {count} category',
+    summaryOther: '{amount} across {count} categories',
+    prevPage: 'Previous categories',
+    nextPage: 'Next categories',
     title: 'Where it went',
     noData: 'No spending for this period',
     total: 'Total',

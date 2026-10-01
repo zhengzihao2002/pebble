@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import { ArrowUpRight, ArrowDownRight, Percent, Wallet } from 'lucide-react';
 import type { Transaction } from '@/types';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
-import { StatTab } from '@/components/shared/StatTab';
 import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
 import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
@@ -13,14 +11,13 @@ import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice';
 import { HealthStatusBar } from '@/components/dashboard/HealthStatusBar';
 import { BalanceHero } from '@/components/dashboard/BalanceHero';
+import { DashboardStatsCard } from '@/components/dashboard/DashboardStatsCard';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { formatCurrency, parseLocalDate } from '@/lib/format';
+import { parseLocalDate } from '@/lib/format';
 import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
 import { STATS_MODES } from '@/data/seed';
-import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { renderTemplate } from '@/lib/i18n/RichText';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
@@ -30,7 +27,7 @@ interface DashboardClientProps {
   categories: CategoryItem[];
   budgets: Record<string, number>;
   totalBalance: number;
-  /** Already loaded on the server for the total; passed for the hero's cairn. */
+  /** Already loaded on the server for the total; passed for the hero's account list. */
   accounts: Account[];
   balancesByAccount: Record<string, number>;
   /** Sum of every goal's set-aside amount, for the overspend notice. */
@@ -39,7 +36,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp }: DashboardClientProps) {
-  const { d, t, locale } = useTranslation();
+  const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
 
@@ -125,21 +122,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // describeWindow in stats.ts) - reading the same `today` state for both
   // guarantees that.
   const periodStats = computeStatsForPeriod(transactions, statsMode, statsPeriod, today ?? undefined);
-  // The resolved months behind the four tiles below. Shown rather than left to
-  // be inferred, matching the Analysis page, which prints its own range under
+  // The resolved months behind the four figures. Shown rather than left to be
+  // inferred, matching the Analysis page, which prints its own range under
   // its period selector.
   const statsWindow = describeWindow(statsMode, statsPeriod, locale, today ?? undefined);
-  // stats.ts is shared with server code but neither describeWindow nor
-  // getAvailablePeriods is ever called server-side (confirmed by checking
-  // every page.tsx import), so both safely take an optional locale param.
-  // ActionError's message and the budget modal's incomeMonthsLabel are a
-  // GENUINELY different case - those come from Server Actions, which really
-  // cannot read the client's locale - and remain a separate, real gap.
-  const statsSublabel = (statsMode === '30d' || statsMode === '90d' || statsMode === 'last6' || statsMode === 'last12')
-    ? modeLabel(statsMode, '')
-    : availableStatsPeriods.find((p) => p.key === statsPeriod)?.label || '';
-
-  const compactSelectStyle: React.CSSProperties = { fontSize: '0.72rem', padding: '0.28rem 0.5rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -149,82 +135,21 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
 
       <section>
         <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-          <select value={statsMode} onChange={(e) => handleStatsModeChange(e.target.value)} style={compactSelectStyle}>
-            {/* value is the stored mode key; only the text is translated. */}
-            {STATS_MODES.map((m) => <option key={m.value} value={m.value}>{modeLabel(m.value, m.label)}</option>)}
-          </select>
-          {needsStatsSubPeriod && availableStatsPeriods.length > 0 && (
-            <select value={statsPeriod || ''} onChange={(e) => setStatsPeriod(e.target.value)} style={compactSelectStyle}>
-              {availableStatsPeriods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-          )}
-        </div>
-        <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', textAlign: 'right', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 2 }}>
-          <span className="font-mono-tab">{statsWindow.rangeLabel}</span>
-          {statsWindow.inProgress && <span>&nbsp;{d.dashboard.inProgressNote}</span>}
-          <InfoTooltip label={d.dashboard.periodTooltipLabel}>
-            {renderTemplate(d.dashboard.periodCover, {
-              emphasis: <strong>{d.dashboard.periodCoverEmphasis}</strong>,
-            })}
-            {statsWindow.inProgress && (
-              <>
-                {' '}{renderTemplate(d.dashboard.periodInProgress, {
-                  emphasis: <strong>{d.dashboard.periodInProgressEmphasis}</strong>,
-                })}
-              </>
-            )}
-            {' '}{renderTemplate(d.dashboard.periodAnalysis, {
-              emphasis: <strong>{d.dashboard.periodAnalysisEmphasis}</strong>,
-            })}
-          </InfoTooltip>
-        </p>
-        <div className="stat-tabs">
-          <StatTab
-            icon={ArrowUpRight} label={d.dashboard.income} value={formatCurrency(periodStats.income)}
-            sublabel={statsSublabel
-              ? t(d.dashboard.sublabelWithNote, { period: statsSublabel, note: d.dashboard.standardIncomeOnly })
-              : d.dashboard.standardIncomeOnly}
-            color="var(--pine)"
-            info={(
-              <InfoTooltip label={d.dashboard.incomeTooltipLabel}>
-                {renderTemplate(d.dashboard.incomeTooltip, {
-                  emphasis: <strong>{d.dashboard.incomeEmphasis}</strong>,
-                })}
-              </InfoTooltip>
-            )}
-          />
-          <StatTab
-            icon={ArrowDownRight} label={d.dashboard.spending} value={formatCurrency(periodStats.spending)}
-            sublabel={statsSublabel} color="var(--wine)"
-            info={(
-              <InfoTooltip label={d.dashboard.spendingTooltipLabel}>
-                {d.dashboard.spendingTooltip}
-              </InfoTooltip>
-            )}
-          />
-          <StatTab
-            icon={Percent} label={d.dashboard.savingsRate} value={`${periodStats.savingsRate.toFixed(2)}%`}
-            sublabel={statsSublabel} color="var(--gold)"
-            info={(
-              <InfoTooltip label={d.dashboard.savingsTooltipLabel}>
-                {renderTemplate(d.dashboard.savingsTooltip, {
-                  emphasis: <strong>{d.dashboard.savingsEmphasis}</strong>,
-                })}
-              </InfoTooltip>
-            )}
-          />
-          <StatTab
-            icon={Wallet} label={d.dashboard.saved} value={formatCurrency(periodStats.saved)}
-            sublabel={statsSublabel} color="var(--pine)"
-            info={(
-              <InfoTooltip label={d.dashboard.savedTooltipLabel}>
-                {d.dashboard.savedTooltip}
-              </InfoTooltip>
-            )}
-          />
-        </div>
-        {/* The same income and rate as the cards above - never recomputed. */}
+        <DashboardStatsCard
+          modes={STATS_MODES.map((m) => ({ value: m.value, label: modeLabel(m.value, m.label) }))}
+          statsMode={statsMode}
+          onModeChange={handleStatsModeChange}
+          periods={needsStatsSubPeriod ? availableStatsPeriods : []}
+          statsPeriod={statsPeriod}
+          onPeriodChange={setStatsPeriod}
+          rangeLabel={statsWindow.rangeLabel}
+          inProgress={statsWindow.inProgress}
+          income={periodStats.income}
+          spending={periodStats.spending}
+          savingsRate={periodStats.savingsRate}
+          saved={periodStats.saved}
+        />
+        {/* The same income and rate as the card above - never recomputed. */}
         {showHealthBar && (
           <HealthStatusBar income={periodStats.income} savingsRate={periodStats.savingsRate} />
         )}

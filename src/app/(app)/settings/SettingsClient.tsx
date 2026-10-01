@@ -8,6 +8,7 @@ import { FontControl } from '@/components/settings/FontControl';
 import { ThemeControl } from '@/components/settings/ThemeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { HealthBarControl } from '@/components/settings/HealthBarControl';
+import { ChartTypeControl } from '@/components/settings/ChartTypeControl';
 import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
@@ -57,6 +58,8 @@ export function SettingsClient({
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const setCjkFontChoice = usePebbleStore((s) => s.setCjkFontChoice);
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
+  const breakdownChart = usePebbleStore((s) => s.breakdownChart) === 'bar' ? 'bar' : 'donut';
+  const setBreakdownChart = usePebbleStore((s) => s.setBreakdownChart);
   const setShowHealthBar = usePebbleStore((s) => s.setShowHealthBar);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
   const setThemeChoice = usePebbleStore((s) => s.setThemeChoice);
@@ -91,6 +94,7 @@ export function SettingsClient({
           />
           <AppearanceControl appearance={appearance} onChange={setAppearance} />
           <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
+          <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
           <WelcomeAnimationControl />
         </>
       ),

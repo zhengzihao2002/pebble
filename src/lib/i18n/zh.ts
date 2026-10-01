@@ -648,6 +648,7 @@ export const zh: typeof en = {
   },
 
   dashboard: {
+    periodTitle: '本期',
     byAccount: '各账户余额',
     moreAccounts: '另有 {count} 个',
     balanceTitle: '今日余额',
@@ -685,7 +686,18 @@ export const zh: typeof en = {
     noData: '此时间段没有数据',
   },
 
+  chartType: {
+    title: '支出图表',
+    hint: '仪表板上“支出去向”的显示方式。',
+    donut: '环形图',
+    bar: '条形图',
+  },
+
   donutChart: {
+    summaryOne: '{count} 个分类共 {amount}',
+    summaryOther: '{count} 个分类共 {amount}',
+    prevPage: '上一页分类',
+    nextPage: '下一页分类',
     title: '支出去向',
     noData: '此时间段没有支出',
     total: '总计',

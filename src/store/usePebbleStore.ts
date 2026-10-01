@@ -55,6 +55,9 @@ export type ManualIncomeFrequency = 'weekly' | 'biweekly' | 'semimonthly' | 'mon
 // combobox; 'plain' is the browser's native <select>.
 export type SelectMode = 'searchable' | 'plain';
 
+// How the Dashboard's "Where it went" card draws its categories.
+export type BreakdownChart = 'donut' | 'bar';
+
 interface PebblePrefs {
   // Light, Dark, or System (follows the device live - useResolvedDark).
   appearance: Appearance;
@@ -96,6 +99,8 @@ interface PebblePrefs {
   safetyLocks: Partial<SafetyLocks>;
   // Welcome animation after signing in. On by default.
   showWelcome: boolean;
+  // Read as 'bar' only when exactly 'bar'; anything else is the donut.
+  breakdownChart: BreakdownChart;
 }
 
 interface PebbleUIState extends PebblePrefs {
@@ -115,6 +120,7 @@ interface PebbleUIState extends PebblePrefs {
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
+  setBreakdownChart: (value: BreakdownChart) => void;
 }
 
 // Static, date-free defaults: the server render and the first client render
@@ -138,6 +144,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
+  breakdownChart: 'donut',
 };
 
 // ---- Per-user storage -------------------------------------------------------
@@ -190,6 +197,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
+      setBreakdownChart: (value) => set({ breakdownChart: value }),
     }),
     {
       // Per-user key prefix - see perUserStorage. Imported, not literal: the
@@ -246,6 +254,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).
         showWelcome: state.showWelcome,
+        breakdownChart: state.breakdownChart,
       }),
     }
   )
