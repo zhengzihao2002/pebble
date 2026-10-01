@@ -1368,3 +1368,41 @@ html.pebble-welcoming::after {
    inline. Values in tabular figures so amounts line up. */
 .pebble-root .recharts-default-tooltip { padding: 0.55rem 0.75rem !important; font-size: var(--pb-text-sm); }
 .pebble-root .recharts-default-tooltip .recharts-tooltip-item-value { font-variant-numeric: tabular-nums; }
+
+/* Dashboard hero (BalanceHero): the sign-in page's pine gradient with paper
+   text, and a quiet per-account list beside the balance (below it on
+   phones), set off by a hairline. --ink-soft is redefined here only, so the
+   info icon reads on the gradient; the tooltip panel portals outside and
+   keeps the normal colours. */
+.pebble-root .pb-hero {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: end;
+  padding: 1.5rem; margin-bottom: 1.25rem; border-radius: var(--pb-radius-xl);
+  color: var(--paper); box-shadow: var(--shadow);
+  background: linear-gradient(150deg, var(--pine), color-mix(in oklch, var(--pine) 72%, var(--gold)));
+  --ink-soft: color-mix(in srgb, var(--paper) 78%, transparent);
+  --pb-hero-rule: color-mix(in srgb, var(--paper) 22%, transparent);
+}
+.pebble-root .pb-hero-label {
+  display: flex; align-items: center; margin: 0 0 0.5rem;
+  font-size: var(--pb-text-sm); font-weight: 500; opacity: 0.92;
+}
+.pebble-root .pb-hero .hero-balance { margin: 0; }
+.pebble-root .pb-hero-cents { font-size: 0.5em; vertical-align: 0.75em; margin-left: 0.04em; opacity: 0.85; }
+.pebble-root .pb-hero-accounts {
+  list-style: none; margin: 0; padding: 0.25rem 0 0; min-width: 0;
+  border-top: 1px solid var(--pb-hero-rule); font-size: var(--pb-text-sm);
+}
+.pebble-root .pb-hero-account {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+  padding: 0.45rem 0; border-top: 1px solid var(--pb-hero-rule);
+}
+.pebble-root .pb-hero-account:first-child { border-top: 0; }
+.pebble-root .pb-hero-account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.85; }
+.pebble-root .pb-hero-account-note { opacity: 0.8; }
+.pebble-root .pb-hero-account-amount { flex: none; font-weight: 600; }
+.pebble-root .pb-hero-more { opacity: 0.75; }
+@container content (min-width: 640px) {
+  .pebble-root .pb-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 17rem); gap: 2rem; padding: 2rem; align-items: center; }
+  .pebble-root .pb-hero-accounts { padding: 0 0 0 1.5rem; border-top: 0; border-left: 1px solid var(--pb-hero-rule); }
+}

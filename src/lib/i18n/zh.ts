@@ -648,6 +648,8 @@ export const zh: typeof en = {
   },
 
   dashboard: {
+    byAccount: '各账户余额',
+    moreAccounts: '另有 {count} 个',
     balanceTitle: '今日余额',
     balanceTooltipLabel: '余额的计算方式',
     balanceTooltip: '你记录过的每一笔交易——支出、收入以及手动余额修正——涵盖你的所有账户。{emphasis}：它不计入收入数据，但仍是你拥有的钱。这是实时数字，不受下方所选时段影响。',

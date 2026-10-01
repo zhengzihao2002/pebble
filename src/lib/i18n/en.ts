@@ -733,6 +733,8 @@ export const en = {
   },
 
   dashboard: {
+    byAccount: 'Balance by account',
+    moreAccounts: '+{count} more',
     balanceTitle: 'Your balance, today',
     balanceTooltipLabel: 'How your balance is calculated',
     balanceTooltip: 'Every transaction you have recorded — expenses, income and any manual balance corrections — across all your accounts. {emphasis}: it is left out of income figures, but it is still money you have. This is a live figure, not tied to the period selected below.',

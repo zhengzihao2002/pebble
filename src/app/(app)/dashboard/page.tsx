@@ -47,6 +47,8 @@ export default async function DashboardPage() {
       categories={categories}
       budgets={budgets}
       totalBalance={balances.total}
+      accounts={accounts}
+      balancesByAccount={balances.byAccount}
       allocated={allocated}
       catchUp={{
         expensesCreated: catchUp.expensesCreated,

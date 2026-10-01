@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { ArrowUpRight, ArrowDownRight, Percent, Wallet } from 'lucide-react';
 import type { Transaction } from '@/types';
-import type { CategoryItem } from '@/lib/data/mappers';
+import type { Account, CategoryItem } from '@/lib/data/mappers';
 import { StatTab } from '@/components/shared/StatTab';
 import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
@@ -12,6 +12,7 @@ import { NeedsAttentionCard } from '@/components/dashboard/NeedsAttentionCard';
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice';
 import { HealthStatusBar } from '@/components/dashboard/HealthStatusBar';
+import { BalanceHero } from '@/components/dashboard/BalanceHero';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
@@ -29,12 +30,15 @@ interface DashboardClientProps {
   categories: CategoryItem[];
   budgets: Record<string, number>;
   totalBalance: number;
+  /** Already loaded on the server for the total; passed for the hero's cairn. */
+  accounts: Account[];
+  balancesByAccount: Record<string, number>;
   /** Sum of every goal's set-aside amount, for the overspend notice. */
   allocated: number;
   catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
 }
 
-export function DashboardClient({ transactions, categories, budgets, totalBalance, allocated, catchUp }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp }: DashboardClientProps) {
   const { d, t, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
@@ -144,19 +148,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
       <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
 
       <section>
-        <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: '0.6rem' }}>
-          {d.dashboard.balanceTitle}
-          <InfoTooltip label={d.dashboard.balanceTooltipLabel}>
-            {renderTemplate(d.dashboard.balanceTooltip, {
-              checking: d.enums.paymentMethod.Checking,
-              cash: d.enums.paymentMethod.Cash,
-              emphasis: <strong>{d.dashboard.balanceEmphasis}</strong>,
-            })}
-          </InfoTooltip>
-        </p>
-        <p className="font-display hero-balance">
-          {formatCurrency(totalBalance)}
-        </p>
+        <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
           <select value={statsMode} onChange={(e) => handleStatsModeChange(e.target.value)} style={compactSelectStyle}>
             {/* value is the stored mode key; only the text is translated. */}
