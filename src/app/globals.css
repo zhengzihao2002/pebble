@@ -1480,3 +1480,19 @@ html.pebble-welcoming::after {
   animation: pb-bar-wipe 1600ms cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 .pebble-root .pb-bar-seg { min-width: 3px; flex-basis: 0; }
+
+/* One level of surface: a stat tile inside a card is not a second card. It
+   drops its own background, border, radius and shadow; the row is set off
+   from the card's heading by one hairline. No vertical dividers - these
+   grids wrap unevenly, and a divider grid would show empty cells. Tiles
+   outside a card keep their look. */
+.pebble-root .card .stat-tabs { border-top: 1px solid var(--line); padding-top: 1rem; }
+.pebble-root .card .stat-tab {
+  background-color: transparent; border: 0; border-radius: 0; box-shadow: none;
+  padding: 0.15rem 0;
+}
+
+/* Flattened tiles centre their content, so a row of figures spreads evenly
+   across the card instead of bunching at the left of each column. */
+.pebble-root .card .stat-tab { text-align: center; }
+.pebble-root .card .stat-tab > div { justify-content: center; }
