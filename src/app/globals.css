@@ -507,14 +507,14 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
   padding: 0.55rem 0.3rem;
   border-radius: 0.65rem;
 }
-@media (min-width: 760px) {
+@media (min-width: 760px) and (min-height: 600px) {
   .pebble-sidebar { display: flex; }
   .pebble-bottom-nav { display: none; }
 }
 
 .pebble-header { padding: 1.1rem 1.25rem; }
 .pebble-main { padding: 1.25rem 1.25rem 6rem; flex: 1; }
-@media (min-width: 760px) {
+@media (min-width: 760px) and (min-height: 600px) {
   .pebble-header { padding: 1.3rem 2.5rem; }
   .pebble-main { padding: 2.5rem; }
 }
@@ -1167,7 +1167,7 @@ html.pebble-welcoming::after {
 /* On phones the header's add button lives in the bar instead. The same
    760px line as the bar itself; !important because Header.tsx sets the
    container's display inline. */
-@media (max-width: 759.98px) {
+@media (max-width: 759.98px), (max-height: 599.98px) {
   .pebble-root .header-actions { display: none !important; }
 }
 
