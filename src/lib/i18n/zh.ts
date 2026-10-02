@@ -260,6 +260,8 @@ export const zh: typeof en = {
   },
 
   recurring: {
+    savedTitleAdd: '定期计划已添加',
+    savedTitleEdit: '定期计划已更新',
     titleEditExpense: '编辑定期支出',
     titleEditIncome: '编辑定期收入',
     titleNewExpense: '新建定期支出',

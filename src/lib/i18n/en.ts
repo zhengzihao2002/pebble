@@ -306,6 +306,8 @@ export const en = {
   },
 
   recurring: {
+    savedTitleAdd: 'Schedule added',
+    savedTitleEdit: 'Schedule updated',
     // Six keys rather than one sentence with a spliced noun. English tolerated
     // `Edit scheduled ${noun}`; Chinese does not - 定期收入 and 定期支出 are
     // compounds, and the delete question puts its verb elsewhere.
