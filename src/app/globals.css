@@ -1616,3 +1616,7 @@ html.pebble-welcoming::after {
 }
 .pebble-root .add-goal-tile:hover { border-color: var(--pine); color: var(--pine); }
 .pebble-root .add-goal-tile:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+
+/* No horizontal scroll */
+.pebble-root { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
+.pebble-root .pb-modal-body { overflow-x: hidden; }
