@@ -1524,3 +1524,71 @@ html.pebble-welcoming::after {
    taller than the overlay for a moment, showed a scrollbar, and the repaint
    flashed the backdrop tint. Appended after the base rule, so it wins. */
 .pebble-root .pb-modal-overlay { overflow: hidden; }
+
+/* Budgets plan card (BudgetPlanCard). Reuses the Dashboard's stats grid,
+   bar track and legend; only the frame and the savings hatch are new. */
+.pebble-root .pb-plan-card { padding: 0; overflow: hidden; }
+.pebble-root .pb-plan-head { padding: 1.1rem 1.25rem 1rem; }
+.pebble-root .pb-plan-body { padding: 1.25rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-plan-body .pb-bar-track { height: 18px; }
+.pebble-root .pb-plan-caption { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+/* Savings reads as kept, not spent: pine with a fine diagonal hatch. */
+.pebble-root .pb-plan-savings {
+  background: repeating-linear-gradient(135deg, var(--pine) 0 5px, color-mix(in srgb, var(--pine) 55%, var(--mist)) 5px 8px);
+}
+
+/* Plan bar hover popup. Sits above the bar (a sibling of the clipped track,
+   so it is not cut off), centred on the active segment. The other segments
+   dim while one is active. */
+.pebble-root .pb-plan-barwrap { position: relative; }
+.pebble-root .pb-plan-seg { cursor: default; transition: opacity var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-plan-seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pebble-root .pb-plan-barwrap.has-active .pb-plan-seg:not(.active) { opacity: 0.5; }
+.pebble-root .pb-plan-pop {
+  position: absolute; bottom: calc(100% + 0.6rem); transform: translateX(-50%);
+  width: max-content; max-width: 16rem; z-index: 5; pointer-events: none;
+  background-color: var(--mist); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 0.7rem; box-shadow: var(--shadow); padding: 0.55rem 0.75rem; font-size: var(--pb-text-sm);
+}
+.pebble-root .pb-plan-pop-title { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; overflow-wrap: anywhere; }
+.pebble-root .pb-plan-pop-figs { margin-top: 0.2rem; color: var(--ink-soft); }
+.pebble-root .pb-plan-pop-note { margin-top: 0.3rem; font-size: 0.75rem; line-height: 1.4; color: var(--ink-soft); }
+
+/* Budget rows (BudgetRows): one card, a row per budget, hairlines between.
+   Desktop: name | bar | figures on one line, status on the right of the name.
+   Phone: name and status, then bar, then figures. */
+.pebble-root .pb-budget-icon {
+  width: 30px; height: 30px; border-radius: 0.6rem;
+  display: flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.pebble-root .pb-rows { padding: 0; }
+.pebble-root .pb-rows-note { margin: 0; padding: 1rem 1.25rem 0.9rem; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.55rem; column-gap: 1rem;
+  padding: 1rem 1.25rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-row-name { display: flex; align-items: center; gap: 0.65rem; min-width: 0; font-weight: 600; font-size: 0.9rem; overflow-wrap: anywhere; }
+.pebble-root .pb-row-status { font-size: 0.78rem; text-align: right; align-self: center; }
+.pebble-root .pb-row-bar { grid-column: 1 / -1; position: relative; padding: 5px 0; }
+.pebble-root .pb-row-track { height: 10px; border-radius: 99px; background-color: var(--line); overflow: hidden; }
+.pebble-root .pb-row-fill { height: 100%; border-radius: 99px; animation: pb-row-wipe 1000ms cubic-bezier(0.65, 0, 0.35, 1) both; }
+@keyframes pb-row-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.pebble-root .pb-row-marker { position: absolute; z-index: 1; top: 0; bottom: 0; width: 2px; margin-left: -1px; background-color: var(--ink); border-radius: 1px; }
+/* Invisible, wider hit area: a 2px line is too thin to hover. */
+.pebble-root .pb-row-marker::before { content: ''; position: absolute; top: -4px; bottom: -4px; left: -8px; right: -8px; }
+.pebble-root .pb-row-marker:hover, .pebble-root .pb-row-marker:focus-visible { z-index: 6; }
+.pebble-root .pb-row-marker::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 14rem; padding: 0.35rem 0.6rem; border-radius: 0.5rem; pointer-events: none;
+  background-color: var(--mist); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow);
+  font-size: var(--pb-text-sm); opacity: 0; transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-row-marker:hover::after, .pebble-root .pb-row-marker:focus-visible::after { opacity: 1; }
+.pebble-root .pb-row-figs { grid-column: 1 / -1; font-size: 0.78rem; color: var(--ink-soft); }
+@container content (min-width: 720px) {
+  .pebble-root .pb-row { grid-template-columns: 13rem minmax(0, 1fr) 11rem; align-items: center; }
+  .pebble-root .pb-row-status { grid-column: 3; grid-row: 1; }
+  .pebble-root .pb-row-bar { grid-column: 2; grid-row: 1; }
+  .pebble-root .pb-row-figs { grid-column: 3; grid-row: 2; text-align: right; }
+}
