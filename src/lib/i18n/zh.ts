@@ -1117,6 +1117,8 @@ export const zh: typeof en = {
     icon: '图标',
     color: '颜色',
     saveChanges: '保存更改',
+    savedTitleAdd: '目标已添加',
+    savedTitleEdit: '目标已更新',
   },
 
   budgetModal: {

@@ -1228,6 +1228,8 @@ export const en = {
     icon: 'Icon',
     color: 'Color',
     saveChanges: 'Save changes',
+    savedTitleAdd: 'Goal added',
+    savedTitleEdit: 'Goal updated',
   },
 
   budgetModal: {

@@ -120,7 +120,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
     // that the feature has shipped: Header renders inside AppShell, so reading
     // it would cost a database query on EVERY page navigation, not just this
     // page's. The goals page itself shows the counts that matter.
-    '/goals': { title: d.nav.goals, subtitle: d.header.subtitles.goals, action: { label: d.common.addGoal, kind: 'addGoal' } },
+    '/goals': { title: d.nav.goals, subtitle: d.header.subtitles.goals },
     '/scheduled': { title: d.nav.scheduled, subtitle: d.header.subtitles.scheduled, action: { label: d.header.addSchedule, kind: 'addSchedule' } },
     '/settings': { title: d.nav.settings, subtitle: d.header.subtitles.settings },
   };

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import type { Goal } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { resolveGoalIcon } from '@/lib/data/icons';
@@ -10,6 +10,9 @@ import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
+import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -75,16 +78,6 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
 
   useEffect(() => { void loadSummary(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A ref, not the prop: the page hands a new onClose on every re-render,
-  // which would keep restarting the auto-close timer.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; });
-  useEffect(() => {
-    if (step !== 'done') return;
-    const id = window.setTimeout(() => onCloseRef.current(), 1600);
-    return () => window.clearTimeout(id);
-  }, [step]);
-
   const amountCents = parseAmountCents(raw);
   const maxCents = Math.min(availableCents, remainingCents);
   const problem =
@@ -105,9 +98,6 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
   const fromPct = targetCents > 0 ? currentCents / targetCents : 0;
   const toPct = targetCents > 0 ? afterCents / targetCents : 0;
   const reachesTarget = amountCents !== null && afterCents >= targetCents;
-
-  // A save in flight must not be cancellable - see AddTransactionModal.
-  const requestClose = () => { if (saving) return; onClose(); };
 
   const confirm = async () => {
     if (amountCents === null || saving) return;
@@ -131,148 +121,141 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
   };
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={requestClose}
-    >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+    <ModalFrame onClose={onClose} busy={saving} labelledBy="add-to-goal-title" maxWidth={420} cardStyle={{ minHeight: 460 }}>
+      {(close) => (
+      <>
         {saving && <LoadingOverlay label={d.addToGoal.saving} />}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.3rem' }}>
-          <span style={{ width: 38, height: 38, borderRadius: '0.7rem', backgroundColor: `${goal.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Icon size={18} style={{ color: goal.color }} />
-          </span>
-          {/* goal.name is USER DATA and is inserted untranslated. */}
-          <h2 className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600, flex: 1, minWidth: 0, margin: 0 }}>
-            {t(d.addToGoal.title, { name: goal.name })}
-          </h2>
-          <button type="button" onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0 }}>
-            <X size={18} />
-          </button>
+        <div className="pb-modal-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ width: 38, height: 38, borderRadius: '0.7rem', backgroundColor: `${goal.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon size={18} style={{ color: goal.color }} />
+            </span>
+            {/* goal.name is USER DATA and is inserted untranslated. */}
+            <h2 id="add-to-goal-title" className="font-display" style={{ fontSize: '1.15rem', fontWeight: 600, flex: 1, minWidth: 0, margin: 0 }}>
+              {t(d.addToGoal.title, { name: goal.name })}
+            </h2>
+            <ModalCloseButton onClick={close} disabled={saving} />
+          </div>
         </div>
 
-        {step === 'enter' && (
-          loading ? (
-            <LoadingBlock label={d.addToGoal.loading} minHeight={180} />
-          ) : loadError ? (
-            <ActionError message={loadError} onRetry={() => void loadSummary()} />
-          ) : (
-            <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.6rem' }}>
-                <Figure label={d.addToGoal.needs} value={money(remainingCents)} />
-                <Figure label={d.addToGoal.available} value={money(availableCents)} />
-              </div>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
-                {d.addToGoal.amountLabel}
-                <div style={{ position: 'relative' }}>
-                  <span className="font-display" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' }}>$</span>
-                  <input
-                    autoFocus inputMode="decimal" value={raw} placeholder="0.00"
-                    onChange={(e) => { setRaw(e.target.value); setError(null); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && canReview) setStep('confirm'); }}
-                    aria-invalid={problem ? true : undefined}
-                    className="font-mono-tab"
-                    style={{
-                      width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem',
-                      borderRadius: '0.8rem', border: `1px solid ${problem ? 'var(--wine)' : 'var(--line)'}`,
-                      fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)',
-                    }}
-                  />
+        <div className="pb-modal-body themed-scroll">
+          {step === 'enter' && (
+            loading ? (
+              <LoadingBlock label={d.addToGoal.loading} minHeight={320} size={64} labelSize="0.95rem" />
+            ) : loadError ? (
+              <ActionError message={loadError} onRetry={() => void loadSummary()} />
+            ) : (
+              <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', minHeight: 320 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.6rem' }}>
+                  <Figure label={d.addToGoal.needs} value={money(remainingCents)} />
+                  <Figure label={d.addToGoal.available} value={money(availableCents)} />
                 </div>
-              </label>
 
-              <div style={{ display: 'flex', gap: '0.45rem' }}>
-                {chips.map((c) => (
-                  <button
-                    key={c.key} type="button" className="pill" disabled={c.cents <= 0}
-                    onClick={() => { setRaw((c.cents / 100).toFixed(2)); setError(null); }}
-                    style={{ flex: 1, padding: '0.45rem 0.6rem', fontSize: '0.8rem', opacity: c.cents <= 0 ? 0.5 : 1 }}
-                  >
-                    {c.label}
-                  </button>
-                ))}
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
+                  {d.addToGoal.amountLabel}
+                  <div style={{ position: 'relative' }}>
+                    <span className="font-display" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' }}>$</span>
+                    <input
+                      inputMode="decimal" value={raw} placeholder="0.00"
+                      onChange={(e) => { setRaw(e.target.value); setError(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && canReview) setStep('confirm'); }}
+                      aria-invalid={problem ? true : undefined}
+                      className="font-mono-tab"
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem',
+                        borderRadius: '0.8rem', border: `1px solid ${problem ? 'var(--wine)' : 'var(--line)'}`,
+                        fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)',
+                      }}
+                    />
+                  </div>
+                </label>
+
+                <div style={{ display: 'flex', gap: '0.45rem' }}>
+                  {chips.map((c) => (
+                    <button
+                      key={c.key} type="button" className="pill" disabled={c.cents <= 0}
+                      onClick={() => { setRaw((c.cents / 100).toFixed(2)); setError(null); }}
+                      style={{ flex: 1, padding: '0.45rem 0.6rem', fontSize: '0.8rem', opacity: c.cents <= 0 ? 0.5 : 1 }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+
+                {maxCents === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>{d.addToGoal.nothingAvailable}</p>
+                ) : problem && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>{problem}</p>
+                )}
+
+                <ActionError message={error} kind={errorKind} />
+
+                <button
+                  type="button" className="btn-primary" disabled={!canReview} onClick={() => setStep('confirm')}
+                  style={{ padding: '0.72rem', opacity: canReview ? 1 : 0.6 }}
+                >
+                  {d.addToGoal.review}
+                </button>
               </div>
+            )
+          )}
 
-              {maxCents === 0 ? (
-                <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>{d.addToGoal.nothingAvailable}</p>
-              ) : problem && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>{problem}</p>
+          {step === 'confirm' && amountCents !== null && (
+            <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', textAlign: 'center', margin: 0 }}>{d.addToGoal.confirmTitle}</p>
+              <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                <ProgressRing from={fromPct} to={toPct} color={goal.color} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="font-display" style={{ fontSize: '1.6rem', fontWeight: 600 }}>{Math.floor(toPct * 100)}%</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>{t(d.addToGoal.was, { pct: Math.floor(fromPct * 100) })}</span>
+                </div>
+              </div>
+              <p className="font-display" style={{ textAlign: 'center', fontSize: '1.35rem', fontWeight: 600, margin: 0, color: goal.color }}>
+                +{money(amountCents)}
+              </p>
+              {reachesTarget && (
+                <p style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--pine)', fontWeight: 600, margin: 0 }}>{d.addToGoal.reachesTarget}</p>
               )}
 
-              <ActionError message={error} kind={errorKind} />
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                <ChangeRow label={d.addToGoal.rowGoal} before={money(currentCents)} after={money(afterCents)} accent={goal.color} />
+                <ChangeRow label={d.addToGoal.rowLeft} before={money(remainingCents)} after={money(remainingCents - amountCents)} />
+                <ChangeRow label={d.addToGoal.rowUnallocated} before={money(availableCents)} after={money(availableCents - amountCents)} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>{d.addToGoal.rowTotal}</span>
+                  <span style={{ color: 'var(--ink-soft)', textAlign: 'right' }}>{d.addToGoal.unchanged}</span>
+                </div>
+              </div>
 
-              <button
-                type="button" className="btn-primary" disabled={!canReview} onClick={() => setStep('confirm')}
-                style={{ padding: '0.72rem', opacity: canReview ? 1 : 0.6 }}
-              >
-                {d.addToGoal.review}
-              </button>
-            </div>
-          )
-        )}
+              <ActionError message={error} kind={errorKind} onRetry={() => void confirm()} busy={saving} />
 
-        {step === 'confirm' && amountCents !== null && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', textAlign: 'center', margin: 0 }}>{d.addToGoal.confirmTitle}</p>
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-              <ProgressRing from={fromPct} to={toPct} color={goal.color} />
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="font-display" style={{ fontSize: '1.6rem', fontWeight: 600 }}>{Math.floor(toPct * 100)}%</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>{t(d.addToGoal.was, { pct: Math.floor(fromPct * 100) })}</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="pill" onClick={() => { setStep('enter'); setError(null); }} disabled={saving} style={{ flex: 1, padding: '0.65rem' }}>
+                  {d.addToGoal.back}
+                </button>
+                <button
+                  type="button" className="btn-primary" onClick={() => void confirm()} disabled={saving}
+                  style={{ flex: 1.4, padding: '0.65rem', opacity: saving ? 0.6 : 1 }}
+                >
+                  {t(d.addToGoal.confirm, { amount: money(amountCents) })}
+                </button>
               </div>
             </div>
-            <p className="font-display" style={{ textAlign: 'center', fontSize: '1.35rem', fontWeight: 600, margin: 0, color: goal.color }}>
-              +{money(amountCents)}
-            </p>
-            {reachesTarget && (
-              <p style={{ textAlign: 'center', fontSize: '0.82rem', color: 'var(--pine)', fontWeight: 600, margin: 0 }}>{d.addToGoal.reachesTarget}</p>
-            )}
+          )}
 
-            <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-              <ChangeRow label={d.addToGoal.rowGoal} before={money(currentCents)} after={money(afterCents)} accent={goal.color} />
-              <ChangeRow label={d.addToGoal.rowLeft} before={money(remainingCents)} after={money(remainingCents - amountCents)} />
-              <ChangeRow label={d.addToGoal.rowUnallocated} before={money(availableCents)} after={money(availableCents - amountCents)} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--ink-soft)' }}>{d.addToGoal.rowTotal}</span>
-                <span style={{ color: 'var(--ink-soft)', textAlign: 'right' }}>{d.addToGoal.unchanged}</span>
-              </div>
-            </div>
-
-            <ActionError message={error} kind={errorKind} onRetry={() => void confirm()} busy={saving} />
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="pill" onClick={() => { setStep('enter'); setError(null); }} style={{ flex: 1, padding: '0.65rem' }}>
-                {d.addToGoal.back}
-              </button>
-              <button
-                type="button" className="btn-primary" onClick={() => void confirm()} disabled={saving}
-                style={{ flex: 1.4, padding: '0.65rem', opacity: saving ? 0.6 : 1 }}
-              >
-                {t(d.addToGoal.confirm, { amount: money(amountCents) })}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'done' && done && (
-          <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', padding: '1.5rem 0', textAlign: 'center' }}>
-            <span
-              className="goal-done-badge"
-              style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: goal.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 24px -8px ${goal.color}` }}
-            >
-              <Check size={30} />
-            </span>
-            <p className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, margin: 0 }}>
-              {done.reached ? d.addToGoal.doneReached : d.addToGoal.doneTitle}
-            </p>
-            <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', margin: 0 }}>
-              {t(d.addToGoal.doneBody, { amount: money(done.cents), name: goal.name })}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+          {step === 'done' && done && (
+            <SaveSuccess
+              title={done.reached ? d.addToGoal.doneReached : d.addToGoal.doneTitle}
+              body={t(d.addToGoal.doneBody, { amount: money(done.cents), name: goal.name })}
+              color={goal.color}
+              onDone={close}
+            />
+          )}
+        </div>
+      </>
+      )}
+    </ModalFrame>
   );
 }
 

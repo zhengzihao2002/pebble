@@ -6,14 +6,15 @@ import { formatCurrency } from '@/lib/format';
 import { getDictionary, t } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { GoalCard } from '@/components/goals/GoalCard';
+import { AddGoalTile } from '@/components/goals/AddGoalTile';
 
 export const dynamic = 'force-dynamic';
 
 // No client shell: this page has no interactive state of its own. GoalCard
 // resolves its own icon from goal.iconKey, so no LucideIcon crosses the
-// server/client boundary. The add-goal trigger lives in the header, which is
-// rendered by AppShell, so the modal mounts in (app)/layout.tsx rather than
-// here - the same arrangement ModifyBudgetModal uses.
+// server/client boundary. The add-goal trigger is the last tile in the grid
+// (AddGoalTile, which owns its own dialog); on a phone the centre + menu opens
+// the AppShell copy of the same dialog.
 //
 // That also makes this the ONLY page whose user-visible text is rendered on
 // the server, and therefore the only caller of resolveUserLocale(). Every
@@ -95,18 +96,19 @@ export default async function GoalsPage() {
         )}
       </div>
 
-      {goals.length === 0 ? (
+      {goals.length === 0 && (
         <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--ink-soft)' }}>
           <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>{d.goals.emptyTitle}</p>
           {/* The quoted button name is interpolated, not concatenated: it sits
               mid-sentence in English and after the verb in Chinese. */}
           <p style={{ fontSize: '0.85rem' }}>{t(d.goals.emptyHint, { action: d.common.addGoal })}</p>
         </div>
-      ) : (
-        <div className="goals-grid">
-          {goals.map((g) => <GoalCard key={g.id} goal={g} />)}
-        </div>
       )}
+
+      <div className="goals-grid">
+        {goals.map((g) => <GoalCard key={g.id} goal={g} />)}
+        <AddGoalTile />
+      </div>
     </div>
   );
 }

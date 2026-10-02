@@ -1351,7 +1351,7 @@ html.pebble-welcoming::after {
     border-radius: 1.5rem 1.5rem 0 0;
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
     max-height: calc(var(--pb-vvh, 100dvh) - 0.75rem);
-    animation: pb-sheet-in 260ms var(--pb-ease-out) both;
+    animation: pb-sheet-in 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
   }
   .pebble-root .pb-modal-overlay.closing .pb-modal-card {
     animation: pb-sheet-out var(--pb-dur-exit) var(--pb-ease-in) both;
@@ -1600,3 +1600,19 @@ html.pebble-welcoming::after {
 .pebble-root .pb-unb-row:first-child { border-top: 0; }
 .pebble-root .pb-unb-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .pebble-root .pb-unb-amount { color: var(--ink-soft); }
+
+/* Empty slot at the end of the goals grid (AddGoalTile). Theme variables
+   only; colour and border change on hover, nothing moves or scales. */
+.pebble-root .add-goal-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7rem;
+  min-height: 220px; width: 100%; box-sizing: border-box; padding: 1.5rem;
+  background: transparent; border: 1.5px dashed var(--line); border-radius: 1rem;
+  color: var(--ink-soft); cursor: pointer;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .add-goal-tile-badge {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px dashed currentColor;
+}
+.pebble-root .add-goal-tile:hover { border-color: var(--pine); color: var(--pine); }
+.pebble-root .add-goal-tile:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
