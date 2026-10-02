@@ -67,6 +67,8 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const [manualAmount, setManualAmount] = useState('');
 
   const [values, setValues] = useState<Record<string, string>>({});
+  // The budgets as loaded, as numbers: what Save is compared against.
+  const loadedBudgets = useRef<Record<string, number>>({});
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta>({});
   // Renamed from `annualIncome`: this is specifically the SERVER-computed
   // trailing-12-month figure, distinguishing it from the manual entry and
@@ -132,6 +134,9 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
         initial[name] = entry.budget > 0 ? String(entry.budget) : '';
       });
       setValues(initial);
+      const baseline: Record<string, number> = {};
+      Object.keys(initial).forEach((name) => { baseline[name] = Number(initial[name]) || 0; });
+      loadedBudgets.current = baseline;
       setSystemAnnualIncome(result.annualIncome);
       setIncomeMonths(result.incomeMonths);
       setIncomeMonthsLabel(result.incomeMonthsLabel);
@@ -145,6 +150,10 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   // Category names are USER DATA - keys, labels and the payload all use the
   // stored name untranslated.
   const categoryNames = Object.keys(categoryMeta);
+  // Save is only meaningful once something differs from what was loaded.
+  const hasChanges = !loading && categoryNames.some(
+    (name) => (Number(values[name]) || 0) !== (loadedBudgets.current[name] ?? 0),
+  );
   const totalBudgeted = categoryNames.reduce((s, name) => s + (Number(values[name]) || 0), 0);
 
   const manualAmountNum = Number(manualAmount) || 0;
@@ -173,7 +182,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (saving || loading) return;
+    if (saving || loading || !hasChanges) return;
     const budgets: Record<string, number> = {};
     categoryNames.forEach((name) => { budgets[name] = Number(values[name]) || 0; });
     setSaving(true);
@@ -373,7 +382,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
             style={{ marginTop: '0.9rem' }}
           />
 
-          <button type="submit" disabled={loading || saving} className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.75rem', width: '100%', opacity: loading || saving ? 0.6 : 1 }}>
+          <button type="submit" disabled={loading || saving || !hasChanges} className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.75rem', width: '100%', opacity: loading || saving || !hasChanges ? 0.6 : 1 }}>
             {loading ? d.common.loading : saving ? d.common.saving : d.budgetModal.saveBudgets}
           </button>
         </form>
