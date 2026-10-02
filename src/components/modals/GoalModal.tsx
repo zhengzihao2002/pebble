@@ -55,6 +55,9 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
+  // Row inputs: same height, allowed to shrink, and no native date styling,
+  // because iOS Safari sizes type="date" by itself and overflows its cell.
+  const rowInputStyle: React.CSSProperties = { ...inputStyle, minWidth: 0, maxWidth: '100%', height: '2.6rem', textAlign: 'left', WebkitAppearance: 'none', appearance: 'none' };
   const prefixStyle: React.CSSProperties = { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.9rem' };
 
   // Compared the way each field is STORED, so an untouched edit stays disabled.
@@ -159,7 +162,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
           </>
         ) : (
           <>
-            <div className="pb-modal-body themed-scroll">
+            <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
               <form id="goal-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <label style={labelStyle}>
                   {d.goalModal.targetAmount}
@@ -191,7 +194,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                       <span style={prefixStyle}>$</span>
                       <input
                         type="number" min="0" step="0.01" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="0.00"
-                        className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }}
+                        className="font-mono-tab" style={{ ...rowInputStyle, paddingLeft: '1.6rem' }}
                       />
                     </div>
                   </label>
@@ -200,7 +203,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                     {d.goalModal.targetDate}
                     {/* The browser localizes its own picker from <html lang>; the
                         value stays 'YYYY-MM-DD', which is what reaches the action. */}
-                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
+                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={rowInputStyle} />
                   </label>
                 </div>
 
