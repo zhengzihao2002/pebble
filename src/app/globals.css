@@ -1592,3 +1592,11 @@ html.pebble-welcoming::after {
   .pebble-root .pb-row-bar { grid-column: 2; grid-row: 1; }
   .pebble-root .pb-row-figs { grid-column: 3; grid-row: 2; text-align: right; }
 }
+
+/* Spending without a budget (UnbudgetedList): quiet, soft ink, no bars. */
+.pebble-root .pb-unb { padding: 1.1rem 1.25rem; }
+.pebble-root .pb-unb-list { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.pebble-root .pb-unb-row { display: flex; align-items: center; gap: 0.65rem; padding: 0.5rem 0; border-top: 1px solid var(--line); font-size: 0.85rem; }
+.pebble-root .pb-unb-row:first-child { border-top: 0; }
+.pebble-root .pb-unb-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pebble-root .pb-unb-amount { color: var(--ink-soft); }

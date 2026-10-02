@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { getBudgetModalDataAction, modifyBudgetsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -49,6 +50,15 @@ const manualFieldStyle: React.CSSProperties = {
   fontSize: '0.78rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%',
 };
 
+/** Calls close() after the render that cleared `saving`, so the frame's busy guard has released. */
+function CloseSoon({ close }: { close: () => void }) {
+  useEffect(() => {
+    const id = window.setTimeout(close, 0);
+    return () => window.clearTimeout(id);
+  }, [close]);
+  return null;
+}
+
 export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const { d, t, locale } = useTranslation();
 
@@ -85,6 +95,7 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   const [latestStandardIncomeNet, setLatestStandardIncomeNet] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
   // Which call failed, so Try again repeats that one and not the other.
@@ -178,7 +189,6 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
   // A write in flight must not be cancellable - see AddTransactionModal.
   // Only `saving` blocks: closing during the initial read is harmless, since
   // nothing is being written.
-  const requestClose = () => { if (saving) return; onClose(); };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -190,38 +200,26 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
     const result = await callAction(() => modifyBudgetsAction(budgets));
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
-    onClose();
+    setSaved(true);
   };
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,20,18,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 50, overflowY: 'auto' }}
-      onClick={requestClose}
-    >
-      <div className="card" style={{ padding: '1.75rem', width: '100%', maxWidth: 680, boxSizing: 'border-box', margin: '1rem 0', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+    <ModalFrame onClose={onClose} busy={saving} labelledBy="budget-modal-title" maxWidth={680}>
+      {(close) => (
+      <>
         {saving && <LoadingOverlay label={d.budgetModal.saving} />}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <h2 className="font-display" style={{ fontSize: '1.3rem', fontWeight: 600 }}>{d.budgetModal.title}</h2>
-          <button onClick={requestClose} disabled={saving} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0, opacity: saving ? 0.4 : 1 }}><X size={18} /></button>
-        </div>
-        <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
-          {d.budgetModal.intro}
-        </p>
 
-        {/*
-          A CSS GRID, not flex, and this is load-bearing, not a style choice.
-          The two big numbers (income, budgeted) need to sit on the SAME
-          visual row regardless of how much content sits above either of
-          them - a mode dropdown and note line above the income figure, just
-          a label above the budgeted figure. Flexbox with two independent
-          columns lets whichever column has more content push its number
-          down relative to the other; a shared grid ROW cannot drift like
-          that, because both cells in that row are the same row by
-          definition. The manual-entry controls (amount/frequency/import)
-          therefore live in their own row spanning both columns, BELOW the
-          number row, rather than inside the income column where they used
-          to push its number down.
-        */}
+        <div className="pb-modal-head">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 id="budget-modal-title" className="font-display" style={{ fontSize: '1.3rem', fontWeight: 600 }}>{d.budgetModal.title}</h2>
+            <ModalCloseButton onClick={close} disabled={saving} />
+          </div>
+        </div>
+
+        <div className="pb-modal-body themed-scroll">
+          <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
+            {d.budgetModal.intro}
+          </p>
         <div
           className="card"
           style={{
@@ -329,9 +327,9 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
           )}
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {loading && <LoadingBlock label={d.budgetModal.loadingBudgets} minHeight={160} />}
-          <div className="themed-scroll" style={{ maxHeight: '48vh', overflowY: 'auto', paddingRight: '0.25rem', display: loading ? 'none' : undefined }}>
+          <form id="budget-form" onSubmit={handleSubmit}>
+            {loading && <LoadingBlock label={d.budgetModal.loadingBudgets} minHeight={160} />}
+          <div className="goal-step" style={{ display: loading ? 'none' : undefined }}>
             {categoryNames.map((name) => {
               const meta = categoryMeta[name];
               return (
@@ -375,18 +373,23 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
             })}
           </div>
 
+          </form>
+        </div>
+
+        <div className="pb-modal-foot">
           <ActionError
             message={error} kind={errorKind}
             onRetry={loadFailed ? load : () => void handleSubmit()}
             busy={saving || loading}
-            style={{ marginTop: '0.9rem' }}
           />
-
-          <button type="submit" disabled={loading || saving || !hasChanges} className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.75rem', width: '100%', opacity: loading || saving || !hasChanges ? 0.6 : 1 }}>
+          <button type="submit" form="budget-form" disabled={loading || saving || !hasChanges} className="btn-primary" style={{ padding: '0.75rem', width: '100%', opacity: loading || saving || !hasChanges ? 0.6 : 1 }}>
             {loading ? d.common.loading : saving ? d.common.saving : d.budgetModal.saveBudgets}
           </button>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        {saved && <CloseSoon close={close} />}
+      </>
+      )}
+    </ModalFrame>
   );
 }

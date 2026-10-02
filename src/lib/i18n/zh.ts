@@ -792,6 +792,7 @@ export const zh: typeof en = {
     overBudgetBy: '超支 {amount}',
     expectedByToday: '截至今天预期：{amount}',
     sortedBy: '按预算使用比例排序',
+    unbudgetedTitle: '未设预算的支出',
   },
 
   budgetsPage: {

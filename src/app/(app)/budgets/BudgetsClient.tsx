@@ -11,6 +11,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { BudgetPlanCard } from '@/components/budgets/BudgetPlanCard';
 import { BudgetRows } from '@/components/budgets/BudgetRows';
+import { UnbudgetedList } from '@/components/budgets/UnbudgetedList';
 import type { BudgetEntry } from '@/components/budgets/types';
 
 interface BudgetsClientProps {
@@ -65,6 +66,7 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
         today={today}
       />
       <BudgetRows entries={entries} today={today} />
+      <UnbudgetedList entries={entries} />
     </div>
   );
 }

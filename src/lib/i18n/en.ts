@@ -876,6 +876,7 @@ export const en = {
     overBudgetBy: 'Over by {amount}',
     expectedByToday: 'Expected by today: {amount}',
     sortedBy: 'Sorted by share of budget used',
+    unbudgetedTitle: 'Spending without a budget',
   },
 
   budgetsPage: {
