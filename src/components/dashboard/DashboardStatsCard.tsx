@@ -112,7 +112,7 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="font-mono-tab pb-stats-value">{c.value}</div>
-              {c.note && <div className="pb-stats-note">{c.note}</div>}
+              <div className="pb-stats-note" aria-hidden={c.note ? undefined : true} style={c.note ? undefined : { visibility: 'hidden' }}>{c.note || '\u00a0'}</div>
             </div>
           );
         })}
