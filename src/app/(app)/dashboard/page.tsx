@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getAccounts } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getAccounts, getRecurringRules } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { DashboardClient } from './DashboardClient';
 
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // Never throws - a failure is logged and retried on the next load.
   const catchUp = await runRecurringCatchUp(userId);
 
-  const [expenses, income, budgets, categories, adjustments, goals, accounts] = await Promise.all([
+  const [expenses, income, budgets, categories, adjustments, goals, accounts, rules] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getBudgets(userId),
@@ -24,6 +24,9 @@ export default async function DashboardPage() {
     getBalanceAdjustments(userId),
     getGoals(userId),
     getAccounts(userId),
+    // For the Upcoming card. The same read Scheduled and Analysis run; it
+    // joins this batch, so it adds no round trip.
+    getRecurringRules(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -50,6 +53,7 @@ export default async function DashboardPage() {
       accounts={accounts}
       balancesByAccount={balances.byAccount}
       allocated={allocated}
+      rules={rules}
       catchUp={{
         expensesCreated: catchUp.expensesCreated,
         incomeCreated: catchUp.incomeCreated,

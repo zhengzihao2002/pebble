@@ -767,6 +767,16 @@ export const en = {
     year: 'Year',
   },
 
+  upcomingCard: {
+    title: 'Upcoming',
+    window: 'Next 14 days',
+    seeAll: 'See all',
+    empty: 'Nothing scheduled in the next 14 days.',
+    more: '+{count} more',
+    today: 'Today',
+    tomorrow: 'Tomorrow',
+  },
+
   dashboard: {
     periodTitle: 'This period',
     byAccount: 'Balance by account',

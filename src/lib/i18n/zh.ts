@@ -682,6 +682,16 @@ export const zh: typeof en = {
     year: '年',
   },
 
+  upcomingCard: {
+    title: '即将到来',
+    window: '未来 14 天',
+    seeAll: '查看全部',
+    empty: '未来 14 天内没有计划的收支。',
+    more: '还有 {count} 项',
+    today: '今天',
+    tomorrow: '明天',
+  },
+
   dashboard: {
     periodTitle: '本期',
     byAccount: '各账户余额',

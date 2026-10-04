@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import type { Transaction } from '@/types';
+import type { RecurringRule, Transaction } from '@/types';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
 import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
@@ -12,6 +12,7 @@ import { GoalOverspendNotice } from '@/components/dashboard/GoalOverspendNotice'
 import { HealthStatusBar } from '@/components/dashboard/HealthStatusBar';
 import { BalanceHero } from '@/components/dashboard/BalanceHero';
 import { DashboardStatsCard } from '@/components/dashboard/DashboardStatsCard';
+import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { parseLocalDate } from '@/lib/format';
@@ -33,9 +34,11 @@ interface DashboardClientProps {
   /** Sum of every goal's set-aside amount, for the overspend notice. */
   allocated: number;
   catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
+  /** Recurring rules, for the Upcoming card. */
+  rules: RecurringRule[];
 }
 
-export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp, rules }: DashboardClientProps) {
   const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
@@ -154,6 +157,8 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
           <HealthStatusBar income={periodStats.income} savingsRate={periodStats.savingsRate} />
         )}
       </section>
+
+      <UpcomingCard rules={rules} categoryMeta={categoryMeta} />
 
       <section className="dash-charts-grid">
         <IncomeSpendingChart transactions={transactions} />
