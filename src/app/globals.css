@@ -1661,3 +1661,6 @@ html.pebble-welcoming::after {
 /* Privacy mode: all charts */
 .pebble-root.pb-private .pb-chart-fade,
 .pebble-root.pb-private .pb-donut-ring { filter: blur(16px); pointer-events: none; }
+
+/* Amount field hint room */
+.pebble-root .pb-amount-has-hint { padding-right: 5.5rem !important; }

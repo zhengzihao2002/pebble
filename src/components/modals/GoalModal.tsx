@@ -10,6 +10,7 @@ import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
+import { AmountInput } from '@/components/shared/AmountInput';
 import { playEventSound } from '@/lib/sound/useSound';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
 import { resolveGoalIcon } from '@/lib/data/icons';
@@ -169,8 +170,8 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   <div style={{ position: 'relative' }}>
                     {/* Stays '$' in every locale - the user's real US dollars. */}
                     <span className="font-display" style={{ ...prefixStyle, left: 14, fontSize: '1.5rem' }}>$</span>
-                    <input
-                      type="number" min="0" step="0.01" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" required
+                    <AmountInput
+                      value={target} onValueChange={setTarget} placeholder="0.00" required
                       className="font-mono-tab"
                       style={{ ...inputStyle, padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', fontSize: '1.6rem', fontWeight: 600 }}
                     />
@@ -192,8 +193,8 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                     <span>{isEdit ? d.goalModal.setAsideSoFar : d.goalModal.alreadySaved} <span style={{ opacity: 0.7 }}>{d.goalModal.optional}</span></span>
                     <div style={{ position: 'relative' }}>
                       <span style={prefixStyle}>$</span>
-                      <input
-                        type="number" min="0" step="0.01" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="0.00"
+                      <AmountInput
+                        value={current} onValueChange={setCurrent} placeholder="0.00"
                         className="font-mono-tab" style={{ ...rowInputStyle, paddingLeft: '1.6rem' }}
                       />
                     </div>

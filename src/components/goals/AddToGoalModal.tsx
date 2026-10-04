@@ -13,6 +13,7 @@ import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -156,9 +157,9 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
                   {d.addToGoal.amountLabel}
                   <div style={{ position: 'relative' }}>
                     <span className="font-display" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' }}>$</span>
-                    <input
-                      inputMode="decimal" value={raw} placeholder="0.00"
-                      onChange={(e) => { setRaw(e.target.value); setError(null); }}
+                    <AmountInput
+                      value={raw} placeholder="0.00"
+                      onValueChange={(v) => { setRaw(v); setError(null); }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && canReview) setStep('confirm'); }}
                       aria-invalid={problem ? true : undefined}
                       className="font-mono-tab"

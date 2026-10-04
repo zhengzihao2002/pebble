@@ -19,6 +19,7 @@ import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
+import { AmountInput } from '@/components/shared/AmountInput';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import { formatCurrency } from '@/lib/format';
@@ -268,7 +269,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   };
 
   return (
-    <ModalFrame onClose={onClose} busy={saving} labelledBy="rule-modal-title" maxWidth={440}>
+    <ModalFrame onClose={onClose} busy={saving} labelledBy="rule-modal-title" maxWidth={640}>
       {(close) => (
       <>
         {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.recurring.deletingSchedule : d.recurring.savingSchedule} />}
@@ -337,8 +338,8 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                   <div style={{ position: 'relative' }}>
                     {/* Stays '$' in every locale - the user's real US dollars. */}
                     <span className="font-display" style={{ ...prefixStyle, left: 14, fontSize: '1.5rem' }}>$</span>
-                    <input
-                      type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required
+                    <AmountInput
+                      value={amount} onValueChange={setAmount} placeholder="0.00" required
                       className="font-mono-tab"
                       style={{ ...inputStyle, padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', fontSize: '1.6rem', fontWeight: 600 }}
                     />
@@ -351,7 +352,7 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
                     {d.recurring.grossAmount}
                     <div style={{ position: 'relative' }}>
                       <span style={prefixStyle}>$</span>
-                      <input type="number" min="0" step="0.01" value={grossAmount} onChange={(e) => setGrossAmount(e.target.value)} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
+                      <AmountInput value={grossAmount} onValueChange={setGrossAmount} placeholder="0.00" required className="font-mono-tab" style={{ ...inputStyle, paddingLeft: '1.6rem' }} />
                     </div>
                   </label>
                 )}
