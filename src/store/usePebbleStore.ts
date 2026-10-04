@@ -101,9 +101,16 @@ interface PebblePrefs {
   showWelcome: boolean;
   // Read as 'bar' only when exactly 'bar'; anything else is the donut.
   breakdownChart: BreakdownChart;
+  // Privacy mode: whether amounts start blurred when the app opens.
+  privacyOnLaunch: boolean;
 }
 
 interface PebbleUIState extends PebblePrefs {
+  // Session only, never persisted (not in PebblePrefs or partialize):
+  // whether amounts are blurred right now.
+  privacyOn: boolean;
+  setPrivacyOn: (value: boolean) => void;
+  setPrivacyOnLaunch: (value: boolean) => void;
   setAppearance: (value: Appearance) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -145,6 +152,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
   breakdownChart: 'donut',
+  privacyOnLaunch: false,
 };
 
 // ---- Per-user storage -------------------------------------------------------
@@ -198,6 +206,9 @@ export const usePebbleStore = create<PebbleUIState>()(
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
       setBreakdownChart: (value) => set({ breakdownChart: value }),
+      privacyOn: false,
+      setPrivacyOn: (value) => set({ privacyOn: value }),
+      setPrivacyOnLaunch: (value) => set({ privacyOnLaunch: value }),
     }),
     {
       // Per-user key prefix - see perUserStorage. Imported, not literal: the
@@ -255,6 +266,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).
         showWelcome: state.showWelcome,
         breakdownChart: state.breakdownChart,
+        privacyOnLaunch: state.privacyOnLaunch,
       }),
     }
   )

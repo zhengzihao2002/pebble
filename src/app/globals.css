@@ -1620,3 +1620,37 @@ html.pebble-welcoming::after {
 /* No horizontal scroll */
 .pebble-root { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
 .pebble-root .pb-modal-body { overflow-x: hidden; }
+
+/* Privacy mode */
+.pebble-root.pb-private .font-mono-tab:not(input):not(.pb-revealed),
+.pebble-root.pb-private .pb-money:not(.pb-revealed) { filter: blur(6px); cursor: pointer; }
+.pebble-root.pb-private .recharts-cartesian-axis-tick text,
+.pebble-root.pb-private .recharts-tooltip-wrapper,
+.pebble-root.pb-private .recharts-label { filter: blur(5px); }
+
+/* Privacy mode: hero */
+.pebble-root.pb-private .hero-balance:not(.pb-revealed),
+.pebble-root.pb-private .pb-hero-account-amount:not(.pb-revealed) { filter: blur(8px); cursor: pointer; }
+
+/* Privacy mode: stronger blur */
+.pebble-root.pb-private .font-mono-tab:not(input):not(.pb-revealed),
+.pebble-root.pb-private .pb-money:not(.pb-revealed) { filter: blur(11px); }
+.pebble-root.pb-private .hero-balance:not(.pb-revealed),
+.pebble-root.pb-private .pb-hero-account-amount:not(.pb-revealed) { filter: blur(18px); }
+.pebble-root.pb-private .recharts-cartesian-axis,
+.pebble-root.pb-private .recharts-yAxis,
+.pebble-root.pb-private .recharts-xAxis,
+.pebble-root.pb-private .recharts-cartesian-axis-tick text,
+.pebble-root.pb-private .recharts-tooltip-wrapper,
+.pebble-root.pb-private .recharts-label { filter: blur(9px); }
+
+/* Privacy mode: svg axes */
+.pebble-root.pb-private .recharts-cartesian-axis,
+.pebble-root.pb-private .recharts-yAxis,
+.pebble-root.pb-private .recharts-xAxis { filter: none; }
+.pebble-root.pb-private .recharts-cartesian-axis-tick text,
+.pebble-root.pb-private .recharts-label { filter: url(#pb-svg-blur); }
+
+/* Privacy mode: hide y axis numbers */
+.pebble-root.pb-private .recharts-yAxis text,
+.pebble-root.pb-private .recharts-yAxis tspan { fill: transparent !important; stroke: none !important; }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
@@ -30,6 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const fontChoice = usePebbleStore((s) => s.fontChoice);
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
+  const privacyOn = usePebbleStore((s) => s.privacyOn);
+  const pathname = usePathname();
 
   // Loads THIS user's saved preferences (per-user storage - see
   // switchPebbleUser). Until the session resolves, the most recent user's are
@@ -226,8 +228,53 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Privacy mode. The launch setting applies once this user's preferences
+  // have loaded; after that the header eye switches it for the session.
+  useEffect(() => {
+    const apply = () => {
+      const s = usePebbleStore.getState();
+      s.setPrivacyOn(s.privacyOnLaunch === true);
+    };
+    if (usePebbleStore.persist.hasHydrated()) apply();
+    return usePebbleStore.persist.onFinishHydration(apply);
+  }, []);
+
+  // The class drives the blur in globals.css. Amounts revealed by a tap
+  // are hidden again when the mode changes or the page does.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.classList.toggle('pb-private', privacyOn);
+    root.querySelectorAll('.pb-revealed').forEach((el) => el.classList.remove('pb-revealed'));
+  }, [privacyOn, pathname]);
+
+  // Tapping a blurred amount reveals that amount only. Capture phase, and
+  // the tap is consumed, so it does not also open the row it sits in.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const reveal = (e: MouseEvent) => {
+      if (!root.classList.contains('pb-private')) return;
+      const target = e.target as HTMLElement | null;
+      const amount = target?.closest?.('.font-mono-tab:not(input), .pb-money, .hero-balance, .pb-hero-account-amount') as HTMLElement | null;
+      if (!amount || amount.classList.contains('pb-revealed')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      amount.classList.add('pb-revealed');
+    };
+    root.addEventListener('click', reveal, true);
+    return () => root.removeEventListener('click', reveal, true);
+  }, []);
+
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
+      {/* Blur used by privacy mode on chart axis text: CSS blur() does not
+          apply inside SVG, a url() filter does. */}
+      <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
+        <filter id="pb-svg-blur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
+      </svg>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">

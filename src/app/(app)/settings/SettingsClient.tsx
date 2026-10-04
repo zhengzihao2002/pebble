@@ -12,6 +12,7 @@ import { ChartTypeControl } from '@/components/settings/ChartTypeControl';
 import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
+import { PrivacyControl } from '@/components/settings/PrivacyControl';
 import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
 import { AccountsCard } from '@/components/settings/AccountsCard';
 import type { Account } from '@/lib/data/mappers';
@@ -115,6 +116,7 @@ export function SettingsClient({
       cards: (
         <>
           <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
+          <PrivacyControl />
           <SoundSettingsCard />
         </>
       ),

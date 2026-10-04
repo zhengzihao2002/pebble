@@ -694,6 +694,15 @@ export const en = {
   },
 
   // Labels only. The stored values stay 'searchable' / 'plain' in every locale.
+  privacyMode: {
+    title: 'Privacy',
+    hint: 'Choose whether amounts start blurred when Pebble opens. Tap an amount to see it, or use the eye button at the top of each page to show or hide them all.',
+    optionShow: 'Show amounts',
+    optionBlur: 'Blur amounts',
+    showAmounts: 'Show amounts',
+    hideAmounts: 'Hide amounts',
+  },
+
   selectMode: {
     title: 'Dropdown lists',
     hint: "Search list lets you type to filter. Simple list uses your device's standard picker.",

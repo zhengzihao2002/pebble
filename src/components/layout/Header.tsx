@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Plus, ArrowRightLeft, X } from 'lucide-react';
+import { Plus, ArrowRightLeft, X, Eye, EyeOff } from 'lucide-react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { getGreetingKey } from '@/lib/format';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
@@ -33,6 +34,8 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
   const { d, t } = useTranslation();
+  const privacyOn = usePebbleStore((s) => s.privacyOn);
+  const setPrivacyOn = usePebbleStore((s) => s.setPrivacyOn);
 
   const firstName = !isPending && name ? name.trim().split(/\s+/)[0] : '';
 
@@ -140,6 +143,18 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
           <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.subtitle}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+          {/* Privacy eye: outside .header-actions so phones show it too. */}
+          <button
+            type="button"
+            onClick={() => setPrivacyOn(!privacyOn)}
+            className="icon-btn"
+            aria-pressed={privacyOn}
+            aria-label={privacyOn ? d.privacyMode.showAmounts : d.privacyMode.hideAmounts}
+            title={privacyOn ? d.privacyMode.showAmounts : d.privacyMode.hideAmounts}
+            style={{ width: 38, height: 38, borderRadius: '50%', padding: 0, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {privacyOn ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
           {current.action && handleActionClick && (
             <div ref={actionsRef} className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               {/* Drops BELOW the header rather than expanding sideways: a

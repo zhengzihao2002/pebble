@@ -120,7 +120,7 @@ export function TransactionsClient({
             tooltip in StatementRow - this is that information promoted, not a
             new pattern. */}
         <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.35rem 0.9rem', marginBottom: '1.25rem' }}>
-          <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
+          <p className="font-display pb-money" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
           {/* Chips rather than loose text: each account reads as its own object,
               and the icon identifies it faster than the word does. Subordinate
               to the total in size, but not weightless. Deliberately NOT StatTab

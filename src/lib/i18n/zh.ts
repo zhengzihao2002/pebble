@@ -611,6 +611,15 @@ export const zh: typeof en = {
     system: '跟随系统',
   },
 
+  privacyMode: {
+    title: '隐私',
+    hint: '选择打开 Pebble 时是否模糊金额。点按某个金额即可查看，或使用每个页面顶部的眼睛按钮显示或隐藏全部金额。',
+    optionShow: '显示金额',
+    optionBlur: '模糊金额',
+    showAmounts: '显示金额',
+    hideAmounts: '隐藏金额',
+  },
+
   selectMode: {
     title: '下拉列表',
     hint: '搜索列表可输入文字筛选；简单列表使用设备自带的选择器。',
