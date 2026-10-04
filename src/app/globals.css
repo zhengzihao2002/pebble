@@ -1664,3 +1664,28 @@ html.pebble-welcoming::after {
 
 /* Amount field hint room */
 .pebble-root .pb-amount-has-hint { padding-right: 5.5rem !important; }
+
+/* Undo delete bar */
+@keyframes pb-undo-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.pebble-root .pb-undo-stack {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 70;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  width: min(26rem, calc(100% - 1.5rem)); pointer-events: none;
+}
+.pebble-root .pb-undo-bar {
+  pointer-events: auto; position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 0.6rem 0.7rem 1rem; border-radius: 0.9rem;
+  background-color: var(--ink); color: var(--paper); box-shadow: var(--shadow-float);
+  font-size: 0.87rem;
+}
+.pebble-root .pb-undo-bar button {
+  background: transparent; border: none; color: inherit; cursor: pointer;
+  font-weight: 700; font-size: 0.85rem; padding: 0.35rem 0.55rem; border-radius: 0.5rem; flex-shrink: 0;
+}
+.pebble-root .pb-undo-bar button:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
+.pebble-root .pb-undo-line {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background-color: currentColor; opacity: 0.45; transform-origin: left center;
+  animation: pb-undo-drain 5000ms linear forwards;
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useUndoDelete } from '@/components/shared/UndoDelete';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Briefcase, Coins, Pencil, SlidersHorizontal, Trash2 } from 'lucide-react';
@@ -72,6 +73,7 @@ function CloseSoon({ close }: { close: () => void }) {
  */
 function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta }) {
   const deleteLocked = useSafetyLock('deleteTransactions');
+  const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
@@ -316,17 +318,23 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
     await performSave();
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (busy || deleted || deleteLocked) return;
-    setBusy(true);
     setError(null);
-    const result = txn.type === 'adjustment'
-      ? await callAction(() => deleteBalanceAdjustmentAction({ id: txn.id }))
-      : await callAction(() => deleteTransactionAction({ id: txn.id, type: txn.type }));
-    setBusy(false);
-    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
-    // Below the failure return. No celebration: CloseSoon plays the dialog's
-    // normal exit and the row disappearing is the confirmation.
+    // Nothing is sent yet. The SAME delete call runs after a 5-second undo
+    // window (UndoDeleteProvider in AppShell); until it lands the row and
+    // every total stay as they are, and any failure shows in the undo bar.
+    // No celebration: CloseSoon plays the dialog's normal exit now.
+    const id = txn.id;
+    const type = txn.type;
+    scheduleDelete({
+      run: async () => {
+        const result = type === 'adjustment'
+          ? await callAction(() => deleteBalanceAdjustmentAction({ id }))
+          : await callAction(() => deleteTransactionAction({ id, type }));
+        return result.ok ? null : translateActionError(d, locale, result);
+      },
+    });
     setDeleted(true);
   };
 

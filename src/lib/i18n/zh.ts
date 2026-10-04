@@ -692,6 +692,16 @@ export const zh: typeof en = {
     tomorrow: '明天',
   },
 
+  undoDelete: {
+    pending: '交易将被删除',
+    undo: '撤销',
+    sending: '正在删除…',
+    done: '已删除',
+    failed: '无法删除该交易。',
+    retry: '重试',
+    dismiss: '关闭',
+  },
+
   dashboard: {
     periodTitle: '本期',
     byAccount: '各账户余额',

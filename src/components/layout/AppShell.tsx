@@ -20,6 +20,7 @@ import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { TransferModal } from '@/components/modals/TransferModal';
 import { CommandPalette } from './CommandPalette';
+import { UndoDeleteProvider } from '@/components/shared/UndoDelete';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
@@ -315,6 +316,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <feGaussianBlur stdDeviation="4" />
         </filter>
       </svg>
+      <UndoDeleteProvider>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">
@@ -356,6 +358,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <TransactionDetailModal txn={paletteTxn.txn} categoryMeta={paletteTxn.categoryMeta} onClose={() => setPaletteTxn(null)} />
       )}
       {welcome && <WelcomeOverlay onDone={closeWelcome} />}
+      </UndoDeleteProvider>
     </div>
   );
 }

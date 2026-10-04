@@ -777,6 +777,16 @@ export const en = {
     tomorrow: 'Tomorrow',
   },
 
+  undoDelete: {
+    pending: 'Transaction will be deleted',
+    undo: 'Undo',
+    sending: 'Deleting…',
+    done: 'Deleted',
+    failed: "Couldn't delete the transaction.",
+    retry: 'Try again',
+    dismiss: 'Dismiss',
+  },
+
   dashboard: {
     periodTitle: 'This period',
     byAccount: 'Balance by account',
