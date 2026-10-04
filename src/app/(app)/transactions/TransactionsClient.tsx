@@ -1,17 +1,21 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
 import { getLastNMonths } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
+import { resolveCategoryIcon } from '@/lib/data/icons';
 import { formatCurrency, formatMonthYear } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { StatTab } from '@/components/shared/StatTab';
+import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { MonthNavigator } from '@/components/transactions/MonthNavigator';
 import { StatementList, type StatementEntry } from '@/components/transactions/StatementList';
+import { StatementRow } from '@/components/shared/StatementRow';
 import type { Account } from '@/lib/data/mappers';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 
@@ -30,14 +34,25 @@ interface TransactionsClientProps {
   balancesByAccount: Record<string, number>;
 }
 
+type TypeFilter = 'all' | 'expense' | 'income';
+// Not '' - a category can never be named this, and '' is what SelectField's
+// plain mode treats as "nothing chosen".
+const ALL_CATEGORIES = '__all__';
+
 export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
   const [selectedTransaction, setSelectedTransaction] = useState<LedgerRecord | null>(null);
+
+  // Search and filters. Client only: they run over the ledger already on the
+  // page, so nothing is fetched.
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
 
   // 13, not 12: the navigator must reach the same month one year back
   // (from August 2026 that is August 2025, which is 13 entries inclusive).
@@ -110,6 +125,64 @@ export function TransactionsClient({
   const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
   const canGoNewer = selectedMonthIndex > 0;
 
+  // ---- Search ---------------------------------------------------------------
+  // Runs over the same 13-month ledger as the month list, so every result
+  // keeps a correct "balance after". Older records: the command palette.
+  const accountNames = useMemo(() => {
+    const map = new Map<string, string>();
+    accounts.forEach((a) => map.set(a.id, a.name.toLowerCase()));
+    return map;
+  }, [accounts]);
+
+  const q = query.trim().toLowerCase();
+  // Amount search ignores $, commas and spaces, and only runs when the query
+  // has a digit, so typing a word never matches every amount.
+  const qAmount = q.replace(/[$,\s]/g, '');
+  const amountQuery = /[0-9]/.test(qAmount);
+  const searching = q !== '' || typeFilter !== 'all' || categoryFilter !== ALL_CATEGORIES;
+
+  const results = useMemo(() => {
+    if (!searching) return [];
+    return entriesWithRecords.filter((e) => {
+      const r = e.record;
+      if (typeFilter !== 'all' && r.type !== typeFilter) return false;
+      if (categoryFilter !== ALL_CATEGORIES && (r.type === 'adjustment' || r.category !== categoryFilter)) return false;
+      if (q === '') return true;
+      const categoryText = r.type === 'adjustment'
+        ? d.txn.balanceAdjustment.toLowerCase()
+        : `${r.category} ${categoryLabel(d, r.category)}`.toLowerCase();
+      const tag = r.type === 'expense' && r.tag ? r.tag.toLowerCase() : '';
+      return (
+        r.description.toLowerCase().includes(q)
+        || categoryText.includes(q)
+        || (tag !== '' && tag.includes(q))
+        || (accountNames.get(r.accountId) ?? '').includes(q)
+        || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
+      );
+    });
+  }, [searching, entriesWithRecords, typeFilter, categoryFilter, q, qAmount, amountQuery, accountNames, d]);
+
+  // Category names are USER DATA (label === value); only the two income
+  // literals get a translated label.
+  const categoryOptions: SelectFieldOption[] = useMemo(() => [
+    { value: ALL_CATEGORIES, label: d.txnSearch.allCategories },
+    ...categories.map((c) => ({ value: c.name, label: c.name, icon: resolveCategoryIcon(c.iconKey), color: c.color })),
+    { value: 'Standard Income', label: d.enums.incomeCategory['Standard Income'] },
+    { value: 'Side Cash', label: d.enums.incomeCategory['Side Cash'] },
+  ], [categories, d]);
+
+  const clearSearch = () => {
+    setQuery('');
+    setTypeFilter('all');
+    setCategoryFilter(ALL_CATEGORIES);
+  };
+
+  const typeOptions: { value: TypeFilter; label: string }[] = [
+    { value: 'all', label: d.txnSearch.typeAll },
+    { value: 'expense', label: d.enums.kind.expense },
+    { value: 'income', label: d.enums.kind.income },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
@@ -177,13 +250,98 @@ export function TransactionsClient({
         </div>
       </div>
 
-      <StatementList
-        entries={monthEntries}
-        openingBalance={openingBalance}
-        accounts={accounts}
-        categoryMeta={categoryMeta}
-        onOpenDetail={setSelectedTransaction}
-      />
+      {/* Search and filters. */}
+      <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)' }} />
+          <input
+            id="pb-txn-search"
+            type="text"
+            enterKeyHint="search"
+            autoComplete="off"
+            spellCheck={false}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={d.txnSearch.placeholder}
+            aria-label={d.txnSearch.placeholder}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '0.65rem 2.6rem 0.65rem 2.3rem',
+              borderRadius: '0.7rem', border: '1px solid var(--line)', fontSize: '0.9rem',
+              color: 'var(--ink)', backgroundColor: 'var(--paper)',
+            }}
+          />
+          {searching && (
+            <button
+              type="button" onClick={clearSearch} className="icon-btn" aria-label={d.txnSearch.clear} title={d.txnSearch.clear}
+              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+          <div role="group" aria-label={d.txnSearch.typeLabel} style={{ display: 'flex', gap: '0.35rem' }}>
+            {typeOptions.map((o) => {
+              const on = typeFilter === o.value;
+              return (
+                <button
+                  key={o.value} type="button" aria-pressed={on} onClick={() => setTypeFilter(o.value)}
+                  style={{
+                    padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: on ? 600 : 500,
+                    border: `1px solid ${on ? 'var(--pine)' : 'var(--line)'}`,
+                    backgroundColor: on ? 'var(--pine-soft)' : 'transparent',
+                    color: on ? 'var(--pine)' : 'var(--ink-soft)',
+                  }}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280 }}>
+            <SelectField
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={categoryOptions}
+              placeholder={d.txnSearch.allCategories}
+              ariaLabel={d.txnSearch.categoryLabel}
+            />
+          </div>
+        </div>
+      </div>
+
+      {searching ? (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <p role="status" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', padding: '0.9rem 1.5rem', margin: 0, borderBottom: '1px solid var(--line)' }}>
+            {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
+            {' · '}{d.txnSearch.scope}
+          </p>
+          {results.length === 0 ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.txnSearch.empty}</p>
+          ) : (
+            results.map((e) => (
+              <StatementRow
+                key={e.record.id}
+                txn={e.record}
+                balancesAfter={e.balancesAfter}
+                accounts={accounts}
+                totalBalanceAfter={e.totalBalanceAfter}
+                onOpenDetail={setSelectedTransaction}
+                categoryMeta={categoryMeta}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <StatementList
+          entries={monthEntries}
+          openingBalance={openingBalance}
+          accounts={accounts}
+          categoryMeta={categoryMeta}
+          onOpenDetail={setSelectedTransaction}
+        />
+      )}
 
       {selectedTransaction && (
         <TransactionDetailModal

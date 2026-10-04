@@ -294,7 +294,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
       if (key === 'n' && !e.shiftKey) { e.preventDefault(); setShowAddModal(true); }
       else if (key === 't' && !e.shiftKey) { e.preventDefault(); setShowTransferModal(true); }
-      else if (e.key === '/') { e.preventDefault(); setShowPalette(true); }
+      else if (e.key === '/') {
+        e.preventDefault();
+        // On Transactions, / goes to the page's own search field.
+        const search = document.getElementById('pb-txn-search');
+        if (search instanceof HTMLInputElement) search.focus();
+        else setShowPalette(true);
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);

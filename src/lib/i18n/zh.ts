@@ -646,6 +646,19 @@ export const zh: typeof en = {
     navLabel: '设置分区',
   },
 
+  txnSearch: {
+    placeholder: '搜索交易',
+    clear: '清除搜索',
+    typeLabel: '类型',
+    typeAll: '全部',
+    categoryLabel: '分类',
+    allCategories: '全部分类',
+    resultsOne: '1 条结果',
+    results: '{count} 条结果',
+    empty: '没有匹配的交易。',
+    scope: '最近 13 个月',
+  },
+
   transactions: {
     totalBalanceToday: '今日总余额',
     openingBalance: '期初余额',

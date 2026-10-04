@@ -731,6 +731,19 @@ export const en = {
     navLabel: 'Settings sections',
   },
 
+  txnSearch: {
+    placeholder: 'Search transactions',
+    clear: 'Clear search',
+    typeLabel: 'Type',
+    typeAll: 'All',
+    categoryLabel: 'Category',
+    allCategories: 'All categories',
+    resultsOne: '1 result',
+    results: '{count} results',
+    empty: 'No transactions match.',
+    scope: 'last 13 months',
+  },
+
   transactions: {
     totalBalanceToday: 'Total balance, today',
     openingBalance: 'Opening balance',
