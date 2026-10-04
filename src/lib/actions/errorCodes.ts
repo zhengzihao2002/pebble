@@ -22,6 +22,7 @@ export type ServerErrorCode =
   | 'loader.categoriesFailed'
   | 'loader.categoryUsageFailed'
   | 'loader.accountsFailed'
+  | 'loader.searchFailed'
   | 'loader.accountUsageFailed'
   | 'loader.sessionLocationsFailed'
   // --- transactions & balance adjustments (sub-step 4a) ---

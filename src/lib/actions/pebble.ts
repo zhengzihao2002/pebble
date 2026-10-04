@@ -2162,6 +2162,44 @@ async function loadAccounts(userId: string): Promise<AccountsResult> {
 
 export const createAccountAction = withSessionUser(createAccount);
 export const getAccountsAction = withSessionUser(loadAccounts);
+
+export type SearchTransactionsResult =
+  | {
+      ok: true;
+      transactions: ReturnType<typeof mergeTransactions>;
+      categories: Awaited<ReturnType<typeof getCategories>>;
+      budgets: Awaited<ReturnType<typeof getBudgets>>;
+    }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+/**
+ * Every expense and income row, plus the categories and budgets the detail
+ * dialog needs, for the command palette's search. READ ONLY. The palette
+ * calls it at most once per session, on the first keystroke, and keeps the
+ * result in memory only. Recurring catch-up is not run here: the next page
+ * load does that.
+ */
+async function loadSearchTransactions(userId: string): Promise<SearchTransactionsResult> {
+  try {
+    const [expenseRows, incomeRows, categoryRows, budgetMap] = await Promise.all([
+      getExpenses(userId),
+      getIncome(userId),
+      getCategories(userId),
+      getBudgets(userId),
+    ]);
+    return { ok: true, transactions: mergeTransactions(expenseRows, incomeRows), categories: categoryRows, budgets: budgetMap };
+  } catch (error) {
+    console.error('[pebble action] getSearchTransactionsAction', error);
+    return {
+      ok: false,
+      error: "Couldn't reach the database to search your transactions.",
+      kind: classifyError(error) === 'database' ? 'database' : 'unknown',
+      code: 'loader.searchFailed',
+    };
+  }
+}
+
+export const getSearchTransactionsAction = withSessionUser(loadSearchTransactions);
 /**
  * Moves records from one account to another.
  *

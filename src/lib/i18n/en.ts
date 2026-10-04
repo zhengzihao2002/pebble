@@ -49,6 +49,9 @@ export const en = {
     empty: 'No matches',
     actions: 'Actions',
     pages: 'Pages',
+    transactions: 'Transactions',
+    searching: 'Searching…',
+    searchFailed: "Couldn't search your transactions.",
   },
 
   nav: {
@@ -1146,6 +1149,7 @@ export const en = {
     'loader.categoryUsageFailed': "Couldn't check that category.",
     'loader.accountUsageFailed': "Couldn't check that account.",
     'loader.accountsFailed': "Couldn't load your accounts.",
+    'loader.searchFailed': "Couldn't search your transactions.",
     'validation.dateFormat': 'Date must be in YYYY-MM-DD format.',
     'validation.paymentMethod': 'Payment method must be Cash or Checking.',
     'validation.expenseAmountPositive': 'Expense amount must be a positive number.',

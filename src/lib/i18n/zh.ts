@@ -29,6 +29,9 @@ export const zh: typeof en = {
     empty: '没有匹配项',
     actions: '操作',
     pages: '页面',
+    transactions: '交易',
+    searching: '正在搜索…',
+    searchFailed: '无法搜索你的交易。',
   },
 
   nav: {
@@ -1042,6 +1045,7 @@ export const zh: typeof en = {
     'loader.categoryUsageFailed': '无法检查该分类。',
     'loader.accountUsageFailed': '无法检查该账户。',
     'loader.accountsFailed': '无法加载你的账户。',
+    'loader.searchFailed': '无法搜索你的交易。',
     'validation.dateFormat': '日期格式必须为 YYYY-MM-DD。',
     'validation.paymentMethod': '支付方式必须是现金或银行账户。',
     'validation.expenseAmountPositive': '支出金额必须是正数。',

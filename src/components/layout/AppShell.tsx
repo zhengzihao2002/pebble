@@ -20,6 +20,8 @@ import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { TransferModal } from '@/components/modals/TransferModal';
 import { CommandPalette } from './CommandPalette';
+import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
+import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -56,6 +58,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [showTransferModal, setShowTransferModal] = useState(false);
   // Command palette (⌘K / Ctrl+K, or /).
   const [showPalette, setShowPalette] = useState(false);
+  // A transaction picked from the palette's search, shown in its detail dialog.
+  const [paletteTxn, setPaletteTxn] = useState<{ txn: LedgerRecord; categoryMeta: CategoryMeta } | null>(null);
 
   // Welcome animation: armed by the auth pages (WelcomeArm), played once on
   // the first app page after signing in, then the flag is cleared. The
@@ -339,7 +343,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           onAddGoal={() => setShowAddGoalModal(true)}
           onAddSchedule={() => setShowAddScheduleModal(true)}
           onModifyBudget={() => setShowModifyBudgetModal(true)}
+          onOpenTransaction={(txn, categoryMeta) => setPaletteTxn({ txn, categoryMeta })}
         />
+      )}
+      {paletteTxn && (
+        <TransactionDetailModal txn={paletteTxn.txn} categoryMeta={paletteTxn.categoryMeta} onClose={() => setPaletteTxn(null)} />
       )}
       {welcome && <WelcomeOverlay onDone={closeWelcome} />}
     </div>
