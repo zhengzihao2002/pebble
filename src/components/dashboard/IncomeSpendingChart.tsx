@@ -1,15 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { usePebbleStore } from '@/store/usePebbleStore';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import type { Transaction } from '@/types';
-import { buildTrendData, getAvailablePeriods } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { formatCompactCurrency } from '@/lib/chartFormat';
-import { TREND_MODES } from '@/data/seed';
+import { buildPeriodTrend } from '@/lib/periodTrend';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // Theme tokens, not hex: the grid and tick text already used var() in these
@@ -19,89 +17,38 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 const INCOME = 'var(--pine)';
 const SPENDING = 'var(--wine)';
 
-export function IncomeSpendingChart({ transactions }: { transactions: Transaction[] }) {
+interface IncomeSpendingChartProps {
+  transactions: Transaction[];
+  /** The Dashboard's shared period, owned by the This period card. */
+  mode: string;
+  periodKey: string | null;
+  /** Zone-aware today from DashboardClient; null until resolved. */
+  today: Date | null;
+  /** False until the saved period has been restored, so the chart draws once. */
+  ready: boolean;
+}
+
+export function IncomeSpendingChart({ transactions, mode, periodKey, today, ready }: IncomeSpendingChartProps) {
   const { d, locale } = useTranslation();
-  // TREND_MODES lives in @/data/seed with English labels. Looked up by VALUE
-  // against the same d.statsModes dictionary the dashboard tiles use - the
-  // mode keys overlap - falling back to the seed label for anything that
-  // doesn't match, so an unrecognised mode degrades to English rather than
-  // a blank option.
-  const modeLabel = (value: string, fallback: string) =>
-    (d.statsModes as Record<string, string>)[value] ?? fallback;
-  const [trendMode, setTrendMode] = useState('last6');
-  const [trendYear, setTrendYear] = useState<string | null>(null);
-
-  // Same mode + sub-period shape as the stat tiles and the "Where it went"
-  // donut: the second control appears only for the modes that need scoping,
-  // and its options come from periods actually present in the data rather
-  // than a generated range.
-  const needsYear = trendMode === 'month' || trendMode === 'quarter';
-  const availableYears = needsYear ? getAvailablePeriods(transactions, 'year', false, locale) : [];
-
-  const handleTrendModeChange = (mode: string) => {
-    setTrendMode(mode);
-    setTrendYear(
-      mode === 'month' || mode === 'quarter'
-        ? getAvailablePeriods(transactions, 'year', false, locale)[0]?.key ?? null
-        : null,
-    );
-  };
-
-  // No latestYearOnly here: this selector picks the year itself, so trimming
-  // it to one option would defeat the purpose.
-  const restoreRef = useRef(false);
-  const [restored, setRestored] = useState(false);
   // Recharts animates in JavaScript, so the global CSS reduced-motion block
-  // cannot cover it. Read in the effect below, never during render.
+  // cannot cover it. Read in an effect, never during render.
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
-    if (restoreRef.current) return;
-    restoreRef.current = true;
-    const saved = usePebbleStore.getState().dashboardPrefs;
-    const mode = saved?.trendMode ?? 'last6';
-    const years = getAvailablePeriods(transactions, 'year', false, locale);
-    const savedYear = saved?.trendYear ?? null;
-    setTrendMode(mode);
-    setTrendYear(
-      mode === 'month' || mode === 'quarter'
-        ? (years.some((y) => y.key === savedYear) ? savedYear : (years[0]?.key ?? null))
-        : null,
-    );
     setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    setRestored(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!restored) return;
-    usePebbleStore.getState().setDashboardPrefs({ trendMode, trendYear });
-  }, [restored, trendMode, trendYear]);
-
-  const trendData = buildTrendData(transactions, trendMode, trendYear, locale);
+  const trendData = useMemo(
+    () => (ready && today ? buildPeriodTrend(transactions, mode, periodKey, today, locale) : []),
+    [ready, today, transactions, mode, periodKey, locale],
+  );
 
   return (
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{d.trendChart.title}</h3>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <select
-            value={trendMode} onChange={(e) => handleTrendModeChange(e.target.value)}
-            style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
-          >
-            {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{modeLabel(m.value, m.label)}</option>)}
-          </select>
-          {needsYear && availableYears.length > 0 && (
-            <select
-              value={trendYear || ''} onChange={(e) => setTrendYear(e.target.value)}
-              style={{ fontSize: '0.75rem', padding: '0.3rem 0.55rem', borderRadius: '0.5rem', border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)' }}
-            >
-              {availableYears.map((y) => <option key={y.key} value={y.key}>{y.label}</option>)}
-            </select>
-          )}
-        </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.trendChart.title}</h3>
       </div>
-      {!restored ? (
-        // Waits for the saved mode to be restored, so the chart draws once.
+      {!ready || !today ? (
+        // Waits for the shared period to be restored, so the chart draws once.
         <div style={{ flex: 1, minHeight: 220 }} />
       ) : trendData.length === 0 ? (
         <div style={{ flex: 1, minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
@@ -114,7 +61,7 @@ export function IncomeSpendingChart({ transactions }: { transactions: Transactio
       <div className="pb-chart-fade pb-chart-fill" style={{ flex: 1, minHeight: 220, position: 'relative' }}>
       <div style={{ position: 'absolute', inset: 0 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart key={`${trendMode}-${trendYear ?? ''}`} data={trendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+        <AreaChart key={`${mode}-${periodKey ?? ''}`} data={trendData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={INCOME} stopOpacity={0.35} />

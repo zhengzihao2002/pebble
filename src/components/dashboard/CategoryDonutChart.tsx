@@ -1,32 +1,30 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { CategoryMeta, Transaction } from '@/types';
-import { buildCategoryBreakdown, getAvailablePeriods } from '@/lib/stats';
-import { formatCurrency, parseLocalDate } from '@/lib/format';
-import { TREND_MODES } from '@/data/seed';
+import { buildCategoryBreakdown } from '@/lib/stats';
+import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
-import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
-import { todayInZone } from '@/lib/recurring/occurrences';
 
 interface CategoryDonutChartProps {
   transactions: Transaction[];
   categoryMeta: CategoryMeta;
+  /** The Dashboard's shared period, owned by the This period card. */
+  mode: string;
+  periodKey: string | null;
+  /** Zone-aware today from DashboardClient; null until resolved. */
+  today: Date | null;
+  /** False until the saved period has been restored, so the ring draws once. */
+  ready: boolean;
 }
 
 // Legend rows per page. The ring always shows every category; only the list
 // is paged, so a long category list cannot stretch the page (and the
 // Income vs spending card beside it).
 const PAGE_SIZE = 6;
-
-const selectStyle: React.CSSProperties = {
-  fontSize: '0.72rem', padding: '0.28rem 0.5rem', borderRadius: '0.5rem',
-  border: '1px solid var(--line)', color: 'var(--ink-soft)', backgroundColor: 'var(--mist)',
-};
 
 /** Share of the total, display only. Tiny non-zero shares read "<0.1%". */
 function formatShare(value: number, total: number): string {
@@ -44,6 +42,7 @@ function formatWholeDollars(n: number): string {
 /**
  * "Where it went": a thin ring with flat slices in each category's own colour
  * (user data, never altered), a one-line description, and a paged legend.
+ * Follows the Dashboard's shared period (the This period card's selectors).
  *
  * MOTION. The whole ring glides into place (rotation, scale and fade on the
  * ring's group, in CSS - .pb-donut-ring). Recharts' own sweep is off: it grows
@@ -51,68 +50,22 @@ function formatWholeDollars(n: number): string {
  * the animation on the ring itself, not a wrapper, means it begins when the
  * ring is actually drawn.
  */
-export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonutChartProps) {
-  const { d, t, locale } = useTranslation();
-
-  // See DashboardClient.tsx for the full rationale behind this pattern -
-  // resolved independently here since this component owns its own
-  // breakdownMode/breakdownPeriod state already, same as every other
-  // dashboardPrefs slice on this page.
-  const timeZoneOverride = useTimeZoneOverride();
-  const [today, setToday] = useState<Date | null>(null);
-  useEffect(() => {
-    const zone = timeZoneOverride ?? resolveBrowserTimeZone();
-    setToday(parseLocalDate(todayInZone(zone)));
-  }, [timeZoneOverride]);
-  const modeLabel = (value: string, fallback: string) =>
-    (d.statsModes as Record<string, string>)[value] ?? fallback;
-  const [breakdownMode, setBreakdownMode] = useState('last6');
-  const [breakdownPeriod, setBreakdownPeriod] = useState<string | null>(null);
-  const [restored, setRestored] = useState(false);
+export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey, today, ready }: CategoryDonutChartProps) {
+  const { d, t } = useTranslation();
   const [page, setPage] = useState(0);
   // 'bar' only when exactly 'bar'; anything else is the donut.
   const breakdownChart = usePebbleStore((s) => s.breakdownChart) === 'bar' ? 'bar' : 'donut';
   // Recharts animates in JavaScript, so the global CSS reduced-motion block
-  // cannot cover it. Read in the restore effect, never during render.
+  // cannot cover it. Read in an effect, never during render.
   const [reduceMotion, setReduceMotion] = useState(false);
-
-  // latestYearOnly, matching the stats card above: this year's months, not
-  // every month on record.
-  const periodsForMode = (mode: string) =>
-    (mode === 'month' || mode === 'quarter' || mode === 'year')
-      ? getAvailablePeriods(transactions, mode as 'month' | 'quarter' | 'year', true, locale)
-      : [];
-
-  const needsSubPeriod = breakdownMode === 'month' || breakdownMode === 'quarter' || breakdownMode === 'year';
-  const availablePeriods = needsSubPeriod ? periodsForMode(breakdownMode) : [];
-
-  const handleBreakdownModeChange = (mode: string) => {
-    setBreakdownMode(mode);
-    setBreakdownPeriod(periodsForMode(mode)[0]?.key ?? null);
-    setPage(0);
-  };
-
-  const restoreRef = useRef(false);
   useEffect(() => {
-    if (restoreRef.current) return;
-    restoreRef.current = true;
-    const saved = usePebbleStore.getState().dashboardPrefs;
-    const mode = saved?.breakdownMode ?? 'last6';
-    const avail = periodsForMode(mode);
-    const savedPeriod = saved?.breakdownPeriod ?? null;
-    setBreakdownMode(mode);
-    setBreakdownPeriod(avail.some((p) => p.key === savedPeriod) ? savedPeriod : (avail[0]?.key ?? null));
     setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    setRestored(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!restored) return;
-    usePebbleStore.getState().setDashboardPrefs({ breakdownMode, breakdownPeriod });
-  }, [restored, breakdownMode, breakdownPeriod]);
+  // A new period starts the legend on its first page.
+  useEffect(() => { setPage(0); }, [mode, periodKey]);
 
-  const donutData = buildCategoryBreakdown(transactions, breakdownMode, categoryMeta, breakdownPeriod, today ?? undefined);
+  const donutData = ready && today ? buildCategoryBreakdown(transactions, mode, categoryMeta, periodKey, today) : [];
   const donutTotal = donutData.reduce((s, entry) => s + entry.value, 0);
 
   const pages = Math.max(1, Math.ceil(donutData.length / PAGE_SIZE));
@@ -130,22 +83,12 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
 
   return (
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.donutChart.title}</h3>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <select value={breakdownMode} onChange={(e) => handleBreakdownModeChange(e.target.value)} style={selectStyle} aria-label={d.donutChart.title}>
-            {TREND_MODES.map((m) => <option key={m.value} value={m.value}>{modeLabel(m.value, m.label)}</option>)}
-          </select>
-          {needsSubPeriod && availablePeriods.length > 0 && (
-            <select value={breakdownPeriod || ''} onChange={(e) => { setBreakdownPeriod(e.target.value); setPage(0); }} style={selectStyle} aria-label={d.donutChart.title}>
-              {availablePeriods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
-          )}
-        </div>
       </div>
 
-      {!restored ? (
-        // Waits for the saved mode to be restored, so the ring draws once.
+      {!ready || !today ? (
+        // Waits for the shared period to be restored, so the ring draws once.
         <div style={{ flex: 1, minHeight: 240 }} />
       ) : donutData.length === 0 ? (
         <div style={{ flex: 1, minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem' }}>
@@ -161,7 +104,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
               </div>
               {/* Segment widths are each category's share of the total - true
                   proportions at every moment; the reveal is a wipe, not growth. */}
-              <div key={`${breakdownMode}-${breakdownPeriod ?? ''}`} className="pb-bar-track" role="img" aria-label={summary}>
+              <div key={`${mode}-${periodKey ?? ''}`} className="pb-bar-track" role="img" aria-label={summary}>
                 {donutData.map((entry) => (
                   <span
                     key={entry.name} className="pb-bar-seg"
@@ -176,7 +119,7 @@ export function CategoryDonutChart({ transactions, categoryMeta }: CategoryDonut
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
-                  key={`${breakdownMode}-${breakdownPeriod ?? ''}`}
+                  key={`${mode}-${periodKey ?? ''}`}
                   data={donutData} dataKey="value" nameKey="name"
                   innerRadius={82} outerRadius={100} paddingAngle={2} cornerRadius={3}
                   strokeWidth={0} isAnimationActive={!reduceMotion} animationDuration={1600} animationEasing="cubic-bezier(0.65, 0, 0.35, 1)"

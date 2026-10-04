@@ -71,6 +71,9 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
     setToday(parseLocalDate(todayInZone(zone)));
   }, [timeZoneOverride]);
 
+  // THE Dashboard period: This period, Income vs spending and Where it went
+  // all follow it.
+  //
   // Defaults to the current month rather than a rolling 30 days: a calendar
   // month is the unit a budget is actually kept in, and the rolling window
   // straddled two of them. Both are static values, so the server render and
@@ -158,12 +161,13 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         )}
       </section>
 
-      <UpcomingCard rules={rules} categoryMeta={categoryMeta} />
-
+      {/* Both follow the This period selectors above. */}
       <section className="dash-charts-grid">
-        <IncomeSpendingChart transactions={transactions} />
-        <CategoryDonutChart transactions={transactions} categoryMeta={categoryMeta} />
+        <IncomeSpendingChart transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+        <CategoryDonutChart transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
       </section>
+
+      <UpcomingCard rules={rules} categoryMeta={categoryMeta} />
 
       <section className="dash-two-col">
         <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} />

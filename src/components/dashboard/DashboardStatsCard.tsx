@@ -32,14 +32,16 @@ const selectStyle: React.CSSProperties = {
 
 /**
  * The four period figures in one card, separated by hairlines, with the
- * period controls and range line in its header. Dashboard only: the shared
- * StatTab / .stat-tabs used by other pages are untouched.
+ * period controls and range line in its header. The controls here are the
+ * Dashboard's ONE period control: Income vs spending and Where it went follow
+ * them too. Dashboard only: the shared StatTab / .stat-tabs used by other
+ * pages are untouched.
  */
 export function DashboardStatsCard({
   modes, statsMode, onModeChange, periods, statsPeriod, onPeriodChange,
   rangeLabel, inProgress, income, spending, savingsRate, saved,
 }: DashboardStatsCardProps) {
-  const { d, t } = useTranslation();
+  const { d } = useTranslation();
 
   const cells = [
     {
@@ -112,6 +114,8 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="font-mono-tab pb-stats-value">{c.value}</div>
+              {/* Every tile reserves the note row, so a tile without a note
+                  matches the height of the one that has it. */}
               <div className="pb-stats-note" aria-hidden={c.note ? undefined : true} style={c.note ? undefined : { visibility: 'hidden' }}>{c.note || '\u00a0'}</div>
             </div>
           );
