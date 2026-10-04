@@ -1657,3 +1657,7 @@ html.pebble-welcoming::after {
 
 /* Privacy mode: chart cloud */
 .pebble-root.pb-private .pb-chart-fill { filter: blur(16px); pointer-events: none; }
+
+/* Privacy mode: all charts */
+.pebble-root.pb-private .pb-chart-fade,
+.pebble-root.pb-private .pb-donut-ring { filter: blur(16px); pointer-events: none; }

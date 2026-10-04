@@ -46,7 +46,7 @@ export function GoalCard({ goal }: GoalCardProps) {
           <Pencil size={14} />
         </button>
       </div>
-      <p className="font-display" style={{ fontSize: '1.55rem', fontWeight: 600, marginBottom: '0.2rem' }}>
+      <p className="font-display pb-money" style={{ fontSize: '1.55rem', fontWeight: 600, marginBottom: '0.2rem' }}>
         {formatCurrency(goal.current)} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--ink-soft)' }}>{t(d.phrasing.ofTarget, { total: formatCurrency(goal.target) })}</span>
       </p>
       <div style={{ height: 8, borderRadius: 99, backgroundColor: 'var(--line)', overflow: 'hidden', margin: '0.8rem 0 0.55rem' }}>
