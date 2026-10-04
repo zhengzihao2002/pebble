@@ -1654,3 +1654,6 @@ html.pebble-welcoming::after {
 /* Privacy mode: hide y axis numbers */
 .pebble-root.pb-private .recharts-yAxis text,
 .pebble-root.pb-private .recharts-yAxis tspan { fill: transparent !important; stroke: none !important; }
+
+/* Privacy mode: chart cloud */
+.pebble-root.pb-private .pb-chart-fill { filter: blur(16px); pointer-events: none; }
