@@ -1,5 +1,6 @@
 'use client';
 
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -173,10 +174,10 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
           <div style={{ position: 'relative' }}>
             {/* Stays '$' in every locale: real US dollars. */}
             <span className="font-display" style={bigDollarStyle}>$</span>
-            <input
+            <AmountInput allowNegative
               ref={amountRef}
-              type="number" inputMode="decimal" step="0.01" value={value}
-              onChange={(e) => setValue(e.target.value)}
+              value={value}
+              onValueChange={setValue}
               placeholder="0.00" className="font-mono-tab" style={bigAmountStyle}
             />
           </div>

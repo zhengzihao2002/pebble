@@ -1,5 +1,6 @@
 'use client';
 
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
@@ -189,9 +190,9 @@ export function TransferModal({ onClose }: TransferModalProps) {
                 <div style={{ position: 'relative' }}>
                   {/* Stays '$' in every locale, as in Add Transaction. */}
                   <span className="font-display" style={bigDollarStyle}>$</span>
-                  <input
-                    type="number" inputMode="decimal" min="0" step="0.01" value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                  <AmountInput
+                    value={amount}
+                    onValueChange={setAmount}
                     placeholder="0.00" className="font-mono-tab" style={bigAmountStyle}
                   />
                 </div>

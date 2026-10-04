@@ -1,5 +1,6 @@
 'use client';
 
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useRef, useState } from 'react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -293,10 +294,10 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                 {d.budgetModal.manualAmountLabel}
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.76rem' }}>$</span>
-                  <input
-                    type="number" min="0" step="0.01" placeholder="0.00"
+                  <AmountInput
+                    placeholder="0.00"
                     value={manualAmount}
-                    onChange={(e) => setManualAmount(e.target.value)}
+                    onValueChange={setManualAmount}
                     className="font-mono-tab"
                     style={{ ...manualFieldStyle, paddingLeft: '1.2rem' }}
                   />
@@ -360,12 +361,12 @@ export function ModifyBudgetModal({ onClose }: ModifyBudgetModalProps) {
                   </span>
                   <div className="budget-modify-input-wrap">
                     <span style={{ color: 'var(--ink-soft)', fontSize: '0.85rem' }}>$</span>
-                    <input
-                      type="number" min="0" step="1" placeholder="0" value={values[name] ?? ''} disabled={loading}
-                      onChange={(e) => setValues((prev) => ({ ...prev, [name]: e.target.value }))}
+                    <span style={{ position: 'relative', flex: 1, minWidth: 0, display: 'block' }}><AmountInput wholeDollars
+                      placeholder="0" value={values[name] ?? ''} disabled={loading}
+                      onValueChange={(v) => setValues((prev) => ({ ...prev, [name]: v }))}
                       className="font-mono-tab"
                       style={{ width: '100%', padding: '0.5rem 0.6rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.87rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' }}
-                    />
+                    /></span>
                     <span style={{ color: 'var(--ink-soft)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{d.budgetModal.perYear}</span>
                   </div>
                 </div>

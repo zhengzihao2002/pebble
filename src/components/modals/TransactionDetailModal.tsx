@@ -1,5 +1,6 @@
 'use client';
 
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Briefcase, Coins, Pencil, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
@@ -372,9 +373,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
   const moneyInput = (value: string, onChange: (v: string) => void, extra?: React.CSSProperties) => (
     <div style={{ position: 'relative' }}>
       <span className="font-display" style={bigDollarStyle}>$</span>
-      <input
-        type="number" inputMode="decimal" min="0" step="0.01" value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <AmountInput
+        value={value}
+        onValueChange={onChange}
         disabled={onHibernatedAccount}
         className="font-mono-tab"
         style={{ ...bigAmountStyle, opacity: onHibernatedAccount ? 0.6 : 1, ...extra }}

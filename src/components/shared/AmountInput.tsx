@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type InputHTMLAttributes } from 'react';
+import { useEffect, useRef, useState, type InputHTMLAttributes, type Ref } from 'react';
 import { evaluateAmount, isAmountExpression } from '@/lib/amountExpression';
 
 type AmountInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'> & {
@@ -9,6 +9,9 @@ type AmountInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
   onValueChange: (value: string) => void;
   /** Only for fields that can hold a negative figure (a balance correction). */
   allowNegative?: boolean;
+  /** Rounds the result to whole dollars (yearly category budgets). */
+  wholeDollars?: boolean;
+  ref?: Ref<HTMLInputElement>;
 };
 
 /**
@@ -18,17 +21,18 @@ type AmountInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
  * the text is incomplete or invalid - so a form's submit, validation and
  * payload never see an expression, and pressing Enter submits the right
  * number. On blur an expression collapses to its result. Must sit inside a
- * position: relative wrapper (every amount field's $ prefix already does),
- * which the "= result" hint is placed against.
+ * position: relative wrapper, which the "= result" hint is placed against.
  *
  * Room for the hint comes from a CLASS (pb-amount-has-hint in globals.css),
  * never from the inline style: callers pass a padding shorthand, and adding
  * or removing paddingRight beside it makes React warn and can mis-style.
  */
-export function AmountInput({ value, onValueChange, allowNegative = false, onBlur, className, ...rest }: AmountInputProps) {
+export function AmountInput({
+  value, onValueChange, allowNegative = false, wholeDollars = false, onBlur, className, ref, ...rest
+}: AmountInputProps) {
   const [text, setText] = useState(value);
   // What this field last handed the form, so a change from OUTSIDE (a chip,
-  // a reset) can be told apart from our own echo and shown.
+  // an import button, a reset) can be told apart from our own echo and shown.
   const lastEmitted = useRef(value);
   useEffect(() => {
     if (value !== lastEmitted.current) {
@@ -37,7 +41,13 @@ export function AmountInput({ value, onValueChange, allowNegative = false, onBlu
     }
   }, [value]);
 
-  const result = isAmountExpression(text) ? evaluateAmount(text, allowNegative) : null;
+  const evaluate = (t: string): string | null => {
+    const r = evaluateAmount(t, allowNegative);
+    if (r === null) return null;
+    return wholeDollars ? String(Math.round(Number(r))) : r;
+  };
+
+  const result = isAmountExpression(text) ? evaluate(text) : null;
 
   const emit = (next: string) => {
     lastEmitted.current = next;
@@ -50,6 +60,7 @@ export function AmountInput({ value, onValueChange, allowNegative = false, onBlu
     <>
       <input
         {...rest}
+        ref={ref}
         className={classes || undefined}
         type="text"
         inputMode="decimal"
@@ -59,7 +70,7 @@ export function AmountInput({ value, onValueChange, allowNegative = false, onBlu
         onChange={(e) => {
           const t = e.target.value;
           setText(t);
-          emit(t.trim() === '' ? '' : (evaluateAmount(t, allowNegative) ?? ''));
+          emit(t.trim() === '' ? '' : (evaluate(t) ?? ''));
         }}
         onBlur={(e) => {
           if (result !== null) setText(result);

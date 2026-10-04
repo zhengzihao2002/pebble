@@ -1,5 +1,6 @@
 'use client';
 
+import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Briefcase, Coins } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
@@ -364,8 +365,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 {/* Stays '$' in every locale: these are the user's real US
                     dollars, and formatCurrency() is pinned to en-US too. */}
                 <span className="font-display" style={bigDollarStyle}>$</span>
-                <input
-                  type="number" inputMode="decimal" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required
+                <AmountInput
+                  value={amount} onValueChange={setAmount} placeholder="0.00" required
                   className="font-mono-tab" style={bigAmountStyle}
                 />
               </div>
@@ -405,8 +406,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                   {d.addTxn.payBefore}
                   <div style={{ position: 'relative' }}>
                     <span className="font-display" style={bigDollarStyle}>$</span>
-                    <input
-                      type="number" inputMode="decimal" min="0" step="0.01" value={grossPay} onChange={(e) => setGrossPay(e.target.value)} placeholder="0.00"
+                    <AmountInput
+                      value={grossPay} onValueChange={setGrossPay} placeholder="0.00"
                       className="font-mono-tab" style={bigAmountStyle}
                     />
                   </div>
@@ -417,8 +418,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 {isSideCashSelected ? d.addTxn.amount : d.addTxn.payAfter}
                 <div style={{ position: 'relative' }}>
                   <span className="font-display" style={bigDollarStyle}>$</span>
-                  <input
-                    type="number" inputMode="decimal" min="0" step="0.01" value={netPay} onChange={(e) => setNetPay(e.target.value)} placeholder="0.00" required
+                  <AmountInput
+                    value={netPay} onValueChange={setNetPay} placeholder="0.00" required
                     className="font-mono-tab"
                     style={{ ...bigAmountStyle, border: `1px solid ${netExceedsGross ? 'var(--wine)' : 'var(--line)'}` }}
                   />
