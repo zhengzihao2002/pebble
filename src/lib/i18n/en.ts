@@ -43,6 +43,14 @@ export const en = {
   // Nav labels double as the page TITLES in Header - they are the same words
   // in English, and keeping one entry means a rename cannot leave the sidebar
   // and the page heading disagreeing.
+  palette: {
+    title: 'Command palette',
+    placeholder: 'Type a command or page…',
+    empty: 'No matches',
+    actions: 'Actions',
+    pages: 'Pages',
+  },
+
   nav: {
     dashboard: 'Dashboard',
     transactions: 'Transactions',

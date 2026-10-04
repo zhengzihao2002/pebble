@@ -19,6 +19,7 @@ import { ModifyBudgetModal } from '@/components/modals/ModifyBudgetModal';
 import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { TransferModal } from '@/components/modals/TransferModal';
+import { CommandPalette } from './CommandPalette';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -53,6 +54,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   // Same reasoning as the modals above: the trigger lives in Header.
   const [showTransferModal, setShowTransferModal] = useState(false);
+  // Command palette (⌘K / Ctrl+K, or /).
+  const [showPalette, setShowPalette] = useState(false);
 
   // Welcome animation: armed by the auth pages (WelcomeArm), played once on
   // the first app page after signing in, then the flag is cleared. The
@@ -266,6 +269,33 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => root.removeEventListener('click', reveal, true);
   }, []);
 
+  // Command palette and single-key shortcuts. None fire while typing,
+  // during IME composition, on key repeat, with a modifier held (except the
+  // palette's own ⌘K / Ctrl+K), or while any dialog is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const dialogOpen = root.querySelector('[role="dialog"]') !== null;
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && key === 'k') {
+        if (dialogOpen) return;
+        e.preventDefault();
+        setShowPalette(true);
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || dialogOpen) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
+      if (key === 'n' && !e.shiftKey) { e.preventDefault(); setShowAddModal(true); }
+      else if (key === 't' && !e.shiftKey) { e.preventDefault(); setShowTransferModal(true); }
+      else if (e.key === '/') { e.preventDefault(); setShowPalette(true); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
       {/* Blur used by privacy mode on chart axis text: CSS blur() does not
@@ -301,6 +331,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
       {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
       {showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
+      {showPalette && (
+        <CommandPalette
+          onClose={() => setShowPalette(false)}
+          onAddTransaction={() => setShowAddModal(true)}
+          onTransfer={() => setShowTransferModal(true)}
+          onAddGoal={() => setShowAddGoalModal(true)}
+          onAddSchedule={() => setShowAddScheduleModal(true)}
+          onModifyBudget={() => setShowModifyBudgetModal(true)}
+        />
+      )}
       {welcome && <WelcomeOverlay onDone={closeWelcome} />}
     </div>
   );

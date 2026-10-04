@@ -23,6 +23,14 @@ export const zh: typeof en = {
     saving: '保存中…',
   },
 
+  palette: {
+    title: '命令面板',
+    placeholder: '输入命令或页面…',
+    empty: '没有匹配项',
+    actions: '操作',
+    pages: '页面',
+  },
+
   nav: {
     dashboard: '概览',
     transactions: '交易',
