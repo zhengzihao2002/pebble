@@ -17,6 +17,34 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 const INCOME = 'var(--pine)';
 const SPENDING = 'var(--wine)';
 
+type TipItem = { dataKey?: unknown; value?: unknown };
+
+/** Income, Spending and Saved (their difference) for the hovered point. */
+function SavedTooltip({ active, payload, label }: { active?: boolean; payload?: ReadonlyArray<TipItem>; label?: unknown }) {
+  const { d } = useTranslation();
+  if (!active || !payload || payload.length === 0) return null;
+  const pick = (key: string) => Number(payload.find((p) => p.dataKey === key)?.value ?? 0);
+  const income = pick('income');
+  const spending = pick('spending');
+  const saved = income - spending;
+  const row = (name: string, value: number, color?: string) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1.25rem' }}>
+      <span style={{ color: 'var(--ink-soft)' }}>{name}</span>
+      <span className="font-mono-tab" style={{ fontWeight: 600, color: color ?? 'var(--ink)' }}>{formatCurrency(value)}</span>
+    </div>
+  );
+  return (
+    <div style={{ backgroundColor: 'var(--mist)', border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.55rem 0.75rem', fontSize: '0.8rem', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 150 }}>
+      <div style={{ fontWeight: 600, marginBottom: 2 }}>{String(label ?? '')}</div>
+      {row(d.dashboard.income, income, INCOME)}
+      {row(d.dashboard.spending, spending, SPENDING)}
+      <div style={{ borderTop: '1px solid var(--line)', marginTop: 2, paddingTop: 3 }}>
+        {row(d.dashboard.saved, saved, saved >= 0 ? INCOME : SPENDING)}
+      </div>
+    </div>
+  );
+}
+
 interface IncomeSpendingChartProps {
   transactions: Transaction[];
   /** The Dashboard's shared period, owned by the This period card. */
@@ -81,7 +109,7 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
           <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={48} />
           {/* Colours, border and size come from the global
               .recharts-default-tooltip rule in globals.css. */}
-          <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ stroke: 'var(--line)' }} />
+          <Tooltip content={<SavedTooltip />} cursor={{ stroke: 'var(--line)' }} />
           <Area type="monotone" dataKey="income" name={d.dashboard.income} stroke={INCOME} fill="url(#incomeGrad)" strokeWidth={2} isAnimationActive={!reduceMotion} animationDuration={700} animationEasing="ease-out" />
           <Area type="monotone" dataKey="spending" name={d.dashboard.spending} stroke={SPENDING} fill="url(#spendGrad)" strokeWidth={2} isAnimationActive={!reduceMotion} animationDuration={700} animationEasing="ease-out" />
         </AreaChart>
