@@ -1689,3 +1689,17 @@ html.pebble-welcoming::after {
   background-color: currentColor; opacity: 0.45; transform-origin: left center;
   animation: pb-undo-drain 5000ms linear forwards;
 }
+
+/* Add button colour cycle */
+@keyframes pb-add-hue {
+  0%, 100% { background-color: #D64550; }
+  17% { background-color: #E07B1F; }
+  33% { background-color: #C9A227; }
+  50% { background-color: #2F9E6B; }
+  67% { background-color: #3B82D6; }
+  83% { background-color: #8B5CD6; }
+}
+.pebble-root .bottom-nav-add[aria-expanded="true"] { animation: pb-add-hue 7s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .bottom-nav-add[aria-expanded="true"] { animation: none; background-color: var(--pine-strong); }
+}
