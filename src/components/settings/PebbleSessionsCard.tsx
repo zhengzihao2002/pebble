@@ -116,6 +116,23 @@ export function PebbleSessionsCard() {
     return { label: os ? t(d.sessions.browserOn, { browser, os }) : browser, mobile };
   };
 
+  // Vercel cannot see an exact model: browsers send one user agent for every
+  // iPhone. Android sometimes names its model, and Chrome often hides it.
+  const deviceModel = (ua?: string | null): string | null => {
+    if (!ua) return null;
+    if (/iPhone|iPod/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua)) return 'iPad';
+    if (/Android/.test(ua)) {
+      const m = /Android [\d.]+; ([^;)]+?)(?: Build|[;)])/.exec(ua);
+      const model = m?.[1]?.trim();
+      return model && model !== 'K' && model.length > 1 ? model : 'Android';
+    }
+    if (/Mac OS X|Macintosh/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows';
+    if (/Linux/.test(ua)) return 'Linux';
+    return null;
+  };
+
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.sessions.title}</h3>
@@ -129,6 +146,7 @@ export function PebbleSessionsCard() {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {sessions.map((s, i) => {
             const dev = device(s.userAgent);
+            const model = deviceModel(s.userAgent);
             const where = place(locations[s.id]);
             const isCurrent = s.id === currentId;
             const DeviceIcon = dev.mobile ? Smartphone : Laptop;
@@ -151,6 +169,7 @@ export function PebbleSessionsCard() {
                       </span>
                     )}
                   </p>
+                  {model && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{model}</p>}
                   <p style={{ margin: 0, fontSize: '0.84rem', color: where ? 'var(--ink)' : 'var(--ink-soft)', display: 'flex', alignItems: 'center', gap: 5 }}>
                     <MapPin size={13} style={{ flexShrink: 0, color: where ? 'var(--pine)' : 'var(--ink-soft)' }} />
                     {where ?? d.sessions.notRecorded}
