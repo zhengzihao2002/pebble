@@ -1799,6 +1799,117 @@ async function deleteRecurringRule(
  * ---------------------------------------------------------------------- */
 
 export const addTransactionAction = withSessionUser(addTransaction);
+
+/**
+ * Imports up to 500 parsed bank rows, each with its own account. WRITE PATH,
+ * inserts only. Everything is checked first (nothing written if any row
+ * fails): every account used is this user's and active, real calendar dates,
+ * amounts above zero with at most 2 decimals, spending in an existing
+ * category, money in as Standard Income or Side Cash. Then ONE ReadCommitted
+ * transaction: the write lock, then one INSERT ... SELECT FROM unnest(...)
+ * per (table, account) group.
+ *
+ * Ids: one timestamp per import plus a base-36 counter, never containing '_'
+ * (that marks legacy imports in compareSameDayIds). Rows are sorted by date,
+ * file order kept for ties. Expenses are stored negative; money in has
+ * gross = net, like Side Cash.
+ */
+async function importTransactions(
+  userId: string,
+  input: {
+    rows: { date: string; description: string; amount: number; kind: 'expense' | 'income'; category: string; accountId: string; tag?: string }[];
+  },
+): Promise<ActionResult> {
+  try {
+    const rows = Array.isArray(input?.rows) ? input.rows : [];
+    if (rows.length < 1 || rows.length > 500) {
+      return fail('An import needs between 1 and 500 rows.', 'validation', 'validation.importInvalid');
+    }
+
+    const wanted = [...new Set(rows.map((r) => r?.accountId))];
+    if (!wanted.every((a) => typeof a === 'string' && a !== '')) {
+      return fail('One of the rows is not valid.', 'validation', 'validation.importInvalid');
+    }
+    const owned = await db
+      .select({ id: account.id, status: account.status, name: account.name })
+      .from(account)
+      .where(and(eq(account.userId, userId), inArray(account.id, wanted as string[])));
+    const accountById = new Map(owned.map((a) => [a.id, a]));
+    if (wanted.some((a) => accountById.get(a as string)?.status !== 'active')) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+
+    const known = new Set((await getCategories(userId)).map((c) => c.name));
+    const clean: { date: string; description: string; cents: number; kind: 'expense' | 'income'; category: string; accountId: string; tag: string; order: number }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const raw = Number(r?.amount);
+      const cents = Math.round(raw * 100);
+      const ok =
+        typeof r?.date === 'string' && DATE_PATTERN.test(r.date) &&
+        isFiniteNumber(raw) && cents > 0 && Math.abs(raw * 100 - cents) < 1e-6 &&
+        (r.kind === 'expense' || r.kind === 'income') &&
+        typeof r.category === 'string' &&
+        (r.kind === 'expense' ? known.has(r.category) : (INCOME_CATEGORIES as readonly string[]).includes(r.category));
+      if (!ok) return fail('One of the rows is not valid.', 'validation', 'validation.importInvalid');
+      const [y, m, d] = r.date.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) {
+        return fail('One of the rows has an invalid date.', 'validation', 'validation.importInvalid');
+      }
+      clean.push({
+        date: r.date,
+        description: String(r.description ?? '').trim().slice(0, 200),
+        cents,
+        kind: r.kind,
+        category: r.category,
+        accountId: r.accountId,
+        tag: r.kind === 'expense' ? String(r.tag ?? '').trim().slice(0, 50) : '',
+        order: i,
+      });
+    }
+
+    clean.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.order - b.order));
+    const stamp = generateTransId().split('-')[0];
+    const withIds = clean.map((r, i) => ({ r, id: `${stamp}-${i.toString(36).padStart(4, '0')}` }));
+
+    const statements = [userWriteLockStatement(userId)];
+    for (const kind of ['expense', 'income'] as const) {
+      for (const accId of wanted as string[]) {
+        const picked = withIds.filter((x) => x.r.kind === kind && x.r.accountId === accId);
+        if (picked.length === 0) continue;
+        const target = accountById.get(accId)!;
+        const ids = picked.map((x) => x.id);
+        const descs = picked.map((x) => x.r.description);
+        const cats = picked.map((x) => x.r.category);
+        const dates = picked.map((x) => x.r.date);
+        const amts = picked.map((x) => (x.r.cents / 100).toFixed(2));
+        const tags = picked.map((x) => x.r.tag);
+        if (kind === 'expense') {
+          statements.push(neonSql`INSERT INTO expense
+              (id, user_id, description, category, tag, transaction_date, payment_method, account_id, amount)
+            SELECT r.id, ${userId}::uuid, r.description, r.category, r.tag, r.date::date, ${target.name}, ${target.id}, -(r.amount)
+              FROM unnest(${ids}::text[], ${descs}::text[], ${cats}::text[], ${dates}::text[], ${amts}::numeric[], ${tags}::text[])
+                   AS r(id, description, category, date, amount, tag)`);
+        } else {
+          statements.push(neonSql`INSERT INTO income
+              (id, user_id, description, category, transaction_date, payment_method, account_id, gross_amount, net_amount)
+            SELECT r.id, ${userId}::uuid, r.description, r.category, r.date::date, ${target.name}, ${target.id}, r.amount, r.amount
+              FROM unnest(${ids}::text[], ${descs}::text[], ${cats}::text[], ${dates}::text[], ${amts}::numeric[])
+                   AS r(id, description, category, date, amount)`);
+        }
+      }
+    }
+    await neonSql.transaction(statements, { isolationLevel: 'ReadCommitted' });
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('importTransactionsAction', error);
+  }
+}
+
+export const importTransactionsAction = withSessionUser(importTransactions);
 export const addGoalAction = withSessionUser(addGoal);
 export const updateGoalAction = withSessionUser(updateGoal);
 export const deleteGoalAction = withSessionUser(deleteGoal);

@@ -18,6 +18,7 @@ import { StatementList, type StatementEntry } from '@/components/transactions/St
 import { StatementRow } from '@/components/shared/StatementRow';
 import type { Account } from '@/lib/data/mappers';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
+import { ImportCsvButton } from '@/components/shared/ImportCsv';
 
 interface TransactionsClientProps {
   transactions: Transaction[];
@@ -308,6 +309,7 @@ export function TransactionsClient({
               ariaLabel={d.txnSearch.categoryLabel}
             />
           </div>
+          <ImportCsvButton />
         </div>
       </div>
 
