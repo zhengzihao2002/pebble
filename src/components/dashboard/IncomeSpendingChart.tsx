@@ -26,9 +26,11 @@ interface IncomeSpendingChartProps {
   today: Date | null;
   /** False until the saved period has been restored, so the chart draws once. */
   ready: boolean;
+  /** The dates behind the chart, e.g. "Oct 1 – Oct 31". */
+  timeFrame: string;
 }
 
-export function IncomeSpendingChart({ transactions, mode, periodKey, today, ready }: IncomeSpendingChartProps) {
+export function IncomeSpendingChart({ transactions, mode, periodKey, today, ready, timeFrame }: IncomeSpendingChartProps) {
   const { d, locale } = useTranslation();
   // Recharts animates in JavaScript, so the global CSS reduced-motion block
   // cannot cover it. Read in an effect, never during render.
@@ -46,6 +48,7 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.trendChart.title}</h3>
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.2rem 0 0' }}>{timeFrame}</p>
       </div>
       {!ready || !today ? (
         // Waits for the shared period to be restored, so the chart draws once.

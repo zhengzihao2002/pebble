@@ -19,6 +19,8 @@ interface CategoryDonutChartProps {
   today: Date | null;
   /** False until the saved period has been restored, so the ring draws once. */
   ready: boolean;
+  /** The dates behind the chart, e.g. "Oct 1 – Oct 31". */
+  timeFrame: string;
 }
 
 // Legend rows per page. The ring always shows every category; only the list
@@ -50,7 +52,7 @@ function formatWholeDollars(n: number): string {
  * the animation on the ring itself, not a wrapper, means it begins when the
  * ring is actually drawn.
  */
-export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey, today, ready }: CategoryDonutChartProps) {
+export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey, today, ready, timeFrame }: CategoryDonutChartProps) {
   const { d, t } = useTranslation();
   const [page, setPage] = useState(0);
   // 'bar' only when exactly 'bar'; anything else is the donut.
@@ -85,6 +87,7 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.donutChart.title}</h3>
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.2rem 0 0' }}>{timeFrame}</p>
       </div>
 
       {!ready || !today ? (

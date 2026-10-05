@@ -133,6 +133,12 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // its period selector.
   const statsWindow = describeWindow(statsMode, statsPeriod, locale, today ?? undefined);
 
+  // Under each chart's title. A rolling window also names itself; a month,
+  // quarter or year is already named by its range.
+  const timeFrame = needsStatsSubPeriod
+    ? statsWindow.rangeLabel
+    : `${statsWindow.rangeLabel} · ${modeLabel(statsMode, STATS_MODES.find((m) => m.value === statsMode)?.label ?? statsMode)}`;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Both render nothing in the common case. */}
@@ -163,8 +169,8 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
 
       {/* Both follow the This period selectors above. */}
       <section className="dash-charts-grid">
-        <IncomeSpendingChart transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
-        <CategoryDonutChart transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+        <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+        <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
       </section>
 
       <UpcomingCard rules={rules} categoryMeta={categoryMeta} />
