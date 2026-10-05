@@ -755,6 +755,10 @@ export const zh: typeof en = {
     needChoice: '{count} 条需要账户和分类',
   },
 
+  sessionsStale: {
+    hint: '登录状态过期时可能出现这种情况，请退出登录后重新登录。',
+  },
+
   dashboard: {
     periodTitle: '本期',
     byAccount: '各账户余额',

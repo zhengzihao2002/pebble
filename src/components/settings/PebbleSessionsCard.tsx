@@ -46,7 +46,7 @@ export function PebbleSessionsCard() {
         callAction(getSessionLocationsAction, d.sessions.loadFailed),
       ]);
       if (list.error || !list.data) {
-        setError(d.sessions.loadFailed);
+        setError(`${d.sessions.loadFailed} ${d.sessionsStale.hint}`);
         setSessions((prev) => prev ?? []);
         return;
       }
@@ -60,7 +60,7 @@ export function PebbleSessionsCard() {
         setError(translateActionError(d, locale, locs));
       }
     } catch {
-      setError(d.sessions.loadFailed);
+      setError(`${d.sessions.loadFailed} ${d.sessionsStale.hint}`);
       setSessions((prev) => prev ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

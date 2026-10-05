@@ -840,6 +840,10 @@ export const en = {
     needChoice: '{count} need an account and category',
   },
 
+  sessionsStale: {
+    hint: 'This can happen when a sign-in has gone stale. Please sign out and back in again.',
+  },
+
   dashboard: {
     periodTitle: 'This period',
     byAccount: 'Balance by account',
