@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRightLeft, CalendarClock, Eye, EyeOff, PiggyBank, Plus, Search, Target } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, Eye, EyeOff, PiggyBank, Plus, Search, Settings as SettingsIcon, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { navItems } from './navItems';
@@ -30,12 +30,12 @@ interface Command {
   id: string;
   label: string;
   icon: LucideIcon;
-  group: 'actions' | 'pages';
+  group: 'actions' | 'pages' | 'settings';
   run: () => void;
 }
 
 type Row =
-  | { key: string; group: 'actions' | 'pages'; cmd: Command }
+  | { key: string; group: 'actions' | 'pages' | 'settings'; cmd: Command }
   | { key: string; group: 'transactions'; txn: Transaction };
 
 type SearchState = 'idle' | 'loading' | 'ready' | 'error';
@@ -99,6 +99,22 @@ export function CommandPalette({
     });
   };
 
+  // Settings is one page; its sections are found by id (SettingsClient). Going
+  // there from elsewhere waits briefly for the page to mount, then scrolls.
+  const goToSection = (id: string) => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scroll = () => {
+      const el = document.getElementById(id);
+      if (!el) return false;
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      return true;
+    };
+    if (window.location.pathname !== '/settings') router.push('/settings');
+    let tries = 0;
+    const tick = () => { if (scroll() || ++tries > 40) return; window.setTimeout(tick, 50); };
+    window.setTimeout(tick, 0);
+  };
+
   const commands: Command[] = [
     { id: 'add', label: d.header.addTransaction, icon: Plus, group: 'actions', run: onAddTransaction },
     { id: 'transfer', label: d.transfer.title, icon: ArrowRightLeft, group: 'actions', run: onTransfer },
@@ -113,6 +129,14 @@ export function CommandPalette({
       id: item.href, label: d.nav[item.labelKey], icon: item.icon, group: 'pages',
       run: () => router.push(item.href),
     })),
+    { id: 's-money', label: d.settingsSections.money, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-money') },
+    { id: 's-appearance', label: d.settingsSections.appearance, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-appearance') },
+    { id: 's-language', label: d.settingsSections.languageRegion, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-language-region') },
+    { id: 's-behavior', label: d.settingsSections.behavior, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
+    { id: 's-account', label: d.account.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-pebble-account') },
+    { id: 's-privacy', label: d.privacyMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
+    { id: 's-dropdowns', label: d.selectMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
+    { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => router.push('/account/security') },
   ];
 
   const q = query.trim().toLowerCase();
@@ -146,7 +170,7 @@ export function CommandPalette({
   }, [index, q, rows.length]);
 
   const groupLabel = (g: Row['group']) =>
-    g === 'actions' ? d.palette.actions : g === 'pages' ? d.palette.pages : d.palette.transactions;
+    g === 'actions' ? d.palette.actions : g === 'pages' ? d.palette.pages : g === 'settings' ? d.palette.settings : d.palette.transactions;
 
   return (
     <ModalFrame

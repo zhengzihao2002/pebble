@@ -1703,3 +1703,16 @@ html.pebble-welcoming::after {
 @media (prefers-reduced-motion: reduce) {
   .pebble-root .bottom-nav-add[aria-expanded="true"] { animation: none; background-color: var(--pine-strong); }
 }
+
+/* Header search field */
+.pebble-root .pb-search-field { display: none; }
+.pebble-root .pb-search-icon { display: inline-flex; }
+@container content (min-width: 640px) {
+  .pebble-root .pb-search-field {
+    display: inline-flex; align-items: center; gap: 0.5rem; width: 15rem; padding: 0.5rem 0.85rem;
+    border-radius: 999px; border: 1px solid var(--line); background-color: var(--mist);
+    color: var(--ink-soft); font-size: 0.83rem; cursor: pointer; text-align: left;
+  }
+  .pebble-root .pb-search-field:hover { border-color: var(--pine); color: var(--ink); }
+  .pebble-root .pb-search-icon { display: none; }
+}

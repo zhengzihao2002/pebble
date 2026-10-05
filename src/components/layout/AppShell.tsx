@@ -326,6 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onAddGoalClick={() => setShowAddGoalModal(true)}
             onAddScheduleClick={() => setShowAddScheduleModal(true)}
             onTransferClick={() => setShowTransferModal(true)}
+            onSearchClick={() => setShowPalette(true)}
           />
           <main className="pebble-main">{children}</main>
         </div>

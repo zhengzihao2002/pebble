@@ -24,8 +24,10 @@ export const zh: typeof en = {
   },
 
   palette: {
-    title: '命令面板',
-    placeholder: '输入命令或页面…',
+    title: '万能bar',
+    placeholder: '搜索页面、设置、交易…',
+    headerHint: '搜索或跳转…',
+    settings: '设置',
     empty: '没有匹配项',
     actions: '操作',
     pages: '页面',

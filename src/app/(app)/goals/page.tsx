@@ -96,18 +96,9 @@ export default async function GoalsPage() {
         )}
       </div>
 
-      {goals.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--ink-soft)' }}>
-          <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>{d.goals.emptyTitle}</p>
-          {/* The quoted button name is interpolated, not concatenated: it sits
-              mid-sentence in English and after the verb in Chinese. */}
-          <p style={{ fontSize: '0.85rem' }}>{t(d.goals.emptyHint, { action: d.common.addGoal })}</p>
-        </div>
-      )}
-
       <div className="goals-grid">
         {goals.map((g) => <GoalCard key={g.id} goal={g} />)}
-        <AddGoalTile />
+        <AddGoalTile empty={goals.length === 0} />
       </div>
     </div>
   );

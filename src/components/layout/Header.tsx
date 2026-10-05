@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Plus, ArrowRightLeft, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, ArrowRightLeft, X, Eye, EyeOff, Search } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { getGreetingKey } from '@/lib/format';
@@ -16,6 +16,8 @@ interface HeaderProps {
   onAddGoalClick: () => void;
   onAddScheduleClick: () => void;
   onTransferClick: () => void;
+  /** Opens the 万能bar (command palette). */
+  onSearchClick: () => void;
 }
 
 interface PageMeta {
@@ -30,7 +32,7 @@ interface PageMeta {
   secondaryAction?: { label: string; kind: 'transfer' };
 }
 
-export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick, onTransferClick }: HeaderProps) {
+export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
   const { d, t } = useTranslation();
@@ -143,6 +145,18 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
           <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.subtitle}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+          {/* The 万能bar: a field on wide headers, an icon on narrow ones. Both open
+              the command palette. Outside .header-actions so phones show it. */}
+          <button type="button" onClick={onSearchClick} className="pb-search-field" aria-label={d.palette.title}>
+            <Search size={15} aria-hidden="true" />
+            <span>{d.palette.headerHint}</span>
+          </button>
+          <button
+            type="button" onClick={onSearchClick} className="icon-btn pb-search-icon" aria-label={d.palette.title} title={d.palette.title}
+            style={{ width: 38, height: 38, borderRadius: '50%', padding: 0, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Search size={17} aria-hidden="true" />
+          </button>
           {/* Privacy eye: outside .header-actions so phones show it too. */}
           <button
             type="button"

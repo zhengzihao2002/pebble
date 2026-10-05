@@ -44,8 +44,10 @@ export const en = {
   // in English, and keeping one entry means a rename cannot leave the sidebar
   // and the page heading disagreeing.
   palette: {
-    title: 'Command palette',
-    placeholder: 'Type a command or page…',
+    title: '万能bar',
+    placeholder: 'Search pages, settings, transactions…',
+    headerHint: 'Search or jump to…',
+    settings: 'Settings',
     empty: 'No matches',
     actions: 'Actions',
     pages: 'Pages',
