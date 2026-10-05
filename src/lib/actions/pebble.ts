@@ -1759,6 +1759,7 @@ async function setRecurringRuleStatus(
  * possible this way. Transactions already created are always left in place -
  * they are historical fact, not a pending schedule.
  */
+/** A schedule is hard-deleted when nothing was ever created from it; otherwise soft-deleted. */
 async function deleteRecurringRule(
   userId: string,
   input: { id: string },
@@ -1774,10 +1775,24 @@ async function deleteRecurringRule(
       return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule');
     }
 
-    await db
-      .update(recurringRule)
-      .set({ status: 'deleted', updatedAt: new Date().toISOString() })
-      .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
+    // A rule is hard-deleted when nothing was ever created from it. One that
+    // has produced expense or income rows stays as a soft delete, because
+    // those rows still point back to it. One transaction under the write
+    // lock, so catch-up cannot materialize an occurrence between the check
+    // and the delete. If step 1 removes the row, step 2 matches nothing.
+    const id = input.id;
+    await neonSql.transaction(
+      [
+        userWriteLockStatement(userId),
+        neonSql`DELETE FROM recurring_rule
+                 WHERE user_id = ${userId}::uuid AND id = ${id}
+                   AND NOT EXISTS (SELECT 1 FROM expense WHERE user_id = ${userId}::uuid AND recurring_rule_id = ${id})
+                   AND NOT EXISTS (SELECT 1 FROM income WHERE user_id = ${userId}::uuid AND recurring_rule_id = ${id})`,
+        neonSql`UPDATE recurring_rule SET status = 'deleted', updated_at = now()
+                 WHERE user_id = ${userId}::uuid AND id = ${id} AND status <> 'deleted'`,
+      ],
+      { isolationLevel: 'ReadCommitted' },
+    );
 
     revalidateAll();
     return { ok: true };
