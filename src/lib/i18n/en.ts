@@ -846,6 +846,14 @@ export const en = {
     hint: 'This can happen when a sign-in has gone stale. Please sign out and back in again.',
   },
 
+  budgetEdit: {
+    left: '{amount} left',
+    over: '{amount} over',
+    edit: 'Edit budget',
+    save: 'Save',
+    cancel: 'Cancel',
+  },
+
   dashboard: {
     periodTitle: 'This period',
     byAccount: 'Balance by account',

@@ -761,6 +761,14 @@ export const zh: typeof en = {
     hint: '登录状态过期时可能出现这种情况，请退出登录后重新登录。',
   },
 
+  budgetEdit: {
+    left: '剩余 {amount}',
+    over: '超出 {amount}',
+    edit: '编辑预算',
+    save: '保存',
+    cancel: '取消',
+  },
+
   dashboard: {
     periodTitle: '本期',
     byAccount: '各账户余额',
