@@ -968,6 +968,12 @@ export const en = {
     chartLabel: 'Total balance over the last {period}',
     manage: 'Manage accounts',
     noData: 'No records yet.',
+    yourAccounts: 'Your accounts',
+    noChange: 'No change',
+    lastActivity: 'Last activity {date}',
+    noActivity: 'No activity yet',
+    shareOfTotal: '{pct} of total',
+    sparkLabel: '{name}, balance over the last {period}',
   },
 
   dashboard: {

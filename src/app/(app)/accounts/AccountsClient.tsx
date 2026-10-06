@@ -13,6 +13,7 @@ import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { AccountCards } from '@/components/accounts/AccountCards';
 
 type Range = '3m' | '6m' | '1y';
 const MONTHS: Record<Range, number> = { '3m': 3, '6m': 6, '1y': 12 };
@@ -72,6 +73,18 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
     }
     return out;
   }, [chrono, today, range]);
+
+  // Each account's latest record up to today: expenses, income, transfers and corrections.
+  const lastActivity = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!today) return map;
+    for (const r of [...expenses, ...income, ...adjustments]) {
+      if (r.date > today) continue;
+      const prev = map.get(r.accountId);
+      if (!prev || r.date > prev) map.set(r.accountId, r.date);
+    }
+    return map;
+  }, [expenses, income, adjustments, today]);
 
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
   const period = range === '3m' ? d.accountsPage.period3m : range === '6m' ? d.accountsPage.period6m : d.accountsPage.period1y;
@@ -167,6 +180,9 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
           </Link>
         </div>
       </section>
+      {days && current !== null && chrono.length > 0 && (
+        <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} />
+      )}
     </div>
   );
 }

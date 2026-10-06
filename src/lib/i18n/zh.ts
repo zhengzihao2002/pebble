@@ -883,6 +883,12 @@ export const zh: typeof en = {
     chartLabel: '最近 {period}的总余额',
     manage: '管理账户',
     noData: '还没有记录。',
+    yourAccounts: '你的账户',
+    noChange: '没有变化',
+    lastActivity: '最近活动 {date}',
+    noActivity: '还没有活动',
+    shareOfTotal: '占总额 {pct}',
+    sparkLabel: '{name}，最近 {period}的余额',
   },
 
   dashboard: {
