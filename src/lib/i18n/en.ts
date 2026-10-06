@@ -58,6 +58,7 @@ export const en = {
 
   nav: {
     dashboard: 'Dashboard',
+    accounts: 'Accounts',
     transactions: 'Transactions',
     reports: 'Reports',
     analysis: 'Analysis',
@@ -947,6 +948,26 @@ export const en = {
     dormantTitle: 'Quiet account',
     dormantBody: '{name} has had no transactions since {date}.',
     dormantAction: 'Open Settings',
+  },
+
+  accountsPage: {
+    subtitle: 'Your balance over time',
+    totalLabel: 'Total balance today',
+    rangeLabel: 'Period',
+    range3m: '3M',
+    range6m: '6M',
+    range1y: '1Y',
+    period3m: '3 months',
+    period6m: '6 months',
+    period1y: '12 months',
+    up: 'Up {amount} ({pct}) over the last {period}',
+    down: 'Down {amount} ({pct}) over the last {period}',
+    upNoPct: 'Up {amount} over the last {period}',
+    downNoPct: 'Down {amount} over the last {period}',
+    flat: 'No change over the last {period}',
+    chartLabel: 'Total balance over the last {period}',
+    manage: 'Manage accounts',
+    noData: 'No records yet.',
   },
 
   dashboard: {

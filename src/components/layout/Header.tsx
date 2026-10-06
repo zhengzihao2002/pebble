@@ -117,6 +117,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   const pageMeta: Record<string, PageMeta> = {
     '/dashboard': { title: d.nav.dashboard, subtitle: greeting, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
     '/transactions': { title: d.nav.transactions, subtitle: d.header.subtitles.transactions, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
+    '/accounts': { title: d.nav.accounts, subtitle: d.accountsPage.subtitle },
     '/reports': { title: d.nav.reports, subtitle: d.header.subtitles.reports },
     '/analysis': { title: d.nav.analysis, subtitle: d.header.subtitles.analysis },
     '/insights': { title: d.nav.insights, subtitle: d.insights.subtitle },

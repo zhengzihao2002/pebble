@@ -38,6 +38,7 @@ export const zh: typeof en = {
 
   nav: {
     dashboard: '概览',
+    accounts: '账户',
     transactions: '交易',
     reports: '报表',
     analysis: '分析',
@@ -862,6 +863,26 @@ export const zh: typeof en = {
     dormantTitle: '闲置账户',
     dormantBody: '{name} 自 {date} 以来没有任何交易。',
     dormantAction: '打开设置',
+  },
+
+  accountsPage: {
+    subtitle: '你的余额变化',
+    totalLabel: '今日总余额',
+    rangeLabel: '时间段',
+    range3m: '3个月',
+    range6m: '6个月',
+    range1y: '1年',
+    period3m: '3 个月',
+    period6m: '6 个月',
+    period1y: '12 个月',
+    up: '最近 {period}增加 {amount}（{pct}）',
+    down: '最近 {period}减少 {amount}（{pct}）',
+    upNoPct: '最近 {period}增加 {amount}',
+    downNoPct: '最近 {period}减少 {amount}',
+    flat: '最近 {period}没有变化',
+    chartLabel: '最近 {period}的总余额',
+    manage: '管理账户',
+    noData: '还没有记录。',
   },
 
   dashboard: {
