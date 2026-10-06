@@ -9,10 +9,13 @@ import { estimateAnnualIncomeTrailing12 } from '@/lib/analysis/annualIncome';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { BudgetPlanCard } from '@/components/budgets/BudgetPlanCard';
 import { BudgetRows } from '@/components/budgets/BudgetRows';
 import { UnbudgetedList } from '@/components/budgets/UnbudgetedList';
+import { IncomeControl, MANUAL_FREQUENCY_MULTIPLIER } from '@/components/budgets/IncomeControl';
 import type { BudgetEntry } from '@/components/budgets/types';
+import type { BudgetHistory } from '@/components/budgets/BudgetDetails';
 
 interface BudgetsClientProps {
   transactions: Transaction[];
@@ -47,14 +50,66 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
       .filter((e) => e.budget > 0 || e.spent > 0);
   }, [transactions, categoryMeta, year]);
 
+  // Categories with no budget and no spending this year, for Other categories.
+  const others: BudgetEntry[] = useMemo(() => {
+    const shown = new Set(entries.map((e) => e.name));
+    return Object.entries(categoryMeta)
+      .filter(([name]) => !shown.has(name))
+      .map(([name, meta]) => ({ name, icon: meta.icon, color: meta.color, budget: 0, spent: 0, pct: 0 }));
+  }, [categoryMeta, entries]);
+
+  // The last 12 COMPLETE months per category, oldest first, from the
+  // transactions already on the page. Null until today is known.
+  const history: BudgetHistory | null = useMemo(() => {
+    if (!today) return null;
+    const y = Number(today.slice(0, 4));
+    const m = Number(today.slice(5, 7)) - 1;
+    const months: string[] = [];
+    for (let i = 12; i >= 1; i--) {
+      const dt = new Date(y, m - i, 1);
+      months.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+    }
+    const index = new Map(months.map((k, i) => [k, i]));
+    const byCat: Record<string, number[]> = {};
+    for (const x of transactions) {
+      if (x.amount >= 0) continue;
+      const i = index.get(x.date.slice(0, 7));
+      if (i === undefined) continue;
+      (byCat[x.category] ??= Array(12).fill(0))[i] += Math.abs(x.amount);
+    }
+    return { months, byCat };
+  }, [transactions, today]);
+
   const totalBudget = entries.reduce((s, e) => s + e.budget, 0);
   const totalSpent = entries.reduce((s, e) => s + e.spent, 0);
 
-  // The Modify Budget dialog's own figure, from transactions already loaded.
+  // Expected income: the system estimate (trailing 12 months, from the
+  // transactions already loaded) or one manual paycheck annualized. Mode and
+  // frequency are saved preferences; the typed amount is on-page only.
   const incomeEstimate = useMemo(
     () => (today ? estimateAnnualIncomeTrailing12(transactions, today) : null),
     [transactions, today],
   );
+  const incomeMode = usePebbleStore((s) => s.incomeEstimateMode) === 'manual' ? 'manual' : 'system';
+  const setIncomeMode = usePebbleStore((s) => s.setIncomeEstimateMode);
+  const frequency = usePebbleStore((s) => s.manualIncomeFrequency);
+  const setFrequency = usePebbleStore((s) => s.setManualIncomeFrequency);
+  const [manualAmount, setManualAmount] = useState('');
+
+  const manualAnnual = (Number(manualAmount) || 0) * (MANUAL_FREQUENCY_MULTIPLIER[frequency] ?? 12);
+  const effectiveIncome = incomeMode === 'manual'
+    ? (manualAnnual > 0 ? manualAnnual : null)
+    : (incomeEstimate?.annual ?? null);
+
+  // The latest Standard Income paycheck, for Import latest.
+  const latestStandardIncomeNet = useMemo(() => {
+    let best: Transaction | null = null;
+    for (const x of transactions) {
+      if (x.type !== 'income' || x.category !== 'Standard Income') continue;
+      if (!best || x.date > best.date) best = x;
+    }
+    return best && best.type === 'income' ? best.netAmount : null;
+  }, [transactions]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -62,11 +117,23 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
         entries={entries}
         totalBudget={totalBudget}
         totalSpent={totalSpent}
-        annualIncome={incomeEstimate?.annual ?? null}
+        annualIncome={effectiveIncome}
         today={today}
+        incomeControl={(
+          <IncomeControl
+            mode={incomeMode}
+            onModeChange={setIncomeMode}
+            frequency={frequency}
+            onFrequencyChange={setFrequency}
+            manualAmount={manualAmount}
+            onManualAmountChange={setManualAmount}
+            effectiveAnnual={effectiveIncome}
+            latestStandardIncomeNet={latestStandardIncomeNet}
+          />
+        )}
       />
-      <BudgetRows entries={entries} today={today} />
-      <UnbudgetedList entries={entries} />
+      <BudgetRows entries={entries} today={today} history={history} />
+      <UnbudgetedList entries={entries} others={others} history={history} />
     </div>
   );
 }

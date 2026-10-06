@@ -769,6 +769,47 @@ export const zh: typeof en = {
     cancel: '取消',
   },
 
+  budgetSuggest: {
+    useAverage: '平均：{amount}',
+    useLast12: '近 12 个月：{amount}',
+    averageHint: '最近 6 个完整月份的平均值乘以 12',
+    last12Hint: '最近 12 个完整月份的总额',
+  },
+
+  budgetPage: {
+    planBasis: '按你设定的预算计算，而不是按你的实际支出。',
+    spentSoFar: '目前已支出',
+    plannedSavingsHint: '计划储蓄：预计收入减去你的预算。',
+  },
+
+  budgetDetails: {
+    details: '详情',
+    hide: '收起',
+    perMonth: '每月预算 {amount}',
+    setBudget: '设定预算',
+    otherTitle: '其他分类（{count}）',
+    otherHint: '今年没有预算，也没有支出。',
+    noHistory: '最近 12 个完整月份没有支出。',
+    chartLabel: '{name}，最近 12 个月的支出',
+  },
+
+  budgetRow: {
+    yearly: '每年 {amount}',
+    monthly: '每月 {amount}',
+    spentTip: '今年已支出：{amount}',
+    yearlyNote: '年度预算，每年 1 月 1 日重置',
+    quickSet: '快速设定',
+    suggestedYearly: '建议的年度预算',
+    useTypical: '{amount} · 典型月份 × 12',
+    useLastYear: '{amount} · 过去 12 个月',
+    tipSpent: '支出',
+    tipMonthly: '每月预算',
+    spent: '已支出 {amount}',
+    annually: '每年',
+    typicalCaption: '最近 6 个月的平均值',
+    pastYearCaption: '过去 12 个月的支出',
+  },
+
   dashboard: {
     periodTitle: '本期',
     byAccount: '各账户余额',

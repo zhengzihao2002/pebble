@@ -854,6 +854,47 @@ export const en = {
     cancel: 'Cancel',
   },
 
+  budgetSuggest: {
+    useAverage: 'Average: {amount}',
+    useLast12: 'Last 12 months: {amount}',
+    averageHint: 'Average of the last 6 complete months, times 12',
+    last12Hint: 'Total of the last 12 complete months',
+  },
+
+  budgetPage: {
+    planBasis: "Based on the budgets you set, not on what you've spent.",
+    spentSoFar: 'Spent so far',
+    plannedSavingsHint: 'Planned savings: expected income minus your budgets.',
+  },
+
+  budgetDetails: {
+    details: 'Details',
+    hide: 'Hide',
+    perMonth: '{amount} / month budget',
+    setBudget: 'Set budget',
+    otherTitle: 'Other categories ({count})',
+    otherHint: 'No budget and no spending this year.',
+    noHistory: 'No spending in the last 12 complete months.',
+    chartLabel: '{name}, spending over the last 12 months',
+  },
+
+  budgetRow: {
+    yearly: '{amount} a year',
+    monthly: '{amount} a month',
+    spentTip: 'Spent this year: {amount}',
+    yearlyNote: 'Yearly budgets, reset every January 1',
+    quickSet: 'Quick set',
+    suggestedYearly: 'Suggested yearly budget',
+    useTypical: '{amount} · typical month × 12',
+    useLastYear: '{amount} · past 12 months',
+    tipSpent: 'Spent',
+    tipMonthly: 'Monthly budget',
+    spent: '{amount} spent',
+    annually: 'annually',
+    typicalCaption: 'Average of the last 6 months',
+    pastYearCaption: 'Spent in the past 12 months',
+  },
+
   dashboard: {
     periodTitle: 'This period',
     byAccount: 'Balance by account',

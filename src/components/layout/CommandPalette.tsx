@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRightLeft, CalendarClock, Eye, EyeOff, PiggyBank, Plus, Search, Settings as SettingsIcon, Target } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, Eye, EyeOff, Plus, Search, Settings as SettingsIcon, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { navItems } from './navItems';
@@ -22,7 +22,6 @@ interface CommandPaletteProps {
   onTransfer: () => void;
   onAddGoal: () => void;
   onAddSchedule: () => void;
-  onModifyBudget: () => void;
   onOpenTransaction: (txn: LedgerRecord, categoryMeta: CategoryMeta) => void;
 }
 
@@ -58,7 +57,7 @@ const hidden: React.CSSProperties = {
  * handing focus back to whatever was focused before it.
  */
 export function CommandPalette({
-  onClose, onAddTransaction, onTransfer, onAddGoal, onAddSchedule, onModifyBudget, onOpenTransaction,
+  onClose, onAddTransaction, onTransfer, onAddGoal, onAddSchedule, onOpenTransaction,
 }: CommandPaletteProps) {
   const { d, locale } = useTranslation();
   const router = useRouter();
@@ -120,7 +119,6 @@ export function CommandPalette({
     { id: 'transfer', label: d.transfer.title, icon: ArrowRightLeft, group: 'actions', run: onTransfer },
     { id: 'goal', label: d.common.addGoal, icon: Target, group: 'actions', run: onAddGoal },
     { id: 'schedule', label: d.header.addSchedule, icon: CalendarClock, group: 'actions', run: onAddSchedule },
-    { id: 'budget', label: d.header.modifyBudget, icon: PiggyBank, group: 'actions', run: onModifyBudget },
     {
       id: 'privacy', label: privacyOn ? d.privacyMode.showAmounts : d.privacyMode.hideAmounts,
       icon: privacyOn ? Eye : EyeOff, group: 'actions', run: () => setPrivacyOn(!privacyOn),

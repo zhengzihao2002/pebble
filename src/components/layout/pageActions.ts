@@ -6,12 +6,11 @@
  * Header.tsx still spells the same mapping out in its pageMeta, together with
  * the labels it shows. Change a page's action in both places.
  */
-export type PageActionKind = 'addTransaction' | 'modifyBudget' | 'addGoal' | 'addSchedule';
+export type PageActionKind = 'addTransaction' | 'addGoal' | 'addSchedule';
 
 const PAGE_ACTIONS: Record<string, PageActionKind> = {
   '/dashboard': 'addTransaction',
   '/transactions': 'addTransaction',
-  '/budgets': 'modifyBudget',
   '/goals': 'addGoal',
   '/scheduled': 'addSchedule',
 };

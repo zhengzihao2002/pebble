@@ -12,7 +12,6 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface HeaderProps {
   onAddTransactionClick: () => void;
-  onModifyBudgetClick: () => void;
   onAddGoalClick: () => void;
   onAddScheduleClick: () => void;
   onTransferClick: () => void;
@@ -32,7 +31,7 @@ interface PageMeta {
   secondaryAction?: { label: string; kind: 'transfer' };
 }
 
-export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
+export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
   const pathname = usePathname();
   const { name, isPending } = useCurrentUser();
   const { d, t } = useTranslation();
@@ -120,7 +119,7 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
     '/transactions': { title: d.nav.transactions, subtitle: d.header.subtitles.transactions, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
     '/reports': { title: d.nav.reports, subtitle: d.header.subtitles.reports },
     '/analysis': { title: d.nav.analysis, subtitle: d.header.subtitles.analysis },
-    '/budgets': { title: d.nav.budgets, subtitle: d.header.subtitles.budgets, action: { label: d.header.modifyBudget, kind: 'modifyBudget' } },
+    '/budgets': { title: d.nav.budgets, subtitle: d.header.subtitles.budgets },
     // The goal count is still not shown, and the original reason stands now
     // that the feature has shipped: Header renders inside AppShell, so reading
     // it would cost a database query on EVERY page navigation, not just this
@@ -132,7 +131,6 @@ export function Header({ onAddTransactionClick, onModifyBudgetClick, onAddGoalCl
 
   const current = pageMeta[pathname] ?? pageMeta['/dashboard'];
   const handleActionClick = current.action?.kind === 'addTransaction' ? onAddTransactionClick
-    : current.action?.kind === 'modifyBudget' ? onModifyBudgetClick
     : current.action?.kind === 'addGoal' ? onAddGoalClick
     : current.action?.kind === 'addSchedule' ? onAddScheduleClick
     : undefined;

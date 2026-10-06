@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { PACE_TOLERANCE, yearFraction } from '@/lib/budgetPace';
@@ -12,10 +12,12 @@ interface BudgetPlanCardProps {
   /** The same totals the old summary card showed - never recomputed here. */
   totalBudget: number;
   totalSpent: number;
-  /** estimateAnnualIncomeTrailing12().annual - the Modify Budget figure. Null with no history. */
+  /** Expected annual income in effect (system estimate or manual). Null when unknown. */
   annualIncome: number | null;
   /** Zone-aware 'YYYY-MM-DD', or null for the first frame. */
   today: string | null;
+  /** The expected-income control, rendered above the bar. */
+  incomeControl?: ReactNode;
 }
 
 const PAGE_SIZE = 6;
@@ -27,14 +29,14 @@ function formatShare(value: number, total: number): string {
 }
 
 /**
- * The year's plan: four headline figures, then one bar splitting expected
- * income into each budget plus what is left over as savings.
+ * The year's PLAN: four headline figures, then one bar splitting expected
+ * income into each budget plus what is left over as planned savings - all
+ * from the budgets set, not from spending. A thin "Spent so far" bar on the
+ * same scale sits under it so the two are never confused.
  *
- * Expected income is the Modify Budget dialog's own figure (trailing 12
- * months of standard income), computed from transactions already on the
- * page. Category names are user data and are shown exactly as stored.
+ * Category names are user data and are shown exactly as stored.
  */
-export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome, today }: BudgetPlanCardProps) {
+export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome, today, incomeControl }: BudgetPlanCardProps) {
   const { d, t } = useTranslation();
   const [page, setPage] = useState(0);
   // The segment under the pointer (or focus), and where to centre its popup.
@@ -68,6 +70,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
   const left = totalBudget - totalSpent;
   const overall = totalSpent > totalBudget;
 
+
   const cells = [
     { key: 'budget', label: d.budgetPlan.annualBudget, value: formatCurrency(totalBudget), color: 'var(--ink)' },
     { key: 'spent', label: d.budgetPlan.spent, value: formatCurrency(totalSpent), color: overall ? 'var(--wine)' : 'var(--ink)' },
@@ -79,6 +82,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
     <div className="card pb-plan-card">
       <div className="pb-plan-head">
         <h3 className="pb-stats-title">{d.budgetPlan.title}</h3>
+        <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.budgetPage.planBasis}</p>
       </div>
 
       <div className="pb-stats-grid">
@@ -91,6 +95,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       </div>
 
       <div className="pb-plan-body">
+        {incomeControl}
         {rows.length === 0 ? (
           <p className="pb-plan-caption" style={{ margin: 0 }}>{d.budgetPlan.noBudgets}</p>
         ) : (
@@ -131,7 +136,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                     <div className="font-mono-tab pb-plan-pop-figs">
                       {formatCurrency(r.value)} · {formatShare(r.value, base)}
                     </div>
-                    {r.savings && <div className="pb-plan-pop-note">{d.budgetPlan.savingsHint}</div>}
+                    {r.savings && <div className="pb-plan-pop-note">{d.budgetPage.plannedSavingsHint}</div>}
                   </div>
                 );
               })()}

@@ -15,7 +15,6 @@ import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
-import { ModifyBudgetModal } from '@/components/modals/ModifyBudgetModal';
 import { GoalModal } from '@/components/modals/GoalModal';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { TransferModal } from '@/components/modals/TransferModal';
@@ -46,7 +45,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (sessionUserId) void switchPebbleUser(sessionUserId);
   }, [sessionUserId]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showModifyBudgetModal, setShowModifyBudgetModal] = useState(false);
   // Mounted here rather than on the goals page because its trigger lives in
   // Header, which AppShell renders. This is also why every mutation calls
   // revalidatePath(route, 'layout') - a page-scoped revalidate would not reach
@@ -322,7 +320,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="pebble-main-content">
           <Header
             onAddTransactionClick={() => setShowAddModal(true)}
-            onModifyBudgetClick={() => setShowModifyBudgetModal(true)}
             onAddGoalClick={() => setShowAddGoalModal(true)}
             onAddScheduleClick={() => setShowAddScheduleModal(true)}
             onTransferClick={() => setShowTransferModal(true)}
@@ -333,14 +330,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <BottomNav
           onAddTransactionClick={() => setShowAddModal(true)}
           onTransferClick={() => setShowTransferModal(true)}
-          onModifyBudgetClick={() => setShowModifyBudgetModal(true)}
           onAddGoalClick={() => setShowAddGoalModal(true)}
           onAddScheduleClick={() => setShowAddScheduleModal(true)}
         />
       </div>
 
       {showAddModal && <AddTransactionModal onClose={() => setShowAddModal(false)} />}
-      {showModifyBudgetModal && <ModifyBudgetModal onClose={() => setShowModifyBudgetModal(false)} />}
       {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
       {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
       {showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
@@ -351,7 +346,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           onTransfer={() => setShowTransferModal(true)}
           onAddGoal={() => setShowAddGoalModal(true)}
           onAddSchedule={() => setShowAddScheduleModal(true)}
-          onModifyBudget={() => setShowModifyBudgetModal(true)}
           onOpenTransaction={(txn, categoryMeta) => setPaletteTxn({ txn, categoryMeta })}
         />
       )}

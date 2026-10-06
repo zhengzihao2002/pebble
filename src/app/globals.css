@@ -1587,12 +1587,15 @@ html.pebble-welcoming::after {
 .pebble-root .pb-row-marker:hover::after, .pebble-root .pb-row-marker:focus-visible::after { opacity: 1; }
 .pebble-root .pb-row-figs { font-size: 0.78rem; color: var(--ink-soft); text-align: right; align-self: center; }
 .pebble-root .pb-row-left { grid-column: 1 / -1; text-align: center; font-size: 0.78rem; font-weight: 600; }
+.pebble-root .pb-row-more { grid-column: 1 / -1; text-align: right; }
+.pebble-root .pb-row-details { grid-column: 1 / -1; padding-top: 0.5rem; }
 @container content (min-width: 720px) {
   .pebble-root .pb-row { grid-template-columns: 13rem minmax(0, 1fr) 11rem; align-items: center; }
   .pebble-root .pb-row-status { grid-column: 3; grid-row: 1; }
   .pebble-root .pb-row-bar { grid-column: 2; grid-row: 1; }
   .pebble-root .pb-row-figs { grid-column: 3; grid-row: 1; text-align: right; }
   .pebble-root .pb-row-left { grid-column: 2; grid-row: 2; }
+  .pebble-root .pb-row-more { grid-column: 3; grid-row: 2; }
 }
 
 /* Spending without a budget (UnbudgetedList): quiet, soft ink, no bars. */

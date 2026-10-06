@@ -11,7 +11,6 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 interface BottomNavProps {
   onAddTransactionClick: () => void;
   onTransferClick: () => void;
-  onModifyBudgetClick: () => void;
   onAddGoalClick: () => void;
   onAddScheduleClick: () => void;
 }
@@ -36,7 +35,7 @@ interface BottomNavProps {
  * the page's own action first when it has one (Modify budget, Add goal, Add
  * schedule), then Add transaction and Transfer on every page.
  */
-export function BottomNav({ onAddTransactionClick, onTransferClick, onModifyBudgetClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
+export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
   const pathname = usePathname();
   const { d } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -62,13 +61,11 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onModifyBudg
   const own = pageAction(pathname);
   const actionLabel: Record<PageActionKind, string> = {
     addTransaction: d.header.addTransaction,
-    modifyBudget: d.header.modifyBudget,
     addGoal: d.common.addGoal,
     addSchedule: d.header.addSchedule,
   };
   const run: Record<PageActionKind | 'transfer', () => void> = {
     addTransaction: onAddTransactionClick,
-    modifyBudget: onModifyBudgetClick,
     addGoal: onAddGoalClick,
     addSchedule: onAddScheduleClick,
     transfer: onTransferClick,
