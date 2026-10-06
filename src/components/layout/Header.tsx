@@ -119,6 +119,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
     '/transactions': { title: d.nav.transactions, subtitle: d.header.subtitles.transactions, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
     '/reports': { title: d.nav.reports, subtitle: d.header.subtitles.reports },
     '/analysis': { title: d.nav.analysis, subtitle: d.header.subtitles.analysis },
+    '/insights': { title: d.nav.insights, subtitle: d.insights.subtitle },
     '/budgets': { title: d.nav.budgets, subtitle: d.header.subtitles.budgets },
     // The goal count is still not shown, and the original reason stands now
     // that the feature has shipped: Header renders inside AppShell, so reading

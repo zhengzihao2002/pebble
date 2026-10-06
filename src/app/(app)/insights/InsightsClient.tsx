@@ -1,0 +1,44 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import type { Goal, LedgerRecord, RecurringRule, Transaction } from '@/types';
+import type { Account, CategoryItem } from '@/lib/data/mappers';
+import { buildCategoryMeta } from '@/lib/data/categoryMeta';
+import { todayInZone } from '@/lib/recurring/occurrences';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
+import { DayByDay } from '@/components/insights/DayByDay';
+
+export interface InsightsClientProps {
+  transactions: Transaction[];
+  categories: CategoryItem[];
+  budgets: Record<string, number>;
+  /** For the later sections (subscriptions, goal pace, dormant accounts). */
+  rules: RecurringRule[];
+  goals: Goal[];
+  accounts: Account[];
+}
+
+export function InsightsClient({ transactions, categories, budgets }: InsightsClientProps) {
+  const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
+
+  // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
+  // Null for the first frame keeps the server and first client render equal.
+  const timeZoneOverride = useTimeZoneOverride();
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => {
+    setToday(todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
+  }, [timeZoneOverride]);
+
+  const [selected, setSelected] = useState<LedgerRecord | null>(null);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={setSelected} />
+      {selected && (
+        <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
+      )}
+    </div>
+  );
+}

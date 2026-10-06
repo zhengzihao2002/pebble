@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt, BarChart3, LineChart, PiggyBank, Target, CalendarClock, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, LineChart, Lightbulb, PiggyBank, Target, CalendarClock, Settings as SettingsIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Dictionary } from '@/lib/i18n';
 
@@ -25,6 +25,7 @@ export const navItems: NavItem[] = [
   { href: '/transactions', labelKey: 'transactions', icon: Receipt },
   { href: '/reports', labelKey: 'reports', icon: BarChart3 },
   { href: '/analysis', labelKey: 'analysis', icon: LineChart },
+  { href: '/insights', labelKey: 'insights', icon: Lightbulb },
   { href: '/budgets', labelKey: 'budgets', icon: PiggyBank },
   { href: '/goals', labelKey: 'goals', icon: Target },
   { href: '/scheduled', labelKey: 'scheduled', icon: CalendarClock },

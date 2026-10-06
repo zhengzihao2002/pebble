@@ -61,6 +61,7 @@ export const en = {
     transactions: 'Transactions',
     reports: 'Reports',
     analysis: 'Analysis',
+    insights: 'Insights',
     budgets: 'Budgets',
     goals: 'Goals',
     scheduled: 'Scheduled',
@@ -893,6 +894,21 @@ export const en = {
     annually: 'annually',
     typicalCaption: 'Average of the last 6 months',
     pastYearCaption: 'Spent in the past 12 months',
+  },
+
+  insights: {
+    subtitle: 'What stands out in your spending',
+    dayTitle: 'Day by day',
+    dayHint: 'How much you spent each day. Tap a day to see what it was.',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    monthTotal: '{amount} spent',
+    busiest: 'Busiest day {date}, {amount}',
+    daySpent: '{amount} spent',
+    nothingSpent: 'Nothing spent',
+    dayNothing: 'Nothing spent on this day.',
+    less: 'Less',
+    more: 'More',
   },
 
   dashboard: {

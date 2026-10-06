@@ -41,6 +41,7 @@ export const zh: typeof en = {
     transactions: '交易',
     reports: '报表',
     analysis: '分析',
+    insights: '洞察',
     budgets: '预算',
     goals: '目标',
     scheduled: '定期',
@@ -808,6 +809,21 @@ export const zh: typeof en = {
     annually: '每年',
     typicalCaption: '最近 6 个月的平均值',
     pastYearCaption: '过去 12 个月的支出',
+  },
+
+  insights: {
+    subtitle: '你的支出中值得注意的地方',
+    dayTitle: '每日支出',
+    dayHint: '你每天花了多少钱。点按某一天查看明细。',
+    prevMonth: '上个月',
+    nextMonth: '下个月',
+    monthTotal: '共支出 {amount}',
+    busiest: '支出最多的一天：{date}，{amount}',
+    daySpent: '支出 {amount}',
+    nothingSpent: '无支出',
+    dayNothing: '这一天没有支出。',
+    less: '少',
+    more: '多',
   },
 
   dashboard: {
