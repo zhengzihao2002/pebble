@@ -1735,3 +1735,25 @@ html.pebble-welcoming::after {
 
 /* No pinch zoom */
 .pebble-root { touch-action: pan-x pan-y; }
+
+/* Insights: category trend rows */
+.pebble-root .pb-trends { container: pb-trends / inline-size; }
+/* One grid for the whole list; each row's cells sit directly in it
+   (display: contents), so no subgrid is needed. The name column is as wide
+   as the longest name (capped), the chart takes the rest, charts align. */
+.pebble-root .pb-trend-list { display: grid; grid-template-columns: fit-content(45%) minmax(96px, 1fr) auto; }
+.pebble-root .pb-trend-row { display: contents; }
+.pebble-root .pb-trend-cell { display: flex; align-items: center; padding: 0.55rem 0; min-width: 0; }
+.pebble-root .pb-trend-name { padding-right: 1rem; }
+.pebble-root .pb-trend-chart-cell { padding-right: 1rem; }
+.pebble-root .pb-trend-chart { width: 100%; min-width: 0; }
+.pebble-root .pb-trend-badge { justify-content: flex-end; white-space: nowrap; }
+.pebble-root .pb-trend-row + .pb-trend-row > .pb-trend-cell { border-top: 1px solid var(--line); }
+@container pb-trends (max-width: 420px) {
+  .pebble-root .pb-trend-list { grid-template-columns: minmax(0, 1fr) auto; }
+  .pebble-root .pb-trend-name { grid-column: 1 / -1; padding-right: 0; padding-bottom: 0.2rem; }
+  .pebble-root .pb-trend-chart-cell { padding-top: 0; padding-right: 0.75rem; }
+  .pebble-root .pb-trend-badge { padding-top: 0; }
+  .pebble-root .pb-trend-row + .pb-trend-row > .pb-trend-chart-cell,
+  .pebble-root .pb-trend-row + .pb-trend-row > .pb-trend-badge { border-top: none; }
+}

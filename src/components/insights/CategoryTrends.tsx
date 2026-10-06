@@ -73,7 +73,7 @@ export function CategoryTrends({ transactions, categoryMeta, today }: {
   };
 
   return (
-    <section className="card" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-trends-title">
+    <section className="card pb-trends" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-trends-title">
       <h3 id="pb-trends-title" style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.insights.trendsTitle}</h3>
       <p style={{ margin: '0.2rem 0 0.9rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
         {t(d.insights.trendsHint, { last: lastName, range })}
@@ -83,7 +83,7 @@ export function CategoryTrends({ transactions, categoryMeta, today }: {
         <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--ink-soft)' }}>{d.insights.noTrends}</p>
       ) : (
         <>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="pb-trend-list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {shown.map((r, i) => {
               const meta = categoryMeta[r.name];
               const Icon = meta?.icon;
@@ -96,13 +96,14 @@ export function CategoryTrends({ transactions, categoryMeta, today }: {
               const badgeColor = r.isNew || r.change === null || same ? 'var(--ink-soft)' : r.change > 0 ? 'var(--wine)' : 'var(--pine)';
               const data = months.map((k, j) => ({ key: k, amount: Math.round(r.series[j] * 100) / 100 }));
               return (
-                <li key={r.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 96px 6.5rem', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
+                <li key={r.name} className="pb-trend-row">
+                  <span className="pb-trend-cell pb-trend-name" style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
                     <span aria-hidden="true" style={{ display: 'inline-flex', flexShrink: 0, color }}>{Icon && <Icon size={15} />}</span>
                     {/* Category names are USER DATA and render as stored. */}
-                    <span style={{ fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                    <span style={{ fontSize: '0.86rem', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{r.name}</span>
                   </span>
-                  <div className="pb-chart-fade" style={{ width: 96, height: 36 }}>
+                  <div className="pb-trend-cell pb-trend-chart-cell">
+                  <div className="pb-chart-fade pb-trend-chart" style={{ height: 36 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
                         <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip />} allowEscapeViewBox={{ x: true, y: true }} />
@@ -112,7 +113,8 @@ export function CategoryTrends({ transactions, categoryMeta, today }: {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: badgeColor, textAlign: 'right' }}>{badge}</span>
+                  </div>
+                  <span className="pb-trend-cell pb-trend-badge" style={{ fontSize: '0.8rem', fontWeight: 600, color: badgeColor, textAlign: 'right' }}>{badge}</span>
                 </li>
               );
             })}
