@@ -11,6 +11,8 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 import { DayByDay } from '@/components/insights/DayByDay';
 import { CategoryTrends } from '@/components/insights/CategoryTrends';
 import { TopPlaces } from '@/components/insights/TopPlaces';
+import { WorthKnowing, type SchedulePrefill } from '@/components/insights/WorthKnowing';
+import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 
 export interface InsightsClientProps {
   transactions: Transaction[];
@@ -22,7 +24,7 @@ export interface InsightsClientProps {
   accounts: Account[];
 }
 
-export function InsightsClient({ transactions, categories, budgets }: InsightsClientProps) {
+export function InsightsClient({ transactions, categories, budgets, rules, goals, accounts }: InsightsClientProps) {
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
@@ -34,6 +36,7 @@ export function InsightsClient({ transactions, categories, budgets }: InsightsCl
   }, [timeZoneOverride]);
 
   const [selected, setSelected] = useState<LedgerRecord | null>(null);
+  const [prefill, setPrefill] = useState<SchedulePrefill | null>(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -42,9 +45,14 @@ export function InsightsClient({ transactions, categories, budgets }: InsightsCl
         <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} />
         <TopPlaces transactions={transactions} today={today} />
       </section>
+      <WorthKnowing
+        transactions={transactions} rules={rules} goals={goals} accounts={accounts} today={today}
+        onOpen={setSelected} onCreateSchedule={setPrefill}
+      />
       {selected && (
         <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
       )}
+      {prefill && <RecurringRuleModal prefill={prefill} onClose={() => setPrefill(null)} />}
     </div>
   );
 }

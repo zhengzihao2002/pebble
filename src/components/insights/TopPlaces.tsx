@@ -10,7 +10,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const TOP = 5;
 
 /** Same place, however the bank wrote it: case, spacing and a trailing store number ignored. */
-const placeKey = (title: string) => title.toLowerCase().replace(/\s*#?\d{2,}\s*$/, '').replace(/\s+/g, ' ').trim();
+export const placeKey = (title: string) => title.toLowerCase().replace(/\s*#?\d{2,}\s*$/, '').replace(/\s+/g, ' ').trim();
 
 /**
  * Where the money went, by place. Pebble has no merchant field, so places are

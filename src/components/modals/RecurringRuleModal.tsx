@@ -40,6 +40,8 @@ interface RecurringRuleModalProps {
   onClose: () => void;
   /** Absent means "add"; present means "edit that rule". One form, as GoalModal does. */
   rule?: RecurringRule;
+  /** Starting values for a NEW schedule (Insights' possible subscription). Ignored when editing. */
+  prefill?: { description: string; category: string; accountId: string; amount: number; startDate: string };
 }
 
 type Mode = 'form' | 'confirmDelete';
@@ -81,7 +83,8 @@ function Segmented<T extends string>({ options, value, onChange, disabled }: {
   );
 }
 
-export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
+export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: RecurringRuleModalProps) {
+  const prefill = rule ? undefined : rawPrefill;
   const { d, locale } = useTranslation();
   const isEdit = rule !== undefined;
   const timeZoneOverride = useTimeZoneOverride();
@@ -100,23 +103,23 @@ export function RecurringRuleModal({ onClose, rule }: RecurringRuleModalProps) {
   const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? 'expense');
   // The rule's stored description, split once for the two fields. An edit
   // that leaves both untouched sends this exact string back.
-  const initialParts = parseDescription(rule?.description ?? '');
+  const initialParts = parseDescription(rule?.description ?? prefill?.description ?? '');
   const [title, setTitle] = useState(initialParts.title);
   const [description, setDescription] = useState(initialParts.description);
-  const [category, setCategory] = useState(rule?.category ?? '');
+  const [category, setCategory] = useState(rule?.category ?? prefill?.category ?? '');
   const [tag, setTag] = useState(rule?.tag ?? '');
   // Account ID, not name: names are user data and can repeat.
-  const [accountId, setAccountId] = useState(rule?.accountId ?? '');
+  const [accountId, setAccountId] = useState(rule?.accountId ?? prefill?.accountId ?? '');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
   // Distinguishes 'none yet loaded' from 'the user has no accounts'.
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   // Stored negative for expenses; the form works in positive magnitude and
   // the action re-applies the sign.
-  const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : '');
+  const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : prefill ? String(prefill.amount) : '');
   const [grossAmount, setGrossAmount] = useState(rule?.grossAmount != null ? String(rule.grossAmount) : '');
   const [frequency, setFrequency] = useState<RecurringFrequency>(rule?.frequency ?? 'monthly');
-  const [startDate, setStartDate] = useState(rule?.startDate ?? today);
+  const [startDate, setStartDate] = useState(rule?.startDate ?? prefill?.startDate ?? today);
   const [endMode, setEndMode] = useState<RecurringEndMode>(rule?.endMode ?? 'never');
   const [endCount, setEndCount] = useState(rule?.endCount != null ? String(rule.endCount) : '');
   const [endDate, setEndDate] = useState(rule?.endDate ?? '');

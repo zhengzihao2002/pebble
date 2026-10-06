@@ -46,7 +46,8 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
   const m = first.getMonth();
   const prefix = `${y}-${pad(m + 1)}-`;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const maxOffset = earliest ? Math.max(0, (ty - Number(earliest.slice(0, 4))) * 12 + (tm - (Number(earliest.slice(5, 7)) - 1))) : 0;
+  // At most 12 months back (this October to last October), never before the first record.
+  const maxOffset = earliest ? Math.min(12, Math.max(0, (ty - Number(earliest.slice(0, 4))) * 12 + (tm - (Number(earliest.slice(5, 7)) - 1)))) : 0;
 
   const byDay = new Map<string, { spent: number; items: Transaction[] }>();
   for (const x of transactions) {

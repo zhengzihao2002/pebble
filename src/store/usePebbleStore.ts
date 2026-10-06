@@ -103,6 +103,8 @@ interface PebblePrefs {
   breakdownChart: BreakdownChart;
   // Privacy mode: whether amounts start blurred when the app opens.
   privacyOnLaunch: boolean;
+  // Insights' Worth knowing: ids the user marked Not useful.
+  insightsDismissed: string[];
 }
 
 interface PebbleUIState extends PebblePrefs {
@@ -111,6 +113,7 @@ interface PebbleUIState extends PebblePrefs {
   privacyOn: boolean;
   setPrivacyOn: (value: boolean) => void;
   setPrivacyOnLaunch: (value: boolean) => void;
+  dismissInsight: (id: string) => void;
   setAppearance: (value: Appearance) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -153,6 +156,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   showWelcome: true,
   breakdownChart: 'donut',
   privacyOnLaunch: false,
+  insightsDismissed: [],
 };
 
 // ---- Per-user storage -------------------------------------------------------
@@ -209,6 +213,8 @@ export const usePebbleStore = create<PebbleUIState>()(
       privacyOn: false,
       setPrivacyOn: (value) => set({ privacyOn: value }),
       setPrivacyOnLaunch: (value) => set({ privacyOnLaunch: value }),
+      // Capped, newest kept, so the list cannot grow without bound.
+      dismissInsight: (id) => set((state) => ({ insightsDismissed: [...(state.insightsDismissed ?? []).filter((x) => x !== id), id].slice(-200) })),
     }),
     {
       // Per-user key prefix - see perUserStorage. Imported, not literal: the
@@ -267,6 +273,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         showWelcome: state.showWelcome,
         breakdownChart: state.breakdownChart,
         privacyOnLaunch: state.privacyOnLaunch,
+        insightsDismissed: state.insightsDismissed,
       }),
     }
   )
