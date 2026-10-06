@@ -9,6 +9,8 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import { DayByDay } from '@/components/insights/DayByDay';
+import { CategoryTrends } from '@/components/insights/CategoryTrends';
+import { TopPlaces } from '@/components/insights/TopPlaces';
 
 export interface InsightsClientProps {
   transactions: Transaction[];
@@ -36,6 +38,10 @@ export function InsightsClient({ transactions, categories, budgets }: InsightsCl
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={setSelected} />
+      <section className="dash-two-col">
+        <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} />
+        <TopPlaces transactions={transactions} today={today} />
+      </section>
       {selected && (
         <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
       )}
