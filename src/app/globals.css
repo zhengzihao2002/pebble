@@ -1732,3 +1732,6 @@ html.pebble-welcoming::after {
 }
 .pebble-root .account-tabs-thumb.pb-sliding { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
 .pebble-root .account-tabs.pb-thumb-ready a[aria-current="page"] { background: transparent; }
+
+/* No pinch zoom */
+.pebble-root { touch-action: pan-x pan-y; }

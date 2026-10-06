@@ -272,6 +272,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => root.removeEventListener('click', reveal, true);
   }, []);
 
+  // Phones: no pinch zoom inside the app (the owner's call; Settings >
+  // Text size is the way to enlarge things). touch-action in globals.css
+  // covers most browsers; iOS Safari ignores it for pinch, so its own
+  // gesture events and any two-finger move are cancelled too. One-finger
+  // scrolling is never touched.
+  useEffect(() => {
+    const stop = (e: Event) => e.preventDefault();
+    const twoFinger = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
+    document.addEventListener('gesturestart', stop, { passive: false });
+    document.addEventListener('gesturechange', stop, { passive: false });
+    document.addEventListener('touchmove', twoFinger, { passive: false });
+    return () => {
+      document.removeEventListener('gesturestart', stop);
+      document.removeEventListener('gesturechange', stop);
+      document.removeEventListener('touchmove', twoFinger);
+    };
+  }, []);
+
   // Command palette and single-key shortcuts. None fire while typing,
   // during IME composition, on key repeat, with a modifier held (except the
   // palette's own ⌘K / Ctrl+K), or while any dialog is open.
