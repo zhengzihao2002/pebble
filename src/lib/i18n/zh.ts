@@ -836,6 +836,10 @@ export const zh: typeof en = {
   },
 
   insights: {
+    cardDueTitle: '信用卡还款',
+    cardOverdueTitle: '信用卡还款逾期',
+    cardDueBody: '{name}：{amount}，{date} 到期。',
+    cardOverdueBody: '{name}：{amount} 已于 {date} 到期，尚未还款。',
     subtitle: '你的支出中值得注意的地方',
     dayTitle: '每日支出',
     dayHint: '你每天花了多少钱。点按某一天查看明细。',

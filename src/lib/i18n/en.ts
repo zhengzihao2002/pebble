@@ -921,6 +921,10 @@ export const en = {
   },
 
   insights: {
+    cardDueTitle: 'Card payment due',
+    cardOverdueTitle: 'Card payment overdue',
+    cardDueBody: '{name}: {amount} due {date}.',
+    cardOverdueBody: '{name}: {amount} was due {date} and is still unpaid.',
     subtitle: 'What stands out in your spending',
     dayTitle: 'Day by day',
     dayHint: 'How much you spent each day. Tap a day to see what it was.',

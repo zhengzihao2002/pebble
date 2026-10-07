@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CalendarCheck, CalendarClock, Coins, Copy, Moon, Repeat, Target, TrendingDown, TrendingUp, X } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, CalendarClock, Coins, Copy, CreditCard, Moon, Repeat, Target, TrendingDown, TrendingUp, X } from 'lucide-react';
+import { cardStatuses, reminderLevel } from '@/lib/creditCards';
+import { PayOffDialog } from '@/components/accounts/PayOffDialog';
 import type { LucideIcon } from 'lucide-react';
 import type { Goal, RecurringRule, Transaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
@@ -68,6 +71,8 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
   const { d, t, locale } = useTranslation();
   const dismissed = usePebbleStore((s) => s.insightsDismissed);
   const dismiss = usePebbleStore((s) => s.dismissInsight);
+  // The card being paid off from a reminder.
+  const [payOff, setPayOff] = useState<Account | null>(null);
   if (!today) return <section className="card" style={{ padding: '1.25rem 1.5rem', minHeight: 160 }} aria-busy="true" />;
 
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
@@ -308,6 +313,27 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     });
   }
 
+  // Credit card payments: pinned ABOVE every other note. One id per card, due
+  // date and level, so dismissing the 7-day reminder leaves the later ones.
+  const cardNotes: Insight[] = [];
+  for (const s of cardStatuses(accounts, transactions, today)) {
+    const lvl = reminderLevel(s);
+    if (!lvl) continue;
+    const name = chip(s.card.last4 ? `${s.card.name} ····${s.card.last4}` : s.card.name);
+    const overdue = lvl === 'overdue';
+    cardNotes.push({
+      id: `card:${s.card.id}:${overdue ? s.previous : s.next}:${lvl}`,
+      icon: CreditCard,
+      tone: overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)',
+      title: overdue ? d.insights.cardOverdueTitle : d.insights.cardDueTitle,
+      body: overdue
+        ? renderTemplate(d.insights.cardOverdueBody, { name, amount: formatCurrency(s.overdue), date: formatDate(s.previous, locale) })
+        : renderTemplate(d.insights.cardDueBody, { name, amount: formatCurrency(s.dueNow), date: formatDate(s.next, locale) }),
+      action: { label: d.accounts.payOffAction, onClick: () => setPayOff(s.card) },
+    });
+  }
+  items.unshift(...cardNotes);
+
   const shown = items.filter((i) => !(dismissed ?? []).includes(i.id));
   const actionStyle: React.CSSProperties = { padding: '0.35rem 0.8rem', fontSize: '0.78rem', textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' };
 
@@ -351,6 +377,13 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
             );
           })}
         </ul>
+      )}
+      {payOff && (
+        <PayOffDialog
+          card={payOff} allAccounts={accounts}
+          charges={transactions.filter((x): x is Extract<Transaction, { type: 'expense' }> => x.type === 'expense' && x.accountId === payOff.id)}
+          onClose={() => setPayOff(null)}
+        />
       )}
     </section>
   );
