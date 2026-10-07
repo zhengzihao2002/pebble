@@ -8,6 +8,7 @@ import type { CategoryMeta, Transaction } from '@/types';
 import { buildCategoryBreakdown } from '@/lib/stats';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 interface CategoryDonutChartProps {
   transactions: Transaction[];
@@ -87,7 +88,7 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.donutChart.title}</h3>
-        <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.2rem 0 0' }}>{timeFrame}</p>
+        <div style={{ margin: '0.2rem 0 0' }}><PeriodLink label={timeFrame} control="dashboard" /></div>
       </div>
 
       {!ready || !today ? (

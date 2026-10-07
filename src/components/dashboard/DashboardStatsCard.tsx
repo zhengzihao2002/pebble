@@ -5,6 +5,7 @@ import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
+import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 interface ModeOption { value: string; label: string }
 interface PeriodOption { key: string; label: string }
@@ -77,8 +78,8 @@ export function DashboardStatsCard({
   return (
     <div className="card pb-stats-card">
       <div className="pb-stats-head">
-        <h3 className="pb-stats-title">{d.dashboard.periodTitle}</h3>
-        <div className="pb-stats-controls">
+        <h3 className="pb-stats-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}><PeriodDot />{d.dashboard.periodTitle}</h3>
+        <div className="pb-stats-controls" id="pb-period-control">
           <select value={statsMode} onChange={(e) => onModeChange(e.target.value)} style={selectStyle} aria-label={d.dashboard.periodTitle}>
             {/* value is the stored mode key; only the text is translated. */}
             {modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}

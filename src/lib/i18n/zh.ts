@@ -899,6 +899,7 @@ export const zh: typeof en = {
     period3m: '3 个月',
     period6m: '6 个月',
     period1y: '12 个月',
+    cardsPeriod: '最近 {period}的变化',
     up: '最近 {period}增加 {amount}（{pct}）',
     down: '最近 {period}减少 {amount}（{pct}）',
     upNoPct: '最近 {period}增加 {amount}',
@@ -917,6 +918,8 @@ export const zh: typeof en = {
 
   dashboard: {
     periodTitle: '本期',
+    periodLinkAria: '{label}。由「{control}」设置，点按前往。',
+    periodLinkTitle: '由「{control}」设置',
     byAccount: '各账户余额',
     moreAccounts: '另有 {count} 个',
     balanceTitle: '今日余额',

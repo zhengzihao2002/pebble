@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/format';
 import { formatCompactCurrency } from '@/lib/chartFormat';
 import { buildPeriodTrend } from '@/lib/periodTrend';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 // Theme tokens, not hex: the grid and tick text already used var() in these
 // SVG attributes, so the series follow the active theme and dark mode too.
@@ -76,7 +77,7 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
     <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: '1rem' }}>
         <h3 style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.trendChart.title}</h3>
-        <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.2rem 0 0' }}>{timeFrame}</p>
+        <div style={{ margin: '0.2rem 0 0' }}><PeriodLink label={timeFrame} control="dashboard" /></div>
       </div>
       {!ready || !today ? (
         // Waits for the shared period to be restored, so the chart draws once.

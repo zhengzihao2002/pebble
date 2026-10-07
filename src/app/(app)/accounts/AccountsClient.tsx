@@ -14,6 +14,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { AccountCards } from '@/components/accounts/AccountCards';
+import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 type Range = '3m' | '6m' | '1y';
 const MONTHS: Record<Range, number> = { '3m': 3, '6m': 6, '1y': 12 };
@@ -140,7 +141,8 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
             </p>
             {summary && <p className="pb-money" style={{ margin: '0.25rem 0 0', fontSize: '0.86rem', fontWeight: 600, color: summary.color }}>{summary.text}</p>}
           </div>
-          <div role="group" aria-label={d.accountsPage.rangeLabel} style={{ display: 'flex', gap: '0.35rem' }}>
+          <div role="group" id="pb-accounts-range" aria-label={d.accountsPage.rangeLabel} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', borderRadius: 999 }}>
+            <PeriodDot />
             {tab('3m', d.accountsPage.range3m)}
             {tab('6m', d.accountsPage.range6m)}
             {tab('1y', d.accountsPage.range1y)}
@@ -181,7 +183,10 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
         </div>
       </section>
       {days && current !== null && chrono.length > 0 && (
-        <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div><PeriodLink label={t(d.accountsPage.cardsPeriod, { period })} control="accounts" /></div>
+          <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} />
+        </div>
       )}
     </div>
   );

@@ -1757,3 +1757,25 @@ html.pebble-welcoming::after {
   .pebble-root .pb-trend-row + .pb-trend-row > .pb-trend-chart-cell,
   .pebble-root .pb-trend-row + .pb-trend-row > .pb-trend-badge { border-top: none; }
 }
+
+/* Linked period controls: a pine dot marks a control that sets other cards;
+   their time labels are chips that jump to it and pulse it once. */
+.pebble-root .pb-period-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--pine); flex-shrink: 0; }
+.pebble-root .pb-period-chip { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.12rem 0.5rem 0.12rem 0.4rem; border: 1px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--pine) 8%, transparent); color: var(--ink-soft); font: inherit; font-size: 0.75rem; line-height: 1.4; cursor: pointer; }
+.pebble-root .pb-period-chip:hover { border-color: color-mix(in srgb, var(--pine) 35%, transparent); color: var(--ink); }
+.pebble-root .pb-period-chip svg { opacity: 0.7; }
+.pebble-root .pb-period-pulse { position: relative; }
+/* One soft halo spreading out from the control. It fades by opacity, which
+   every browser animates smoothly, so it ends at nothing instead of dropping out. */
+.pebble-root .pb-period-pulse::after {
+  content: ''; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 0 var(--pine); opacity: 0;
+  animation: pb-period-halo 1.8s ease-out forwards;
+}
+@keyframes pb-period-halo {
+  0% { box-shadow: 0 0 0 0 var(--pine); opacity: 0.45; }
+  100% { box-shadow: 0 0 0 16px var(--pine); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-period-pulse::after { animation: none; box-shadow: 0 0 0 3px var(--pine); opacity: 0.5; }
+}

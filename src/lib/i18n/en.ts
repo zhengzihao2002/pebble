@@ -984,6 +984,7 @@ export const en = {
     period3m: '3 months',
     period6m: '6 months',
     period1y: '12 months',
+    cardsPeriod: 'Change over the last {period}',
     up: 'Up {amount} ({pct}) over the last {period}',
     down: 'Down {amount} ({pct}) over the last {period}',
     upNoPct: 'Up {amount} over the last {period}',
@@ -1002,6 +1003,8 @@ export const en = {
 
   dashboard: {
     periodTitle: 'This period',
+    periodLinkAria: '{label}. Set by {control}; tap to go there.',
+    periodLinkTitle: 'Set by {control}',
     byAccount: 'Balance by account',
     moreAccounts: '+{count} more',
     balanceTitle: 'Your balance, today',
