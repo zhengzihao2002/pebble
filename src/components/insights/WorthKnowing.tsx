@@ -11,6 +11,7 @@ import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { placeKey } from './TopPlaces';
+import { renderTemplate } from '@/lib/i18n/RichText';
 
 /** Starting values for a new schedule from a possible subscription. */
 export interface SchedulePrefill {
@@ -26,7 +27,7 @@ interface Insight {
   icon: LucideIcon;
   tone: string;
   title: string;
-  body: string;
+  body: React.ReactNode;
   action?: { label: string; onClick?: () => void; href?: string };
 }
 
@@ -74,6 +75,8 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
   const thisMonth = today.slice(0, 7);
   const expenses = transactions.filter((x) => x.type === 'expense' && x.amount < 0);
   const nameOf = (x: Transaction) => descriptionTitle(x.description) || categoryLabel(d, x.category);
+  // Names are USER DATA: framed so they read as a title, not part of the sentence.
+  const chip = (s: string) => <span className="pb-wk-name">{s}</span>;
   const items: Insight[] = [];
 
   // Subscriptions and price changes: charges grouped by place over ~7 months.
@@ -109,7 +112,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
       y = 0;
       items.push({
         id: `sub:${k}`, icon: Repeat, tone: 'var(--pine)', title: d.insights.subTitle,
-        body: t(d.insights.subBody, { name: nameOf(last), amount: formatCurrency(amt(last)) }),
+        body: renderTemplate(d.insights.subBody, { name: chip(nameOf(last)), amount: formatCurrency(amt(last)) }),
         action: {
           label: d.insights.subAction,
           onClick: () => onCreateSchedule({ description: descriptionTitle(last.description), category: last.category, accountId: last.accountId, amount: amt(last), startDate: next }),
@@ -125,8 +128,8 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
       if (monthly(tail4) && Math.max(...prev) <= Math.min(...prev) * 1.01 && Math.abs(to - from) >= 1 && Math.abs(to - from) / from >= 0.03) {
         items.push({
           id: `price:${k}:${last.id}`, icon: TrendingUp, tone: 'var(--gold)', title: d.insights.priceTitle,
-          body: t(d.insights.priceBody, {
-            name: nameOf(last), from: formatCurrency(from), to: formatCurrency(to),
+          body: renderTemplate(d.insights.priceBody, {
+            name: chip(nameOf(last)), from: formatCurrency(from), to: formatCurrency(to),
             month: new Date(+last.date.slice(0, 4), +last.date.slice(5, 7) - 1, 1).toLocaleDateString(tag, { month: 'long' }),
           }),
           action: { label: d.insights.open, onClick: () => onOpen(last) },
@@ -155,7 +158,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     .slice(0, 3)
     .forEach(({ x, ratio }) => items.push({
       id: `unusual:${x.id}`, icon: AlertTriangle, tone: 'var(--wine)', title: d.insights.unusualTitle,
-      body: t(d.insights.unusualBody, { amount: formatCurrency(amt(x)), name: nameOf(x), times: Math.round(ratio), category: categoryLabel(d, x.category) }),
+      body: renderTemplate(d.insights.unusualBody, { amount: formatCurrency(amt(x)), name: chip(nameOf(x)), times: Math.round(ratio), category: categoryLabel(d, x.category) }),
       action: { label: d.insights.open, onClick: () => onOpen(x) },
     }));
 
@@ -174,7 +177,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     const first = list[0];
     items.push({
       id: `dup:${list.map((x) => x.id).sort().join(',')}`, icon: Copy, tone: 'var(--wine)', title: d.insights.dupTitle,
-      body: t(d.insights.dupBody, { count: list.length, amount: formatCurrency(amt(first)), name: nameOf(first), date: formatDate(first.date, locale) }),
+      body: renderTemplate(d.insights.dupBody, { count: list.length, amount: formatCurrency(amt(first)), name: chip(nameOf(first)), date: formatDate(first.date, locale) }),
       action: { label: d.insights.open, onClick: () => onOpen(first) },
     });
   });
@@ -195,7 +198,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     .slice(0, 2)
     .forEach(({ k, l, total }) => items.push({
       id: `small:${k}:${thisMonth}`, icon: Coins, tone: 'var(--gold)', title: d.insights.smallTitle,
-      body: t(d.insights.smallBody, { name: nameOf(l[l.length - 1]), count: l.length, amount: formatCurrency(total) }),
+      body: renderTemplate(d.insights.smallBody, { name: chip(nameOf(l[l.length - 1])), count: l.length, amount: formatCurrency(total) }),
     }));
 
   // Goal pace: what an unreached goal needs per month to hit its date.
@@ -204,7 +207,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     const monthsLeft = Math.max(1, Math.round((dayNum(g.date) - todayN) / 30.44));
     items.push({
       id: `goal:${g.id}:${thisMonth}`, icon: Target, tone: 'var(--pine)', title: d.insights.goalTitle,
-      body: t(d.insights.goalBody, { name: g.name, amount: formatCurrency((g.target - g.current) / monthsLeft), date: formatDate(g.date, locale) }),
+      body: renderTemplate(d.insights.goalBody, { name: chip(g.name), amount: formatCurrency((g.target - g.current) / monthsLeft), date: formatDate(g.date, locale) }),
       action: { label: d.insights.goalAction, href: '/goals' },
     });
   }
@@ -221,7 +224,7 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
     if (!last || todayN - dayNum(last) < 240) continue;
     items.push({
       id: `dormant:${a.id}:${last}`, icon: Moon, tone: 'var(--ink-soft)', title: d.insights.dormantTitle,
-      body: t(d.insights.dormantBody, { name: a.name, date: formatDate(last, locale) }),
+      body: renderTemplate(d.insights.dormantBody, { name: chip(a.name), date: formatDate(last, locale) }),
       action: { label: d.insights.dormantAction, href: '/settings' },
     });
   }

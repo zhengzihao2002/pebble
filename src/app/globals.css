@@ -1779,3 +1779,10 @@ html.pebble-welcoming::after {
 @media (prefers-reduced-motion: reduce) {
   .pebble-root .pb-period-pulse::after { animation: none; box-shadow: 0 0 0 3px var(--pine); opacity: 0.5; }
 }
+
+/* Worth knowing: a user's own title inside a sentence, framed so it reads as a name. */
+.pebble-root .pb-wk-name {
+  padding: 0.02rem 0.38rem; border: 1px solid var(--line); border-radius: 6px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent); font-weight: 600;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
