@@ -12,6 +12,7 @@ import { DayByDay } from '@/components/insights/DayByDay';
 import { CategoryTrends } from '@/components/insights/CategoryTrends';
 import { TopPlaces } from '@/components/insights/TopPlaces';
 import { YourWeek } from '@/components/insights/YourWeek';
+import { SavingsHeadline } from '@/components/insights/SavingsHeadline';
 import { WorthKnowing, type SchedulePrefill } from '@/components/insights/WorthKnowing';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 
@@ -41,6 +42,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <SavingsHeadline transactions={transactions} today={today} />
       <section className="dash-two-col">
         <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={setSelected} />
         <YourWeek transactions={transactions} today={today} />
