@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X, CreditCard } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -187,47 +187,44 @@ export function TransactionsClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
-        <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
-        {/* Baseline-aligned so the small figures sit on the big one's baseline,
-            and wrapping so they drop to their own line on a narrow phone rather
-            than squeezing the total. Same label/figure treatment as the hover
-            tooltip in StatementRow - this is that information promoted, not a
-            new pattern. */}
-        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.35rem 0.9rem', marginBottom: '1.25rem' }}>
-          <p className="font-display pb-money" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
-          {/* Chips rather than loose text: each account reads as its own object,
-              and the icon identifies it faster than the word does. Subordinate
-              to the total in size, but not weightless. Deliberately NOT StatTab
-              - that row below is month-scoped, and matching its shape would
-              imply these figures belong to the selected month too. */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-            {/* method is the STORED value and doubles as the React key. It
-                was the English label before this change, which meant both
-                chips remounted on a language switch. Nothing here is
-                submitted - these are display figures. */}
-            {accounts.map((a) => {
-              const AccountIcon = a.kind === 'bank' ? Landmark : Coins;
-              const method = a.name;
-              const value = balancesByAccount[a.id] ?? 0;
-              return (
-              <span
-                key={a.id}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                  padding: '0.38rem 0.8rem', borderRadius: 99,
-                  backgroundColor: 'var(--mist)', border: '1px solid var(--line)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <AccountIcon size={15} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{method}</span>
-                <span className="font-mono-tab" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink)' }}>
-                  {formatCurrency(value)}
-                </span>
-              </span>
-              );
-            })}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem 2rem', marginBottom: '1.25rem' }}>
+          {/* minWidth 0 here and on the list: a flex item cannot shrink below its
+              min-content width, which for the list is a full unshortened row -
+              without it the list pushes past a phone's right edge. */}
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
+            <p className="font-display pb-money" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
           </div>
+          {/* Each account's balance as a quiet ledger: one row each, figures
+              right-aligned in tabular numerals so they compare at a glance.
+              Beside the total on wide screens, under it on a phone. Credit
+              cards last, shown as what they owe. Display only - nothing here
+              is submitted. Deliberately NOT StatTab: the row below is
+              month-scoped, these figures are today's. */}
+          <ul id="pb-txn-accounts" style={{ listStyle: 'none', margin: 0, padding: 0, flex: '1 1 260px', minWidth: 0, maxWidth: 380 }}>
+            {[...accounts]
+              .sort((x, y) => (x.kind === 'credit' ? 1 : 0) - (y.kind === 'credit' ? 1 : 0))
+              .map((a, i) => {
+                const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
+                const value = balancesByAccount[a.id] ?? 0;
+                const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
+                return (
+                  <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.45rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}>
+                    <AccountIcon size={15} aria-hidden="true" style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
+                    {/* Account names are USER DATA. */}
+                    <span style={{ flex: 1, minWidth: 0, fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {a.name}
+                      {a.last4 && <span className="font-mono-tab" style={{ color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
+                    </span>
+                    <span className="font-mono-tab" style={{ fontSize: '0.88rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {owed !== null
+                        ? <>{formatCurrency(owed)} <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.accountsPage.cardOwed}</span></>
+                        : formatCurrency(value)}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
         </div>
 
         {/* Formatted HERE rather than read from selectedMonthInfo.label:
