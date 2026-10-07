@@ -14,6 +14,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { AccountCards } from '@/components/accounts/AccountCards';
+import { PayOffDialog } from '@/components/accounts/PayOffDialog';
 import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 type Range = '3m' | '6m' | '1y';
@@ -40,6 +41,8 @@ type TipItem = { payload?: { date?: string; total?: number } };
 export function AccountsClient({ expenses, income, adjustments, accounts }: AccountsClientProps) {
   const { d, t, locale } = useTranslation();
   const [range, setRange] = useState<Range>('6m');
+  // The credit card being paid off, if any.
+  const [payOffCard, setPayOffCard] = useState<(typeof accounts)[number] | null>(null);
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
   const timeZoneOverride = useTimeZoneOverride();
@@ -185,8 +188,15 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
       {days && current !== null && chrono.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           <div><PeriodLink label={t(d.accountsPage.cardsPeriod, { period })} control="accounts" /></div>
-          <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} />
+          <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} onPayOff={setPayOffCard} />
         </div>
+      )}
+      {payOffCard && (
+        <PayOffDialog
+          card={payOffCard} allAccounts={accounts}
+          charges={expenses.filter((x) => x.accountId === payOffCard.id)}
+          onClose={() => setPayOffCard(null)}
+        />
       )}
     </div>
   );

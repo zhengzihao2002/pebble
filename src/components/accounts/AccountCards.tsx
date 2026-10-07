@@ -18,7 +18,7 @@ type TipItem = { payload?: { date?: string; v?: number } };
  * period, a mini chart from the same daily walk as the main chart, share of
  * the total, and last activity. Account names are USER DATA.
  */
-export function AccountCards({ accounts, days, total, lastActivity, period }: {
+export function AccountCards({ accounts, days, total, lastActivity, period, onPayOff }: {
   accounts: Account[];
   days: DayPointLite[];
   /** Total balance on the last day. */
@@ -26,6 +26,8 @@ export function AccountCards({ accounts, days, total, lastActivity, period }: {
   /** accountId -> latest record date up to today. */
   lastActivity: Map<string, string>;
   period: string;
+  /** Credit cards only: opens the Pay off dialog. */
+  onPayOff?: (a: Account) => void;
 }) {
   const { d, t, locale } = useTranslation();
   if (days.length === 0) return null;
@@ -85,6 +87,14 @@ export function AccountCards({ accounts, days, total, lastActivity, period }: {
               <div>
                 <p className="font-display pb-money" style={{ margin: 0, fontSize: '1.45rem', fontWeight: 600 }}>{formatCurrency(now)}</p>
                 <p className="font-mono-tab" style={{ margin: '0.1rem 0 0', fontSize: '0.8rem', fontWeight: 600, color: tone }}>{changeText}</p>
+                {a.kind === 'credit' && onPayOff && (
+                  <button
+                    type="button" className="btn-primary" onClick={() => onPayOff(a)} disabled={now >= -0.004}
+                    style={{ marginTop: '0.6rem', padding: '0.4rem 0.9rem', fontSize: '0.8rem', opacity: now >= -0.004 ? 0.5 : 1 }}
+                  >
+                    {d.accounts.payOffAction}
+                  </button>
+                )}
               </div>
 
               <div className="pb-chart-fade" style={{ height: 56 }} role="img" aria-label={t(d.accountsPage.sparkLabel, { name: a.name, period })}>
