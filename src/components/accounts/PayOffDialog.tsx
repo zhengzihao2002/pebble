@@ -21,7 +21,7 @@ import { translateActionError } from '@/lib/i18n/actionErrors';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** The next due date on or after today. Days 29-31 fall on the last day of shorter months. */
-function nextDue(dueDay: number): string {
+export function nextDue(dueDay: number): string {
   const now = new Date();
   const dayIn = (y: number, m: number) => Math.min(dueDay, new Date(y, m + 1, 0).getDate());
   let y = now.getFullYear();
