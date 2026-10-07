@@ -45,7 +45,8 @@ type Mode = 'all' | 'some';
 export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: AccountMoveDialogProps) {
   const { d, t, locale } = useTranslation();
 
-  const destinations = allAccounts.filter((a) => a.id !== source.id && a.status === 'active');
+  // Records may leave a card, never land on one.
+  const destinations = allAccounts.filter((a) => a.id !== source.id && a.status === 'active' && a.kind !== 'credit');
 
   const [usage, setUsage] = useState<AccountUsage | null>(null);
   const [loading, setLoading] = useState(true);

@@ -53,7 +53,8 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
   const { d, t, locale } = useTranslation();
   // Account NAMES are user data and are never translated. Only active
   // accounts are adjustable: a closed one is settled at zero permanently.
-  const active = accounts.filter((a) => a.status === 'active');
+  // Credit cards are never adjusted: their balance is their charges.
+  const active = accounts.filter((a) => a.status === 'active' && a.kind !== 'credit');
   // Same label shape as every other account picker, so two accounts with the
   // same name can still be told apart on a write that moves money.
   const accountOptions: SelectFieldOption[] = active.map((a) => ({

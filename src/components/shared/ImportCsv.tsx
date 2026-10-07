@@ -267,6 +267,9 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
   const netCents = selected.reduce((s, r) => s + (r.cents as number), 0);
 
   const accountOptions = accounts.map((a) => ({ value: a.id, label: a.last4 ? `${a.name} ····${a.last4}` : a.name }));
+  // Credit cards take charges only: not offered for income rows, nor in Set all
+  // (which applies to income rows too).
+  const nonCardOptions = accountOptions.filter((o) => accounts.find((a) => a.id === o.value)?.kind !== 'credit');
 
   const setAll = (kind: 'account' | 'expense' | 'income', value: string) => {
     if (!value) return;
@@ -407,7 +410,7 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
                     <div style={{ ...twoCol, marginBottom: '0.8rem' }}>
                       <select value="" onChange={(e) => setAll('account', e.target.value)} aria-label={d.importCsv.setAllAccounts} style={smallField}>
                         <option value="">{d.importCsv.setAllAccounts}</option>
-                        {accountOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        {nonCardOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                       <select value="" onChange={(e) => setAll('expense', e.target.value)} aria-label={d.importCsv.setAllSpending} style={smallField}>
                         <option value="">{d.importCsv.setAllSpending}</option>
@@ -460,7 +463,7 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
                                   aria-label={d.importCsv.account} style={smallField}
                                 >
                                   <option value="">{d.importCsv.chooseAccount}</option>
-                                  {accountOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                  {(income ? nonCardOptions : accountOptions).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                                 </select>
                                 <select
                                   value={catOverride[r.idx] ?? ''}

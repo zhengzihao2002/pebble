@@ -181,7 +181,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     { value: 'Side Cash', label: d.enums.incomeCategory['Side Cash'] },
   ];
   // Account names are USER DATA and are never translated.
-  const accountOptions: SelectFieldOption[] = accounts.map((a) => ({
+  // Credit cards take charges only: offered for expense schedules alone.
+  const accountOptions: SelectFieldOption[] = accounts.filter((a) => kind === 'expense' || a.kind !== 'credit').map((a) => ({
     value: a.id,
     label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
   }));
@@ -326,6 +327,11 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                     disabled={isEdit}
                     onChange={(next) => {
                       setKind(next);
+                      // A card cannot hold income: move the choice to an allowed account.
+                      if (next === 'income' && accounts.find((a) => a.id === accountId)?.kind === 'credit') {
+                        const usable = accounts.filter((a) => a.kind !== 'credit');
+                        setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
+                      }
                       setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
                     }}
                     options={[

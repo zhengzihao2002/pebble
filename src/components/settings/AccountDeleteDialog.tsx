@@ -49,7 +49,8 @@ const COUNTDOWN_SECONDS = 10;
  */
 export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDeleteDialogProps) {
   const { d, t, locale } = useTranslation();
-  const destinations = allAccounts.filter((a) => a.id !== account.id && a.status === 'active');
+  // Records may leave a card, never land on one.
+  const destinations = allAccounts.filter((a) => a.id !== account.id && a.status === 'active' && a.kind !== 'credit');
 
   const [step, setStep] = useState<Step>('loading');
   const [preview, setPreview] = useState<AccountDeletionPreview | null>(null);

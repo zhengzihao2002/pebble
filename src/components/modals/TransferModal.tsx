@@ -84,16 +84,19 @@ export function TransferModal({ onClose }: TransferModalProps) {
       setAccountsLoaded(true);
       // Preferred account as the source, since money usually leaves the
       // account the user treats as primary.
-      const preferred = result.accounts.find((a) => a.isPreferred);
-      setFromId((c) => c || preferred?.id || result.accounts[0]?.id || '');
-      setToId((c) => c || result.accounts.find((a) => a.id !== (preferred?.id ?? result.accounts[0]?.id))?.id || '');
+      // Cards never take part in a transfer, so the first picks skip them.
+      const usable = result.accounts.filter((a) => a.kind !== 'credit');
+      const preferred = usable.find((a) => a.isPreferred);
+      setFromId((c) => c || preferred?.id || usable[0]?.id || '');
+      setToId((c) => c || usable.find((a) => a.id !== (preferred?.id ?? usable[0]?.id))?.id || '');
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const options = useMemo<SelectFieldOption[]>(
-    () => accounts.map((a) => ({
+    // Credit cards never send or receive transfers.
+    () => accounts.filter((a) => a.kind !== 'credit').map((a) => ({
       value: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
     })),

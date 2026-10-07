@@ -212,6 +212,43 @@ export interface AddIncomeActionInput {
 
 export type AddTransactionActionInput = AddExpenseActionInput | AddIncomeActionInput;
 
+/* ------------------------------------------------------------------------
+ * Credit cards
+ * ---------------------------------------------------------------------- */
+
+interface CardFacts {
+  creditLimit: number;
+  /** What the card owes now: minus the sum of its charges (stored negative). */
+  owed: number;
+}
+
+/**
+ * The credit cards among `ids`, with limit and amount owed. Bank and cash
+ * accounts are simply absent, so callers test with `.has()` / `.get()`.
+ * Two small queries; nothing runs when no card is involved.
+ */
+async function loadCards(userId: string, ids: string[]): Promise<Map<string, CardFacts>> {
+  const out = new Map<string, CardFacts>();
+  const wanted = ids.filter((id) => typeof id === 'string' && id !== '');
+  if (wanted.length === 0) return out;
+  const cards = await db
+    .select({ id: account.id, creditLimit: account.creditLimit })
+    .from(account)
+    .where(and(eq(account.userId, userId), inArray(account.id, wanted), eq(account.kind, 'credit')));
+  if (cards.length === 0) return out;
+  const sums = await db
+    .select({ accountId: expense.accountId, total: sql<string>`coalesce(sum(${expense.amount}), 0)` })
+    .from(expense)
+    .where(and(eq(expense.userId, userId), inArray(expense.accountId, cards.map((c) => c.id))))
+    .groupBy(expense.accountId);
+  const owedBy = new Map(sums.map((s) => [s.accountId, -Number(s.total)]));
+  for (const c of cards) out.set(c.id, { creditLimit: Number(c.creditLimit ?? 0), owed: owedBy.get(c.id) ?? 0 });
+  return out;
+}
+
+/** True when adding `extra` (a positive charge) would pass the card's limit. */
+const overLimit = (card: CardFacts, extra: number) => extra > 0.004 && card.owed + extra > card.creditLimit + 0.004;
+
 /**
  * Transaction ids are generated in the app, not by the database, because
  * computeRecentTransactions() relies on their timestamp ordering to break
@@ -251,6 +288,12 @@ async function addTransaction(
         return fail('An expense needs a category.', 'validation', 'validation.expenseCategoryRequired');
       }
 
+      // Credit card: a new charge may not take it past its limit.
+      const addCard = (await loadCards(userId, [targetAccount.id])).get(targetAccount.id);
+      if (addCard && overLimit(addCard, Math.abs(input.amount))) {
+        return fail('This would take the card over its credit limit.', 'validation', 'validation.creditOverLimit');
+      }
+
       await db.insert(expense).values({
         id: generateTransId(),
         userId,
@@ -267,6 +310,9 @@ async function addTransaction(
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
         return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
+      }
+      if ((await loadCards(userId, [targetAccount.id])).has(targetAccount.id)) {
+        return fail('Income cannot be recorded on a credit card.', 'validation', 'validation.creditNoIncome');
       }
       if (!isFiniteNumber(input.grossAmount) || input.grossAmount < 0) {
         return fail('Gross amount must be zero or greater.', 'validation', 'validation.grossAmountNonNegative');
@@ -1206,11 +1252,33 @@ async function updateTransaction(
         patch.amount = -Math.abs(input.amount);
       }
 
+      // Credit card: only the INCREASE counts against the limit. The row's old
+      // amount is already in `owed` when it was on this card, so editing the
+      // note of a charge on an over-limit card still works.
+      const editCard = (await loadCards(userId, [targetAccount.id])).get(targetAccount.id);
+      if (editCard) {
+        const old = await db
+          .select({ amount: expense.amount })
+          .from(expense)
+          .where(and(eq(expense.userId, userId), eq(expense.id, input.id)))
+          .limit(1);
+        const oldCharge = Math.abs(Number(old[0]?.amount ?? 0));
+        const newCharge = input.amount !== undefined ? Math.abs(input.amount) : oldCharge;
+        const already = current.accountId === targetAccount.id ? oldCharge : 0;
+        if (overLimit(editCard, newCharge - already)) {
+          return fail('This would take the card over its credit limit.', 'validation', 'validation.creditOverLimit');
+        }
+      }
+
       await db.update(expense).set(patch)
         .where(and(eq(expense.userId, userId), eq(expense.id, input.id)));
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
         return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
+      }
+
+      if ((await loadCards(userId, [targetAccount.id])).has(targetAccount.id)) {
+        return fail('Income cannot be recorded on a credit card.', 'validation', 'validation.creditNoIncome');
       }
 
       const patch: Record<string, unknown> = {
@@ -1344,6 +1412,10 @@ async function createBalanceAdjustment(
     const target = owned[0];
     if (!target || target.status !== 'active') {
       return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+
+    if ((await loadCards(userId, [target.id])).has(target.id)) {
+      return fail("A credit card's balance can't be adjusted.", 'validation', 'validation.creditNoAdjust');
     }
 
     await db.insert(balanceAdjustment).values({
@@ -1498,6 +1570,11 @@ async function normalizeRuleInput(
   const ruleAccount = ownedAccount[0];
   if (!ruleAccount || ruleAccount.status !== 'active') {
     return { ok: false, error: 'That account no longer exists.', code: 'notFound.account' };
+  }
+  // Expense schedules may land on a card (and may pass its limit - a real
+  // bill should never silently vanish); income may not.
+  if (input.kind === 'income' && (await loadCards(userId, [ruleAccount.id])).has(ruleAccount.id)) {
+    return { ok: false, error: 'Income cannot be recorded on a credit card.', code: 'validation.creditNoIncome' };
   }
   if (!RECURRING_FREQUENCIES.includes(input.frequency)) {
     return { ok: false, error: 'Select a valid frequency.', code: 'validation.ruleFrequency' };
@@ -1884,6 +1961,24 @@ async function importTransactions(
       });
     }
 
+    // Credit cards: charges only, and each card's new charges must fit its limit.
+    const importCards = await loadCards(userId, wanted as string[]);
+    if (importCards.size > 0) {
+      const adding = new Map<string, number>();
+      for (const r of clean) {
+        if (!importCards.has(r.accountId)) continue;
+        if (r.kind === 'income') {
+          return fail('Income cannot be recorded on a credit card.', 'validation', 'validation.creditNoIncome');
+        }
+        adding.set(r.accountId, (adding.get(r.accountId) ?? 0) + r.cents / 100);
+      }
+      for (const [id, extra] of [...adding.entries()]) {
+        if (overLimit(importCards.get(id)!, extra)) {
+          return fail('These rows would take a credit card over its limit.', 'validation', 'validation.creditOverLimit');
+        }
+      }
+    }
+
     clean.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.order - b.order));
     const stamp = generateTransId().split('-')[0];
     const withIds = clean.map((r, i) => ({ r, id: `${stamp}-${i.toString(36).padStart(4, '0')}` }));
@@ -1982,6 +2077,9 @@ async function createTransfer(
     }
     if (source.status !== 'active' || destination.status !== 'active') {
       return fail('Both accounts must be active to transfer between them.', 'validation', 'validation.transferInactiveAccount');
+    }
+    if ((await loadCards(userId, [source.id, destination.id])).size > 0) {
+      return fail("Credit cards can't send or receive transfers.", 'validation', 'validation.creditNoTransfer');
     }
 
     const groupId = generateId();
@@ -2206,6 +2304,10 @@ async function hibernateAccount(userId: string, accountId: string): Promise<Acti
     }
     if (target.status === 'hibernated') {
       return fail('That account is already hibernated.', 'validation', 'validation.accountAlreadyClosed');
+    }
+    const hibCard = (await loadCards(userId, [accountId])).get(accountId);
+    if (hibCard && hibCard.owed > 0.004) {
+      return fail('This card still has unpaid charges. Pay it off first.', 'validation', 'validation.creditOwes');
     }
 
     // Active rules would keep materializing transactions into a frozen
@@ -2444,6 +2546,9 @@ async function moveAccountRecords(
     }
     if (destination.status !== 'active') {
       return fail('Records can only be moved into an active account.', 'validation', 'validation.moveDestinationInactive');
+    }
+    if ((await loadCards(userId, [destination.id])).has(destination.id)) {
+      return fail("Records can't be moved onto a credit card.", 'validation', 'validation.creditNoMoveIn');
     }
 
     // A partial move names transaction ids; a full move takes everything,
@@ -2721,6 +2826,11 @@ async function deleteAccountWithRecords(
     if (target.isDefault) {
       return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
     }
+    // Deleting a card's records would erase real spending. Pay it off first.
+    const delCard = (await loadCards(userId, [target.id])).get(target.id);
+    if (delCard && delCard.owed > 0.004) {
+      return fail('This card still has unpaid charges. Pay it off first.', 'validation', 'validation.creditOwes');
+    }
     if (typeof input.confirmName !== 'string' || input.confirmName.trim() !== target.name.trim()) {
       return fail('The name you typed does not match this account.', 'validation', 'validation.accountDeleteNameMismatch');
     }
@@ -2782,6 +2892,9 @@ async function moveAndDeleteAccount(
     }
     if (destination.status !== 'active') {
       return fail('Records can only be moved into an active account.', 'validation', 'validation.moveDestinationInactive');
+    }
+    if ((await loadCards(userId, [destination.id])).has(destination.id)) {
+      return fail("Records can't be moved onto a credit card.", 'validation', 'validation.creditNoMoveIn');
     }
     if (!Number.isInteger(input.expectedRecordCount) || input.expectedRecordCount < 0) {
       return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');

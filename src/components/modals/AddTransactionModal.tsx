@@ -132,13 +132,21 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // Compares against the STORED literal, never against a label.
   const isSideCashSelected = incomeCategory === 'Side Cash';
 
+  // Credit cards take charges only, so they are offered for expenses alone.
   const accountOptions = useMemo<SelectFieldOption[]>(
-    () => accounts.map((a) => ({
+    () => accounts.filter((a) => type === 'expense' || a.kind !== 'credit').map((a) => ({
       value: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
     })),
-    [accounts],
+    [accounts, type],
   );
+  // Switching to Income with a card selected moves the choice to an allowed account.
+  useEffect(() => {
+    if (type !== 'income') return;
+    if (accounts.find((a) => a.id === accountId)?.kind !== 'credit') return;
+    const usable = accounts.filter((a) => a.kind !== 'credit');
+    setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
+  }, [type, accounts, accountId]);
 
   const categoryOptions = useMemo<SelectFieldOption[]>(
     // label === value deliberately: category names are USER DATA and are
