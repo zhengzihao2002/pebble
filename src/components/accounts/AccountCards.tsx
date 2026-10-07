@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ExpenseTransaction } from '@/types';
 import { cardStatus } from '@/lib/creditCards';
+import { SleepingBadge } from '@/components/shared/SleepingBadge';
 
 export interface DayPointLite {
   date: string;
@@ -89,7 +90,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
             const isOverdue = !!st && st.overdue > 0.004;
             const dueSoon = !!st && !isOverdue && st.dueNow > 0.004 && st.daysLeft <= 3;
             return (
-              <div key={a.id} className="card" style={{ padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', opacity: hibernated ? 0.72 : 1 }}>
+              <div key={a.id} className="card" style={{ padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', opacity: hibernated ? 0.78 : 1, filter: hibernated ? 'grayscale(0.85)' : undefined }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
                   <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '0.55rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'color-mix(in srgb, var(--ink) 8%, transparent)', color: 'var(--ink-soft)' }}>
                     <CreditCard size={15} />
@@ -99,9 +100,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
                     {a.last4 && <span className="font-mono-tab" style={{ fontWeight: 400, color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
                   </span>
                   {hibernated && (
-                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--gold)', border: '1px solid var(--line)', borderRadius: 99, padding: '0.1rem 0.5rem', flexShrink: 0 }}>
-                      {d.accounts.hibernated}
-                    </span>
+                    <SleepingBadge />
                   )}
                 </div>
 
@@ -147,7 +146,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
             );
           }
           return (
-            <div key={a.id} className="card" style={{ padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: hibernated ? 0.72 : 1 }}>
+            <div key={a.id} className="card" style={{ padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: hibernated ? 0.78 : 1, filter: hibernated ? 'grayscale(0.85)' : undefined }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
                 <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: '0.55rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--pine-soft)', color: 'var(--pine)' }}>
                   <Icon size={15} />
@@ -157,9 +156,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
                   {a.last4 && <span className="font-mono-tab" style={{ fontWeight: 400, color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
                 </span>
                 {hibernated && (
-                  <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--gold)', border: '1px solid var(--line)', borderRadius: 99, padding: '0.1rem 0.5rem', flexShrink: 0 }}>
-                    {d.accounts.hibernated}
-                  </span>
+                  <SleepingBadge />
                 )}
               </div>
 

@@ -14,6 +14,7 @@ import { AccountDeleteDialog } from '@/components/settings/AccountDeleteDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSafetyLock } from '@/lib/useSafetyLock';
 import { translateActionError } from '@/lib/i18n/actionErrors';
+import { SleepingBadge } from '@/components/shared/SleepingBadge';
 
 interface AccountsCardProps {
   accounts: Account[];
@@ -193,15 +194,14 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
                 <AccountIcon size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: a.status === 'hibernated' ? 'var(--ink-soft)' : undefined }}>
                     {a.name}{a.last4 ? ` ····${a.last4}` : ''}
                   </p>
                   {/* Hibernated balances still count toward the total, so they
                       are shown - marked with --gold to read as dormant rather
                       than absent. */}
-                  <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: a.status === 'hibernated' ? 'var(--gold)' : 'var(--ink-soft)' }}>
+                  <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
                     {formatCurrency(balance)}
-                    {a.status === 'hibernated' && ` · ${d.accounts.hibernated}`}
                     {a.isPreferred && (
                       <span style={{ color: 'var(--gold)', fontWeight: 500 }}>
                         {` · ${d.accounts.preferred}`}
@@ -214,6 +214,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     </p>
                   )}
                 </div>
+
+                {a.status === 'hibernated' && <SleepingBadge />}
 
                 {savedId === a.id && (
                   <span

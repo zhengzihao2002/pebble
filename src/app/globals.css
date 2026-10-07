@@ -1799,3 +1799,19 @@ html.pebble-welcoming::after {
   background: color-mix(in srgb, var(--ink) 4%, transparent); font-weight: 600;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
+
+/* Sleeping (hibernated) accounts: grey, never gold. The badge takes its border
+   and fill from the surrounding text colour, so it fits plain cards and the
+   pine hero alike. The moon breathes slowly; reduced motion holds it still. */
+.pebble-root .pb-sleep-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem; vertical-align: middle; flex-shrink: 0;
+  padding: 0.08rem 0.45rem 0.08rem 0.38rem; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, currentColor 26%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font-size: 0.68rem; font-weight: 500; line-height: 1.4; white-space: nowrap;
+  color: var(--ink-soft);
+}
+.pebble-root .pb-sleep-badge-hero { color: inherit; opacity: 0.85; }
+.pebble-root .pb-sleep-moon { flex-shrink: 0; animation: pb-sleep-breathe 4.2s ease-in-out infinite; }
+@keyframes pb-sleep-breathe { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+.pebble-root .pb-hero-account-sleeping { opacity: 0.7; }

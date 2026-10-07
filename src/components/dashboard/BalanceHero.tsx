@@ -5,6 +5,7 @@ import { formatCurrency } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
+import { SleepingBadge } from '@/components/shared/SleepingBadge';
 
 interface BalanceHeroProps {
   totalBalance: number;
@@ -67,10 +68,10 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount }: Balan
       {showAccounts && (
         <ul className="pb-hero-accounts" aria-label={d.dashboard.byAccount}>
           {shown.map((r) => (
-            <li key={r.id} className="pb-hero-account">
+            <li key={r.id} className={`pb-hero-account${r.hibernated ? ' pb-hero-account-sleeping' : ''}`}>
               <span className="pb-hero-account-name">
                 {r.label}
-                {r.hibernated && <span className="pb-hero-account-note"> · {d.accounts.hibernated}</span>}
+                {r.hibernated && <>{' '}<SleepingBadge onHero /></>}
               </span>
               <span className="pb-hero-account-amount font-mono-tab">{formatCurrency(r.balance)}</span>
             </li>
