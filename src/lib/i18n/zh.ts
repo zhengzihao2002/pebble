@@ -708,6 +708,8 @@ export const zh: typeof en = {
   },
 
   upcomingCard: {
+    cardPayment: '信用卡还款',
+    cardOverdue: '自 {date} 起逾期',
     title: '即将到来',
     window: '未来 14 天',
     seeAll: '查看全部',

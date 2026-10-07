@@ -17,6 +17,7 @@ import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
+import { cardStatus } from '@/lib/creditCards';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -62,7 +63,14 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
     [charges],
   );
 
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(charges.map((c) => c.id)));
+  // The charges currently due are preselected, so a reminder's amount and the
+  // Pay button agree; when nothing is due yet, every charge is.
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const due = cardStatus(card, charges, today)?.dueChargeIds ?? [];
+    return new Set(due.length > 0 ? due : charges.map((c) => c.id));
+  });
   const [from, setFrom] = useState(() => (sources.find((a) => a.isPreferred) ?? sources[0])?.id ?? '');
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);

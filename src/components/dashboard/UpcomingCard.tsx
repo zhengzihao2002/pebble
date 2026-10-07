@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CalendarClock, ChevronRight } from 'lucide-react';
-import type { CategoryMeta, RecurringRule } from '@/types';
+import { CalendarClock, ChevronRight, CreditCard } from 'lucide-react';
+import type { CategoryMeta, ExpenseTransaction, RecurringRule, Transaction } from '@/types';
+import type { Account } from '@/lib/data/mappers';
+import { cardStatuses, reminderLevel } from '@/lib/creditCards';
+import { PayOffDialog } from '@/components/accounts/PayOffDialog';
 import { computeUpcoming } from '@/lib/analysis/upcoming';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
@@ -25,6 +28,9 @@ function addDaysYmd(ymd: string, n: number): string {
 interface UpcomingCardProps {
   rules: RecurringRule[];
   categoryMeta: CategoryMeta;
+  /** For credit card payment reminders. */
+  accounts?: Account[];
+  transactions?: Transaction[];
 }
 
 /**
@@ -37,13 +43,15 @@ interface UpcomingCardProps {
  * browser's zone, exactly as DashboardClient does: the server runs on UTC.
  * Until then the card keeps its height so nothing below it moves.
  */
-export function UpcomingCard({ rules, categoryMeta }: UpcomingCardProps) {
+export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions = [] }: UpcomingCardProps) {
   const { d, t, locale } = useTranslation();
   const timeZoneOverride = useTimeZoneOverride();
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
     setToday(todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
   }, [timeZoneOverride]);
+  // The card being paid off from a reminder row.
+  const [payOff, setPayOff] = useState<Account | null>(null);
 
   const items = useMemo(() => {
     if (!today) return [];
@@ -59,6 +67,10 @@ export function UpcomingCard({ rules, categoryMeta }: UpcomingCardProps) {
 
   const shown = items.slice(0, MAX_ROWS);
   const extra = items.length - shown.length;
+
+  // Credit card payments due within 7 days, or missed - pinned above scheduled items.
+  const cardRows = today ? cardStatuses(accounts, transactions, today).filter((s) => reminderLevel(s) !== null) : [];
+  const chargesOf = (id: string) => transactions.filter((x): x is ExpenseTransaction => x.type === 'expense' && x.accountId === id);
 
   return (
     <section className="card" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-upcoming-title">
@@ -78,11 +90,36 @@ export function UpcomingCard({ rules, categoryMeta }: UpcomingCardProps) {
 
       {today === null ? (
         <div style={{ minHeight: 120 }} />
-      ) : shown.length === 0 ? (
+      ) : shown.length === 0 && cardRows.length === 0 ? (
         <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', margin: 0, padding: '0.5rem 0' }}>{d.upcomingCard.empty}</p>
       ) : (
         <>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+            {cardRows.map((s, i) => {
+              const lvl = reminderLevel(s);
+              const overdue = lvl === 'overdue';
+              const tone = overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)';
+              return (
+                <li key={`card-${s.card.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}>
+                  <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '0.6rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: overdue ? 'color-mix(in srgb, var(--wine) 14%, transparent)' : 'color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+                    <CreditCard size={15} style={{ color: overdue ? 'var(--wine)' : 'var(--ink-soft)' }} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {/* Card names are USER DATA. */}
+                    <span style={{ display: 'block', fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.card.name}{s.card.last4 ? ` ····${s.card.last4}` : ''}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: tone, fontWeight: lvl === 'd7' ? 400 : 600 }}>
+                      {overdue ? t(d.upcomingCard.cardOverdue, { date: formatDate(s.previous, locale) }) : `${dayLabel(s.next)} · ${d.upcomingCard.cardPayment}`}
+                    </span>
+                  </span>
+                  <span className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatCurrency(s.dueNow)}</span>
+                  <button type="button" className="pill" onClick={() => setPayOff(s.card)} style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem', flexShrink: 0 }}>
+                    {d.accounts.payOffAction}
+                  </button>
+                </li>
+              );
+            })}
             {shown.map((it, i) => {
               const meta = categoryMeta[it.category];
               const Icon = meta ? meta.icon : CalendarClock;
@@ -90,7 +127,7 @@ export function UpcomingCard({ rules, categoryMeta }: UpcomingCardProps) {
               return (
                 <li
                   key={`${it.ruleId}-${it.date}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0', borderTop: i === 0 && cardRows.length === 0 ? 'none' : '1px solid var(--line)' }}
                 >
                   <span
                     aria-hidden="true"
@@ -122,6 +159,9 @@ export function UpcomingCard({ rules, categoryMeta }: UpcomingCardProps) {
             <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', margin: '0.5rem 0 0' }}>{t(d.upcomingCard.more, { count: extra })}</p>
           )}
         </>
+      )}
+      {payOff && (
+        <PayOffDialog card={payOff} allAccounts={accounts} charges={chargesOf(payOff.id)} onClose={() => setPayOff(null)} />
       )}
     </section>
   );

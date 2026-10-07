@@ -173,7 +173,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
       </section>
 
-      <UpcomingCard rules={rules} categoryMeta={categoryMeta} />
+      <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
 
       <section className="dash-two-col">
         <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} />

@@ -793,6 +793,8 @@ export const en = {
   },
 
   upcomingCard: {
+    cardPayment: 'Card payment',
+    cardOverdue: 'Overdue since {date}',
     title: 'Upcoming',
     window: 'Next 14 days',
     seeAll: 'See all',
