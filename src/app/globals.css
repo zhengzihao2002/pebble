@@ -484,13 +484,26 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
    size as a bar button - it reads as that one button's column extending
    upward rather than a separate panel. Absolutely positioned so it adds no
    height to the bar itself. */
+/* The More panel moves like the + menu (.pebble-add-menu): a clip window whose
+   bottom edge is the bar's top edge (the cell sits inside the bar's 0.4rem
+   padding and 1px border), and the panel slides up from beneath it, then back
+   down behind it. Visibility is released only after the slide-out finishes. */
 .pebble-bottom-nav-stack {
-  position: absolute; bottom: 100%; right: 0.5rem;
-  display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute; bottom: calc(100% + 0.4rem + 1px); right: 0.5rem;
+  /* Room inside the clip for the panel's shadow. */
+  padding: 1rem 0.6rem 0; margin: 0 -0.6rem;
+  overflow: hidden; pointer-events: none;
+  visibility: hidden; transition: visibility 0s linear var(--pb-dur-std);
 }
-.pebble-bottom-nav-stack.open { grid-template-rows: 1fr; }
-.pebble-bottom-nav-stack-inner { overflow: hidden; min-height: 0; }
+.pebble-bottom-nav-stack.open { pointer-events: auto; visibility: visible; transition-delay: 0s; }
+.pebble-bottom-nav-stack-inner {
+  transform: translateY(calc(100% + 1.5rem));
+  transition: transform var(--pb-dur-std) var(--pb-ease-in);
+}
+.pebble-bottom-nav-stack.open .pebble-bottom-nav-stack-inner {
+  transform: none;
+  transition: transform 320ms var(--pb-ease-out);
+}
 .pebble-bottom-nav-stack-panel {
   background-color: var(--mist);
   border: 1px solid var(--line);
