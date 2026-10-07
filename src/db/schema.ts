@@ -27,20 +27,21 @@
  */
 
 import {
-  pgTable,
-  pgSchema,
-  index,
-  foreignKey,
-  primaryKey,
+  boolean,
   check,
+  date,
+  foreignKey,
+  index,
+  integer,
+  numeric,
+  pgSchema,
+  pgTable,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
   unique,
   uuid,
-  text,
-  boolean,
-  integer,
-  date,
-  numeric,
-  timestamp,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -108,7 +109,8 @@ export const account = pgTable(
     id: text().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
     name: text().notNull(),
-    /** 'bank' | 'cash'. Drives whether last4 is required. */
+    /** 'bank' | 'cash' | 'credit'. Drives whether last4 is required, and
+     *  credit (only) carries creditLimit and dueDay. */
     kind: text().notNull(),
     /** Exactly 4 digits for user-created bank accounts; NULL for cash and
      *  for the seeded defaults, which predate the requirement. */
@@ -127,6 +129,11 @@ export const account = pgTable(
      */
     isPreferred: boolean('is_preferred').default(false).notNull(),
     sortOrder: integer('sort_order').default(0).notNull(),
+    /** Credit cards only: the most that may be owed at once. NULL otherwise. */
+    creditLimit: numeric('credit_limit', { precision: 12, scale: 2, mode: 'number' }),
+    /** Credit cards only: day of the month payment is due, 1-31 (29-31 mean
+     *  the last day in shorter months). NULL otherwise. */
+    dueDay: smallint('due_day'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()
       .notNull(),
@@ -141,11 +148,15 @@ export const account = pgTable(
       foreignColumns: [userInNeonAuth.id],
       name: 'account_user_id_fkey',
     }).onDelete('cascade'),
-    check('account_kind_check', sql`kind = ANY (ARRAY['bank'::text, 'cash'::text])`),
+    check('account_kind_check', sql`kind = ANY (ARRAY['bank'::text, 'cash'::text, 'credit'::text])`),
     check('account_status_check', sql`status = ANY (ARRAY['active'::text, 'hibernated'::text])`),
     check(
       'account_last4_check',
-      sql`kind = 'bank'::text AND (last4 IS NULL OR last4 ~ '^[0-9]{4}$'::text) OR kind = 'cash'::text AND last4 IS NULL`,
+      sql`(kind = ANY (ARRAY['bank'::text, 'credit'::text]) AND (last4 IS NULL OR last4 ~ '^[0-9]{4}$'::text)) OR (kind = 'cash'::text AND last4 IS NULL)`,
+    ),
+    check(
+      'account_credit_fields_check',
+      sql`(kind = 'credit'::text AND credit_limit IS NOT NULL AND credit_limit > 0 AND due_day BETWEEN 1 AND 31) OR (kind <> 'credit'::text AND credit_limit IS NULL AND due_day IS NULL)`,
     ),
   ],
 );

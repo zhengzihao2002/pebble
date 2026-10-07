@@ -120,16 +120,22 @@ export function mapBudgetRows(rows: BudgetRow[]): Record<string, number> {
 }
 
 
+export type AccountKind = 'bank' | 'cash' | 'credit';
+
 export interface Account {
   id: string;
   name: string;
-  kind: 'bank' | 'cash';
+  kind: AccountKind;
   last4: string | null;
   status: 'active' | 'hibernated';
   isDefault: boolean;
   /** Preselected in transaction forms. At most one per user. */
   isPreferred: boolean;
   sortOrder: number;
+  /** Credit cards only: the most that may be owed at once. Null otherwise. */
+  creditLimit: number | null;
+  /** Credit cards only: day of the month payment is due (1-31). Null otherwise. */
+  dueDay: number | null;
 }
 
 /**
@@ -141,12 +147,15 @@ export function mapAccountRow(row: AccountRow): Account {
   return {
     id: row.id,
     name: row.name,
-    kind: row.kind as 'bank' | 'cash',
+    kind: row.kind as AccountKind,
     last4: row.last4,
     status: row.status as 'active' | 'hibernated',
     isDefault: row.isDefault,
     isPreferred: row.isPreferred,
     sortOrder: row.sortOrder,
+    // Set for credit cards only (a CHECK enforces it).
+    creditLimit: row.creditLimit ?? null,
+    dueDay: row.dueDay ?? null,
   };
 }
 
