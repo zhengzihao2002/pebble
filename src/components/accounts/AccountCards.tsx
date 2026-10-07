@@ -5,7 +5,8 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { nextDue } from '@/components/accounts/PayOffDialog';
+import type { ExpenseTransaction } from '@/types';
+import { cardStatus } from '@/lib/creditCards';
 
 export interface DayPointLite {
   date: string;
@@ -19,7 +20,7 @@ type TipItem = { payload?: { date?: string; v?: number } };
  * period, a mini chart from the same daily walk as the main chart, share of
  * the total, and last activity. Account names are USER DATA.
  */
-export function AccountCards({ accounts, days, total, lastActivity, period, onPayOff }: {
+export function AccountCards({ accounts, days, total, lastActivity, period, onPayOff, expenses = [] }: {
   accounts: Account[];
   days: DayPointLite[];
   /** Total balance on the last day. */
@@ -29,6 +30,8 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
   period: string;
   /** Credit cards only: opens the Pay off dialog. */
   onPayOff?: (a: Account) => void;
+  /** Expense rows, for each card's due and overdue amounts. */
+  expenses?: ExpenseTransaction[];
 }) {
   const { d, t, locale } = useTranslation();
   if (days.length === 0) return null;
@@ -79,13 +82,12 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
             const limit = a.creditLimit ?? 0;
             const over = limit > 0 && owed > limit + 0.004;
             const usedPct = limit > 0 ? Math.min(100, (owed / limit) * 100) : 0;
-            const dueYmd = a.dueDay ? nextDue(a.dueDay) : null;
-            const today0 = new Date();
-            const daysLeft = dueYmd
-              ? Math.round((Date.UTC(+dueYmd.slice(0, 4), +dueYmd.slice(5, 7) - 1, +dueYmd.slice(8, 10))
-                - Date.UTC(today0.getFullYear(), today0.getMonth(), today0.getDate())) / 86_400_000)
-              : null;
-            const dueSoon = owes && daysLeft !== null && daysLeft <= 3;
+            // Due and overdue amounts from the shared statement rules (creditCards.ts).
+            const now0 = new Date();
+            const todayYmd = `${now0.getFullYear()}-${String(now0.getMonth() + 1).padStart(2, '0')}-${String(now0.getDate()).padStart(2, '0')}`;
+            const st = cardStatus(a, expenses, todayYmd);
+            const isOverdue = !!st && st.overdue > 0.004;
+            const dueSoon = !!st && !isOverdue && st.dueNow > 0.004 && st.daysLeft <= 3;
             return (
               <div key={a.id} className="card" style={{ padding: '1.1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', opacity: hibernated ? 0.72 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
@@ -121,9 +123,15 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
                   </div>
                 )}
 
-                {dueYmd && (
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: dueSoon ? 'var(--gold)' : 'var(--ink-soft)', fontWeight: dueSoon ? 600 : 400 }}>
-                    {t(d.accountsPage.cardDue, { date: formatDate(dueYmd, locale) })}
+                {st && (
+                  <p className="pb-money" style={{ margin: 0, fontSize: '0.78rem', color: isOverdue ? 'var(--wine)' : dueSoon ? 'var(--gold)' : 'var(--ink-soft)', fontWeight: isOverdue || dueSoon ? 600 : 400 }}>
+                    {isOverdue
+                      ? t(d.accountsPage.cardOverdueLine, { date: formatDate(st.previous, locale), amount: formatCurrency(st.overdue) })
+                      : st.dueNow > 0.004
+                        ? t(d.accountsPage.cardDueAmount, { amount: formatCurrency(st.dueNow), date: formatDate(st.next, locale) })
+                        : owes
+                          ? d.accountsPage.cardNotYetDue
+                          : t(d.accountsPage.cardDue, { date: formatDate(st.next, locale) })}
                   </p>
                 )}
 

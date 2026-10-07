@@ -730,6 +730,7 @@ export const zh: typeof en = {
   },
 
   importCsv: {
+    cardOverdue: '在此卡上已逾期（{date} 到期）',
     button: '导入 CSV',
     title: '从银行对账单导入',
     chooseHint: '选择银行导出的 CSV 文件。文件只在本设备上读取，只有你确认的行才会保存。',
@@ -941,6 +942,9 @@ export const zh: typeof en = {
     cardLimitLine: '已用 {used} / 额度 {limit} · 可用 {available}',
     cardOverLimit: '超出额度 {amount}',
     cardDue: '{date} 到期',
+    cardOverdueLine: '自 {date} 起逾期 · {amount}',
+    cardDueAmount: '{amount}，{date} 到期',
+    cardNotYetDue: '尚未到期：新消费计入下期账单',
     noChange: '没有变化',
     lastActivity: '最近活动 {date}',
     noActivity: '还没有活动',

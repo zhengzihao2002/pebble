@@ -815,6 +815,7 @@ export const en = {
   },
 
   importCsv: {
+    cardOverdue: 'Overdue on this card (was due {date})',
     button: 'Import CSV',
     title: 'Import from a bank statement',
     chooseHint: 'Choose a CSV file from your bank. It is read on this device; only the rows you confirm are saved.',
@@ -1026,6 +1027,9 @@ export const en = {
     cardLimitLine: '{used} of {limit} · {available} available',
     cardOverLimit: 'Over limit by {amount}',
     cardDue: 'Due {date}',
+    cardOverdueLine: 'Overdue since {date} · {amount}',
+    cardDueAmount: '{amount} due {date}',
+    cardNotYetDue: 'Not due yet: new charges go on a later statement',
     noChange: 'No change',
     lastActivity: 'Last activity {date}',
     noActivity: 'No activity yet',

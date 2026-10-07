@@ -13,6 +13,7 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { parseCsv, parseCsvAmountCents, parseCsvDate, type DateFormat } from '@/lib/csvParse';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { chargeOverdueSince } from '@/lib/creditCards';
 import { composeDescription } from '@/lib/transactionDescription';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
@@ -270,6 +271,17 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
   // Credit cards take charges only: not offered for income rows, nor in Set all
   // (which applies to income rows too).
   const nonCardOptions = accountOptions.filter((o) => accounts.find((a) => a.id === o.value)?.kind !== 'credit');
+  // A spending row put on a credit card that has already missed its due date
+  // (shared statement rule) is flagged in the preview before it is imported.
+  const importToday = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  })();
+  const overdueOnCard = (accountId: string | undefined, date: string | undefined, isIncome: boolean): string | null => {
+    if (!accountId || !date || isIncome) return null;
+    const card = accounts.find((a) => a.id === accountId);
+    return card ? chargeOverdueSince(card, date, importToday) : null;
+  };
 
   const setAll = (kind: 'account' | 'expense' | 'income', value: string) => {
     if (!value) return;
@@ -445,8 +457,11 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
                                     style={{ ...smallField, fontSize: '0.86rem', height: '2.1rem', marginBottom: '0.2rem' }}
                                   />
                                 )}
-                                <span style={{ display: 'block', fontSize: '0.74rem', color: r.problem || dup ? 'var(--wine)' : 'var(--ink-soft)' }}>
+                                <span style={{ display: 'block', fontSize: '0.74rem', color: r.problem || dup || overdueOnCard(accOverride[r.idx], r.date as string, income) ? 'var(--wine)' : 'var(--ink-soft)' }}>
                                   {r.problem ? d.importCsv.bad : `${formatDate(r.date as string, locale)}${dup ? ` · ${d.importCsv.dup}` : ''}${r.shifted ? ` · ${d.importCsv.shifted}` : ''}`}
+                                  {!r.problem && overdueOnCard(accOverride[r.idx], r.date as string, income) && (
+                                    <>{' · '}{d.importCsv.cardOverdue.replace('{date}', formatDate(overdueOnCard(accOverride[r.idx], r.date as string, income) as string, locale))}</>
+                                  )}
                                 </span>
                               </span>
                               {!r.problem && (

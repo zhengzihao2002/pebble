@@ -188,7 +188,7 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
       {days && current !== null && chrono.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           <div><PeriodLink label={t(d.accountsPage.cardsPeriod, { period })} control="accounts" /></div>
-          <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} onPayOff={setPayOffCard} />
+          <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} onPayOff={setPayOffCard} expenses={expenses} />
         </div>
       )}
       {payOffCard && (

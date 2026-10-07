@@ -92,3 +92,15 @@ export function reminderLevel(s: CardStatus): ReminderLevel | null {
   if (s.daysLeft <= 7) return 'd7';
   return null;
 }
+
+/**
+ * The due date a single charge has already missed on this card, or null.
+ * Same rule as cardStatus: a charge is covered by the first due date at least
+ * STATEMENT_GRACE_DAYS after it. Used to warn before a backdated charge (for
+ * example from a CSV import) lands on a card already overdue.
+ */
+export function chargeOverdueSince(card: Account, chargeDate: string, today: string): string | null {
+  if (card.kind !== 'credit' || !card.dueDay) return null;
+  const { previous } = dueDates(card.dueDay, today);
+  return chargeDate <= addDays(previous, -STATEMENT_GRACE_DAYS) ? previous : null;
+}
