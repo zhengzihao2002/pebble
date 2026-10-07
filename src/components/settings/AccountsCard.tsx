@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Landmark, Coins, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
-import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction } from '@/lib/actions/pebble';
+import { Check, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
+import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction, updateCreditCardAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -60,8 +60,32 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<'bank' | 'cash'>('bank');
+  const [kind, setKind] = useState<'bank' | 'cash' | 'credit'>('bank');
   const [last4, setLast4] = useState('');
+  // Credit cards: limit (typed text, parsed on save) and due day.
+  const [limit, setLimit] = useState('');
+  const [dueDay, setDueDay] = useState(1);
+  // Inline editor for an existing card's limit and due day.
+  const [editingCard, setEditingCard] = useState<string | null>(null);
+  const [editLimit, setEditLimit] = useState('');
+  const [editDue, setEditDue] = useState(1);
+  const parseMoney = (s: string) => {
+    const n = Number(s.replace(/[$,\s]/g, ''));
+    return s.trim() && Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+  };
+  const dayText = (n: number) => (locale === 'zh'
+    ? String(n)
+    : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`);
+  const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+    <option key={n} value={n}>{t(d.accounts.dueDayOption, { day: dayText(n) })}</option>
+  ));
+  const openCardEditor = (a: Account) => {
+    setEditingCard(a.id);
+    setEditLimit(a.creditLimit !== null ? String(a.creditLimit) : '');
+    setEditDue(a.dueDay ?? 1);
+    setError(null);
+  };
+  const cardChanged = (a: Account) => parseMoney(editLimit) !== a.creditLimit || editDue !== a.dueDay;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +113,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   }, [accounts]);
 
   const resetForm = () => {
-    setName(''); setKind('bank'); setLast4('');
+    setName(''); setKind('bank'); setLast4(''); setLimit(''); setDueDay(1);
     setAdding(false); setError(null);
   };
 
@@ -99,7 +123,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setError(null);
     setSavedId(null);
     const idsBefore = new Set(accounts.map((a) => a.id));
-    const result = await callAction(() => createAccountAction({ name, kind, last4 }));
+    const result = await callAction(() => createAccountAction({ name, kind, last4, ...(kind === 'credit' ? { creditLimit: parseMoney(limit), dueDay } : {}) }));
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the new row is marked when the list refreshes.
@@ -120,6 +144,19 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(accountId);
   };
 
+  const handleCardSave = async (a: Account) => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    setSavedId(null);
+    const result = await callAction(() => updateCreditCardAction({ id: a.id, creditLimit: parseMoney(editLimit), dueDay: editDue }));
+    setSaving(false);
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
+    // Below the failure return.
+    setEditingCard(null);
+    setSavedId(a.id);
+  };
+
   return (
     <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
       {saving && <LoadingOverlay label={d.common.saving} />}
@@ -132,7 +169,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
       <div style={{ marginBottom: '1.1rem' }}>
         {visible.map((a) => {
-          const AccountIcon = a.kind === 'bank' ? Landmark : Coins;
+          const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
           const balance = balancesByAccount[a.id] ?? 0;
           // A STACK, not a row. The buttons used to sit beside the name and
           // wrap only once it could no longer hold 140px - a threshold that
@@ -171,6 +208,11 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                       </span>
                     )}
                   </p>
+                  {a.kind === 'credit' && a.creditLimit !== null && a.dueDay !== null && (
+                    <p className="font-mono-tab" style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>
+                      {t(d.accounts.cardSummary, { limit: formatCurrency(a.creditLimit), day: dayText(a.dueDay) })}
+                    </p>
+                  )}
                 </div>
 
                 {savedId === a.id && (
@@ -222,6 +264,16 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   single line and gain no height. */}
               {!a.isDefault && (
                 <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  {a.kind === 'credit' && (
+                    <button
+                      type="button" onClick={() => (editingCard === a.id ? setEditingCard(null) : openCardEditor(a))}
+                      className="icon-btn" aria-expanded={editingCard === a.id}
+                      aria-label={t(d.accounts.editCard, { name: a.name })} title={t(d.accounts.editCard, { name: a.name })}
+                      style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => runAccountAction(a.id, () => (
@@ -240,6 +292,27 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   >
                     <Trash2 size={15} />
                   </button>
+                </div>
+              )}
+
+              {editingCard === a.id && (
+                <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.4rem 0 0.2rem' }}>
+                  <label style={labelStyle}>
+                    {d.accounts.creditLimitLabel}
+                    <input value={editLimit} onChange={(e) => setEditLimit(e.target.value)} inputMode="decimal" className="font-mono-tab" style={inputStyle} />
+                  </label>
+                  <label style={labelStyle}>
+                    {d.accounts.dueDayLabel}
+                    <select value={editDue} onChange={(e) => setEditDue(Number(e.target.value))} style={inputStyle}>{dayOptions}</select>
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" onClick={() => setEditingCard(null)} disabled={saving} className="pill" style={{ flex: 1, padding: '0.5rem' }}>
+                      {d.accounts.cancel}
+                    </button>
+                    <button type="button" onClick={() => handleCardSave(a)} disabled={saving || !cardChanged(a)} className="btn-primary" style={{ flex: 1, padding: '0.5rem' }}>
+                      {d.accounts.cardSave}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -261,20 +334,20 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           </label>
 
           <div role="group" style={{ display: 'flex', gap: '0.5rem' }}>
-            {(['bank', 'cash'] as const).map((k) => (
+            {(['bank', 'cash', 'credit'] as const).map((k) => (
               <button
                 key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k}
                 className={`pill ${kind === k ? 'active' : ''}`}
                 style={{ flex: 1, padding: '0.5rem' }}
               >
-                {k === 'bank' ? d.accounts.kindBank : d.accounts.kindCash}
+                {k === 'bank' ? d.accounts.kindBank : k === 'cash' ? d.accounts.kindCash : d.accounts.kindCredit}
               </button>
             ))}
           </div>
 
           {/* Only for bank accounts: the database CHECK forbids last4 on cash,
               so offering a field that must stay empty would invite an error. */}
-          {kind === 'bank' && (
+          {(kind === 'bank' || kind === 'credit') && (
             <label style={labelStyle}>
               {d.accounts.last4Label}
               <input
@@ -282,6 +355,20 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 inputMode="numeric" placeholder="0000" className="font-mono-tab" style={inputStyle}
               />
             </label>
+          )}
+
+          {kind === 'credit' && (
+            <>
+              <label style={labelStyle}>
+                {d.accounts.creditLimitLabel}
+                <input value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" placeholder="2000" className="font-mono-tab" style={inputStyle} />
+              </label>
+              <label style={labelStyle}>
+                {d.accounts.dueDayLabel}
+                <select value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} style={inputStyle}>{dayOptions}</select>
+                <span style={{ fontSize: '0.72rem' }}>{d.accounts.dueDayHint}</span>
+              </label>
+            </>
           )}
 
 

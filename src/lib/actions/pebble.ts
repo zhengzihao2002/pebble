@@ -2038,9 +2038,13 @@ export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);
 
 export interface CreateAccountInput {
   name: string;
-  kind: 'bank' | 'cash';
-  /** Exactly 4 digits when kind is 'bank'; ignored otherwise. */
+  kind: 'bank' | 'cash' | 'credit';
+  /** Exactly 4 digits when kind is 'bank' or 'credit'; ignored for cash. */
   last4: string;
+  /** Credit only: positive, at most 2 decimals. */
+  creditLimit?: number;
+  /** Credit only: 1-31. */
+  dueDay?: number;
 }
 
 /**
@@ -2057,13 +2061,28 @@ async function createAccount(userId: string, input: CreateAccountInput): Promise
     if (name.length > 40) {
       return fail('That account name is too long.', 'validation', 'validation.accountNameTooLong');
     }
-    if (input.kind !== 'bank' && input.kind !== 'cash') {
+    if (input.kind !== 'bank' && input.kind !== 'cash' && input.kind !== 'credit') {
       return fail('Choose an account type.', 'validation', 'validation.accountKindInvalid');
     }
 
-    const last4 = input.kind === 'bank' ? input.last4.trim() : null;
-    if (input.kind === 'bank' && !/^[0-9]{4}$/.test(last4 ?? '')) {
+    const needsLast4 = input.kind === 'bank' || input.kind === 'credit';
+    const last4 = needsLast4 ? input.last4.trim() : null;
+    if (needsLast4 && !/^[0-9]{4}$/.test(last4 ?? '')) {
       return fail('Enter the last 4 digits of the account number.', 'validation', 'validation.accountLast4Invalid');
+    }
+
+    // Credit cards carry a limit and a due day; nothing else may (a CHECK enforces it).
+    let creditLimit: number | null = null;
+    let dueDay: number | null = null;
+    if (input.kind === 'credit') {
+      creditLimit = Math.round(Number(input.creditLimit) * 100) / 100;
+      if (!Number.isFinite(creditLimit) || creditLimit <= 0 || creditLimit >= 1e10) {
+        return fail('Enter a credit limit greater than zero.', 'validation', 'validation.creditLimitInvalid');
+      }
+      dueDay = Number(input.dueDay);
+      if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+        return fail('Choose a due day between 1 and 31.', 'validation', 'validation.dueDayInvalid');
+      }
     }
 
     // The partial unique index (active accounts only) is what actually
@@ -2091,6 +2110,8 @@ async function createAccount(userId: string, input: CreateAccountInput): Promise
       name,
       kind: input.kind,
       last4,
+      creditLimit,
+      dueDay,
       // Every account starts at zero. A starting balance is recorded as a
       // dated balance adjustment instead, so nothing moves the total without
       // a visible row explaining it.
@@ -2101,6 +2122,61 @@ async function createAccount(userId: string, input: CreateAccountInput): Promise
     return { ok: true };
   } catch (error) {
     return handleUnexpected('createAccountAction', error);
+  }
+}
+
+export interface UpdateCreditCardInput {
+  id: string;
+  creditLimit: number;
+  dueDay: number;
+}
+
+/**
+ * Changes a credit card's limit and due day. The limit may not drop below
+ * what the card currently owes: the sum of its charges, which are stored
+ * negative, so owed = -sum(amount).
+ */
+async function updateCreditCard(userId: string, input: UpdateCreditCardInput): Promise<ActionResult> {
+  try {
+    const creditLimit = Math.round(Number(input.creditLimit) * 100) / 100;
+    if (!Number.isFinite(creditLimit) || creditLimit <= 0 || creditLimit >= 1e10) {
+      return fail('Enter a credit limit greater than zero.', 'validation', 'validation.creditLimitInvalid');
+    }
+    const dueDay = Number(input.dueDay);
+    if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+      return fail('Choose a due day between 1 and 31.', 'validation', 'validation.dueDayInvalid');
+    }
+
+    const found = await db
+      .select({ kind: account.kind })
+      .from(account)
+      .where(and(eq(account.userId, userId), eq(account.id, input.id)))
+      .limit(1);
+    if (!found[0]) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+    if (found[0].kind !== 'credit') {
+      return fail('That account is not a credit card.', 'validation', 'validation.notCreditCard');
+    }
+
+    const owedRows = await db
+      .select({ total: sql<string>`coalesce(sum(${expense.amount}), 0)` })
+      .from(expense)
+      .where(and(eq(expense.userId, userId), eq(expense.accountId, input.id)));
+    const owed = -Number(owedRows[0]?.total ?? 0);
+    if (owed > creditLimit + 0.004) {
+      return fail('This card already owes more than that limit.', 'validation', 'validation.creditLimitBelowOwed');
+    }
+
+    await db
+      .update(account)
+      .set({ creditLimit, dueDay })
+      .where(and(eq(account.userId, userId), eq(account.id, input.id)));
+
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('updateCreditCardAction', error);
   }
 }
 
@@ -2287,6 +2363,7 @@ async function loadAccounts(userId: string): Promise<AccountsResult> {
 }
 
 export const createAccountAction = withSessionUser(createAccount);
+export const updateCreditCardAction = withSessionUser(updateCreditCard);
 export const getAccountsAction = withSessionUser(loadAccounts);
 
 export type SearchTransactionsResult =
