@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, Coins, Copy, Moon, Repeat, Target, TrendingUp, X } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, CalendarClock, Coins, Copy, Moon, Repeat, Target, TrendingDown, TrendingUp, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Goal, RecurringRule, Transaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
@@ -46,6 +46,9 @@ const monthly = (xs: Transaction[]) => xs.slice(1).every((x, i) => {
   const g = dayNum(x.date) - dayNum(xs[i].date);
   return g >= 25 && g <= 35;
 });
+
+/** How many times a year each schedule frequency repeats. */
+const PER_YEAR: Record<string, number> = { once: 0, weekly: 52, biweekly: 26, monthly: 12, yearly: 1 };
 
 /**
  * Fixed, explainable rules over data already on the page - never a guess.
@@ -220,6 +223,85 @@ export function WorthKnowing({ transactions, rules, goals, accounts, today, onOp
       id: `dormant:${a.id}:${last}`, icon: Moon, tone: 'var(--ink-soft)', title: d.insights.dormantTitle,
       body: t(d.insights.dormantBody, { name: a.name, date: formatDate(last, locale) }),
       action: { label: d.insights.dormantAction, href: '/settings' },
+    });
+  }
+
+  // --- Positive and neutral notes. They come after the warnings above. ---
+  const ty = +today.slice(0, 4);
+  const tm = +today.slice(5, 7) - 1;
+  const td = +today.slice(8, 10);
+  // Day-to-day spending: scheduled payments land in lumps and would mislead.
+  const dayToDay = expenses.filter((x) => !x.recurringRuleId);
+
+  // No-spend days this month, up to yesterday.
+  const spentOn = new Set(dayToDay.filter((x) => x.date.startsWith(thisMonth) && x.date < today).map((x) => x.date));
+  const elapsed = td - 1;
+  const noSpend = elapsed - spentOn.size;
+  // Only while logging is active: some day-to-day spending in the last 30 days.
+  const logging = dayToDay.some((x) => x.date < today && todayN - dayNum(x.date) <= 30);
+  if (noSpend >= 3 && logging) {
+    let run = 0;
+    let longest = 0;
+    for (let day = 1; day <= elapsed; day += 1) {
+      if (spentOn.has(`${thisMonth}-${pad(day)}`)) run = 0;
+      else { run += 1; longest = Math.max(longest, run); }
+    }
+    items.push({
+      id: `nospend:${thisMonth}`, icon: CalendarCheck, tone: 'var(--pine)', title: d.insights.noSpendTitle,
+      body: t(d.insights.noSpendBody, { count: noSpend }) + (longest >= 2 ? t(d.insights.noSpendStreak, { streak: longest }) : ''),
+    });
+  }
+
+  // Below usual: a category 25%+ under its pace from the last 3 complete
+  // months. Needs a week into the month and 3 full months of history.
+  const monthsBack = [1, 2, 3].map((n) => ymdOf(new Date(ty, tm - n, 1)).slice(0, 7));
+  const earliestDate = transactions.reduce<string | null>((acc, x) => (acc === null || x.date < acc ? x.date : acc), null);
+  if (td >= 7 && earliestDate !== null && earliestDate <= `${monthsBack[2]}-01`) {
+    const frac = td / new Date(ty, tm + 1, 0).getDate();
+    const totals = new Map<string, { now: number; past: number }>();
+    for (const x of dayToDay) {
+      const mk = x.date.slice(0, 7);
+      const isNow = mk === thisMonth && x.date <= today;
+      if (!isNow && !monthsBack.includes(mk)) continue;
+      const e = totals.get(x.category) ?? { now: 0, past: 0 };
+      if (isNow) e.now += amt(x);
+      else e.past += amt(x);
+      totals.set(x.category, e);
+    }
+    let low: { cat: string; now: number; expected: number } | null = null;
+    for (const [cat, v] of [...totals.entries()]) {
+      const usual = v.past / 3;
+      if (usual < 50) continue;
+      const expected = usual * frac;
+      if (v.now > expected * 0.75) continue;
+      if (!low || expected - v.now > low.expected - low.now) low = { cat, now: v.now, expected };
+    }
+    if (low) {
+      items.push({
+        id: `below:${low.cat}:${thisMonth}`, icon: TrendingDown, tone: 'var(--pine)', title: d.insights.belowTitle,
+        body: t(d.insights.belowBody, {
+          category: categoryLabel(d, low.cat), pct: `${Math.round((1 - low.now / low.expected) * 100)}%`,
+          amount: formatCurrency(low.now), expected: formatCurrency(low.expected),
+        }),
+      });
+    }
+  }
+
+  // Scheduled payments per year: active spending schedules that have not ended.
+  let perYearTotal = 0;
+  let counted = 0;
+  for (const r of rules) {
+    if (r.status !== 'active' || r.kind !== 'expense' || (r.endDate && r.endDate < today)) continue;
+    const n = PER_YEAR[r.frequency as string];
+    if (!n) continue;
+    perYearTotal += Math.abs(r.amount) * n;
+    counted += 1;
+  }
+  if (counted >= 2) {
+    items.push({
+      id: `yearly:${today.slice(0, 4)}`, icon: CalendarClock, tone: 'var(--ink-soft)', title: d.insights.yearlyTitle,
+      body: t(d.insights.yearlyBody, { count: counted, amount: formatCurrency(perYearTotal) }),
+      action: { label: d.insights.yearlyAction, href: '/scheduled' },
     });
   }
 
