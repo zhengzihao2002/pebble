@@ -54,6 +54,14 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
   const others = avg.filter((_, i) => i !== topIdx);
   const rest = others.reduce((a, b) => a + b, 0) / others.length;
   const ratio = rest > 0 ? max / rest : 0;
+  // Per day of history, same as the bars. Weekdays are Monday to Friday
+  // whichever day the week starts on.
+  const perDay = (days: number[]) => {
+    const n = days.reduce((a, wd) => a + occurrences[wd], 0);
+    return n ? days.reduce((a, wd) => a + totals[wd], 0) / n : 0;
+  };
+  const weekdayAvg = perDay([1, 2, 3, 4, 5]);
+  const weekendAvg = perDay([0, 6]);
 
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
   // 1 January 2023 was a Sunday.
@@ -64,7 +72,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
     : d.insights.yourWeekEven;
 
   return (
-    <section className="card" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-week-title">
+    <section className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column' }} aria-labelledby="pb-week-title">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
         <div>
           <h3 id="pb-week-title" style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.insights.yourWeekTitle}</h3>
@@ -81,7 +89,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
           <div
             className="pb-chart-fade" role="img"
             aria-label={order.map((wd, i) => `${dayName(wd, 'long')}: ${wholeDollars(avg[i])}`).join(', ')}
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, height: 150, marginTop: '1rem' }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gridTemplateRows: 'minmax(0, 1fr)', gap: 6, flex: '1 1 auto', minHeight: 150, maxHeight: 280, marginTop: '1rem' }}
           >
             {avg.map((v, i) => {
               const top = i === topIdx;
@@ -98,6 +106,10 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
                 </div>
               );
             })}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1.5rem', marginTop: '1rem', paddingTop: '0.8rem', borderTop: '1px solid var(--line)', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+            <span>{d.insights.yourWeekWeekdays}{' '}<span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{t(d.insights.yourWeekPerDay, { amount: wholeDollars(weekdayAvg) })}</span></span>
+            <span>{d.insights.yourWeekWeekends}{' '}<span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{t(d.insights.yourWeekPerDay, { amount: wholeDollars(weekendAvg) })}</span></span>
           </div>
         </>
       )}
