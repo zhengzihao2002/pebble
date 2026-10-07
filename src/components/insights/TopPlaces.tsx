@@ -14,7 +14,8 @@ export const placeKey = (title: string) => title.toLowerCase().replace(/\s*#?\d{
 
 /**
  * Where the money went, by place. Pebble has no merchant field, so places are
- * grouped from transaction titles - the card says so. Spending only.
+ * grouped from transaction titles - the card says so. Spending only, and
+ * scheduled payments are left out (a small note on the card says so).
  */
 export function TopPlaces({ transactions, today }: { transactions: Transaction[]; today: string | null }) {
   const { d, t } = useTranslation();
@@ -30,6 +31,8 @@ export function TopPlaces({ transactions, today }: { transactions: Transaction[]
   const groups = new Map<string, { total: number; count: number; names: Map<string, number> }>();
   for (const x of transactions) {
     if (x.type !== 'expense' || x.amount >= 0 || x.date < start || x.date > today) continue;
+    // Scheduled payments (rent, bills) would top the list every month.
+    if (x.recurringRuleId) continue;
     const title = descriptionTitle(x.description).trim();
     const key = placeKey(title);
     if (!key) continue;
@@ -68,9 +71,12 @@ export function TopPlaces({ transactions, today }: { transactions: Transaction[]
           <h3 id="pb-places-title" style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.insights.placesTitle}</h3>
           <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.insights.placesHint}</p>
         </div>
-        <div role="group" aria-label={d.insights.placesTitle} style={{ display: 'flex', gap: '0.3rem' }}>
-          {tab('month', d.insights.thisMonth)}
-          {tab('quarter', d.insights.last3)}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+          <div role="group" aria-label={d.insights.placesTitle} style={{ display: 'flex', gap: '0.3rem' }}>
+            {tab('month', d.insights.thisMonth)}
+            {tab('quarter', d.insights.last3)}
+          </div>
+          <span style={{ fontSize: '0.66rem', color: 'var(--ink-soft)', opacity: 0.85 }}>{d.insights.placesNoScheduled}</span>
         </div>
       </div>
 

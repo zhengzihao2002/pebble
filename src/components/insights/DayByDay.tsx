@@ -22,8 +22,8 @@ interface DayByDayProps {
 
 /**
  * A month calendar of spending. Each day is shaded by how much was spent,
- * relative to the month's busiest day (square root, so one big day does not
- * flatten every other one); days with nothing spent are hollow; future days
+ * relative to a high-but-typical day (90th percentile of spending days, square
+ * root), so one big payment does not flatten every other day; days with nothing spent are hollow; future days
  * are faded. Spending only - income does not shade a day. Tap a day for its
  * transactions. Amounts appear only in text, so privacy mode can blur them.
  */
@@ -64,7 +64,12 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
     total += v.spent;
     if (v.spent > max) { max = v.spent; busiest = k; }
   });
-  const level = (v: number) => (v <= 0 || max <= 0 ? 0 : Math.max(1, Math.min(5, Math.ceil(Math.sqrt(v / max) * 5))));
+  // Shade against a high-but-typical day (90th percentile of spending days), not
+  // the single biggest, so one large scheduled payment does not wash out every
+  // ordinary day. Days above it take the darkest shade. Few spending days: use max.
+  const spends = [...byDay.values()].map((v) => v.spent).sort((a, b) => a - b);
+  const cap = spends.length >= 5 ? spends[Math.floor((spends.length - 1) * 0.9)] : max;
+  const level = (v: number) => (v <= 0 || cap <= 0 ? 0 : Math.max(1, Math.min(5, Math.ceil(Math.sqrt(Math.min(1, v / cap)) * 5))));
 
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
   const weekStart = locale === 'zh' ? 1 : 0;

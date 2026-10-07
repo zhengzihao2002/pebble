@@ -921,6 +921,7 @@ export const en = {
     noTrends: 'Not enough history yet.',
     placesTitle: 'Top places',
     placesHint: 'Grouped by transaction title',
+    placesNoScheduled: 'Excludes scheduled payments',
     thisMonth: 'This month',
     last3: 'Last 3 months',
     once: 'once',

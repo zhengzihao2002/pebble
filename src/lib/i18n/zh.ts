@@ -836,6 +836,7 @@ export const zh: typeof en = {
     noTrends: '历史数据还不够。',
     placesTitle: '常去的地方',
     placesHint: '按交易标题归类',
+    placesNoScheduled: '不含定期付款',
     thisMonth: '本月',
     last3: '最近 3 个月',
     once: '1 次',
