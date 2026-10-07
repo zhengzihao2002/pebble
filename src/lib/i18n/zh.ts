@@ -840,7 +840,7 @@ export const zh: typeof en = {
     yourWeekTitle: '每周规律',
     yourWeekHint: '一周中每天的平均支出',
     yourWeekNote: '最近 12 周 · 不含定期付款',
-    yourWeekTop: '{day}是你花钱最多的一天：平均约 {amount}，是普通一天的 {ratio} 倍。',
+    yourWeekTop: '{days}是你花钱最多的一天。平均每个{day}你会花大约 {amount}，约为普通一天的 {ratio} 倍。',
     yourWeekEven: '你一周中每天的支出比较平均。',
     yourWeekEmpty: '支出记录还不够，暂时看不出规律。',
     yourWeekWeekdays: '工作日',

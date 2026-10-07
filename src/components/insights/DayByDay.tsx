@@ -81,7 +81,7 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
   const go = (delta: number) => { setOffset((o) => Math.min(maxOffset, Math.max(0, o + delta))); setPicked(null); };
   const pickedDay = picked ? byDay.get(picked) : undefined;
 
-  const navBtn: React.CSSProperties = { width: 32, height: 32, borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+  const navBtn: React.CSSProperties = { width: 40, height: 40, borderRadius: 10, border: '1px solid var(--line)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
   return (
     <section className="card" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-daybyday-title">
@@ -90,11 +90,11 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.4rem' }}>
         <button type="button" className="icon-btn" onClick={() => go(1)} disabled={offset >= maxOffset} aria-label={d.insights.prevMonth} style={{ ...navBtn, opacity: offset >= maxOffset ? 0.35 : 1 }}>
-          <ChevronLeft size={16} />
+          <ChevronLeft size={22} />
         </button>
         <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{formatMonthYear(y, m, locale)}</span>
         <button type="button" className="icon-btn" onClick={() => go(-1)} disabled={offset <= 0} aria-label={d.insights.nextMonth} style={{ ...navBtn, opacity: offset <= 0 ? 0.35 : 1 }}>
-          <ChevronRight size={16} />
+          <ChevronRight size={22} />
         </button>
       </div>
       <p style={{ margin: '0 0 0.8rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
@@ -142,16 +142,16 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
           })}
         </div>
 
-        <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.8rem', fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem', fontSize: '0.82rem', color: 'var(--ink-soft)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {d.insights.less}
             {SHADES.map((s) => (
-              <span key={s} style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: `color-mix(in srgb, var(--pine) ${s}%, transparent)` }} />
+              <span key={s} style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: `color-mix(in srgb, var(--pine) ${s}%, transparent)` }} />
             ))}
             {d.insights.more}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px dashed var(--line)' }} />
+            <span style={{ width: 16, height: 16, borderRadius: 4, border: '1px dashed var(--line)' }} />
             {d.insights.nothingSpent}
           </span>
         </div>

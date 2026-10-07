@@ -68,7 +68,12 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
   const dayName = (wd: number, style: 'narrow' | 'long') =>
     new Date(2023, 0, 1 + wd).toLocaleDateString(tag, { weekday: style });
   const sentence = ratio >= 1.2
-    ? t(d.insights.yourWeekTop, { day: dayName(order[topIdx], 'long'), amount: wholeDollars(max), ratio: ratio.toFixed(1) })
+    ? t(d.insights.yourWeekTop, {
+      day: dayName(order[topIdx], 'long'),
+      // Plural for the opening ('Fridays'); Chinese has no plural form.
+      days: locale === 'zh' ? dayName(order[topIdx], 'long') : `${dayName(order[topIdx], 'long')}s`,
+      amount: wholeDollars(max), ratio: ratio.toFixed(1),
+    })
     : d.insights.yourWeekEven;
 
   return (

@@ -925,7 +925,7 @@ export const en = {
     yourWeekTitle: 'Your week',
     yourWeekHint: 'Average spending on each day of the week',
     yourWeekNote: 'Last 12 weeks · excludes scheduled payments',
-    yourWeekTop: '{day}s are your biggest day: about {amount}, {ratio}× a typical day.',
+    yourWeekTop: '{days} are your biggest day. On an average {day} you spend about {amount}, roughly {ratio} times what you spend on a typical day.',
     yourWeekEven: 'Your spending is fairly even across the week.',
     yourWeekEmpty: 'Not enough spending yet to see a pattern.',
     yourWeekWeekdays: 'Weekdays',
