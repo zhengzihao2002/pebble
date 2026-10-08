@@ -133,6 +133,12 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
     );
   };
 
+  // Coloured like a stock chart: the range's overall direction, first point
+  // to last - up pine, down wine, unchanged grey.
+  const trendFirst = days && days.length > 0 ? days[0].total : 0;
+  const trendLast = days && days.length > 0 ? days[days.length - 1].total : 0;
+  const trendTone = trendLast > trendFirst + 0.004 ? 'var(--pine)' : trendLast < trendFirst - 0.004 ? 'var(--wine)' : 'var(--ink-soft)';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <section className="card" style={{ padding: '1.5rem' }} aria-labelledby="pb-accounts-total">
@@ -162,8 +168,8 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
               <AreaChart key={range} data={days} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--pine)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--pine)" stopOpacity={0} />
+                    <stop offset="5%" stopColor={trendTone} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={trendTone} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="var(--line)" vertical={false} />
@@ -173,7 +179,7 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
                 />
                 <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} width={56} domain={['auto', 'auto']} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                 <Tooltip content={<DayTip />} cursor={{ stroke: 'var(--line)' }} />
-                <Area type="linear" dataKey="total" stroke="var(--pine)" strokeWidth={2} fill="url(#balanceGrad)" isAnimationActive={false} />
+                <Area type="linear" dataKey="total" stroke={trendTone} strokeWidth={2} fill="url(#balanceGrad)" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
