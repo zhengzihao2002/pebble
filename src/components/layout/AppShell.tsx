@@ -34,6 +34,35 @@ export function AppShell({ children }: { children: ReactNode }) {
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
+
+  // Truncated text shows its full text on hover: an element cut off by
+  // text-overflow: ellipsis gets a title while (and only while) it is
+  // truncated. One delegated listener; nothing runs until the pointer is
+  // over such text. Existing titles are never overwritten, and amounts are
+  // skipped in privacy mode so a tooltip never reveals a figure.
+  useEffect(() => {
+    const onOver = (e: MouseEvent) => {
+      let el: Element | null = e.target instanceof Element ? e.target : null;
+      for (let depth = 0; el && depth < 4; depth += 1, el = el.parentElement) {
+        if (!(el instanceof HTMLElement) || getComputedStyle(el).textOverflow !== 'ellipsis') continue;
+        const truncated = el.scrollWidth > el.clientWidth + 1;
+        const hiddenAmount = el.closest('.pb-private') !== null
+          && el.closest('.pb-money, .font-mono-tab, .hero-balance, .pb-hero-account-amount') !== null;
+        if (truncated && !hiddenAmount) {
+          if (!el.title) {
+            el.title = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+            el.dataset.pbAutoTitle = '1';
+          }
+        } else if (el.dataset.pbAutoTitle) {
+          el.removeAttribute('title');
+          delete el.dataset.pbAutoTitle;
+        }
+        return;
+      }
+    };
+    document.addEventListener('mouseover', onOver, { passive: true });
+    return () => document.removeEventListener('mouseover', onOver);
+  }, []);
   const pathname = usePathname();
 
   // Loads THIS user's saved preferences (per-user storage - see

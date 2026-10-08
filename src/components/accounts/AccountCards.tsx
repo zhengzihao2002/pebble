@@ -174,7 +174,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
                         <stop offset="95%" stopColor={tone} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <Tooltip content={<SparkTip />} cursor={{ stroke: 'var(--line)' }} allowEscapeViewBox={{ x: true, y: true }} />
+                    <Tooltip content={<SparkTip />} cursor={{ stroke: 'var(--line)' }} allowEscapeViewBox={{ x: false, y: true }} />
                     <Area type="linear" dataKey="v" stroke={tone} strokeWidth={1.75} fill={`url(#${gradId})`} isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
