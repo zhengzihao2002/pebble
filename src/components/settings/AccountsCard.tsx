@@ -187,11 +187,15 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           // on every device, with no measurement to get wrong.
           return (
             <div key={a.id} style={{
-              display: 'flex', flexDirection: 'column', gap: '0.4rem', borderBottom: '1px solid var(--line)', minWidth: 0,
+              display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 0,
+              // Longhand border properties only, and both states set every value
+              // they change: React warns when a shorthand and its longhand are
+              // added or removed together between renders (hibernate / wake).
+              borderBottomWidth: 1, borderBottomStyle: 'solid',
               // A sleeping account sits in a light grey box.
               ...(a.status === 'hibernated'
                 ? { padding: '0.7rem 0.65rem', margin: '0.3rem 0', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
-                : { padding: '0.7rem 0' }),
+                : { padding: '0.7rem 0', margin: 0, borderRadius: 0, backgroundColor: 'transparent', borderBottomColor: 'var(--line)' }),
             }}>
               {/* Star and move ride the name line - two buttons always fit
                   beside a truncating name. Hibernate and delete drop to their
