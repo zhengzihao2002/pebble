@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, BedDouble, Check, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star } from 'lucide-react';
+import { AlarmClock, BedDouble, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star } from 'lucide-react';
 import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction, updateCreditCardAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -34,7 +34,7 @@ const srOnly: React.CSSProperties = {
   overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0,
 };
 
-const SAVED_HOLD_MS = 1600;
+const SAVED_HOLD_MS = 2400;
 
 const labelStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '0.35rem',
@@ -99,6 +99,16 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   // The account whose own button failed: its error shows inside its box,
   // not at the bottom of a list that may be off screen.
   const [rowErrorId, setRowErrorId] = useState<string | null>(null);
+  // Saves confirmed some other way: hibernate / wake (the grey easing is the
+  // confirmation) and the star (which pops). The status line still announces.
+  const [sweepSkip, setSweepSkip] = useState<string | null>(null);
+  const [starPop, setStarPop] = useState<string | null>(null);
+  useEffect(() => { if (!savedId) setSweepSkip(null); }, [savedId]);
+  useEffect(() => {
+    if (!starPop) return;
+    const id = window.setTimeout(() => setStarPop(null), 600);
+    return () => window.clearTimeout(id);
+  }, [starPop]);
   // Hibernate / wake show their new look at once, on the row that was clicked,
   // and transition there. Waiting for the server's data was never seen: the
   // row is rebuilt when it arrives, and a rebuilt element cannot transition.
@@ -135,6 +145,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
       return;
     }
     setSavedId(a.id);
+    setSweepSkip(a.id);
   };
   // Ids present before a create, so the new row can be found once the page
   // hands down the refreshed list.
@@ -173,7 +184,11 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     resetForm();
   };
 
-  const runAccountAction = async (accountId: string, run: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>) => {
+  const runAccountAction = async (
+    accountId: string,
+    run: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>,
+    feedback: 'sweep' | 'star' | 'quiet' = 'sweep',
+  ) => {
     if (saving) return;
     setSaving(true);
     setError(null);
@@ -185,6 +200,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     // Below the failure return.
     setRowErrorId(null);
     setSavedId(accountId);
+    if (feedback !== 'sweep') setSweepSkip(accountId);
+    if (feedback === 'star') setStarPop(accountId);
   };
 
   const handleCardSave = async (a: Account) => {
@@ -227,6 +244,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           return (
             <div key={a.id} style={{
               display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 0,
+              position: 'relative', isolation: 'isolate',
               // Longhand border properties only, and both states set every value
               // they change: React warns when a shorthand and its longhand are
               // added or removed together between renders (hibernate / wake).
@@ -241,6 +259,10 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 ? { padding: '0.7rem 0.65rem', margin: '0 -0.65rem', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
                 : { padding: '0.7rem 0', margin: 0, borderRadius: 0, backgroundColor: 'transparent', borderBottomColor: 'var(--line)' }),
             }}>
+              {/* A confirmed save: a soft cloud of the theme colour spreads from the
+                  middle of the row to both ends, then fades. Decorative; the
+                  status line above announces the save to screen readers. */}
+              {savedId === a.id && sweepSkip !== a.id && st !== 'hibernated' && <span className="pb-row-sweep" aria-hidden="true" />}
               {/* Star and move ride the name line - two buttons always fit
                   beside a truncating name. Hibernate and delete drop to their
                   own line below, left-aligned.
@@ -277,14 +299,6 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
                 {st === 'hibernated' && <SleepingBadge />}
 
-                {savedId === a.id && (
-                  <span
-                    className="goal-done-badge" aria-hidden="true"
-                    style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                  >
-                    <Check size={13} strokeWidth={3} />
-                  </span>
-                )}
 
                 {/* Only active accounts can be preferred - preselecting one
                     that rejects new transactions would be broken. Independent
@@ -292,8 +306,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 {st === 'active' && (
                   <button
                     type="button"
-                    onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id))}
-                    className="icon-btn"
+                    onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id), a.isPreferred ? 'quiet' : 'star')}
+                    className={`icon-btn${starPop === a.id ? ' pb-star-pop' : ''}`}
                     aria-pressed={a.isPreferred}
                     aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
                     style={{

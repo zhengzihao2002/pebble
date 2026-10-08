@@ -1830,3 +1830,37 @@ html.pebble-welcoming::after {
 
 /* pb-sleep-fade: the sleeping badge fades in when an account is hibernated. */
 .pebble-root .pb-sleep-badge { animation: pb-fade-in 320ms var(--pb-ease-out); }
+
+/* Settings: confirmed save on an account row. A pale, cloudy wash of the theme
+   colour starts at the row's middle, spreads to both ends at once (scaleX from
+   the centre, feathered leading edges), then fades. Sits behind the row's
+   contents (z-index -1 inside the row's own stacking layer). Transform and
+   opacity only; reduced motion skips it via the global rule. */
+@keyframes pb-row-sweep {
+  0%   { transform: scaleX(0); opacity: 0.9; }
+  28%  { transform: scaleX(1); opacity: 1; }
+  45%  { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+.pebble-root .pb-row-sweep {
+  /* pb-row-sweep-soft: blurred so every edge is soft - including the leading
+     edges as it spreads - and extended 6px past the row so the softened edge
+     still reaches the row's edges instead of stopping short. */
+  position: absolute; inset: -6px; z-index: -1; pointer-events: none;
+  border-radius: inherit;
+  filter: blur(10px);
+  background:
+    radial-gradient(45% 140% at 28% 40%, color-mix(in srgb, var(--pine) 12%, transparent), transparent 75%),
+    radial-gradient(50% 150% at 72% 60%, color-mix(in srgb, var(--pine) 12%, transparent), transparent 75%),
+    color-mix(in srgb, var(--pine) 11%, transparent);
+  transform-origin: 50% 50%;
+  animation: pb-row-sweep 2200ms var(--pb-ease-out) forwards;
+}
+/* Starring an account: the star springs out and settles. Icon only. */
+@keyframes pb-star-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.38) rotate(-12deg); }
+  65%  { transform: scale(0.94) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.pebble-root .pb-star-pop svg { animation: pb-star-pop 520ms var(--pb-ease-out); }
