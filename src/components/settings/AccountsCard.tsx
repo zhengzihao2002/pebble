@@ -99,6 +99,43 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   // The account whose own button failed: its error shows inside its box,
   // not at the bottom of a list that may be off screen.
   const [rowErrorId, setRowErrorId] = useState<string | null>(null);
+  // Hibernate / wake show their new look at once, on the row that was clicked,
+  // and transition there. Waiting for the server's data was never seen: the
+  // row is rebuilt when it arrives, and a rebuilt element cannot transition.
+  // Reverted (row eases back) if the server refuses; cleared once data agrees.
+  const [sleepOverride, setSleepOverride] = useState<Record<string, 'active' | 'hibernated'>>({});
+  const [sleepBusy, setSleepBusy] = useState<string | null>(null);
+  useEffect(() => {
+    setSleepOverride((cur) => {
+      const next = { ...cur };
+      let changed = false;
+      for (const a of accounts) {
+        if (next[a.id] && next[a.id] === a.status) { delete next[a.id]; changed = true; }
+      }
+      return changed ? next : cur;
+    });
+  }, [accounts]);
+  const toggleSleep = async (a: Account) => {
+    if (saving || sleepBusy) return;
+    const target = (sleepOverride[a.id] ?? a.status) === 'hibernated' ? 'active' : 'hibernated';
+    // A card that owes will be refused: don't show it asleep, even briefly.
+    const willRefuse = a.kind === 'credit' && target === 'hibernated' && (balancesByAccount[a.id] ?? 0) < -0.004;
+    setError(null);
+    setRowErrorId(null);
+    setSavedId(null);
+    if (!willRefuse) setSleepOverride((m) => ({ ...m, [a.id]: target }));
+    setSleepBusy(a.id);
+    const result = await callAction(() => (target === 'active' ? wakeAccountAction(a.id) : hibernateAccountAction(a.id)));
+    setSleepBusy(null);
+    if (!result.ok) {
+      setSleepOverride((m) => { const n = { ...m }; delete n[a.id]; return n; });
+      setError(translateActionError(d, locale, result));
+      setErrorKind(result.kind);
+      setRowErrorId(a.id);
+      return;
+    }
+    setSavedId(a.id);
+  };
   // Ids present before a create, so the new row can be found once the page
   // hands down the refreshed list.
   const pendingNew = useRef<Set<string> | null>(null);
@@ -176,6 +213,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
       <div style={{ marginBottom: '1.1rem' }}>
         {visible.map((a) => {
+          // The status the row shows: the optimistic one while saving, else the real one.
+          const st = sleepOverride[a.id] ?? a.status;
           const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
           const balance = balancesByAccount[a.id] ?? 0;
           // A STACK, not a row. The buttons used to sit beside the name and
@@ -192,8 +231,11 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               // they change: React warns when a shorthand and its longhand are
               // added or removed together between renders (hibernate / wake).
               borderBottomWidth: 1, borderBottomStyle: 'solid',
+              // Padding and margin change by equal and opposite amounts with the
+              // same timing, so the contents stay still while the box eases.
+              transition: 'background-color 360ms var(--pb-ease-out), border-bottom-color 360ms var(--pb-ease-out), border-radius 360ms var(--pb-ease-out), padding 360ms var(--pb-ease-out), margin 360ms var(--pb-ease-out)',
               // A sleeping account sits in a light grey box.
-              ...(a.status === 'hibernated'
+              ...(st === 'hibernated'
                 // The box grows outward (negative margin cancels the padding) and adds
                 // no vertical space, so the row's contents do not move.
                 ? { padding: '0.7rem 0.65rem', margin: '0 -0.65rem', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
@@ -212,7 +254,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
                 <AccountIcon size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: a.status === 'hibernated' ? 'var(--ink-soft)' : undefined }}>
+                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: st === 'hibernated' ? 'var(--ink-soft)' : 'var(--ink)', transition: 'color 320ms var(--pb-ease-out)' }}>
                     {a.name}{a.last4 ? ` ····${a.last4}` : ''}
                   </p>
                   {/* Hibernated balances still count toward the total, so they
@@ -233,7 +275,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   )}
                 </div>
 
-                {a.status === 'hibernated' && <SleepingBadge />}
+                {st === 'hibernated' && <SleepingBadge />}
 
                 {savedId === a.id && (
                   <span
@@ -247,7 +289,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 {/* Only active accounts can be preferred - preselecting one
                     that rejects new transactions would be broken. Independent
                     of isDefault: Checking and Cash CAN be preferred. */}
-                {a.status === 'active' && (
+                {st === 'active' && (
                   <button
                     type="button"
                     onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id))}
@@ -296,14 +338,12 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   )}
                   <button
                     type="button"
-                    onClick={() => runAccountAction(a.id, () => (
-                      a.status === 'hibernated' ? wakeAccountAction(a.id) : hibernateAccountAction(a.id)
-                    ))}
+                    onClick={() => toggleSleep(a)} disabled={sleepBusy === a.id}
                     className="icon-btn"
-                    aria-label={t(a.status === 'hibernated' ? d.accounts.wakeLabel : d.accounts.hibernateLabel, { name: a.name })}
+                    aria-label={t(st === 'hibernated' ? d.accounts.wakeLabel : d.accounts.hibernateLabel, { name: a.name })}
                     style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                   >
-                    {a.status === 'hibernated' ? <AlarmClock size={15} /> : <BedDouble size={15} />}
+                    {st === 'hibernated' ? <AlarmClock size={15} /> : <BedDouble size={15} />}
                   </button>
                   <button disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined}
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
