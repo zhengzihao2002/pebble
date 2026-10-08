@@ -5,7 +5,6 @@ import { formatCurrency } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
-import { SleepingBadge } from '@/components/shared/SleepingBadge';
 
 interface BalanceHeroProps {
   totalBalance: number;
@@ -34,18 +33,19 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount }: Balan
   const { d, t } = useTranslation();
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
 
+  // Sleeping accounts stay out of the list; their money still counts in the total.
   const rows = accounts
+    .filter((a) => a.status !== 'hibernated')
     .map((a) => ({
       id: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
       balance: balancesByAccount[a.id] ?? 0,
-      hibernated: a.status === 'hibernated',
     }))
     .sort((a, b) => b.balance - a.balance);
   const shown = rows.length > MAX_ROWS ? rows.slice(0, MAX_ROWS - 1) : rows;
   const moreCount = rows.length - shown.length;
   // One account would only repeat the total.
-  const showAccounts = accounts.length > 1;
+  const showAccounts = rows.length > 1;
 
   return (
     <div className="pb-hero">
@@ -68,10 +68,9 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount }: Balan
       {showAccounts && (
         <ul className="pb-hero-accounts" aria-label={d.dashboard.byAccount}>
           {shown.map((r) => (
-            <li key={r.id} className={`pb-hero-account${r.hibernated ? ' pb-hero-account-sleeping' : ''}`}>
+            <li key={r.id} className="pb-hero-account">
               <span className="pb-hero-account-name">
                 {r.label}
-                {r.hibernated && <>{' '}<SleepingBadge onHero /></>}
               </span>
               <span className="pb-hero-account-amount font-mono-tab">{formatCurrency(r.balance)}</span>
             </li>

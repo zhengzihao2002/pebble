@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, Moon, Sun, ArrowRightLeft, Star } from 'lucide-react';
+import { AlarmClock, BedDouble, Check, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star } from 'lucide-react';
 import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction, updateCreditCardAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -96,6 +96,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   // The row whose save the server just confirmed. Set ONLY below the failure
   // return of a write; shows a small check on that row for a moment.
   const [savedId, setSavedId] = useState<string | null>(null);
+  // The account whose own button failed: its error shows inside its box,
+  // not at the bottom of a list that may be off screen.
+  const [rowErrorId, setRowErrorId] = useState<string | null>(null);
   // Ids present before a create, so the new row can be found once the page
   // hands down the refreshed list.
   const pendingNew = useRef<Set<string> | null>(null);
@@ -128,6 +131,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the new row is marked when the list refreshes.
+    setRowErrorId(null);
     pendingNew.current = idsBefore;
     resetForm();
   };
@@ -140,8 +144,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     const result = await callAction(run);
     setSaving(false);
     setConfirmDelete(null);
-    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setRowErrorId(accountId); return; }
     // Below the failure return.
+    setRowErrorId(null);
     setSavedId(accountId);
   };
 
@@ -152,8 +157,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(null);
     const result = await callAction(() => updateCreditCardAction({ id: a.id, creditLimit: parseMoney(editLimit), dueDay: editDue }));
     setSaving(false);
-    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
+    if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setRowErrorId(a.id); return; }
     // Below the failure return.
+    setRowErrorId(null);
     setEditingCard(null);
     setSavedId(a.id);
   };
@@ -180,7 +186,13 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           // the buttons their own line guarantees the name has the full width
           // on every device, with no measurement to get wrong.
           return (
-            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.7rem 0', borderBottom: '1px solid var(--line)', minWidth: 0 }}>
+            <div key={a.id} style={{
+              display: 'flex', flexDirection: 'column', gap: '0.4rem', borderBottom: '1px solid var(--line)', minWidth: 0,
+              // A sleeping account sits in a light grey box.
+              ...(a.status === 'hibernated'
+                ? { padding: '0.7rem 0.65rem', margin: '0.3rem 0', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
+                : { padding: '0.7rem 0' }),
+            }}>
               {/* Star and move ride the name line - two buttons always fit
                   beside a truncating name. Hibernate and delete drop to their
                   own line below, left-aligned.
@@ -285,7 +297,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     aria-label={t(a.status === 'hibernated' ? d.accounts.wakeLabel : d.accounts.hibernateLabel, { name: a.name })}
                     style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                   >
-                    {a.status === 'hibernated' ? <Sun size={15} /> : <Moon size={15} />}
+                    {a.status === 'hibernated' ? <AlarmClock size={15} /> : <BedDouble size={15} />}
                   </button>
                   <button disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined}
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
@@ -295,6 +307,10 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     <Trash2 size={15} />
                   </button>
                 </div>
+              )}
+
+              {rowErrorId === a.id && error && (
+                <ActionError message={error} kind={errorKind} busy={saving} />
               )}
 
               {editingCard === a.id && (
@@ -387,7 +403,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
         </div>
       ) : (
         <>
-          <ActionError message={error} kind={errorKind} busy={saving} style={{ marginBottom: '0.8rem' }} />
+          <ActionError message={rowErrorId ? null : error} kind={errorKind} busy={saving} style={{ marginBottom: '0.8rem' }} />
           <button type="button" onClick={() => { setAdding(true); setError(null); }} className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0.5rem 0.9rem' }}>
             <Plus size={14} />{d.accounts.addAccount}
           </button>

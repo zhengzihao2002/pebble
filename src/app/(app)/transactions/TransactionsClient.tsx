@@ -187,13 +187,13 @@ export function TransactionsClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem 2rem', marginBottom: '1.25rem' }}>
+        <div className="pb-txn-top">
           {/* minWidth 0 here and on the list: a flex item cannot shrink below its
               min-content width, which for the list is a full unshortened row -
               without it the list pushes past a phone's right edge. */}
-          <div style={{ minWidth: 0 }}>
+          <div className="pb-txn-total" style={{ minWidth: 0 }}>
             <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
-            <p className="font-display pb-money" style={{ fontSize: '2rem', fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
+            <p className="font-display pb-money pb-txn-total-amount" style={{ fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
           </div>
           {/* Each account's balance as a quiet ledger: one row each, figures
               right-aligned in tabular numerals so they compare at a glance.
@@ -201,15 +201,18 @@ export function TransactionsClient({
               cards last, shown as what they owe. Display only - nothing here
               is submitted. Deliberately NOT StatTab: the row below is
               month-scoped, these figures are today's. */}
-          <ul id="pb-txn-accounts" style={{ listStyle: 'none', margin: 0, padding: 0, flex: '1 1 260px', minWidth: 0, maxWidth: 380 }}>
+          {/* Two columns once there is room (many accounts no longer stretch the
+              card tall beside the total). Every row has a top hairline and is
+              nudged up 1px; the list clips, so only the first row's line hides. */}
+          <ul id="pb-txn-accounts" style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: '1.5rem', overflow: 'hidden' }}>
             {[...accounts]
               .sort((x, y) => (x.kind === 'credit' ? 1 : 0) - (y.kind === 'credit' ? 1 : 0))
-              .map((a, i) => {
+              .map((a) => {
                 const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
                 const value = balancesByAccount[a.id] ?? 0;
                 const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
                 return (
-                  <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.45rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}>
+                  <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.45rem 0', borderTop: '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
                     <AccountIcon size={15} aria-hidden="true" style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
                     {/* Account names are USER DATA. */}
                     <span style={{ flex: 1, minWidth: 0, fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
