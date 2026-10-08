@@ -99,6 +99,7 @@ export type ServerErrorCode =
   | 'validation.creditNoAdjust'
   | 'validation.creditNoMoveIn'
   | 'validation.creditOwes'
+  | 'validation.selfTransferNone'
   | 'validation.accountOpeningNumber'
   | 'validation.accountDefaultCannotClose'
   | 'validation.accountAlreadyClosed'

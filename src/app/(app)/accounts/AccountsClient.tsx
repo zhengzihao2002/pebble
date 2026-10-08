@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { BalanceAdjustment, ExpenseTransaction, IncomeTransaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
@@ -15,6 +15,7 @@ import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { AccountCards } from '@/components/accounts/AccountCards';
 import { PayOffDialog } from '@/components/accounts/PayOffDialog';
+import { SelfTransferDialog } from '@/components/accounts/SelfTransferDialog';
 import { PeriodDot, PeriodLink } from '@/components/shared/PeriodLink';
 
 type Range = '3m' | '6m' | '1y';
@@ -43,6 +44,7 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
   const [range, setRange] = useState<Range>('6m');
   // The credit card being paid off, if any.
   const [payOffCard, setPayOffCard] = useState<(typeof accounts)[number] | null>(null);
+  const [selfOpen, setSelfOpen] = useState(false);
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
   const timeZoneOverride = useTimeZoneOverride();
@@ -133,6 +135,27 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
     );
   };
 
+  // Transfers whose two halves landed on one account (after records were moved
+  // between the two accounts of a transfer). They cancel out. Found from data
+  // this page already loads - no extra request.
+  const selfPairs = (() => {
+    const byGroup = new Map<string, typeof adjustments>();
+    for (const r of adjustments) {
+      if (!r.transferGroupId) continue;
+      const list = byGroup.get(r.transferGroupId) ?? [];
+      list.push(r);
+      byGroup.set(r.transferGroupId, list);
+    }
+    return [...byGroup.entries()]
+      .filter(([, l]) => l.length === 2 && l[0].accountId === l[1].accountId && Math.abs(l[0].amount + l[1].amount) < 0.005)
+      .map(([groupId, l]) => ({
+        groupId, accountId: l[0].accountId, date: l[0].date,
+        description: (l.find((x) => x.amount > 0) ?? l[0]).description,
+        amount: Math.abs(l[0].amount),
+      }));
+  })();
+  const balanceNow: Record<string, number> = days && days.length > 0 ? days[days.length - 1].byAccount : {};
+
   // Coloured like a stock chart: the range's overall direction, first point
   // to last - up pine, down wine, unchanged grey.
   const trendFirst = days && days.length > 0 ? days[0].total : 0;
@@ -141,6 +164,17 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {selfPairs.length > 0 && (
+        <section className="card" style={{ padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <ArrowRightLeft size={17} aria-hidden="true" style={{ color: 'var(--gold)', flexShrink: 0 }} />
+          <p style={{ flex: '1 1 16rem', margin: 0, fontSize: '0.85rem', lineHeight: 1.45 }}>
+            {selfPairs.length === 1 ? d.accountsPage.selfNoticeOne : t(d.accountsPage.selfNotice, { count: selfPairs.length })}
+          </p>
+          <button type="button" className="pill" onClick={() => setSelfOpen(true)} style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}>
+            {d.accountsPage.selfReview}
+          </button>
+        </section>
+      )}
       <section className="card" style={{ padding: '1.5rem' }} aria-labelledby="pb-accounts-total">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
@@ -196,6 +230,9 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
           <div><PeriodLink label={t(d.accountsPage.cardsPeriod, { period })} control="accounts" /></div>
           <AccountCards accounts={accounts} days={days} total={current} lastActivity={lastActivity} period={period} onPayOff={setPayOffCard} expenses={expenses} />
         </div>
+      )}
+      {selfOpen && (
+        <SelfTransferDialog pairs={selfPairs} accounts={accounts} balances={balanceNow} onClose={() => setSelfOpen(false)} />
       )}
       {payOffCard && (
         <PayOffDialog

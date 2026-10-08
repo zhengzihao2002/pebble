@@ -2116,7 +2116,45 @@ async function createTransfer(
   }
 }
 
+/**
+ * Removes transfers whose two halves ended up on the SAME account - left behind
+ * when records were moved between the two accounts of a transfer. Each such
+ * pair is -X and +X on one account, so removing it leaves every balance
+ * unchanged.
+ *
+ * One statement behind the per-user lock: it deletes both halves only of
+ * groups that are STILL exactly two rows on one account summing to zero, so a
+ * group changed elsewhere in the meantime is skipped, never half-deleted.
+ */
+async function deleteSelfTransfers(userId: string, input: { groupIds: string[] }): Promise<ActionResult> {
+  try {
+    const ids = Array.isArray(input?.groupIds)
+      ? [...new Set(input.groupIds.filter((g) => typeof g === 'string' && g !== ''))]
+      : [];
+    if (ids.length < 1 || ids.length > 200) {
+      return fail('There is nothing to remove.', 'validation', 'validation.selfTransferNone');
+    }
+    await neonSql.transaction(
+      [
+        userWriteLockStatement(userId),
+        neonSql`DELETE FROM balance_adjustment
+          WHERE user_id = ${userId}::uuid AND transfer_group_id IN (
+            SELECT transfer_group_id FROM balance_adjustment
+            WHERE user_id = ${userId}::uuid AND transfer_group_id::text = ANY(${ids}::text[])
+            GROUP BY transfer_group_id
+            HAVING count(*) = 2 AND count(DISTINCT account_id) = 1 AND sum(amount) = 0)`,
+      ],
+      { isolationLevel: 'ReadCommitted' },
+    );
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('deleteSelfTransfersAction', error);
+  }
+}
+
 export const createBalanceAdjustmentAction = withSessionUser(createBalanceAdjustment);
+export const deleteSelfTransfersAction = withSessionUser(deleteSelfTransfers);
 export const createTransferAction = withSessionUser(createTransfer);
 export const deleteBalanceAdjustmentAction = withSessionUser(deleteBalanceAdjustment);
 export const modifyBudgetsAction = withSessionUser(modifyBudgets);

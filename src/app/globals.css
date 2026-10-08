@@ -1817,7 +1817,7 @@ html.pebble-welcoming::after {
 
 /* Transactions: total balance and the per-account list. Stacked on narrow
    cards. With room, the total grows with the card and sits centred in the
-   space left of the list, divided from it by a hairline - many accounts in two
+   space left of the list - many accounts in two
    columns no longer leave a wide empty gap beside a small figure. */
 .pebble-root .pb-txn-top { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
 .pebble-root .pb-txn-total-amount { font-size: 2rem; line-height: 1.15; }
@@ -1825,5 +1825,5 @@ html.pebble-welcoming::after {
   .pebble-root .pb-txn-top { flex-direction: row; align-items: center; gap: 2rem; }
   .pebble-root .pb-txn-total { flex: 1 1 auto; text-align: center; }
   .pebble-root .pb-txn-total-amount { font-size: clamp(2.2rem, 4.5cqi, 3.2rem); }
-  .pebble-root #pb-txn-accounts { flex: 0 1 560px; border-left: 1px solid var(--line); padding-left: 2rem; }
+  .pebble-root #pb-txn-accounts { flex: 0 1 560px; }
 }
