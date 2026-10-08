@@ -194,7 +194,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               borderBottomWidth: 1, borderBottomStyle: 'solid',
               // A sleeping account sits in a light grey box.
               ...(a.status === 'hibernated'
-                ? { padding: '0.7rem 0.65rem', margin: '0.3rem 0', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
+                // The box grows outward (negative margin cancels the padding) and adds
+                // no vertical space, so the row's contents do not move.
+                ? { padding: '0.7rem 0.65rem', margin: '0 -0.65rem', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
                 : { padding: '0.7rem 0', margin: 0, borderRadius: 0, backgroundColor: 'transparent', borderBottomColor: 'var(--line)' }),
             }}>
               {/* Star and move ride the name line - two buttons always fit
