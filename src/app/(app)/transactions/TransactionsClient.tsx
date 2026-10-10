@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useLayoutEffect, useRef } from 'react';
 import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X, CreditCard } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -172,6 +172,42 @@ export function TransactionsClient({
     { value: 'Side Cash', label: d.enums.incomeCategory['Side Cash'] },
   ], [categories, d]);
 
+  // Account list beside the total: columns of 3 rows, growing sideways. When
+  // the columns would not fit beside the total with a comfortable gap, the
+  // header stacks (total on top, list wrapping below, as on phones) - no
+  // column is ever cut. Decided from the width the columns NEED, not by
+  // measuring a clipped list, so it cannot flicker between the two layouts.
+  const [accountsStacked, setAccountsStacked] = useState(false);
+  const accountsRef = useRef<HTMLUListElement>(null);
+  useLayoutEffect(() => {
+    const row = accountsRef.current?.parentElement;
+    const total = row?.querySelector('.pb-txn-total');
+    if (!row || !total || typeof ResizeObserver === 'undefined') return;
+    const COL_GAP = 24;
+    const MIN_SPACE = 68;
+    const check = () => {
+      // The total's text width, whatever box it sits in (stacked or not).
+      const range = document.createRange();
+      range.selectNodeContents(total);
+      const totalWidth = range.getBoundingClientRect().width;
+      // Column width: the widest row's full content (name untruncated, icon,
+      // gaps, amount), kept between 240 and 340px - the CSS column bounds.
+      let widest = 0;
+      accountsRef.current?.querySelectorAll(':scope > li').forEach((li) => {
+        const [, name, amount] = Array.from(li.children) as HTMLElement[];
+        if (name && amount) widest = Math.max(widest, 15 + name.scrollWidth + amount.scrollWidth + 22);
+      });
+      const col = Math.min(340, Math.max(240, widest));
+      const cols = Math.max(1, Math.ceil(accounts.length / 3));
+      const need = totalWidth + cols * col + (cols - 1) * COL_GAP + MIN_SPACE * 3;
+      setAccountsStacked(need > row.clientWidth);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [accounts.length]);
+
   const clearSearch = () => {
     setQuery('');
     setTypeFilter('all');
@@ -187,7 +223,7 @@ export function TransactionsClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ padding: '1.5rem' }}>
-        <div className="pb-txn-top">
+        <div className={`pb-txn-top${accountsStacked ? ' pb-txn-expanded' : ''}`}>
           {/* minWidth 0 here and on the list: a flex item cannot shrink below its
               min-content width, which for the list is a full unshortened row -
               without it the list pushes past a phone's right edge. */}
@@ -204,7 +240,7 @@ export function TransactionsClient({
           {/* Two columns once there is room (many accounts no longer stretch the
               card tall beside the total). Every row has a top hairline and is
               nudged up 1px; the list clips, so only the first row's line hides. */}
-          <ul id="pb-txn-accounts" style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', columnGap: '1.5rem', overflow: 'hidden' }}>
+          <ul id="pb-txn-accounts" ref={accountsRef} style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0 }}>
             {[...accounts]
               .sort((x, y) => (x.kind === 'credit' ? 1 : 0) - (y.kind === 'credit' ? 1 : 0))
               .map((a) => {

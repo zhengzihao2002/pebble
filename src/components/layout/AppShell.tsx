@@ -40,33 +40,62 @@ export function AppShell({ children }: { children: ReactNode }) {
     rootRef.current?.classList.toggle('pb-no-select', allowTextSelect !== true);
   }, [allowTextSelect]);
 
-  // Truncated text shows its full text on hover: an element cut off by
-  // text-overflow: ellipsis gets a title while (and only while) it is
-  // truncated. One delegated listener; nothing runs until the pointer is
-  // over such text. Existing titles are never overwritten, and amounts are
-  // skipped in privacy mode so a tooltip never reveals a figure.
+  // Truncated text ("…") shows its full text in a tooltip on hover (desktop):
+  // a styled tooltip, larger than the browser's, after a short pause. Elements
+  // with their own title keep it; amounts are skipped in privacy mode so a
+  // tooltip never reveals a figure. Hidden on mouse-out, scroll and resize.
+  const [truncTip, setTruncTip] = useState<{ text: string; left: number; top: number; below: boolean } | null>(null);
   useEffect(() => {
+    let timer = 0;
+    let current: HTMLElement | null = null;
+    const hide = () => {
+      window.clearTimeout(timer);
+      current = null;
+      setTruncTip(null);
+    };
     const onOver = (e: MouseEvent) => {
       let el: Element | null = e.target instanceof Element ? e.target : null;
       for (let depth = 0; el && depth < 4; depth += 1, el = el.parentElement) {
         if (!(el instanceof HTMLElement) || getComputedStyle(el).textOverflow !== 'ellipsis') continue;
+        if (el === current) return;
         const truncated = el.scrollWidth > el.clientWidth + 1;
         const hiddenAmount = el.closest('.pb-private') !== null
           && el.closest('.pb-money, .font-mono-tab, .hero-balance, .pb-hero-account-amount') !== null;
-        if (truncated && !hiddenAmount) {
-          if (!el.title) {
-            el.title = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
-            el.dataset.pbAutoTitle = '1';
-          }
-        } else if (el.dataset.pbAutoTitle) {
-          el.removeAttribute('title');
-          delete el.dataset.pbAutoTitle;
-        }
+        if (!truncated || hiddenAmount || el.title) return;
+        hide();
+        current = el;
+        const target = el;
+        timer = window.setTimeout(() => {
+          if (current !== target || !target.isConnected) return;
+          const r = target.getBoundingClientRect();
+          const below = r.top < 64;
+          setTruncTip({
+            text: (target.textContent ?? '').replace(/\s+/g, ' ').trim(),
+            left: Math.max(8, Math.min(r.left, window.innerWidth - 368)),
+            top: below ? r.bottom + 8 : r.top - 8,
+            below,
+          });
+        }, 350);
         return;
       }
     };
+    const onOut = (e: MouseEvent) => {
+      if (!current) return;
+      const to = e.relatedTarget;
+      if (to instanceof Node && current.contains(to)) return;
+      hide();
+    };
     document.addEventListener('mouseover', onOver, { passive: true });
-    return () => document.removeEventListener('mouseover', onOver);
+    document.addEventListener('mouseout', onOut, { passive: true });
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      hide();
+      document.removeEventListener('mouseover', onOver);
+      document.removeEventListener('mouseout', onOut);
+      window.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+    };
   }, []);
   const pathname = usePathname();
 
@@ -370,6 +399,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <feGaussianBlur stdDeviation="4" />
         </filter>
       </svg>
+      {truncTip && (
+        <div
+          className="pb-tip" role="tooltip"
+          style={{ left: truncTip.left, top: truncTip.top, transform: truncTip.below ? undefined : 'translateY(-100%)' }}
+        >
+          {truncTip.text}
+        </div>
+      )}
       <UndoDeleteProvider>
       <div className="pebble-shell">
         <Sidebar />
