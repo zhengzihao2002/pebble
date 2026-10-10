@@ -48,6 +48,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     let timer = 0;
     let current: HTMLElement | null = null;
+    // Pressing on text cancels its tooltip until the pointer leaves it, so a
+    // click that opens a dialog never flashes one first.
+    let suppressed: HTMLElement | null = null;
     const hide = () => {
       window.clearTimeout(timer);
       current = null;
@@ -57,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       let el: Element | null = e.target instanceof Element ? e.target : null;
       for (let depth = 0; el && depth < 4; depth += 1, el = el.parentElement) {
         if (!(el instanceof HTMLElement) || getComputedStyle(el).textOverflow !== 'ellipsis') continue;
-        if (el === current) return;
+        if (el === current || el === suppressed) return;
         const truncated = el.scrollWidth > el.clientWidth + 1;
         const hiddenAmount = el.closest('.pb-private') !== null
           && el.closest('.pb-money, .font-mono-tab, .hero-balance, .pb-hero-account-amount') !== null;
@@ -66,7 +69,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         current = el;
         const target = el;
         timer = window.setTimeout(() => {
-          if (current !== target || !target.isConnected) return;
+          // Never over an open dialog.
+          if (current !== target || !target.isConnected || document.querySelector('.pb-modal-overlay')) return;
           const r = target.getBoundingClientRect();
           const below = r.top < 64;
           setTruncTip({
@@ -80,19 +84,28 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
     };
     const onOut = (e: MouseEvent) => {
+      const into = e.relatedTarget;
+      if (suppressed && !(into instanceof Node && suppressed.contains(into))) suppressed = null;
       if (!current) return;
       const to = e.relatedTarget;
       if (to instanceof Node && current.contains(to)) return;
       hide();
     };
+    const onDown = () => {
+      const pressed = current;
+      hide();
+      if (pressed) suppressed = pressed;
+    };
     document.addEventListener('mouseover', onOver, { passive: true });
     document.addEventListener('mouseout', onOut, { passive: true });
+    document.addEventListener('pointerdown', onDown, { capture: true, passive: true });
     window.addEventListener('scroll', hide, true);
     window.addEventListener('resize', hide);
     return () => {
       hide();
       document.removeEventListener('mouseover', onOver);
       document.removeEventListener('mouseout', onOut);
+      document.removeEventListener('pointerdown', onDown, true);
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('resize', hide);
     };
