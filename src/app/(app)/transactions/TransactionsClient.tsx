@@ -242,7 +242,16 @@ export function TransactionsClient({
               nudged up 1px; the list clips, so only the first row's line hides. */}
           <ul id="pb-txn-accounts" ref={accountsRef} style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0 }}>
             {[...accounts]
-              .sort((x, y) => (x.kind === 'credit' ? 1 : 0) - (y.kind === 'credit' ? 1 : 0))
+              // Starred account first; then bank and cash, highest balance first;
+              // then credit cards, most owed first.
+              .sort((x, y) => {
+                const rank = (a: typeof x) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
+                const bx = balancesByAccount[x.id] ?? 0;
+                const by = balancesByAccount[y.id] ?? 0;
+                if (rank(x) !== rank(y)) return rank(x) - rank(y);
+                // Cards hold negative balances: most owed = lowest balance.
+                return x.kind === 'credit' ? bx - by : by - bx;
+              })
               .map((a) => {
                 const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
                 const value = balancesByAccount[a.id] ?? 0;
