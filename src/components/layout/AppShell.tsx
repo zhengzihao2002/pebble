@@ -34,6 +34,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
+  // Text selection is off unless the user turned it on (exactly true only).
+  const allowTextSelect = usePebbleStore((s) => s.allowTextSelect);
+  useEffect(() => {
+    rootRef.current?.classList.toggle('pb-no-select', allowTextSelect !== true);
+  }, [allowTextSelect]);
 
   // Truncated text shows its full text on hover: an element cut off by
   // text-overflow: ellipsis gets a title while (and only while) it is
@@ -291,7 +296,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     const reveal = (e: MouseEvent) => {
       if (!root.classList.contains('pb-private')) return;
       const target = e.target as HTMLElement | null;
-      const amount = target?.closest?.('.font-mono-tab:not(input), .pb-money, .hero-balance, .pb-hero-account-amount') as HTMLElement | null;
+      // Figures, and charts: a whole-chart blur first, otherwise any chart whose
+      // axis text is blurred. A tap reveals that one figure or chart.
+      const amount = (target?.closest?.('.font-mono-tab:not(input), .pb-money, .hero-balance, .pb-hero-account-amount')
+        ?? target?.closest?.('.pb-chart-fill, .pb-donut-ring, .pb-chart-fade')
+        ?? target?.closest?.('.recharts-wrapper')) as HTMLElement | null;
       if (!amount || amount.classList.contains('pb-revealed')) return;
       e.preventDefault();
       e.stopPropagation();

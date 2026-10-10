@@ -740,6 +740,10 @@ export const en = {
   },
 
   selectMode: {
+    textSelectTitle: 'Allow selecting text',
+    textSelectHint: 'Off stops accidental highlighting and copying, handy on a phone. Fields you type in always work.',
+    textSelectOff: 'No',
+    textSelectOn: 'Yes',
     title: 'Dropdown lists',
     hint: "Search list lets you type to filter. Simple list uses your device's standard picker.",
     searchable: 'Search list',
@@ -1027,6 +1031,7 @@ export const en = {
     cardLimitLine: '{used} of {limit} · {available} available',
     cardOverLimit: 'Over limit by {amount}',
     cardDue: 'Due {date}',
+    changeOver: 'Last {period}',
     selfNotice: '{count} transfers go from an account to itself. They cancel out and can be removed.',
     selfNoticeOne: 'A transfer goes from an account to itself. It cancels out and can be removed.',
     selfReview: 'Review',

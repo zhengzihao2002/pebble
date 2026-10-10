@@ -162,7 +162,7 @@ export function AccountCards({ accounts, days, total, lastActivity, period, onPa
 
               <div>
                 <p className="font-display pb-money" style={{ margin: 0, fontSize: '1.45rem', fontWeight: 600 }}>{formatCurrency(now)}</p>
-                <p className="font-mono-tab" style={{ margin: '0.1rem 0 0', fontSize: '0.8rem', fontWeight: 600, color: tone }}>{changeText}</p>
+                <p className="font-mono-tab" style={{ margin: '0.1rem 0 0', fontSize: '0.8rem', fontWeight: 600, color: tone }}><span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}>{t(d.accountsPage.changeOver, { period })} · </span>{changeText}</p>
               </div>
 
               <div className="pb-chart-fade" style={{ height: 56 }} role="img" aria-label={t(d.accountsPage.sparkLabel, { name: a.name, period })}>

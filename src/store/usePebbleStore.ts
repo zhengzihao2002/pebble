@@ -103,6 +103,8 @@ interface PebblePrefs {
   breakdownChart: BreakdownChart;
   // Privacy mode: whether amounts start blurred when the app opens.
   privacyOnLaunch: boolean;
+  // Whether text in the app can be selected and copied. Off by default.
+  allowTextSelect: boolean;
   // Insights' Worth knowing: ids the user marked Not useful.
   insightsDismissed: string[];
 }
@@ -113,6 +115,7 @@ interface PebbleUIState extends PebblePrefs {
   privacyOn: boolean;
   setPrivacyOn: (value: boolean) => void;
   setPrivacyOnLaunch: (value: boolean) => void;
+  setAllowTextSelect: (value: boolean) => void;
   dismissInsight: (id: string) => void;
   setAppearance: (value: Appearance) => void;
   setLocale: (value: Locale) => void;
@@ -156,6 +159,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   showWelcome: true,
   breakdownChart: 'donut',
   privacyOnLaunch: false,
+  allowTextSelect: false,
   insightsDismissed: [],
 };
 
@@ -213,6 +217,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       privacyOn: false,
       setPrivacyOn: (value) => set({ privacyOn: value }),
       setPrivacyOnLaunch: (value) => set({ privacyOnLaunch: value }),
+      setAllowTextSelect: (value) => set({ allowTextSelect: value }),
       // Capped, newest kept, so the list cannot grow without bound.
       dismissInsight: (id) => set((state) => ({ insightsDismissed: [...(state.insightsDismissed ?? []).filter((x) => x !== id), id].slice(-200) })),
     }),
@@ -273,6 +278,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         showWelcome: state.showWelcome,
         breakdownChart: state.breakdownChart,
         privacyOnLaunch: state.privacyOnLaunch,
+        allowTextSelect: state.allowTextSelect,
         insightsDismissed: state.insightsDismissed,
       }),
     }

@@ -1674,11 +1674,17 @@ html.pebble-welcoming::after {
 .pebble-root.pb-private .recharts-yAxis tspan { fill: transparent !important; stroke: none !important; }
 
 /* Privacy mode: chart cloud */
-.pebble-root.pb-private .pb-chart-fill { filter: blur(16px); pointer-events: none; }
+/* Blurred charts take the tap that reveals them; their contents ignore the
+   pointer meanwhile, so no tooltip can show a figure. */
+.pebble-root.pb-private .pb-chart-fill:not(.pb-revealed) { filter: blur(16px); cursor: pointer; }
+.pebble-root.pb-private .pb-chart-fill:not(.pb-revealed) > * { pointer-events: none; }
 
-/* Privacy mode: all charts */
-.pebble-root.pb-private .pb-chart-fade,
-.pebble-root.pb-private .pb-donut-ring { filter: blur(16px); pointer-events: none; }
+/* Privacy mode: all charts. A tap reveals one chart (AppShell); while still
+   blurred its contents ignore the pointer, so no tooltip shows a figure. */
+.pebble-root.pb-private .pb-chart-fade:not(.pb-revealed),
+.pebble-root.pb-private .pb-donut-ring:not(.pb-revealed) { filter: blur(16px); cursor: pointer; }
+.pebble-root.pb-private .pb-chart-fade:not(.pb-revealed) > *,
+.pebble-root.pb-private .pb-donut-ring:not(.pb-revealed) > * { pointer-events: none; }
 
 /* Amount field hint room */
 .pebble-root .pb-amount-has-hint { padding-right: 5.5rem !important; }
@@ -1864,3 +1870,28 @@ html.pebble-welcoming::after {
   100% { transform: scale(1) rotate(0); }
 }
 .pebble-root .pb-star-pop svg { animation: pb-star-pop 520ms var(--pb-ease-out); }
+
+/* Privacy: a chart revealed by a tap shows its axis text, labels and tooltips. */
+.pebble-root.pb-private .pb-revealed .recharts-cartesian-axis,
+.pebble-root.pb-private .pb-revealed .recharts-yAxis,
+.pebble-root.pb-private .pb-revealed .recharts-xAxis,
+.pebble-root.pb-private .pb-revealed .recharts-cartesian-axis-tick text,
+.pebble-root.pb-private .pb-revealed .recharts-tooltip-wrapper,
+.pebble-root.pb-private .pb-revealed .recharts-label,
+.pebble-root.pb-private .recharts-wrapper.pb-revealed .recharts-cartesian-axis-tick text,
+.pebble-root.pb-private .recharts-wrapper.pb-revealed .recharts-tooltip-wrapper,
+.pebble-root.pb-private .recharts-wrapper.pb-revealed .recharts-label { filter: none !important; }
+.pebble-root.pb-private .pb-revealed .recharts-yAxis text,
+.pebble-root.pb-private .recharts-wrapper.pb-revealed .recharts-yAxis text { fill: var(--ink-soft) !important; }
+
+/* Text selection off (Settings > Allow selecting text: No, the default): no
+   highlighting or long-press copy anywhere, except fields people type in. */
+.pebble-root.pb-no-select { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pebble-root.pb-no-select input,
+.pebble-root.pb-no-select textarea,
+.pebble-root.pb-no-select [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* Privacy: figures inside a revealed chart show with it (the donut's centre
+   total, Your week's bar amounts). */
+.pebble-root.pb-private .pb-revealed .font-mono-tab,
+.pebble-root.pb-private .pb-revealed .pb-money { filter: none !important; }

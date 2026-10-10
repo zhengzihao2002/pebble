@@ -657,6 +657,10 @@ export const zh: typeof en = {
   },
 
   selectMode: {
+    textSelectTitle: '允许选择文字',
+    textSelectHint: '关闭后不会误选或复制文字，在手机上很方便。输入框始终可以正常使用。',
+    textSelectOff: '否',
+    textSelectOn: '是',
     title: '下拉列表',
     hint: '搜索列表可输入文字筛选；简单列表使用设备自带的选择器。',
     searchable: '搜索列表',
@@ -942,6 +946,7 @@ export const zh: typeof en = {
     cardLimitLine: '已用 {used} / 额度 {limit} · 可用 {available}',
     cardOverLimit: '超出额度 {amount}',
     cardDue: '{date} 到期',
+    changeOver: '最近 {period}',
     selfNotice: '有 {count} 笔转账是从账户转到同一个账户。它们相互抵消，可以删除。',
     selfNoticeOne: '有 1 笔转账是从账户转到同一个账户。它相互抵消，可以删除。',
     selfReview: '查看',
