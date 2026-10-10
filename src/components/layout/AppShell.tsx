@@ -51,8 +51,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     // Pressing on text cancels its tooltip until the pointer leaves it, so a
     // click that opens a dialog never flashes one first.
     let suppressed: HTMLElement | null = null;
+    // Touch screens: tapping truncated text shows the tooltip, unless the tap
+    // opened a dialog. lastPointer tells a tap from a mouse click.
+    let lastPointer = 'mouse';
+    let tapHide = 0;
     const hide = () => {
       window.clearTimeout(timer);
+      window.clearTimeout(tapHide);
       current = null;
       setTruncTip(null);
     };
@@ -94,7 +99,33 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (to instanceof Node && current.contains(to)) return;
       hide();
     };
-    const onDown = () => {
+    const onTap = (e: MouseEvent) => {
+      if (lastPointer === 'mouse') return;
+      let el: Element | null = e.target instanceof Element ? e.target : null;
+      let found: HTMLElement | null = null;
+      for (let depth = 0; el && depth < 4; depth += 1, el = el.parentElement) {
+        if (el instanceof HTMLElement && getComputedStyle(el).textOverflow === 'ellipsis') { found = el; break; }
+      }
+      if (!found || found.scrollWidth <= found.clientWidth + 1 || found.title) return;
+      if (found.closest('.pb-private') && found.closest('.pb-money, .font-mono-tab, .hero-balance, .pb-hero-account-amount')) return;
+      const target = found;
+      window.clearTimeout(timer);
+      // Wait a moment: if the tap opened a dialog (or left the page), show nothing.
+      timer = window.setTimeout(() => {
+        if (!target.isConnected || document.querySelector('.pb-modal-overlay')) return;
+        const r = target.getBoundingClientRect();
+        const below = r.top < 64;
+        setTruncTip({
+          text: (target.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          left: Math.max(8, Math.min(r.left, window.innerWidth - 368)),
+          top: below ? r.bottom + 8 : r.top - 8,
+          below,
+        });
+        tapHide = window.setTimeout(() => setTruncTip(null), 2600);
+      }, 220);
+    };
+    const onDown = (e: PointerEvent) => {
+      lastPointer = e.pointerType;
       const pressed = current;
       hide();
       if (pressed) suppressed = pressed;
@@ -102,6 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.addEventListener('pointerover', onOver, { passive: true });
     document.addEventListener('mouseout', onOut, { passive: true });
     document.addEventListener('pointerdown', onDown, { capture: true, passive: true });
+    document.addEventListener('click', onTap, { passive: true });
     window.addEventListener('scroll', hide, true);
     window.addEventListener('resize', hide);
     return () => {
@@ -109,6 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       document.removeEventListener('pointerover', onOver);
       document.removeEventListener('mouseout', onOut);
       document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('click', onTap);
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('resize', hide);
     };
@@ -346,10 +379,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       const amount = (target?.closest?.('.font-mono-tab:not(input), .pb-money, .hero-balance, .pb-hero-account-amount')
         ?? target?.closest?.('.pb-chart-fill, .pb-donut-ring, .pb-chart-fade')
         ?? target?.closest?.('.recharts-wrapper')) as HTMLElement | null;
-      if (!amount || amount.classList.contains('pb-revealed')) return;
+      if (!amount) return;
       e.preventDefault();
       e.stopPropagation();
-      amount.classList.add('pb-revealed');
+      // A second tap blurs it again - no trip through the eye button.
+      amount.classList.toggle('pb-revealed');
     };
     root.addEventListener('click', reveal, true);
     return () => root.removeEventListener('click', reveal, true);
