@@ -121,8 +121,17 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
               {it.phase === 'pending' && (
                 <>
                   <span style={{ flex: 1, minWidth: 0 }}>{d.undoDelete.pending}</span>
+                  {/* Countdown: the arc unwinds 360 to 0 and the centre counts 5 to 0,
+                      both CSS animations started with this bar - the same moment as
+                      the delete timer - so neither can drift from the real delete. */}
+                  <span className="pb-undo-ring" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="34" height="34">
+                      <circle className="pb-undo-ring-track" cx="12" cy="12" r="10" />
+                      <circle className="pb-undo-ring-arc" cx="12" cy="12" r="10" pathLength="100" />
+                    </svg>
+                    <span className="pb-undo-count" />
+                  </span>
                   <button type="button" onClick={() => remove(it.id)}>{d.undoDelete.undo}</button>
-                  <span className="pb-undo-line" aria-hidden="true" />
                 </>
               )}
               {it.phase === 'sending' && <span style={{ flex: 1, minWidth: 0 }}>{d.undoDelete.sending}</span>}

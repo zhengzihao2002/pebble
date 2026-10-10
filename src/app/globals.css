@@ -1690,7 +1690,6 @@ html.pebble-welcoming::after {
 .pebble-root .pb-amount-has-hint { padding-right: 5.5rem !important; }
 
 /* Undo delete bar */
-@keyframes pb-undo-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .pebble-root .pb-undo-stack {
   position: fixed; left: 50%; transform: translateX(-50%); z-index: 70;
   display: flex; flex-direction: column; gap: 0.5rem;
@@ -1708,11 +1707,32 @@ html.pebble-welcoming::after {
   font-weight: 700; font-size: 0.85rem; padding: 0.35rem 0.55rem; border-radius: 0.5rem; flex-shrink: 0;
 }
 .pebble-root .pb-undo-bar button:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
-.pebble-root .pb-undo-line {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-  background-color: currentColor; opacity: 0.45; transform-origin: left center;
-  animation: pb-undo-drain 5000ms linear forwards;
+/* Undo countdown: a ring unwinding 360 to 0 over the 5-second window, with
+   the seconds counting 5 to 0 in its centre (an animated integer property
+   shown through a CSS counter, stepping on each second). */
+@property --pb-undo-n { syntax: '<integer>'; initial-value: 5; inherits: false; }
+@keyframes pb-undo-unwind { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 100; } }
+@keyframes pb-undo-count { from { --pb-undo-n: 5; } to { --pb-undo-n: 0; } }
+.pebble-root .pb-undo-ring {
+  position: relative; width: 34px; height: 34px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
 }
+.pebble-root .pb-undo-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.pebble-root .pb-undo-ring-track { fill: none; stroke: currentColor; stroke-width: 1.8; opacity: 0.22; }
+.pebble-root .pb-undo-ring-arc {
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round;
+  stroke-dasharray: 100; stroke-dashoffset: 0;
+  animation: pb-undo-unwind 5000ms linear forwards;
+}
+.pebble-root .pb-undo-count {
+  /* Fills the ring and centres on both axes. */
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 0.82rem; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  counter-reset: pb-undo var(--pb-undo-n);
+  animation: pb-undo-count 5000ms steps(5, end) forwards;
+}
+.pebble-root .pb-undo-count::after { content: counter(pb-undo); }
 
 /* Add button colour cycle */
 @keyframes pb-add-hue {
@@ -1895,3 +1915,11 @@ html.pebble-welcoming::after {
    total, Your week's bar amounts). */
 .pebble-root.pb-private .pb-revealed .font-mono-tab,
 .pebble-root.pb-private .pb-revealed .pb-money { filter: none !important; }
+
+/* Reduced motion: the undo arc stays full (no sweep), but the seconds still
+   count down - a visible clock is information, not decoration. Placed last so
+   it wins over the global reduced-motion rule. */
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-undo-ring-arc { animation: none !important; }
+  .pebble-root .pb-undo-count { animation-duration: 5000ms !important; animation-iteration-count: 1 !important; }
+}
