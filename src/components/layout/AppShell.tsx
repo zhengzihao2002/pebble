@@ -56,7 +56,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       current = null;
       setTruncTip(null);
     };
-    const onOver = (e: MouseEvent) => {
+    // A real mouse only: phones simulate a hover on tap, which made a tap that
+    // opens a transaction show the tooltip as well.
+    const onOver = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
       let el: Element | null = e.target instanceof Element ? e.target : null;
       for (let depth = 0; el && depth < 4; depth += 1, el = el.parentElement) {
         if (!(el instanceof HTMLElement) || getComputedStyle(el).textOverflow !== 'ellipsis') continue;
@@ -96,14 +99,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       hide();
       if (pressed) suppressed = pressed;
     };
-    document.addEventListener('mouseover', onOver, { passive: true });
+    document.addEventListener('pointerover', onOver, { passive: true });
     document.addEventListener('mouseout', onOut, { passive: true });
     document.addEventListener('pointerdown', onDown, { capture: true, passive: true });
     window.addEventListener('scroll', hide, true);
     window.addEventListener('resize', hide);
     return () => {
       hide();
-      document.removeEventListener('mouseover', onOver);
+      document.removeEventListener('pointerover', onOver);
       document.removeEventListener('mouseout', onOut);
       document.removeEventListener('pointerdown', onDown, true);
       window.removeEventListener('scroll', hide, true);
