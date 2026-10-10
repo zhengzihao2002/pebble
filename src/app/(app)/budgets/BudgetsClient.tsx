@@ -58,15 +58,16 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
       .map(([name, meta]) => ({ name, icon: meta.icon, color: meta.color, budget: 0, spent: 0, pct: 0 }));
   }, [categoryMeta, entries]);
 
-  // The last 12 COMPLETE months per category, oldest first, from the
-  // transactions already on the page. Null until today is known.
+  // Every month from January three years ago through the current month, per
+  // category, oldest first, from the transactions already on the page. The
+  // details chart picks a year from it; Quick set uses its last 12 complete
+  // months. Null until today is known.
   const history: BudgetHistory | null = useMemo(() => {
     if (!today) return null;
     const y = Number(today.slice(0, 4));
     const m = Number(today.slice(5, 7)) - 1;
     const months: string[] = [];
-    for (let i = 12; i >= 1; i--) {
-      const dt = new Date(y, m - i, 1);
+    for (let dt = new Date(y - 3, 0, 1); dt.getFullYear() < y || dt.getMonth() <= m; dt = new Date(dt.getFullYear(), dt.getMonth() + 1, 1)) {
       months.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
     }
     const index = new Map(months.map((k, i) => [k, i]));
@@ -75,9 +76,9 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
       if (x.amount >= 0) continue;
       const i = index.get(x.date.slice(0, 7));
       if (i === undefined) continue;
-      (byCat[x.category] ??= Array(12).fill(0))[i] += Math.abs(x.amount);
+      (byCat[x.category] ??= Array(months.length).fill(0))[i] += Math.abs(x.amount);
     }
-    return { months, byCat };
+    return { months, byCat, current: months[months.length - 1] };
   }, [transactions, today]);
 
   const totalBudget = entries.reduce((s, e) => s + e.budget, 0);

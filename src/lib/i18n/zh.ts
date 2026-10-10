@@ -813,14 +813,17 @@ export const zh: typeof en = {
   },
 
   budgetDetails: {
+    spentIn: '{year} 年支出：{amount}',
+    yearLabel: '年份',
+    inProgress: '进行中',
     details: '详情',
     hide: '收起',
     perMonth: '每月预算 {amount}',
     setBudget: '设定预算',
     otherTitle: '其他分类（{count}）',
     otherHint: '今年没有预算，也没有支出。',
-    noHistory: '最近 12 个完整月份没有支出。',
-    chartLabel: '{name}，最近 12 个月的支出',
+    noHistory: '最近三年这里没有支出。',
+    chartLabel: '{name} {year} 年各月支出',
   },
 
   budgetRow: {

@@ -898,14 +898,17 @@ export const en = {
   },
 
   budgetDetails: {
+    spentIn: 'Spent in {year}: {amount}',
+    yearLabel: 'Year',
+    inProgress: 'in progress',
     details: 'Details',
     hide: 'Hide',
     perMonth: '{amount} / month budget',
     setBudget: 'Set budget',
     otherTitle: 'Other categories ({count})',
     otherHint: 'No budget and no spending this year.',
-    noHistory: 'No spending in the last 12 complete months.',
-    chartLabel: '{name}, spending over the last 12 months',
+    noHistory: 'No spending here in the last three years.',
+    chartLabel: '{name}, spending by month in {year}',
   },
 
   budgetRow: {
