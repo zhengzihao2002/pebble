@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useLayoutEffect, useRef } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X, CreditCard } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X, CreditCard, Star } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -38,7 +38,7 @@ interface TransactionsClientProps {
 type TypeFilter = 'all' | 'expense' | 'income';
 // Not '' - a category can never be named this, and '' is what SelectField's
 // plain mode treats as "nothing chosen".
-const ALL_CATEGORIES = '__all__';
+const ALL_ACCOUNTS = '__all__';
 
 export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
@@ -53,7 +53,10 @@ export function TransactionsClient({
   // page, so nothing is fetched.
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES);
+  const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS);
+  // Search follows the month shown in the navigator; this widens it to the
+  // whole 13-month history.
+  const [allMonths, setAllMonths] = useState(false);
 
   // 13, not 12: the navigator must reach the same month one year back
   // (from August 2026 that is August 2025, which is 13 entries inclusive).
@@ -127,8 +130,9 @@ export function TransactionsClient({
   const canGoNewer = selectedMonthIndex > 0;
 
   // ---- Search ---------------------------------------------------------------
-  // Runs over the same 13-month ledger as the month list, so every result
-  // keeps a correct "balance after". Older records: the command palette.
+  // Runs over the month shown in the navigator (or, with All months, the
+  // whole 13-month ledger), so every result keeps a correct "balance
+  // after". Older records: the command palette.
   const accountNames = useMemo(() => {
     const map = new Map<string, string>();
     accounts.forEach((a) => map.set(a.id, a.name.toLowerCase()));
@@ -140,14 +144,16 @@ export function TransactionsClient({
   // has a digit, so typing a word never matches every amount.
   const qAmount = q.replace(/[$,\s]/g, '');
   const amountQuery = /[0-9]/.test(qAmount);
-  const searching = q !== '' || typeFilter !== 'all' || categoryFilter !== ALL_CATEGORIES;
+  const searching = q !== '' || typeFilter !== 'all' || accountFilter !== ALL_ACCOUNTS;
+  const monthPrefix = `${selectedMonthInfo.year}-${String(selectedMonthInfo.month + 1).padStart(2, '0')}-`;
 
   const results = useMemo(() => {
     if (!searching) return [];
     return entriesWithRecords.filter((e) => {
       const r = e.record;
+      if (!allMonths && !r.date.startsWith(monthPrefix)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
-      if (categoryFilter !== ALL_CATEGORIES && (r.type === 'adjustment' || r.category !== categoryFilter)) return false;
+      if (accountFilter !== ALL_ACCOUNTS && r.accountId !== accountFilter) return false;
       if (q === '') return true;
       const categoryText = r.type === 'adjustment'
         ? d.txn.balanceAdjustment.toLowerCase()
@@ -161,16 +167,27 @@ export function TransactionsClient({
         || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, entriesWithRecords, typeFilter, categoryFilter, q, qAmount, amountQuery, accountNames, d]);
+  }, [searching, entriesWithRecords, typeFilter, accountFilter, allMonths, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
 
-  // Category names are USER DATA (label === value); only the two income
-  // literals get a translated label.
-  const categoryOptions: SelectFieldOption[] = useMemo(() => [
-    { value: ALL_CATEGORIES, label: d.txnSearch.allCategories },
-    ...categories.map((c) => ({ value: c.name, label: c.name, icon: resolveCategoryIcon(c.iconKey), color: c.color })),
-    { value: 'Standard Income', label: d.enums.incomeCategory['Standard Income'] },
-    { value: 'Side Cash', label: d.enums.incomeCategory['Side Cash'] },
-  ], [categories, d]);
+  // Account names are USER DATA. Same order as the header list: starred
+  // first (marked), bank and cash by balance, credit cards by amount owed.
+  const accountOptions: SelectFieldOption[] = useMemo(() => {
+    const rank = (a: (typeof accounts)[number]) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
+    const sorted = [...accounts].sort((x, y) => {
+      const bx = balancesByAccount[x.id] ?? 0;
+      const by = balancesByAccount[y.id] ?? 0;
+      if (rank(x) !== rank(y)) return rank(x) - rank(y);
+      return x.kind === 'credit' ? bx - by : by - bx;
+    });
+    return [
+      { value: ALL_ACCOUNTS, label: d.txnSearch.allAccounts },
+      ...sorted.map((a) => ({
+        value: a.id,
+        label: `${a.name}${a.last4 ? ` ····${a.last4}` : ''}${a.isPreferred ? ' ★' : ''}`,
+        icon: a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins,
+      })),
+    ];
+  }, [accounts, balancesByAccount, d]);
 
   // Account list beside the total: columns of 3 rows, growing sideways. When
   // the columns would not fit beside the total with a comfortable gap, the
@@ -194,8 +211,11 @@ export function TransactionsClient({
       // gaps, amount), kept between 240 and 340px - the CSS column bounds.
       let widest = 0;
       accountsRef.current?.querySelectorAll(':scope > li').forEach((li) => {
-        const [, name, amount] = Array.from(li.children) as HTMLElement[];
-        if (name && amount) widest = Math.max(widest, 15 + name.scrollWidth + amount.scrollWidth + 22);
+        const kids = Array.from(li.children) as HTMLElement[];
+        const name = kids[1];
+        const amount = kids[kids.length - 1];
+        const star = kids.length > 3 ? 20 : 0; // the star beside a starred account
+        if (name && amount) widest = Math.max(widest, 15 + name.scrollWidth + amount.scrollWidth + 22 + star);
       });
       const col = Math.min(340, Math.max(240, widest));
       const cols = Math.max(1, Math.ceil(accounts.length / 3));
@@ -211,7 +231,8 @@ export function TransactionsClient({
   const clearSearch = () => {
     setQuery('');
     setTypeFilter('all');
-    setCategoryFilter(ALL_CATEGORIES);
+    setAccountFilter(ALL_ACCOUNTS);
+    setAllMonths(false);
   };
 
   const typeOptions: { value: TypeFilter; label: string }[] = [
@@ -264,6 +285,9 @@ export function TransactionsClient({
                       {a.name}
                       {a.last4 && <span className="font-mono-tab" style={{ color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
                     </span>
+                    {a.isPreferred && (
+                      <Star size={12} fill="var(--gold)" color="var(--gold)" aria-label={d.accounts.preferred} style={{ flexShrink: 0 }} />
+                    )}
                     <span className="font-mono-tab" style={{ fontSize: '0.88rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {owed !== null
                         ? <>{formatCurrency(owed)} <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.accountsPage.cardOwed}</span></>
@@ -345,13 +369,24 @@ export function TransactionsClient({
               );
             })}
           </div>
+          <button
+            type="button" aria-pressed={allMonths} onClick={() => setAllMonths((v) => !v)}
+            style={{
+              padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: allMonths ? 600 : 500,
+              border: `1px solid ${allMonths ? 'var(--pine)' : 'var(--line)'}`,
+              backgroundColor: allMonths ? 'var(--pine-soft)' : 'transparent',
+              color: allMonths ? 'var(--pine)' : 'var(--ink-soft)',
+            }}
+          >
+            {d.txnSearch.allMonths}
+          </button>
           <div style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280 }}>
             <SelectField
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              options={categoryOptions}
-              placeholder={d.txnSearch.allCategories}
-              ariaLabel={d.txnSearch.categoryLabel}
+              value={accountFilter}
+              onChange={setAccountFilter}
+              options={accountOptions}
+              placeholder={d.txnSearch.allAccounts}
+              ariaLabel={d.txnSearch.accountLabel}
             />
           </div>
           <ImportCsvButton />
@@ -362,7 +397,7 @@ export function TransactionsClient({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <p role="status" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', padding: '0.9rem 1.5rem', margin: 0, borderBottom: '1px solid var(--line)' }}>
             {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
-            {' · '}{d.txnSearch.scope}
+            {' · '}{allMonths ? d.txnSearch.scope : formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
           </p>
           {results.length === 0 ? (
             <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.txnSearch.empty}</p>
