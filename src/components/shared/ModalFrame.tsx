@@ -48,10 +48,17 @@ interface ModalFrameProps {
   maxWidth?: number;
   zIndex?: number;
   cardStyle?: CSSProperties;
+  /** Phones: shrink to the space above the keyboard (default), so a pinned
+   *  Save stays visible. Off for dialogs with nothing pinned at the bottom
+   *  (the command palette): they still follow iOS panning the screen, but keep
+   *  their height, so the keyboard covers their lower part with no gap. */
+  keyboardResize?: boolean;
+  /** Extra class on the card, for one dialog's own layout rules. */
+  cardClassName?: string;
   children: (close: () => void) => ReactNode;
 }
 
-export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, children }: ModalFrameProps) {
+export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, cardClassName, children }: ModalFrameProps) {
   const [closing, setClosing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -129,9 +136,12 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     const vv = window.visualViewport;
     const overlay = cardRef.current?.parentElement;
     if (!vv || !overlay) return;
+    // keyboardResize off: follow iOS panning the screen (top) only. The height
+    // is never set, so the dialog's size comes from CSS alone and cannot change
+    // after it appears - setting it after mount resized the sheet mid-entrance.
     const sync = () => {
       if (Math.abs(vv.scale - 1) > 0.01) return;
-      overlay.style.setProperty('--pb-vvh', `${vv.height}px`);
+      if (keyboardResize) overlay.style.setProperty('--pb-vvh', `${vv.height}px`);
       overlay.style.setProperty('--pb-vvt', `${vv.offsetTop}px`);
     };
     sync();
@@ -141,7 +151,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
     };
-  }, []);
+  }, [keyboardResize]);
 
   useEffect(() => {
     const id = Symbol('modal');
@@ -206,7 +216,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     >
       <div
         ref={cardRef}
-        className="card pb-modal-card"
+        className={`card pb-modal-card${cardClassName ? ` ${cardClassName}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}

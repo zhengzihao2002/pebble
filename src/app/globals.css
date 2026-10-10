@@ -1923,3 +1923,23 @@ html.pebble-welcoming::after {
   .pebble-root .pb-undo-ring-arc { animation: none !important; }
   .pebble-root .pb-undo-count { animation-duration: 5000ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Command palette (万能bar) on phones: it keeps its normal size and position
+   when the keyboard opens (ModalFrame keyboardResize off), so the keyboard
+   covers its lower part with no gap. A visible title and close button head it. */
+/* The search field and the (phone-only) close button share one row. */
+.pebble-root .pb-palette-searchrow { display: flex; align-items: center; gap: 0.5rem; }
+.pebble-root .pb-palette-search { flex: 1; min-width: 0; }
+.pebble-root .pb-palette-closerow { display: none; }
+@media (max-width: 560px) {
+  /* Sized from its container from the first frame (100% of the overlay's
+     content box, which already has 0.75rem padding on top, minus 1.75rem =
+     a 2.5rem space above). Nothing measured later can resize it. */
+  .pebble-root .pb-palette-card { height: calc(100% - 1.75rem); max-height: none; }
+  /* Results run to the bottom edge (no card padding there), so the list reads
+     as scrollable; the space moves inside the scroll area instead, so the last
+     result can still scroll clear of the edge and the home indicator. */
+  .pebble-root .pb-palette-card { padding-bottom: 0; }
+  .pebble-root .pb-palette-card .pb-modal-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+  .pebble-root .pb-palette-closerow { display: flex; flex: none; }
+}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRightLeft, CalendarClock, Eye, EyeOff, Plus, Search, Settings as SettingsIcon, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { navItems } from './navItems';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -15,6 +16,29 @@ import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import type { CategoryMeta, LedgerRecord, Transaction } from '@/types';
+
+/**
+ * Keeps an option visible by scrolling ONLY its own list. scrollIntoView also
+ * scrolls every ancestor - including the dialog overlay while the phone sheet
+ * is still sliding in, which threw the whole sheet up the screen until it
+ * snapped back. Finds the nearest scrollable list and adjusts just that.
+ * (Jumping the Settings page to a section still uses scrollIntoView: there,
+ * scrolling the page is the point.)
+ */
+function scrollNearestWithin(el: Element | null | undefined) {
+  if (!(el instanceof HTMLElement)) return;
+  let box = el.parentElement;
+  while (box) {
+    const oy = getComputedStyle(box).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && box.scrollHeight > box.clientHeight) break;
+    box = box.parentElement;
+  }
+  if (!box) return;
+  const b = box.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.top < b.top) box.scrollTop -= b.top - r.top;
+  else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+}
 
 interface CommandPaletteProps {
   onClose: () => void;
@@ -80,7 +104,10 @@ export function CommandPalette({
 
   // After ModalFrame's own effect, which focuses the card (child effects run
   // first), so the filter box ends up focused.
-  useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => { // Touch screens: no auto-focus. On a phone it raises the keyboard while the
+    // sheet is still sliding in, and iOS pans the screen mid-animation (the
+    // sheet overshoots the top and a gap opens below). Tap the field to type.
+    if (!window.matchMedia('(pointer: coarse)').matches) inputRef.current?.focus({ preventScroll: true }); }, []);
 
   const loadOnce = () => {
     if (searchState !== 'idle') return;
@@ -164,7 +191,7 @@ export function CommandPalette({
   const index = Math.min(active, Math.max(0, rows.length - 1));
 
   useEffect(() => {
-    document.getElementById(`pb-palette-opt-${index}`)?.scrollIntoView({ block: 'nearest' });
+    scrollNearestWithin(document.getElementById(`pb-palette-opt-${index}`));
   }, [index, q, rows.length]);
 
   const groupLabel = (g: Row['group']) =>
@@ -175,6 +202,10 @@ export function CommandPalette({
       onClose={() => { onClose(); const run = pending.current; pending.current = null; run?.(); }}
       labelledBy="pb-palette-title"
       maxWidth={560}
+      // Nothing pinned at the bottom, so the keyboard simply covers the lower
+      // part of the sheet instead of shrinking it and leaving a gap.
+      keyboardResize={false}
+      cardClassName="pb-palette-card"
     >
       {(close) => {
         const pick = (row: Row | undefined) => {
@@ -187,7 +218,10 @@ export function CommandPalette({
           <>
             <div className="pb-modal-head">
               <h2 id="pb-palette-title" style={hidden}>{d.palette.title}</h2>
-              <div style={{ position: 'relative' }}>
+              {/* The search field and, on phones, a close button beside it (the
+                  sheet fills the screen and there is no Escape key). */}
+              <div className="pb-palette-searchrow">
+              <div className="pb-palette-search" style={{ position: 'relative' }}>
                 <Search size={17} aria-hidden="true" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)' }} />
                 <input
                   ref={inputRef}
@@ -214,6 +248,10 @@ export function CommandPalette({
                     color: 'var(--ink)', backgroundColor: 'var(--paper)',
                   }}
                 />
+              </div>
+                <div className="pb-palette-closerow">
+                  <ModalCloseButton onClick={close} />
+                </div>
               </div>
             </div>
 
