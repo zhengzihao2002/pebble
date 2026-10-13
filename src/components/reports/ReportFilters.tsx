@@ -225,7 +225,7 @@ export function ReportFilters({
     ? (sortDir === 'desc' ? dict.reports.sortHighest : dict.reports.sortLowest)
     : (sortDir === 'desc' ? dict.reports.sortNewest : dict.reports.sortOldest);
   const groupSortSummary = [
-    `${dict.reports.groupBy} ${categoryGroup === 'category' ? dict.reports.groupCategory : dict.reports.groupNone}`,
+    `${categoryGroup === 'category' ? dict.reports.groupCategory : dict.reports.groupNone}`,
     sortLabel,
   ];
   // An active search shows in its row, so a closed row can never reduce

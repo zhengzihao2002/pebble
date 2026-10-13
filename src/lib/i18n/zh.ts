@@ -1077,7 +1077,7 @@ export const zh: typeof en = {
     groupBy: '分组方式', groupCategory: '按分类', groupNone: '不分组',
     sort: '排序',
     sortHighest: '金额从高到低', sortLowest: '金额从低到高',
-    sortNewest: '时间从新到旧', sortOldest: '时间从旧到新',
+    sortNewest: '新到旧', sortOldest: '旧到新',
     description: '搜索',
     descriptionPlaceholder: '标题或描述',
     onlyAccounts: '账户',
