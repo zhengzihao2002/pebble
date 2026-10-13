@@ -137,7 +137,7 @@ export function TransferModal({ onClose }: TransferModalProps) {
   };
 
   return (
-    <ModalFrame keyboardResize={false} onClose={onClose} busy={saving} labelledBy="transfer-title" maxWidth={640} zIndex={60}>
+    <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="transfer-title" maxWidth={640} zIndex={60}>
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.common.saving} />}

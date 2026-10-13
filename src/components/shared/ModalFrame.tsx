@@ -53,12 +53,17 @@ interface ModalFrameProps {
    *  (the command palette): they still follow iOS panning the screen, but keep
    *  their height, so the keyboard covers their lower part with no gap. */
   keyboardResize?: boolean;
+  /** Phones: keep the dialog in place while iOS pans the screen to a focused
+   *  field (default). Off for tall forms (Add transaction, Transfer): the
+   *  dialog then moves WITH the page, so the page never seems to slide
+   *  beneath it. */
+  followPan?: boolean;
   /** Extra class on the card, for one dialog's own layout rules. */
   cardClassName?: string;
   children: (close: () => void) => ReactNode;
 }
 
-export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, cardClassName, children }: ModalFrameProps) {
+export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, followPan = true, cardClassName, children }: ModalFrameProps) {
   const [closing, setClosing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -142,7 +147,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     const sync = () => {
       if (Math.abs(vv.scale - 1) > 0.01) return;
       if (keyboardResize) overlay.style.setProperty('--pb-vvh', `${vv.height}px`);
-      overlay.style.setProperty('--pb-vvt', `${vv.offsetTop}px`);
+      if (followPan) overlay.style.setProperty('--pb-vvt', `${vv.offsetTop}px`);
     };
     sync();
     vv.addEventListener('resize', sync);
@@ -151,7 +156,29 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
     };
-  }, [keyboardResize]);
+  }, [keyboardResize, followPan]);
+
+  // Phones: the page behind a dialog must not move. A drag on the backdrop is
+  // stopped in CSS (touch-action on .pb-modal-overlay); this puts back any
+  // scroll iOS applies to the page's scroll areas when it brings a focused
+  // field into view. Touch devices only, so a desktop wheel never fights it.
+  // Scroll listeners only, no timers; removed when the dialog closes.
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+    const overlay = cardRef.current?.parentElement;
+    if (!overlay) return;
+    const held: { el: HTMLElement; onScroll: () => void }[] = [];
+    for (let el = overlay.parentElement; el; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if (oy !== 'auto' && oy !== 'scroll') continue;
+      const target = el;
+      const top = target.scrollTop;
+      const onScroll = () => { if (target.scrollTop !== top) target.scrollTop = top; };
+      target.addEventListener('scroll', onScroll, { passive: true });
+      held.push({ el: target, onScroll });
+    }
+    return () => held.forEach((h) => h.el.removeEventListener('scroll', h.onScroll));
+  }, []);
 
   useEffect(() => {
     const id = Symbol('modal');

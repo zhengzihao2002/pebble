@@ -2022,3 +2022,8 @@ html.pebble-welcoming::after {
    outside it, and the attribute keeps this from touching anything else. */
 input[data-pb-eye]::-ms-reveal,
 input[data-pb-eye]::-ms-clear { display: none; }
+
+/* Phones: a drag that starts on a dialog's backdrop scrolls nothing, so the
+   page behind cannot move. Scrolling inside the dialog is unaffected - its
+   body is its own scroll area, which ends the touch-action chain there. */
+.pebble-root .pb-modal-overlay { touch-action: none; }
