@@ -1980,3 +1980,45 @@ html.pebble-welcoming::after {
   font-size: 0.85rem; line-height: 1.35; white-space: normal; overflow-wrap: anywhere;
   animation: pb-fade-in 120ms var(--pb-ease-out);
 }
+
+/* CSV import on PC (ImportCsv): the dialog's card becomes a transparent row
+   holding two cards - the import on the left, "If imported" on the right.
+   One dialog, so the focus trap, Escape and the backdrop behave as one. The
+   class is only applied at 1024px+ with a fine pointer, so phones keep the
+   normal card and its bottom-sheet rules. */
+.pebble-root .pb-modal-card.pb-import-split {
+  flex-direction: row; gap: 0; padding: 0;
+  background: transparent; border: 0; box-shadow: none;
+  /* Widening when the preview opens. A layout property, an accepted exception
+     like the grid-template-rows collapse; the pane itself moves by transform
+     and opacity. The global reduced-motion rule makes both instant. */
+  transition: max-width var(--pb-dur-emph) var(--pb-ease-out), gap var(--pb-dur-emph) var(--pb-ease-out);
+}
+/* Preview step: both cards take the full available height. ModalFrame
+   animates the height change itself. */
+.pebble-root .pb-import-split.pb-import-open {
+  gap: 1rem; height: calc(var(--pb-vvh, 100dvh) - 2rem);
+}
+.pebble-root .pb-import-split > .pb-import-pane {
+  min-width: 0; display: flex; flex-direction: column;
+  padding: 1.75rem; border-radius: 2rem; box-shadow: var(--shadow-float);
+}
+.pebble-root .pb-import-split > .pb-import-pane:first-child { flex: 1 1 640px; }
+.pebble-root .pb-import-split > .pb-import-pane + .pb-import-pane {
+  flex: 1 1 584px;
+  animation: pb-import-pane-in var(--pb-dur-emph) var(--pb-ease-out) both;
+}
+@keyframes pb-import-pane-in { from { opacity: 0; transform: translateX(2.5rem); } }
+
+/* CSV import preview (If imported): its rows are read-only, so they do not
+   take the app's green row hover. A neutral tint instead. */
+.pebble-root .pb-import-pane .txn-row-interactive:hover {
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* Sign-in and reset password: Edge draws its own reveal icon in password
+   fields, which would sit beside the eye AuthViewClient adds. Hidden only on
+   fields that got that eye. Not under .pebble-root: the auth screens may sit
+   outside it, and the attribute keeps this from touching anything else. */
+input[data-pb-eye]::-ms-reveal,
+input[data-pb-eye]::-ms-clear { display: none; }

@@ -293,7 +293,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const showForm = !success && pendingShortfall === null;
 
   return (
-    <ModalFrame onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640}>
+    <ModalFrame keyboardResize={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640}>
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}

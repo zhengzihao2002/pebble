@@ -71,7 +71,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
           </div>
         )}
       </div>
-      <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--ink)', whiteSpace: 'nowrap' }}>
+      <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--wine)', whiteSpace: 'nowrap' }}>
         {isIncome ? '+' : ''}{formatCurrency(txn.amount)}
       </div>
     </div>

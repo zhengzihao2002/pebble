@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Banknote, SlidersHorizontal } from 'lucide-react';
+import { Banknote, SlidersHorizontal, CircleHelp } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -32,25 +32,30 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
   // as income or spending.
   const isAdjustment = txn.type === 'adjustment';
   const meta = isAdjustment ? undefined : categoryMeta[txn.category];
-  const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
+  // No category at all: only a not-yet-imported row in the CSV import preview,
+  // since stored transactions always have one. A neutral question mark until a
+  // category is chosen, rather than the income banknote.
+  const uncategorised = !isAdjustment && !txn.category;
+  const Icon = isAdjustment ? SlidersHorizontal : uncategorised ? CircleHelp : (meta ? meta.icon : Banknote);
   const isIncome = !isAdjustment && txn.amount > 0;
 
   // txn.category is either a real category NAME (user data) or one of the
   // two income literals - categoryLabel() handles both, translating only
   // the latter.
-  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : [categoryLabel(d, txn.category)];
+  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : uncategorised ? [] : [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
   subtitleParts.push(formatDate(txn.date, locale));
 
-  const accentColor = isAdjustment
+  const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
     : (isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)'));
-  const accentBg = isAdjustment
+  const accentBg = isAdjustment || uncategorised
     ? 'var(--mist)'
     : (isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`);
+  // Green for money in, red for money out, grey for corrections.
   const amountColor = isAdjustment
     ? 'var(--ink-soft)'
-    : (isIncome ? 'var(--pine)' : 'var(--ink)');
+    : (isIncome ? 'var(--pine)' : 'var(--wine)');
   const amountPrefix = isAdjustment ? (txn.amount > 0 ? '+' : '') : (isIncome ? '+' : '');
 
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);

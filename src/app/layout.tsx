@@ -66,6 +66,11 @@ export const metadata: Metadata = {
 // would actually be responding to. --pine (#1F5A45) is the fixed brand
 // color in both themes, so one value is correct here, not a simplification.
 export const viewport: Viewport = {
+  // No zoom of any kind. maximumScale stops iOS zooming into a text field
+  // on focus; pinch is also cancelled in AppShell (gesture events) and by
+  // touch-action in globals.css. Text size is how things are enlarged.
+  maximumScale: 1,
+  userScalable: false,
   themeColor: "#1F5A45",
 };
 

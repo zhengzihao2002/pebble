@@ -54,9 +54,6 @@ export function TransactionsClient({
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS);
-  // Search follows the month shown in the navigator; this widens it to the
-  // whole 13-month history.
-  const [allMonths, setAllMonths] = useState(false);
 
   // 13, not 12: the navigator must reach the same month one year back
   // (from August 2026 that is August 2025, which is 13 entries inclusive).
@@ -130,9 +127,8 @@ export function TransactionsClient({
   const canGoNewer = selectedMonthIndex > 0;
 
   // ---- Search ---------------------------------------------------------------
-  // Runs over the month shown in the navigator (or, with All months, the
-  // whole 13-month ledger), so every result keeps a correct "balance
-  // after". Older records: the command palette.
+  // Runs over the month shown in the navigator, so every result keeps a
+  // correct "balance after". Older records: the command palette.
   const accountNames = useMemo(() => {
     const map = new Map<string, string>();
     accounts.forEach((a) => map.set(a.id, a.name.toLowerCase()));
@@ -151,7 +147,7 @@ export function TransactionsClient({
     if (!searching) return [];
     return entriesWithRecords.filter((e) => {
       const r = e.record;
-      if (!allMonths && !r.date.startsWith(monthPrefix)) return false;
+      if (!r.date.startsWith(monthPrefix)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
       if (accountFilter !== ALL_ACCOUNTS && r.accountId !== accountFilter) return false;
       if (q === '') return true;
@@ -167,7 +163,7 @@ export function TransactionsClient({
         || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, entriesWithRecords, typeFilter, accountFilter, allMonths, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
+  }, [searching, entriesWithRecords, typeFilter, accountFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
 
   // Account names are USER DATA. Same order as the header list: starred
   // first (marked), bank and cash by balance, credit cards by amount owed.
@@ -228,11 +224,12 @@ export function TransactionsClient({
     return () => ro.disconnect();
   }, [accounts.length]);
 
+  // The X clears the typed text only, and shows only when there is text to
+  // clear. Type and Account each have their own All option. Focus returns
+  // to the box because the X disappears with the text.
   const clearSearch = () => {
     setQuery('');
-    setTypeFilter('all');
-    setAccountFilter(ALL_ACCOUNTS);
-    setAllMonths(false);
+    document.getElementById('pb-txn-search')?.focus();
   };
 
   const typeOptions: { value: TypeFilter; label: string }[] = [
@@ -340,7 +337,7 @@ export function TransactionsClient({
               color: 'var(--ink)', backgroundColor: 'var(--paper)',
             }}
           />
-          {searching && (
+          {query !== '' && (
             <button
               type="button" onClick={clearSearch} className="icon-btn" aria-label={d.txnSearch.clear} title={d.txnSearch.clear}
               style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -369,17 +366,6 @@ export function TransactionsClient({
               );
             })}
           </div>
-          <button
-            type="button" aria-pressed={allMonths} onClick={() => setAllMonths((v) => !v)}
-            style={{
-              padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: allMonths ? 600 : 500,
-              border: `1px solid ${allMonths ? 'var(--pine)' : 'var(--line)'}`,
-              backgroundColor: allMonths ? 'var(--pine-soft)' : 'transparent',
-              color: allMonths ? 'var(--pine)' : 'var(--ink-soft)',
-            }}
-          >
-            {d.txnSearch.allMonths}
-          </button>
           <div style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280 }}>
             <SelectField
               value={accountFilter}
@@ -389,7 +375,7 @@ export function TransactionsClient({
               ariaLabel={d.txnSearch.accountLabel}
             />
           </div>
-          <ImportCsvButton />
+          <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />
         </div>
       </div>
 
@@ -397,7 +383,7 @@ export function TransactionsClient({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <p role="status" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', padding: '0.9rem 1.5rem', margin: 0, borderBottom: '1px solid var(--line)' }}>
             {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
-            {' · '}{allMonths ? d.txnSearch.scope : formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
+            {' · '}{formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
           </p>
           {results.length === 0 ? (
             <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.txnSearch.empty}</p>

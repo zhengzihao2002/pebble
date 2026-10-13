@@ -824,6 +824,10 @@ export const en = {
   importCsv: {
     cardOverdue: 'Overdue on this card (was due {date})',
     button: 'Import CSV',
+    previewTitle: 'If imported',
+    previewHint: 'This month and the two before, as your statement would look. Highlighted rows are new.',
+    previewEmpty: 'No activity in these three months.',
+    previewOlder: 'Older than this view: {count}. Balances above include them.',
     title: 'Import from a bank statement',
     chooseHint: 'Choose a CSV file from your bank. It is read on this device; only the rows you confirm are saved.',
     chooseFile: 'Choose a CSV file',

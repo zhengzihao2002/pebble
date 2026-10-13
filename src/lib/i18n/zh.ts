@@ -739,6 +739,10 @@ export const zh: typeof en = {
   importCsv: {
     cardOverdue: '在此卡上已逾期（{date} 到期）',
     button: '导入 CSV',
+    previewTitle: '导入后',
+    previewHint: '本月及前两个月，导入后账单的样子。高亮行为新增。',
+    previewEmpty: '这三个月没有任何活动。',
+    previewOlder: '早于此视图：{count} 行。上方余额已包含它们。',
     title: '从银行对账单导入',
     chooseHint: '选择银行导出的 CSV 文件。文件只在本设备上读取，只有你确认的行才会保存。',
     chooseFile: '选择 CSV 文件',
