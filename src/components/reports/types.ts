@@ -16,7 +16,16 @@ export type SortField = 'amount' | 'date';
 // Persisted in the pebble-ui store. Filter choices are device preferences,
 // not financial data - nothing here identifies a transaction or an amount.
 export interface ReportFilterPrefs {
+  // Legacy single type. Still written (the single type, or 'expense' when both
+  // show) so an older build reading these prefs keeps working, and still read
+  // to migrate prefs saved before reportTypes existed.
   reportType: ReportType;
+  // Read only, to migrate prefs saved while an empty list meant ALL. Superseded
+  // by typeSelection.
+  reportTypes?: ReportType[];
+  // The types Reports shows, as an explicit list: both is ALL, and an empty list
+  // means nothing is selected.
+  typeSelection?: ReportType[];
   periodGroup: PeriodGroup;
   subYear: string;
   // 'All' is an internal-only sentinel meaning "use whichever month/
@@ -28,6 +37,14 @@ export interface ReportFilterPrefs {
   sortField: SortField;
   sortDir: SortDir;
   filtersExpanded: boolean;
+  // Open state of the Accounts and Categories sections inside the panel.
+  // Optional: prefs saved earlier have neither, and restore reads only === true.
+  accountsExpanded?: boolean;
+  categoriesExpanded?: boolean;
+  typesExpanded?: boolean;
+  periodExpanded?: boolean;
+  groupSortExpanded?: boolean;
+  findExpanded?: boolean;
   // The last Expand all / Collapse all choice, not the individual group keys.
   // Those keys are built from the period label and category name, so any filter
   // or rename would orphan them; a boolean survives both.

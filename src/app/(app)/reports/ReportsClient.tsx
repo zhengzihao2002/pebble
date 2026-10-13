@@ -39,11 +39,23 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // Open state of the Accounts and Categories sections. Persisted beside
+  // filtersExpanded, and collapsed by default like the outer panel.
+  const [accountsExpanded, setAccountsExpanded] = useState(false);
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false);
+  const [typesExpanded, setTypesExpanded] = useState(false);
+  const [periodExpanded, setPeriodExpanded] = useState(false);
+  const [groupSortExpanded, setGroupSortExpanded] = useState(false);
+  const [findExpanded, setFindExpanded] = useState(false);
   // These initial values are deliberately static and date-free so the server
   // render and the first client render are identical. The real defaults depend
   // on today's date and on localStorage, neither of which exists on the server,
   // so both are applied in a mount effect below instead.
-  const [reportType, setReportType] = useState<ReportType>('expense');
+  // Which transaction types Reports shows, as an explicit set like the category
+  // selection: both is ALL, and an empty set means nothing is selected. Static
+  // for server/client parity like the rest - the saved choice is applied in the
+  // restore effect.
+  const [selectedTypes, setSelectedTypes] = useState<Set<ReportType>>(new Set<ReportType>(['expense', 'income']));
   const [periodGroup, setPeriodGroup] = useState<PeriodGroup>('month');
   const [subPeriod, setSubPeriod] = useState('All');
   const [subYear, setSubYear] = useState('All');
@@ -78,9 +90,21 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
   const expenseCats = Object.keys(categoryMeta);
   const incomeCats = ['Standard Income', 'Side Cash'];
-  const availableCats = reportType === 'expense' ? expenseCats : incomeCats;
+  // Categories on offer for a type selection: the expense categories, then the
+  // two income ones.
+  const catsForTypes = (types: ReadonlySet<ReportType>) => [
+    ...(types.has('expense') ? expenseCats : []),
+    ...(types.has('income') ? incomeCats : []),
+  ];
+  const includeExpense = selectedTypes.has('expense');
+  const includeIncome = selectedTypes.has('income');
+  // Both types showing: totals are NET (income minus expenses, signed). One
+  // type: the absolute sum, exactly as before.
+  const mixed = includeExpense && includeIncome;
+  const amt = (t: Transaction) => (mixed ? t.amount : Math.abs(t.amount));
+  const availableCats = catsForTypes(selectedTypes);
 
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(expenseCats));
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(catsForTypes(selectedTypes)));
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
 
   // Empty means ALL, deliberately - not a set seeded with every id. A seeded
@@ -91,7 +115,8 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // things that no longer exist, and accounts can be deleted outright.
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
 
-  const showTagFilter = reportType === 'expense' && selectedCategories.size === 1;
+  const showTagFilter = includeExpense && selectedCategories.size === 1
+    && expenseCats.includes(Array.from(selectedCategories)[0]);
   const singleSelectedCategory = showTagFilter ? Array.from(selectedCategories)[0] : null;
   const availableTags = showTagFilter
     ? Array.from(new Set(
@@ -117,7 +142,18 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
     const saved = usePebbleStore.getState().reportFilters;
     if (saved) {
-      setReportType(saved.reportType);
+      // typeSelection is the source of truth: the explicit set of shown types,
+      // where an empty list means nothing is selected. Older prefs carry
+      // reportTypes (where empty meant ALL) or only the single reportType; both
+      // migrate so nobody's saved view flips. Validated, not trusted.
+      const onlyKinds = (v: unknown): ReportType[] =>
+        Array.isArray(v) ? v.filter((x): x is ReportType => x === 'expense' || x === 'income') : [];
+      const restoredTypes = new Set<ReportType>(
+        Array.isArray(saved.typeSelection) ? onlyKinds(saved.typeSelection)
+        : Array.isArray(saved.reportTypes) ? (onlyKinds(saved.reportTypes).length === 1 ? onlyKinds(saved.reportTypes) : ['expense', 'income'])
+        : [saved.reportType === 'income' ? 'income' : 'expense'],
+      );
+      setSelectedTypes(restoredTypes);
       setPeriodGroup(saved.periodGroup);
       setSubYear(saved.subYear);
       setSubPeriod(saved.subPeriod);
@@ -125,14 +161,21 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       setSortField(saved.sortField);
       setSortDir(saved.sortDir);
       setFiltersExpanded(saved.filtersExpanded);
+      // === true: prefs saved before these existed have neither field.
+      setAccountsExpanded(saved.accountsExpanded === true);
+      setCategoriesExpanded(saved.categoriesExpanded === true);
+      setTypesExpanded(saved.typesExpanded === true);
+      setPeriodExpanded(saved.periodExpanded === true);
+      setGroupSortExpanded(saved.groupSortExpanded === true);
+      setFindExpanded(saved.findExpanded === true);
       setGroupsExpanded(saved.groupsExpanded);
       // Validated, not trusted: localStorage can hold anything, and prefs
       // written before custom ranges existed have neither field.
       setCustomStart(sanitizeYmd(saved.customStart));
       setCustomEnd(sanitizeYmd(saved.customEnd));
       // Category selection is not persisted, so it has to follow the restored
-      // type rather than the 'expense' default the state was seeded with.
-      if (saved.reportType === 'income') setSelectedCategories(new Set(incomeCats));
+      // types rather than the all-categories default the state was seeded with.
+      setSelectedCategories(new Set(catsForTypes(restoredTypes)));
     } else {
       // First visit on this device: scope the "which year" filter to the
       // current year. subPeriod is NOT seeded here - it stays at the static
@@ -151,11 +194,16 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   useEffect(() => {
     if (!restored) return;
     usePebbleStore.getState().setReportFilters({
-      reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+      // The legacy single type is still written so an older build keeps working.
+      reportType: selectedTypes.size === 1 ? Array.from(selectedTypes)[0] : 'expense',
+      typeSelection: Array.from(selectedTypes),
+      periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
       filtersExpanded, groupsExpanded, customStart, customEnd,
+      accountsExpanded, categoriesExpanded, periodExpanded, groupSortExpanded, findExpanded, typesExpanded,
     });
-  }, [restored, reportType, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
-      filtersExpanded, groupsExpanded, customStart, customEnd]);
+  }, [restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+      filtersExpanded, groupsExpanded, customStart, customEnd, accountsExpanded, categoriesExpanded,
+      periodExpanded, groupSortExpanded, findExpanded, typesExpanded]);
 
   // Choosing Custom range with no dates yet (first use, or prefs saved before
   // this feature) fills the current month to date, zone-aware via `today`.
@@ -172,10 +220,22 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restored, periodGroup, today]);
 
-  const handleTypeChange = (t: ReportType) => {
-    setReportType(t);
-    setSelectedCategories(new Set(t === 'expense' ? expenseCats : incomeCats));
+  // The type selection is explicit, like categories: All is both types, and an
+  // empty set shows nothing. Changing it resets categories to everything on offer.
+  const applyTypes = (next: Set<ReportType>) => {
+    setSelectedTypes(next);
+    setSelectedCategories(new Set(catsForTypes(next)));
   };
+  const toggleType = (kind: ReportType) => {
+    // From All a click isolates that type (as Accounts does); otherwise it toggles.
+    if (selectedTypes.size === 2) return applyTypes(new Set<ReportType>([kind]));
+    const next = new Set(selectedTypes);
+    if (next.has(kind)) next.delete(kind); else next.add(kind);
+    applyTypes(next);
+  };
+  // All while everything is selected clears the selection; otherwise it selects both.
+  const toggleAllTypes = () =>
+    applyTypes(selectedTypes.size === 2 ? new Set<ReportType>() : new Set<ReportType>(['expense', 'income']));
   const handlePeriodGroupChange = (mode: PeriodGroup) => {
     setPeriodGroup(mode);
     setSubPeriod('All');
@@ -184,6 +244,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     setSelectedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat); else next.add(cat);
+      // Every category on offer for this period selected means ALL, so the All
+      // pill lights up. Promoted to the full set rather than left as the visible
+      // subset: the results for this period are identical, and the selection
+      // stays "everything" when the period changes.
+      if (periodCategories.length > 0 && periodCategories.every((c) => next.has(c))) return new Set(availableCats);
       return next;
     });
   };
@@ -213,7 +278,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const allSelected = selectedCategories.size === availableCats.length;
 
   const baseFiltered = transactions.filter((t) => {
-    const matchesType = reportType === 'expense' ? isExpense(t) : !isExpense(t);
+    const matchesType = isExpense(t) ? includeExpense : includeIncome;
     if (!matchesType) return false;
     if (!selectedCategories.has(t.category)) return false;
     // Empty set means every account, so no filtering to do.
@@ -225,9 +290,17 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     return true;
   });
 
-  // Years actually present under the current type/category/search filters,
-  // newest first.
-  const yearOptions = Array.from(new Set(baseFiltered.map((t) => parseLocalDate(t.date).getFullYear())))
+  // Rows of the current report type, before any account, category or search
+  // filter. The year list and the period-scoped options both start here, so
+  // narrowing categories or accounts (even to nothing) can never change which
+  // years or which period the filter resolves to.
+  const typeRows = useMemo(
+    () => transactions.filter((t) => (isExpense(t) ? includeExpense : includeIncome)),
+    [transactions, includeExpense, includeIncome],
+  );
+
+  // Years with at least one row of the current type, newest first.
+  const yearOptions = Array.from(new Set(typeRows.map((t) => parseLocalDate(t.date).getFullYear())))
     .sort((a, b) => b - a)
     .map(String);
 
@@ -279,10 +352,6 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       ? subPeriod
       : (currentPeriodValue ?? subPeriod);
 
-  const yearScoped = (showYearSelector && effectiveSubYear !== 'All')
-    ? baseFiltered.filter((t) => parseLocalDate(t.date).getFullYear() === Number(effectiveSubYear))
-    : baseFiltered;
-
   // null whenever periodGroup is not a rolling mode, and also for the one
   // frame before `today` resolves - both fall through to the unfiltered set
   // in periodFiltered below rather than guessing a window.
@@ -301,7 +370,14 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const customRange = { startYmd: customStart, endYmd: customEnd };
   const customRangeInverted = isCustomRangeInverted(customRange);
 
-  const periodFiltered = (subPeriodOptions && subPeriodOptions.includes(effectiveSubPeriod))
+  // The ONE period predicate. Results below and the Accounts/Categories
+  // options further down both go through it, so a list can never disagree
+  // with what the filter actually counts.
+  const applyPeriod = (rows: Transaction[]): Transaction[] => {
+  const yearScoped = (showYearSelector && effectiveSubYear !== 'All')
+    ? rows.filter((t) => parseLocalDate(t.date).getFullYear() === Number(effectiveSubYear))
+    : rows;
+  return (subPeriodOptions && subPeriodOptions.includes(effectiveSubPeriod))
     ? yearScoped.filter((t) => {
         const d = parseLocalDate(t.date);
         if (periodGroup === 'month') return MONTH_NAMES[d.getMonth()] === effectiveSubPeriod;
@@ -319,6 +395,32 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         // rather than being silently swapped. Flat, like rolling windows.
         ? (customRangeInverted ? [] : yearScoped.filter((t) => isInCustomRange(customRange, t.date)))
         : yearScoped;
+  };
+  const periodFiltered = applyPeriod(baseFiltered);
+
+  // What the Accounts and Categories sections may offer: only things with at
+  // least one row of the current type inside the selected period. Computed
+  // BEFORE the account/category/search filters, from the same predicate as the
+  // results. Keyed on a joined signature of the sub-period options rather than
+  // the array, which is a new reference every render (see groupKeySignature).
+  const subPeriodSignature = subPeriodOptions ? subPeriodOptions.join('|') : '';
+  const periodOptions = useMemo(() => {
+    const rows = applyPeriod(typeRows);
+    return {
+      hasRows: rows.length > 0,
+      accountIds: new Set(rows.map((t) => t.accountId)),
+      categories: new Set(rows.map((t) => t.category)),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeRows, periodGroup, effectiveSubPeriod, effectiveSubYear, showYearSelector,
+      subPeriodSignature, rollingWindow, customStart, customEnd]);
+
+  // A selected item stays listed even with no rows in this period, so totals
+  // never change for no visible reason and the selection survives a trip
+  // through an empty period. Categories start fully selected, so "selected"
+  // only counts once the person has narrowed them (!allSelected).
+  const periodAccounts = accounts.filter((a) => periodOptions.accountIds.has(a.id) || selectedAccounts.has(a.id));
+  const periodCategories = availableCats.filter((c) => periodOptions.categories.has(c) || (!allSelected && selectedCategories.has(c)));
 
   // Period headers render whenever a period grouping is active, including for a
   // single selected period. Previously also required subPeriod === 'All', so
@@ -400,9 +502,16 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   //
   // The key comparison is a stable tiebreak: without it, two groups with equal
   // totals could swap places between renders.
+  // Income always comes before expenses inside each period, whatever the sort
+  // or the grouping: with category groups the income categories lead, and with
+  // no grouping the income rows lead. Only the order BETWEEN the two kinds is
+  // fixed; the chosen sort still orders everything within each kind. Periods
+  // themselves keep the chosen order, so a month never jumps ahead of another.
+  const catRank = (cat: string) => (incomeCats.includes(cat) ? 0 : 1);
+  const typeRank = (t: Transaction) => (isExpense(t) ? 1 : 0);
   const periodGroups: ReportPeriodGroup[] = [...periodBuckets.entries()]
     .map(([key, v]) => {
-      const total = v.items.reduce((s, t) => s + Math.abs(t.amount), 0);
+      const total = v.items.reduce((s, t) => s + amt(t), 0);
       if (categoryGroup === 'category') {
         const catBuckets = new Map<string, Transaction[]>();
         v.items.forEach((t) => {
@@ -410,24 +519,30 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
           catBuckets.get(t.category)!.push(t);
         });
         const subGroups = [...catBuckets.entries()]
-          .map(([cat, items]) => ({ key: cat, total: items.reduce((s, t) => s + Math.abs(t.amount), 0), items: [...items].sort(sortFn) }))
+          .map(([cat, items]) => ({ key: cat, total: items.reduce((s, t) => s + amt(t), 0), items: [...items].sort(sortFn) }))
           .sort((a, b) =>
-            directed(
+            (catRank(a.key) - catRank(b.key)) || directed(
               sortField === 'date'
                 ? leadingTime(b.items) - leadingTime(a.items)
-                : b.total - a.total,
+                : Math.abs(b.total) - Math.abs(a.total),
             ) || a.key.localeCompare(b.key));
         return { key, label: v.label, sortKey: v.sortKey, total, subGroups };
       }
-      return { key, label: v.label, sortKey: v.sortKey, total, items: [...v.items].sort(sortFn) };
+      return { key, label: v.label, sortKey: v.sortKey, total, items: [...v.items].sort((a, b) => (typeRank(a) - typeRank(b)) || sortFn(a, b)) };
     })
     .sort((a, b) =>
       directed(
-        sortField === 'date' ? b.sortKey - a.sortKey : b.total - a.total,
+        sortField === 'date' ? b.sortKey - a.sortKey : Math.abs(b.total) - Math.abs(a.total),
       ) || a.key.localeCompare(b.key));
 
-  const grandTotal = periodFiltered.reduce((s, t) => s + Math.abs(t.amount), 0);
-  const accent = reportType === 'expense' ? 'var(--wine)' : 'var(--pine)';
+  const grandTotal = periodFiltered.reduce((s, t) => s + amt(t), 0);
+  // One type: wine for money out, pine for money in. Both types: the colour
+  // follows the sign of the NET, pine when positive and wine when negative, ink
+  // only at exactly zero. Rounded to cents so float noise cannot colour a zero.
+  const netCents = Math.round(grandTotal * 100);
+  const accent = mixed
+    ? (netCents > 0 ? 'var(--pine)' : netCents < 0 ? 'var(--wine)' : 'var(--ink)')
+    : includeExpense ? 'var(--wine)' : includeIncome ? 'var(--pine)' : 'var(--ink)';
 
   const allGroupKeys = categoryGroup === 'category'
     ? periodGroups.flatMap((pg) => (pg.subGroups ?? []).map((sg) => `${pg.key}::${sg.key}`))
@@ -469,7 +584,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     : effectiveSubPeriod === 'All'
       ? `${periodGroup === 'month' ? dict.reports.byMonth : dict.reports.byQuarter} · ${yearPart}`
       : `${periodValueLabel(dict, effectiveSubPeriod)} · ${yearPart}`;
-  const filterSummaryParts = [reportType === 'expense' ? dict.reports.expenses : dict.reports.income, periodSummary];
+  const typePart = mixed ? dict.reports.bothTypes
+    : includeExpense ? dict.reports.expenses
+    : includeIncome ? dict.reports.income
+    : dict.reports.noneSelected;
+  const filterSummaryParts = [typePart, periodSummary];
   if (categoryGroup === 'category') filterSummaryParts.push(dict.reports.groupedByCategory);
   if (!allSelected) filterSummaryParts.push(tr(selectedCategories.size === 1 ? dict.reports.categoriesOne : dict.reports.categoriesOther, { count: selectedCategories.size }));
   // Named when it is a single account, counted otherwise. Without this the
@@ -493,8 +612,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         expanded={filtersExpanded}
         onToggleExpanded={() => setFiltersExpanded((v) => !v)}
         filterSummary={filterSummary}
-        reportType={reportType}
-        onTypeChange={handleTypeChange}
+        selectedTypes={selectedTypes}
+        onToggleType={toggleType}
+        onToggleAllTypes={toggleAllTypes}
+        typesExpanded={typesExpanded}
+        onToggleTypesExpanded={() => setTypesExpanded((v) => !v)}
         periodGroup={periodGroup}
         onPeriodGroupChange={handlePeriodGroupChange}
         customStart={customStart}
@@ -519,14 +641,27 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         descQuery={descQuery}
         onDescQueryChange={setDescQuery}
         accounts={accounts}
+        periodAccounts={periodAccounts}
+        periodHasRows={periodOptions.hasRows}
         selectedAccounts={selectedAccounts}
         onToggleAccount={toggleAccount}
         onClearAccounts={clearAccounts}
-        availableCats={availableCats}
+        accountsExpanded={accountsExpanded}
+        onToggleAccountsExpanded={() => setAccountsExpanded((v) => !v)}
+        periodCategories={periodCategories}
         selectedCategories={selectedCategories}
         allSelected={allSelected}
         onToggleCategory={toggleCategory}
         onToggleAllCategories={() => setSelectedCategories(allSelected ? new Set() : new Set(availableCats))}
+        categoriesExpanded={categoriesExpanded}
+        onToggleCategoriesExpanded={() => setCategoriesExpanded((v) => !v)}
+        periodSummary={periodSummary}
+        periodExpanded={periodExpanded}
+        onTogglePeriodExpanded={() => setPeriodExpanded((v) => !v)}
+        groupSortExpanded={groupSortExpanded}
+        onToggleGroupSortExpanded={() => setGroupSortExpanded((v) => !v)}
+        findExpanded={findExpanded}
+        onToggleFindExpanded={() => setFindExpanded((v) => !v)}
         showTagFilter={showTagFilter}
         singleSelectedCategory={singleSelectedCategory}
         availableTags={availableTags}
@@ -540,6 +675,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         periodFilteredCount={periodFiltered.length}
         grandTotal={grandTotal}
         accent={accent}
+        tinted={mixed}
         categoryGroup={categoryGroup}
         showPeriodHeaders={showPeriodHeaders}
         expandedCategoryGroups={expandedCategoryGroups}
