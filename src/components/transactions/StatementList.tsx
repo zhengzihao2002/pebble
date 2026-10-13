@@ -22,12 +22,15 @@ interface StatementListProps {
   accounts: Account[];
   categoryMeta: CategoryMeta;
   onOpenDetail: (txn: LedgerRecord) => void;
+  /** Optional line at the top of the card, e.g. the results count. */
+  header?: React.ReactNode;
 }
 
-export function StatementList({ entries, openingBalance, accounts, categoryMeta, onOpenDetail }: StatementListProps) {
+export function StatementList({ entries, openingBalance, accounts, categoryMeta, onOpenDetail, header }: StatementListProps) {
   const { d, t } = useTranslation();
   return (
-    <div className="card" style={{ padding: '0.25rem 0 1rem', overflow: 'hidden' }}>
+    <div className="card" style={{ padding: header ? '0 0 1rem' : '0.25rem 0 1rem', overflow: 'hidden' }}>
+      {header}
       {entries.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--ink-soft)' }}>
           <p style={{ fontWeight: 500, marginBottom: 4, color: 'var(--ink)' }}>{d.transactions.noActivity}</p>

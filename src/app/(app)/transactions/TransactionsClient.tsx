@@ -369,17 +369,23 @@ export function TransactionsClient({
               );
             })}
           </div>
-          <button
-            type="button" aria-pressed={allMonths} onClick={() => setAllMonths((v) => !v)}
-            style={{
-              padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: allMonths ? 600 : 500,
-              border: `1px solid ${allMonths ? 'var(--pine)' : 'var(--line)'}`,
-              backgroundColor: allMonths ? 'var(--pine-soft)' : 'transparent',
-              color: allMonths ? 'var(--pine)' : 'var(--ink-soft)',
-            }}
-          >
-            {d.txnSearch.allMonths}
-          </button>
+          {/* Only meaningful while a search or filter is active - it widens
+              that search from the shown month to the whole 13-month ledger.
+              Pressed on its own it changes nothing, so it is hidden until then,
+              and stays visible while on so it can never be on unseen. */}
+          {(searching || allMonths) && (
+            <button
+              type="button" aria-pressed={allMonths} onClick={() => setAllMonths((v) => !v)}
+              style={{
+                padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: allMonths ? 600 : 500,
+                border: `1px solid ${allMonths ? 'var(--pine)' : 'var(--line)'}`,
+                backgroundColor: allMonths ? 'var(--pine-soft)' : 'transparent',
+                color: allMonths ? 'var(--pine)' : 'var(--ink-soft)',
+              }}
+            >
+              {d.txnSearch.allMonths}
+            </button>
+          )}
           <div style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280 }}>
             <SelectField
               value={accountFilter}
@@ -418,6 +424,15 @@ export function TransactionsClient({
       ) : (
         <StatementList
           entries={monthEntries}
+          // The same count line the search results show, so the page reads the
+          // same with every filter on All. Counts every row listed (adjustments
+          // and both legs of a transfer included), so the number matches the screen.
+          header={
+            <p role="status" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', padding: '0.9rem 1.5rem', margin: 0, borderBottom: '1px solid var(--line)' }}>
+              {monthEntries.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: monthEntries.length })}
+              {' · '}{formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
+            </p>
+          }
           openingBalance={openingBalance}
           accounts={accounts}
           categoryMeta={categoryMeta}
