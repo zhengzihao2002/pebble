@@ -684,7 +684,7 @@ export const zh: typeof en = {
     allCategories: '全部分类',
     allAccounts: '全部账户',
     accountLabel: '账户',
-    allMonths: '搜索所有月份',
+    allMonths: '所有月份',
     resultsOne: '1 条结果',
     results: '{count} 条结果',
     empty: '没有匹配的交易。',

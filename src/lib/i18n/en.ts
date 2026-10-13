@@ -769,7 +769,7 @@ export const en = {
     allCategories: 'All categories',
     allAccounts: 'All accounts',
     accountLabel: 'Account',
-    allMonths: 'Search all months',
+    allMonths: 'All months',
     resultsOne: '1 result',
     results: '{count} results',
     empty: 'No transactions match.',
