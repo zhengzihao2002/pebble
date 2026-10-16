@@ -23,6 +23,7 @@ import { UndoDeleteProvider } from '@/components/shared/UndoDelete';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
+import { SHELL_EVENTS } from './shellEvents';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -191,6 +192,23 @@ export function AppShell({ children }: { children: ReactNode }) {
     const preview = () => setWelcome(true);
     window.addEventListener(WELCOME_PREVIEW_EVENT, preview);
     return () => window.removeEventListener(WELCOME_PREVIEW_EVENT, preview);
+  }, []);
+  // Pages ask for the shell's dialogs through window events (shellEvents.ts):
+  // an empty state's "Add transaction" opens the same dialog the header does.
+  useEffect(() => {
+    const open: Record<string, () => void> = {
+      [SHELL_EVENTS.addTransaction]: () => setShowAddModal(true),
+      [SHELL_EVENTS.transfer]: () => setShowTransferModal(true),
+      [SHELL_EVENTS.addGoal]: () => setShowAddGoalModal(true),
+      [SHELL_EVENTS.addSchedule]: () => setShowAddScheduleModal(true),
+      [SHELL_EVENTS.palette]: () => setShowPalette(true),
+    };
+    const handlers = Object.entries(open).map(([name, fn]) => {
+      const h = () => fn();
+      window.addEventListener(name, h);
+      return [name, h] as const;
+    });
+    return () => handlers.forEach(([name, h]) => window.removeEventListener(name, h));
   }, []);
 
   // Same effect the original top-level App component had: text-size

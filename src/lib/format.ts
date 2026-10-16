@@ -58,6 +58,15 @@ export function formatCurrency(n: number): string {
     : `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Splits formatCurrency's own output at the decimal point, so a hero figure
+ * can set its cents smaller without the amount ever being reformatted.
+ */
+export function splitCents(text: string): { whole: string; cents: string } {
+  const i = text.lastIndexOf('.');
+  return i === -1 ? { whole: text, cents: '' } : { whole: text.slice(0, i), cents: text.slice(i) };
+}
+
 // Formats a 'YYYY-MM-DD' as 'Aug 21', adding the year ('Aug 21, 2025') only
 // when the date falls outside the current year. The comparison year is read
 // fresh on every call rather than captured at module load, so a long-lived

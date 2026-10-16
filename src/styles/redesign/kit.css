@@ -107,6 +107,15 @@
   .pebble-root .pb-skel::after { animation: none !important; opacity: 0; }
 }
 
+/* Aligned digits for figures that are NOT money - dates, counts, percents,
+   ranges. .font-mono-tab does the same but privacy mode blurs it, so it is
+   for money only. */
+.pebble-root .pb-tnum { font-variant-numeric: tabular-nums lining-nums; }
+
+/* The header's live height, published by Header.tsx; the fallback covers the
+   first frame. Sticky elements under the header use top: var(--pb-header-h). */
+.pebble-root { --pb-header-h: 4.6rem; }
+
 /* Delta chip. */
 .pebble-root .pb-delta {
   display: inline-flex; align-items: center; gap: 0.15rem; white-space: nowrap;

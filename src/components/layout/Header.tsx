@@ -93,6 +93,22 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   // page, and a stale expanded row would offer the wrong ones.
   useEffect(() => { setActionsOpen(false); }, [pathname]);
 
+  // Publishes the header's live height as --pb-header-h on .pebble-root, so
+  // anything that sticks under it (a sticky day header, a section anchor)
+  // clears it exactly. The height changes between phone and desktop padding
+  // and with the text-size preference, so it is measured, not assumed.
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    const root = el?.closest<HTMLElement>('.pebble-root');
+    if (!el || !root || typeof ResizeObserver === 'undefined') return;
+    const write = () => root.style.setProperty('--pb-header-h', `${el.offsetHeight}px`);
+    write();
+    const ro = new ResizeObserver(write);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const timeZoneOverride = useTimeZoneOverride();
   const [greetingKey, setGreetingKey] = useState<'morning' | 'afternoon' | 'evening' | null>(null);
 
@@ -140,7 +156,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   return (
     // Background and bottom rule are in globals.css (.pebble-header): a
     // frosted layer that lets the page scroll softly underneath.
-    <header className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+    <header ref={headerRef} className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ minWidth: 0 }}>
           <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.title}</h1>

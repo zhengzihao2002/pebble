@@ -1,7 +1,7 @@
 'use client';
 
 import type { Account } from '@/lib/data/mappers';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, splitCents } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
@@ -15,12 +15,6 @@ interface BalanceHeroProps {
 
 // Up to five rows; beyond that, the four largest and a "+N more" line.
 const MAX_ROWS = 5;
-
-/** Splits formatCurrency's own output, so the figure is never reformatted. */
-function splitCents(text: string): { whole: string; cents: string } {
-  const i = text.lastIndexOf('.');
-  return i === -1 ? { whole: text, cents: '' } : { whole: text.slice(0, i), cents: text.slice(i) };
-}
 
 /**
  * The Dashboard's one brand moment: the total balance on the sign-in page's
