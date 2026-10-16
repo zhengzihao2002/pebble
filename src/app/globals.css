@@ -2127,18 +2127,18 @@ input[data-pb-eye]::-ms-clear { display: none; }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .pebble-root .pebble-bottom-nav::before { background-color: var(--mist); }
 }
-/* The current page gets a soft capsule behind its icon, which grows in. The
-   icon's own pop is gentler to match. */
+/* The current page's whole tab - icon AND label - sits on a soft tinted tile
+   that grows in. The icon's own pop is gentler to match. The tile spans the
+   tab's full height; its width is capped so neighbouring tabs never touch. */
 .pebble-root .bottom-nav-btn { position: relative; isolation: isolate; }
 .pebble-root .bottom-nav-btn::before {
-  content: ''; position: absolute; z-index: -1; left: 50%; top: calc(0.3rem + 10px);
-  width: min(3.4rem, 100%); height: 1.85rem; border-radius: 999px;
+  content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%;
+  width: min(4.75rem, 100%); border-radius: 0.85rem;
   background-color: color-mix(in srgb, var(--pine) 14%, transparent);
-  opacity: 0; transform: translate(-50%, -50%) scale(0.55, 0.8);
+  opacity: 0; transform: translateX(-50%) scale(0.8, 0.9);
   transition: opacity var(--pb-dur-std) var(--pb-ease-out), transform 320ms var(--pb-ease-out);
 }
-.pebble-root .bottom-nav-btn.active::before { opacity: 1; transform: translate(-50%, -50%); }
-.pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn::before { top: calc(0.55rem + 10px); }
+.pebble-root .bottom-nav-btn.active::before { opacity: 1; transform: translateX(-50%); }
 .pebble-root .bottom-nav-icon.active { transform: scale(1.1); }
 /* Centre add button: a light sheen and a glow in the brand colour. The sheen
    is an image over background-color, so the open-state colour cycle shows

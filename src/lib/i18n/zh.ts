@@ -1,4 +1,5 @@
 import type { en } from './en';
+import { uxZh } from './sections';
 
 /**
  * The Chinese dictionary.
@@ -1541,4 +1542,5 @@ export const zh: typeof en = {
     expenseSummary: '从 {account} 支出 {amount}，分类：{category}',
     incomeSummary: '{amount} 已存入 {account}',
   },
+  ux: uxZh,
 };

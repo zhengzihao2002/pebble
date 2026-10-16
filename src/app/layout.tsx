@@ -1,6 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Work_Sans, IBM_Plex_Mono, Nunito, Source_Serif_4, Atkinson_Hyperlegible, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
+// The redesign's stylesheets, after globals.css so they layer on top of it.
+// One file per area keeps each page's rules together and reviewable.
+import "@/styles/redesign/kit.css";
+import "@/styles/redesign/shell.css";
+import "@/styles/redesign/dashboard.css";
+import "@/styles/redesign/transactions.css";
+import "@/styles/redesign/accounts.css";
+import "@/styles/redesign/reports.css";
+import "@/styles/redesign/analysis.css";
+import "@/styles/redesign/insights.css";
+import "@/styles/redesign/budgets.css";
+import "@/styles/redesign/goals.css";
+import "@/styles/redesign/scheduled.css";
+import "@/styles/redesign/settings.css";
 import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
 import { HtmlPreferenceSync } from "@/components/providers/HtmlPreferenceSync";
 import { APPEARANCE_FIELD, CJK_FONT_FIELD, FONT_FIELD, LAST_USER_KEY, LOCALE_FIELD, PEBBLE_UI_STORAGE_KEY, SHOW_WELCOME_FIELD, TEXT_SIZE_FIELD, THEME_FIELD, WELCOME_PENDING_KEY } from "@/store/storageKeys";
