@@ -76,8 +76,10 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
     { kind: 'transfer', label: d.transfer.title },
   ];
 
+  // While the More column is open, More is the one lit tab: lighting the
+  // current page's tab as well showed two selected at once.
   const renderLink = (item: NavItem) => {
-    const active = isNavItemActive(pathname, item.href);
+    const active = isNavItemActive(pathname, item.href) && !open;
     return (
       <Link
         key={item.href} href={item.href} prefetch={false}
@@ -85,7 +87,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
         style={{ textDecoration: 'none' }}
       >
         <item.icon size={20} className={`bottom-nav-icon ${active ? 'active' : ''}`} />
-        <span className="bottom-nav-label" style={{ fontSize: active ? '0.7rem' : '0.63rem' }}>{d.nav[item.labelKey]}</span>
+        <span className="bottom-nav-label">{d.nav[item.labelKey]}</span>
       </Link>
     );
   };
@@ -165,7 +167,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
                       style={{ textDecoration: 'none' }}
                     >
                       <item.icon size={20} className={`bottom-nav-icon ${active ? 'active' : ''}`} />
-                      <span className="bottom-nav-label" style={{ fontSize: active ? '0.7rem' : '0.63rem' }}>{d.nav[item.labelKey]}</span>
+                      <span className="bottom-nav-label">{d.nav[item.labelKey]}</span>
                     </Link>
                   );
                 })}
@@ -184,7 +186,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             {open
               ? <X size={20} className="bottom-nav-icon active" />
               : <MoreHorizontal size={20} className={`bottom-nav-icon ${inSecondary ? 'active' : ''}`} />}
-            <span className="bottom-nav-label" style={{ fontSize: open || inSecondary ? '0.7rem' : '0.63rem' }}>{d.nav.more}</span>
+            <span className="bottom-nav-label">{d.nav.more}</span>
           </button>
         </div>
       </nav>

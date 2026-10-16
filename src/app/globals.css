@@ -2128,18 +2128,24 @@ input[data-pb-eye]::-ms-clear { display: none; }
   .pebble-root .pebble-bottom-nav::before { background-color: var(--mist); }
 }
 /* The current page's whole tab - icon AND label - sits on a soft tinted tile
-   that grows in. The icon's own pop is gentler to match. The tile spans the
-   tab's full height; its width is capped so neighbouring tabs never touch. */
+   that fades in. Nothing on the bar changes size when a tab is chosen: the
+   label keeps one size and the icon does not scale (both used to grow, and
+   the bar visibly jumped on every tap). The tile spans the tab's full
+   height; its width is capped so neighbouring tabs never touch. */
 .pebble-root .bottom-nav-btn { position: relative; isolation: isolate; }
 .pebble-root .bottom-nav-btn::before {
   content: ''; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%;
   width: min(4.75rem, 100%); border-radius: 0.85rem;
   background-color: color-mix(in srgb, var(--pine) 14%, transparent);
-  opacity: 0; transform: translateX(-50%) scale(0.8, 0.9);
-  transition: opacity var(--pb-dur-std) var(--pb-ease-out), transform 320ms var(--pb-ease-out);
+  opacity: 0; transform: translateX(-50%);
+  transition: opacity var(--pb-dur-std) var(--pb-ease-out);
 }
-.pebble-root .bottom-nav-btn.active::before { opacity: 1; transform: translateX(-50%); }
-.pebble-root .bottom-nav-icon.active { transform: scale(1.1); }
+.pebble-root .bottom-nav-btn.active::before { opacity: 1; }
+.pebble-root .bottom-nav-icon,
+.pebble-root .bottom-nav-icon.active { transform: none; }
+.pebble-root .bottom-nav-label { font-size: 0.66rem; }
+.pebble-root .bottom-nav-btn,
+.pebble-root .bottom-nav-btn.active { font-weight: 600; }
 /* Centre add button: a light sheen and a glow in the brand colour. The sheen
    is an image over background-color, so the open-state colour cycle shows
    through it unchanged. */
