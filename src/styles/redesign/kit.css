@@ -1,0 +1,124 @@
+/* ============================================================
+   Kit: the shared pieces of the redesign (src/components/kit).
+   Loaded after globals.css (see src/app/layout.tsx), so these rules sit on
+   top of the original design system. Theme tokens only, so every palette
+   and dark mode follow; motion is transform/opacity and stops under the
+   global reduced-motion rule.
+   ============================================================ */
+
+/* Segmented control: a capsule track, one thumb sliding under the choice. */
+.pebble-root .pb-seg {
+  position: relative; isolation: isolate;
+  display: inline-flex; align-items: stretch; gap: 2px; max-width: 100%;
+  padding: 3px; border-radius: 999px;
+  background-color: color-mix(in srgb, var(--ink) 5%, var(--paper));
+  border: 1px solid var(--line);
+}
+.pebble-root .pb-seg-full { display: flex; width: 100%; }
+.pebble-root .pb-seg-full .pb-seg-btn { flex: 1 1 0; }
+.pebble-root .pb-seg-thumb {
+  position: absolute; z-index: 0; top: 3px; bottom: 3px; left: 0; border-radius: 999px;
+  background-color: var(--mist);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
+  pointer-events: none;
+}
+.pebble-root .pb-seg-thumb-ready { transition: transform 320ms var(--pb-ease-out), width 320ms var(--pb-ease-out); }
+.pebble-root .pb-seg-btn {
+  position: relative; z-index: 1; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+  border: 0; background: transparent; border-radius: 999px; white-space: nowrap;
+  color: var(--ink-soft); font: inherit; font-weight: 500;
+  transition: color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-seg-md .pb-seg-btn { padding: 0.42rem 0.95rem; font-size: 0.82rem; }
+.pebble-root .pb-seg-sm .pb-seg-btn { padding: 0.28rem 0.7rem; font-size: 0.75rem; }
+.pebble-root .pb-seg-btn:hover { color: var(--ink); }
+.pebble-root .pb-seg-btn[aria-checked="true"] { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-seg-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-seg-btn > span { overflow: hidden; text-overflow: ellipsis; }
+.pebble-root.dark .pb-seg-thumb,
+.pebble-dark .pebble-root .pb-seg-thumb { background-color: color-mix(in srgb, var(--ink) 12%, var(--mist)); }
+
+/* Progress ring. */
+.pebble-root .pb-ring { position: relative; display: inline-grid; place-items: center; flex: none; }
+.pebble-root .pb-ring > svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.pebble-root .pb-ring-track { fill: none; stroke: color-mix(in srgb, var(--pb-ring-color) 14%, transparent); }
+.pebble-root .pb-ring-arc {
+  fill: none; stroke: var(--pb-ring-color); stroke-linecap: round;
+  animation: pb-ring-sweep 900ms var(--pb-ease-out) both;
+}
+@keyframes pb-ring-sweep { from { stroke-dasharray: 0 100; } }
+.pebble-root .pb-ring-center { position: relative; display: grid; place-items: center; text-align: center; line-height: 1.1; }
+
+/* Sparkline. */
+.pebble-root .pb-spark { position: relative; width: 100%; min-width: 0; }
+.pebble-root .pb-spark svg { display: block; overflow: visible; }
+.pebble-root .pb-spark-line { fill: none; stroke: var(--pb-spark-color); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pebble-root .pb-spark-area { fill: var(--pb-spark-color); opacity: 0.1; }
+.pebble-root .pb-spark-base { stroke: var(--line); stroke-width: 1; }
+.pebble-root .pb-spark-dot { fill: var(--pb-spark-color); stroke: var(--mist); stroke-width: 2; }
+
+/* Empty state. */
+.pebble-root .pb-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.45rem;
+  padding: 2.5rem 1.5rem;
+}
+.pebble-root .pb-empty-compact { padding: 1.5rem 1rem; }
+.pebble-root .pb-empty-icon {
+  display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 1rem; margin-bottom: 0.35rem;
+  color: var(--pine);
+  background:
+    radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--pine) 22%, transparent), transparent 70%),
+    color-mix(in srgb, var(--pine) 9%, var(--mist));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 18%, transparent);
+}
+.pebble-root .pb-empty-compact .pb-empty-icon { width: 2.6rem; height: 2.6rem; border-radius: 0.8rem; }
+.pebble-root .pb-empty-title { margin: 0; font-size: 0.98rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-empty-body { max-width: 26rem; font-size: 0.84rem; line-height: 1.5; color: var(--ink-soft); }
+.pebble-root .pb-empty-action { margin-top: 0.6rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+
+/* Section header. */
+.pebble-root .pb-sec-head {
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem;
+}
+.pebble-root .pb-sec-head-main { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.pebble-root .pb-sec-head-icon {
+  display: grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 0.6rem;
+  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent);
+}
+.pebble-root .pb-sec-head-title { margin: 0; font-size: 0.98rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.pebble-root h2.pb-sec-head-title { font-size: 1.12rem; }
+.pebble-root .pb-sec-head-sub { margin-top: 0.15rem; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-sec-head-actions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+/* Skeleton. */
+.pebble-root .pb-skel {
+  display: block; position: relative; overflow: hidden;
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-skel::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--mist) 55%, transparent) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: pb-skel-sheen 1.4s ease-in-out infinite;
+}
+@keyframes pb-skel-sheen { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-skel::after { animation: none !important; opacity: 0; }
+}
+
+/* Delta chip. */
+.pebble-root .pb-delta {
+  display: inline-flex; align-items: center; gap: 0.15rem; white-space: nowrap;
+  padding: 0.08rem 0.42rem 0.08rem 0.3rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; line-height: 1.5;
+}
+.pebble-root .pb-delta-num { font-variant-numeric: tabular-nums; }
+.pebble-root .pb-delta-good { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
+.pebble-root .pb-delta-bad { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-delta-flat { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
+
+/* Entrance: content rises in once, staggered by --pb-i (set inline: 0, 1,
+   2...). Opacity and transform only; reduced motion shows it at once. */
+@keyframes pb-rise { from { opacity: 0; transform: translateY(8px); } }
+.pebble-root .pb-rise { animation: pb-rise 480ms var(--pb-ease-out) both; animation-delay: calc(var(--pb-i, 0) * 50ms); }

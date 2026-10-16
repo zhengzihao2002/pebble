@@ -1,4 +1,5 @@
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
+import { uxEn } from './sections';
 
 /**
  * The English dictionary. This is the SOURCE OF TRUTH for the shape:
@@ -1662,4 +1663,6 @@ export const en = {
     expenseSummary: '{amount} on {category}, from {account}',
     incomeSummary: '{amount} into {account}',
   },
+  // The redesign's strings, one section per area (src/lib/i18n/sections).
+  ux: uxEn,
 };
