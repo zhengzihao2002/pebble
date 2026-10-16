@@ -138,7 +138,9 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
     : undefined;
 
   return (
-    <header className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--paper)', borderBottom: '1px solid var(--line)' }}>
+    // Background and bottom rule are in globals.css (.pebble-header): a
+    // frosted layer that lets the page scroll softly underneath.
+    <header className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ minWidth: 0 }}>
           <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.title}</h1>

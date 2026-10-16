@@ -1,6 +1,7 @@
 'use client';
 
-import { Monitor, Moon, Sun, Banknote } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
+import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
@@ -21,11 +22,9 @@ export function Sidebar() {
 
   return (
     <aside className="pebble-sidebar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 0.5rem', marginBottom: '2rem' }}>
-        <div style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: 'var(--pine)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Banknote size={17} color="var(--paper)" />
-        </div>
-        <span className="font-display" style={{ fontSize: '1.35rem', fontWeight: 600, letterSpacing: '-0.02em' }}>Pebble</span>
+      <div className="pb-sidebar-brand">
+        <PebbleMark size={34} />
+        <span className="font-display pb-sidebar-wordmark">Pebble</span>
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
         {navItems.map((item) => (
@@ -39,7 +38,7 @@ export function Sidebar() {
         </button>
         <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}>
+          <div className="pb-sidebar-avatar" style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}>
             {initials}
           </div>
           <div style={{ fontSize: '0.85rem', minWidth: 0 }}>

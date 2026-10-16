@@ -2027,3 +2027,194 @@ input[data-pb-eye]::-ms-clear { display: none; }
    page behind cannot move. Scrolling inside the dialog is unaffected - its
    body is its own scroll area, which ends the touch-action chain there. */
 .pebble-root .pb-modal-overlay { touch-action: none; }
+
+/* ============================================================
+   Visual refresh: brand mark, depth and glass.
+
+   Appended last so it layers over the rules above without rewriting them.
+   Built only from the theme tokens, so all five palettes, light and dark,
+   follow on their own. Nothing here changes layout, touch-target sizes or
+   behaviour; the global reduced-motion rule covers every transition.
+   ============================================================ */
+
+/* Brand mark (PebbleMark). The tile follows the theme's brand colour. In
+   dark mode that colour is a light tint, so the tile is deepened to keep the
+   cream letter crisp. tone="brand" is Original's pine in every theme. Not
+   scoped to .pebble-root: --pine falls back to its registered value. */
+.pb-mark {
+  --pb-mark-tile: var(--pine);
+  display: inline-block; flex-shrink: 0; overflow: hidden; vertical-align: middle;
+  border-radius: 24%;
+  background:
+    radial-gradient(120% 90% at 22% 6%, rgba(255, 255, 255, 0.16), transparent 58%),
+    linear-gradient(150deg, color-mix(in oklch, var(--pb-mark-tile) 84%, white), var(--pb-mark-tile) 50%, color-mix(in oklch, var(--pb-mark-tile) 66%, black));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 1px 2px rgba(0, 0, 0, 0.14), 0 8px 18px -10px color-mix(in srgb, var(--pb-mark-tile) 80%, transparent);
+}
+.pb-mark svg { display: block; }
+.pb-mark-ring, .pb-mark-stem { stroke: #F7F2E7; }
+.pb-mark-share { stroke: #E9BC67; }
+.pebble-root.dark .pb-mark,
+.pebble-dark .pebble-root .pb-mark { --pb-mark-tile: color-mix(in oklch, var(--pine) 56%, black); }
+.pb-mark.pb-mark-brand,
+.pebble-root.dark .pb-mark.pb-mark-brand,
+.pebble-dark .pebble-root .pb-mark.pb-mark-brand { --pb-mark-tile: #1F5A45; }
+
+/* Ambient light: a faint wash of the brand colour and the accent across the
+   top of the app. On the scroll container itself, so it stays put while the
+   page scrolls under the glass header. */
+.pebble-root.themed-scroll {
+  background-image:
+    radial-gradient(70rem 34rem at 100% -8rem, color-mix(in srgb, var(--pine) 8%, transparent), transparent 70%),
+    radial-gradient(48rem 28rem at -10rem -6rem, color-mix(in srgb, var(--gold) 7%, transparent), transparent 70%);
+}
+
+/* Text selection in the brand colour. */
+.pebble-root ::selection { background-color: color-mix(in srgb, var(--pine) 24%, transparent); }
+
+/* Sidebar: the mark and wordmark, a lifted nav panel, an active item with a
+   little depth, a ringed avatar. */
+.pebble-root .pebble-sidebar { border-right-color: color-mix(in srgb, var(--line) 80%, transparent); }
+.pebble-root .pb-sidebar-brand { display: flex; align-items: center; gap: 0.65rem; padding: 0 0.5rem; margin-bottom: 2rem; }
+.pebble-root .pb-sidebar-wordmark { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.pebble-root .pebble-sidebar nav {
+  background-color: color-mix(in srgb, var(--mist) 78%, transparent);
+  border-color: color-mix(in srgb, var(--line) 85%, transparent);
+  box-shadow: var(--shadow);
+}
+.pebble-root .nav-btn.active,
+.pebble-root .nav-btn.active:hover,
+.pebble-root .settings-nav .settings-nav-btn.active,
+.pebble-root .settings-nav .settings-nav-btn.active:hover {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 65%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 14px -8px color-mix(in srgb, var(--pine) 85%, transparent);
+}
+.pebble-root .pb-sidebar-avatar {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent);
+}
+
+/* Header: frosted glass. The blur sits on a pseudo-element, NOT the header:
+   backdrop-filter on the header would make it the containing block for the
+   position: fixed add menu inside it and shift that menu. The header is
+   already a stacking context (sticky, z-index), so z-index -1 keeps the layer
+   behind its contents. Browsers without backdrop-filter get solid paper. */
+.pebble-root .pebble-header { border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); }
+.pebble-root .pebble-header::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-color: color-mix(in srgb, var(--paper) 80%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px); backdrop-filter: saturate(1.6) blur(16px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pebble-root .pebble-header::before { background-color: var(--paper); }
+}
+.pebble-root .pebble-header h1 { letter-spacing: -0.015em; }
+.pebble-root .pebble-header .icon-btn { background-color: color-mix(in srgb, var(--mist) 70%, transparent); }
+.pebble-root .pebble-header .icon-btn:hover { background-color: var(--mist); }
+/* The privacy eye shows when it is on. */
+.pebble-root .pebble-header .icon-btn[aria-pressed="true"] { background-color: var(--pine-soft); border-color: var(--pine); color: var(--pine); }
+.pebble-root .pb-search-field { background-color: color-mix(in srgb, var(--mist) 80%, transparent); }
+
+/* Phone bar: frosted glass the same way (its menus are absolutely positioned
+   children, painted above this layer). */
+.pebble-root .pebble-bottom-nav {
+  background-color: transparent;
+  border-top-color: color-mix(in srgb, var(--line) 75%, transparent);
+}
+.pebble-root .pebble-bottom-nav::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-color: color-mix(in srgb, var(--mist) 85%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px); backdrop-filter: saturate(1.6) blur(16px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pebble-root .pebble-bottom-nav::before { background-color: var(--mist); }
+}
+/* The current page gets a soft capsule behind its icon, which grows in. The
+   icon's own pop is gentler to match. */
+.pebble-root .bottom-nav-btn { position: relative; isolation: isolate; }
+.pebble-root .bottom-nav-btn::before {
+  content: ''; position: absolute; z-index: -1; left: 50%; top: calc(0.3rem + 10px);
+  width: min(3.4rem, 100%); height: 1.85rem; border-radius: 999px;
+  background-color: color-mix(in srgb, var(--pine) 14%, transparent);
+  opacity: 0; transform: translate(-50%, -50%) scale(0.55, 0.8);
+  transition: opacity var(--pb-dur-std) var(--pb-ease-out), transform 320ms var(--pb-ease-out);
+}
+.pebble-root .bottom-nav-btn.active::before { opacity: 1; transform: translate(-50%, -50%); }
+.pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn::before { top: calc(0.55rem + 10px); }
+.pebble-root .bottom-nav-icon.active { transform: scale(1.1); }
+/* Centre add button: a light sheen and a glow in the brand colour. The sheen
+   is an image over background-color, so the open-state colour cycle shows
+   through it unchanged. */
+.pebble-root .bottom-nav-add {
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 55%);
+  box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--pine) 75%, transparent), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Buttons: a little depth. Overlays only, so a button recoloured inline
+   (the wine Delete buttons) keeps its colour. */
+.pebble-root .btn-primary {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(0, 0, 0, 0.1), 0 6px 14px -8px rgba(0, 0, 0, 0.35);
+}
+.pebble-root .pill.active {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Cards in dark mode: a hairline of light along the top edge. */
+.pebble-root.dark .card,
+.pebble-dark .pebble-root .card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), var(--shadow); }
+
+/* Dashboard hero: depth in the gradient - a warm glow top right, shade
+   bottom left - and a soft coloured shadow. */
+.pebble-root .pb-hero {
+  background:
+    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--gold) 24%, transparent), transparent 70%),
+    radial-gradient(70% 100% at 0% 100%, rgba(0, 0, 0, 0.14), transparent 70%),
+    linear-gradient(150deg, var(--pine), color-mix(in oklch, var(--pine) 72%, var(--gold)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 24px 48px -28px color-mix(in srgb, var(--pine) 80%, transparent), var(--shadow);
+}
+/* Dark mode: pine is a light tint there, which washed the hero out. A deep
+   tone of it instead, with the text in ink (checked ~6.5:1 or better on
+   every palette's darkest mix). */
+.pebble-root.dark .pb-hero,
+.pebble-dark .pebble-root .pb-hero {
+  color: var(--ink);
+  --ink-soft: color-mix(in srgb, var(--ink) 74%, transparent);
+  --pb-hero-rule: color-mix(in srgb, var(--ink) 16%, transparent);
+  background:
+    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 70%),
+    linear-gradient(150deg, color-mix(in oklch, var(--pine) 42%, var(--paper)), color-mix(in oklch, var(--pine) 20%, var(--paper)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 24%, transparent), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
+}
+
+/* Dashboard figures: each icon on a soft chip of its own colour. Smaller in
+   a narrow cell (each cell is a size container), so a label like "Savings
+   rate" still fits on one line on a phone. */
+.pebble-root .pb-stats-icon {
+  display: inline-grid; place-items: center; flex: none;
+  width: 1.55rem; height: 1.55rem; border-radius: 0.5rem;
+  background-color: color-mix(in srgb, currentColor 13%, transparent);
+}
+@container (max-width: 12rem) {
+  .pebble-root .pb-stats-icon { width: 1.25rem; height: 1.25rem; border-radius: 0.4rem; }
+  .pebble-root .pb-stats-icon svg { width: 12px; height: 12px; }
+}
+
+/* Sign-in brand panel in dark mode: the same deep treatment as the hero. Its
+   language switch flips to ink to stay readable on it. */
+html.pebble-dark .pebble-auth-brand {
+  color: var(--ink);
+  background: linear-gradient(150deg, color-mix(in oklch, var(--pine) 42%, var(--paper)), color-mix(in oklch, color-mix(in oklch, var(--pine) 72%, var(--gold)) 22%, var(--paper)));
+}
+html.pebble-dark .pebble-auth-brand .pebble-auth-lang { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+html.pebble-dark .pebble-auth-brand .pebble-auth-lang button { color: var(--ink); }
+html.pebble-dark .pebble-auth-brand .pebble-auth-lang button.active { background: var(--ink); color: var(--paper); }
+
+/* Welcome animation: the mark draws itself - the stem, then the ring sweeps
+   round like a chart filling, then the gold share. Reduced motion turns the
+   animations off and shows the finished mark. */
+.welcome .pb-mark { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 95, 0.35); }
+.welcome .pb-mark path { stroke-dasharray: 100 101; }
+.welcome .pb-mark-stem { animation: welcome-draw 0.45s cubic-bezier(0.33, 1, 0.68, 1) 0.35s both; }
+.welcome .pb-mark-ring { animation: welcome-draw 0.6s cubic-bezier(0.33, 1, 0.68, 1) 0.6s both; }
+.welcome .pb-mark-share { animation: welcome-draw 0.4s cubic-bezier(0.33, 1, 0.68, 1) 1.05s both; }
+@keyframes welcome-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }

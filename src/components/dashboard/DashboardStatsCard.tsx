@@ -110,7 +110,7 @@ export function DashboardStatsCard({
           return (
             <div key={c.key} className="pb-stats-cell">
               <div className="pb-stats-label">
-                <Icon size={14} style={{ color: c.color, flex: 'none' }} aria-hidden="true" />
+                <span className="pb-stats-icon" style={{ color: c.color }} aria-hidden="true"><Icon size={14} /></span>
                 <span>{c.label}</span>
                 {c.info}
               </div>

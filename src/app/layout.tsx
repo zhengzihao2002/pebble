@@ -49,7 +49,11 @@ export const metadata: Metadata = {
   title: "Pebble",
   description: "Pebble budgeting app",
   manifest: "/manifest.json",
+  // favicon.ico in app/ is linked automatically. The SVG is listed here, not
+  // left as an app/icon.svg file: Next drops file-based icons whenever this
+  // icons object is set, which it must be for the apple icon.
   icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml", sizes: "any" }],
     apple: "/icons/apple-touch-icon.png",
   },
   appleWebApp: {

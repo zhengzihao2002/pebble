@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "sounds": "node scripts/generate-sound-manifest.mjs",
-    "themes": "node scripts/generate-themes.mjs"
+    "themes": "node scripts/generate-themes.mjs",
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

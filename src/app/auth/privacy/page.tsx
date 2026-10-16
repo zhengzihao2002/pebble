@@ -1,9 +1,9 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { PRIVACY_NOTICE } from '@/lib/legal/privacyNotice';
 import { AuthLanguageToggle } from '../[path]/AuthLanguageToggle';
+import { PebbleMark } from '@/components/brand/PebbleMark';
 
 export const metadata: Metadata = { title: 'Privacy Notice · Pebble' };
 
@@ -22,7 +22,7 @@ export default async function PrivacyPage() {
       <article className="privacy-article">
         <header className="privacy-head">
           <span className="privacy-brand">
-            <Image src="/icons/icon-192.png" alt="" width={36} height={36} priority style={{ borderRadius: 9 }} />
+            <PebbleMark size={36} tone="brand" />
             <span className="font-display">Pebble</span>
           </span>
           <AuthLanguageToggle />

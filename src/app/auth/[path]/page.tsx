@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { AuthViewClient } from './AuthViewClient';
 import { AuthLanguageToggle } from './AuthLanguageToggle';
 import { WelcomeArm } from './WelcomeArm';
+import { PebbleMark } from '@/components/brand/PebbleMark';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 
@@ -36,7 +36,7 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
           <span className="pebble-auth-pebble two" aria-hidden="true" />
           <span className="pebble-auth-pebble three" aria-hidden="true" />
           <div className="pebble-auth-brand-inner">
-            <Image src="/icons/icon-192.png" alt="" width={56} height={56} priority className="pebble-auth-logo" />
+            <PebbleMark size={56} tone="brand" className="pebble-auth-logo" />
             <p className="font-display pebble-auth-name">Pebble</p>
             <p className="pebble-auth-tagline">{d.authBrand.tagline}</p>
             <p className="pebble-auth-body">{d.authBrand.body}</p>
