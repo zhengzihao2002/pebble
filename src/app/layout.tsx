@@ -7,6 +7,7 @@ import "@/styles/redesign/kit.css";
 import "@/styles/redesign/shell.css";
 import "@/styles/redesign/dashboard.css";
 import "@/styles/redesign/transactions.css";
+import "@/styles/redesign/transaction-dialogs.css";
 import "@/styles/redesign/accounts.css";
 import "@/styles/redesign/reports.css";
 import "@/styles/redesign/analysis.css";

@@ -1,1 +1,9 @@
 /* Redesign: shell. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+
+/* Content width. On a wide Mac display the page content stops at a readable
+   width and centres, instead of stretching charts and rows edge to edge. In
+   rem, so a larger text size widens it in step (like .settings-column). The
+   header's row is capped the same way so its title and actions line up with
+   the content below. Phones and ordinary laptop widths never reach the cap. */
+.pebble-root .pebble-main { width: 100%; max-width: 96rem; margin-inline: auto; }
+.pebble-root .pebble-header > div { max-width: 91rem; margin-inline: auto; }

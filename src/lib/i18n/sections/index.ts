@@ -5,6 +5,7 @@
 import { shellEn, shellZh } from './shell';
 import { dashboardEn, dashboardZh } from './dashboard';
 import { transactionsEn, transactionsZh } from './transactions';
+import { transactionDialogsEn, transactionDialogsZh } from './transactionDialogs';
 import { accountsEn, accountsZh } from './accounts';
 import { reportsEn, reportsZh } from './reports';
 import { analysisEn, analysisZh } from './analysis';
@@ -18,6 +19,7 @@ export const uxEn = {
   shell: shellEn,
   dashboard: dashboardEn,
   transactions: transactionsEn,
+  transactionDialogs: transactionDialogsEn,
   accounts: accountsEn,
   reports: reportsEn,
   analysis: analysisEn,
@@ -32,6 +34,7 @@ export const uxZh: typeof uxEn = {
   shell: shellZh,
   dashboard: dashboardZh,
   transactions: transactionsZh,
+  transactionDialogs: transactionDialogsZh,
   accounts: accountsZh,
   reports: reportsZh,
   analysis: analysisZh,
