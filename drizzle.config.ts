@@ -9,6 +9,6 @@ export default {
   dialect: 'postgresql',
   schemaFilter: ['public', 'neon_auth'],
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    url: process.env.DATABASE_OWNER_URL!,
   },
 } satisfies Config;
