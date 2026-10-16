@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect } from 'react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { authClient } from '@/lib/auth/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { PebbleMark } from '@/components/brand/PebbleMark';
 
 /** Settings' Preview button dispatches this; AppShell listens. */
 export const WELCOME_PREVIEW_EVENT = 'pebble-welcome-preview';
@@ -44,7 +44,7 @@ export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
     <div className="welcome" role="status" aria-live="polite" onClick={onDone}>
       <span className="welcome-glow" aria-hidden="true" />
       <div className="welcome-stage">
-        <Image src="/icons/icon-192.png" alt="" width={72} height={72} priority className="welcome-logo" />
+        <PebbleMark size={76} tone="brand" className="welcome-logo" />
         <p className="font-display welcome-name">Pebble</p>
         <span className="welcome-line" aria-hidden="true" />
         {/* first is the user's own name - user data, never translated. */}

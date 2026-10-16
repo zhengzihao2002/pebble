@@ -211,6 +211,7 @@ npm run build    # production build
 npm run start    # serve the production build
 npm run lint     # eslint
 npm run sounds   # regenerate src/lib/sound/manifest.ts from public/sounds/
+npm run icons    # redraw the app icons and favicon from src/components/brand/pebbleMark.ts
 ```
 
 ---
