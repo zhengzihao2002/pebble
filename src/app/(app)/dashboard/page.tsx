@@ -53,6 +53,10 @@ export default async function DashboardPage() {
       accounts={accounts}
       balancesByAccount={balances.byAccount}
       allocated={allocated}
+      // Both already loaded above for the total and `allocated`; passed
+      // through (no new query) for the hero's balance line and the goals glance.
+      adjustments={adjustments}
+      goals={goals}
       rules={rules}
       catchUp={{
         expensesCreated: catchUp.expensesCreated,

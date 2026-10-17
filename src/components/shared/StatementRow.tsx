@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Banknote, SlidersHorizontal, CircleHelp } from 'lucide-react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
+import { Banknote, SlidersHorizontal, CircleHelp, CreditCard, Landmark, Coins } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
+import { highlight as markHits } from '@/components/transactions/highlight';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -22,9 +23,33 @@ interface StatementRowProps {
   totalBalanceAfter: number;
   onOpenDetail: (txn: LedgerRecord) => void;
   categoryMeta: CategoryMeta;
+  // Everything below is OPTIONAL and off by default, so the CSV import's
+  // read-only preview (which passes none of them) renders exactly as before.
+  /** Show the date in the subtitle. Off inside a day group, whose header already says it. */
+  showDate?: boolean;
+  /** Trimmed, lower-cased search text to mark in the title and subtitle. */
+  highlight?: string;
+  /**
+   * Keyboard-operable: the row becomes role=button with tabIndex 0, Enter or
+   * Space opens it, and Up/Down move between rows of the same list. Off for
+   * the import preview, whose rows open nothing.
+   */
+  keyboard?: boolean;
+  /**
+   * Desktop ledger layout. Adds an account column and a separate
+   * balance-after column; the grid itself is switched on by a container
+   * query on the surrounding statement (.pb-txn-stmt), so a narrow card keeps
+   * the two-line row with no JS.
+   */
+  ledger?: boolean;
+  /** Account lens: also show this account's own running balance, and a Total line in the breakdown. */
+  lensAccountId?: string;
 }
 
-export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, onOpenDetail, categoryMeta }: StatementRowProps) {
+export function StatementRow({
+  txn, balancesAfter, accounts, totalBalanceAfter, onOpenDetail, categoryMeta,
+  showDate = true, highlight, keyboard = false, ledger = false, lensAccountId,
+}: StatementRowProps) {
   const { d, t, locale } = useTranslation();
 
   // Adjustments have no category. They are manual balance corrections, so
@@ -44,7 +69,7 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
   // the latter.
   const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : uncategorised ? [] : [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
-  subtitleParts.push(formatDate(txn.date, locale));
+  if (showDate) subtitleParts.push(formatDate(txn.date, locale));
 
   const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
@@ -92,10 +117,17 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
     (a) => Math.abs(balancesAfter[a.id] ?? 0) >= 0.005 || a.id === txn.accountId,
   );
 
+  const lensAccount = lensAccountId ? accounts.find((a) => a.id === lensAccountId) : undefined;
+  const rowAccount = accounts.find((a) => a.id === txn.accountId);
+  const RowAccountIcon = rowAccount?.kind === 'credit' ? CreditCard : rowAccount?.kind === 'bank' ? Landmark : Coins;
+
   // "Near the mouse," offset so the tooltip doesn't sit directly under the
-  // cursor, with a rough clamp so it doesn't get cut off near a screen edge.
+  // cursor, with a clamp so it doesn't get cut off near a screen edge. The
+  // height grows with the number of accounts listed (a fixed 76px estimate
+  // let a long list run past the bottom edge).
   const updateHoverPos = (e: React.MouseEvent<HTMLDivElement>) => {
-    const TOOLTIP_W = 170, TOOLTIP_H = 76, OFFSET = 14;
+    const lines = Math.max(1, nonZeroAccounts.length) + (lensAccount ? 1 : 0);
+    const TOOLTIP_W = 170, TOOLTIP_H = 24 + lines * 19, OFFSET = 14;
     let x = e.clientX + OFFSET;
     let y = e.clientY + OFFSET;
     if (typeof window !== 'undefined') {
@@ -105,37 +137,85 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
     setHoverPos({ x, y });
   };
 
+  const open = () => { if (!hasTextSelection()) onOpenDetail(txn); };
+
+  // Enter or Space opens the row, like a button. Up/Down move between rows of
+  // the same list, so a long statement can be walked without Tab-ing through
+  // every row. Ignored while a key is held inside a nested control.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      open();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const list = e.currentTarget.closest('.pb-txn-stmt');
+      if (!list) return;
+      const rows = Array.from(list.querySelectorAll<HTMLElement>('[data-pb-row]'));
+      const i = rows.indexOf(e.currentTarget);
+      const next = rows[e.key === 'ArrowDown' ? i + 1 : i - 1];
+      if (next) { e.preventDefault(); next.focus(); }
+    }
+  };
+
+  const titleText = txn.description.split('\n')[0] || (isAdjustment ? d.txn.balanceAdjustment : '');
+  const subtitleText = subtitleParts.join(' · ');
+
+  const tile = (
+    <div style={{
+      width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: accentBg,
+    }}>
+      <Icon size={16} style={{ color: accentColor }} />
+    </div>
+  );
+  // The highlight marks sit one level inside the ellipsis elements, so the
+  // AppShell truncation tooltip still finds them and the text is unchanged.
+  const text = (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {markHits(titleText, highlight)}
+      </div>
+      {subtitleText !== '' && (
+        <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {markHits(subtitleText, highlight)}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       className="txn-row-interactive"
       style={{ borderBottom: '1px solid var(--line)' }}
     >
     <div
-      onClick={() => { if (!hasTextSelection()) onOpenDetail(txn); }}
-      style={{
+      onClick={open}
+      role={keyboard ? 'button' : undefined}
+      tabIndex={keyboard ? 0 : undefined}
+      onKeyDown={keyboard ? onKeyDown : undefined}
+      data-pb-row={keyboard ? '' : undefined}
+      className={ledger ? `pb-srow-main${lensAccount ? ' pb-srow-lens' : ''}` : undefined}
+      style={ledger ? { cursor: 'pointer' } : {
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: '0.85rem 1.5rem',
         cursor: 'pointer',
       }}
     >
-      <div style={{
-        width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: accentBg,
-      }}>
-        <Icon size={16} style={{ color: accentColor }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {txn.description.split('\n')[0] || (isAdjustment ? d.txn.balanceAdjustment : '')}
+      {ledger ? <div className="pb-srow-lead">{tile}{text}</div> : <>{tile}{text}</>}
+      {/* Ledger only, and shown only once the statement is wide enough: the
+          account the record belongs to. Names are USER DATA. Hidden under the
+          lens, where every row is the same account. */}
+      {ledger && !lensAccount && (
+        <div className="pb-srow-acct">
+          <RowAccountIcon size={13} aria-hidden="true" />
+          <span>{rowAccount?.name ?? txn.paymentMethod}</span>
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {subtitleParts.join(' · ')}
-        </div>
-      </div>
+      )}
       {/* stopPropagation: the row opens the detail modal, so without it a tap
           here would expand the balances AND open the modal over them. */}
       <div
+        className={ledger ? 'pb-srow-money' : undefined}
         style={{ textAlign: 'right', flexShrink: 0, cursor: 'pointer' }}
         onClick={canHover ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
         onMouseEnter={canHover ? updateHoverPos : undefined}
@@ -145,9 +225,22 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
         <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
           {amountPrefix}{formatCurrency(txn.amount)}
         </div>
-        <div className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
+        {/* Account lens: this account's own running balance, above the
+            unchanged total line. */}
+        {lensAccount && (
+          <div className="pb-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
+            <span className="pb-srow-lensname">{lensAccount.name} </span>
+            <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(balancesAfter[lensAccount.id] ?? 0)}</span>
+          </div>
+        )}
+        <div className={`font-mono-tab${ledger ? ' pb-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
           {t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })}
         </div>
+        {/* The same figure without the "Bal" prefix, for the ledger's
+            "Balance after" column (one or the other is displayed). */}
+        {ledger && (
+          <div className="font-mono-tab pb-srow-balcell">{formatCurrency(totalBalanceAfter)}</div>
+        )}
       </div>
 
       </div>
@@ -175,6 +268,12 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
                 </span>
               </div>
             ))}
+            {lensAccount && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
+                <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
+                <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(totalBalanceAfter)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -205,6 +304,12 @@ export function StatementRow({ txn, balancesAfter, accounts, totalBalanceAfter, 
               </span>
             </div>
           ))}
+          {lensAccount && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
+              <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
+              <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(totalBalanceAfter)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
