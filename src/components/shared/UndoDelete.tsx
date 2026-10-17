@@ -15,17 +15,11 @@ interface Item {
   id: number;
   phase: 'pending' | 'sending' | 'done' | 'failed';
   run: Run;
-  /** What is being deleted, e.g. the transaction's title. Optional. */
-  label?: string;
   message?: string;
 }
 
 interface UndoDeleteApi {
-  /**
-   * label is optional: with it the bar names the record ('"Coffee" will be
-   * deleted'), so two bars stacked after two quick deletes can be told apart.
-   */
-  scheduleDelete: (job: { run: Run; label?: string }) => void;
+  scheduleDelete: (job: { run: Run }) => void;
 }
 
 const UndoDeleteContext = createContext<UndoDeleteApi | null>(null);
@@ -52,8 +46,6 @@ export function useUndoDelete(): UndoDeleteApi {
  */
 export function UndoDeleteProvider({ children }: { children: ReactNode }) {
   const { d } = useTranslation();
-  // '“{title}” will be deleted', split so only the name can shrink.
-  const [namedPre, namedPost = ''] = d.ux.transactionDialogs.undoNamed.split('{title}');
   const [items, setItems] = useState<Item[]>([]);
   const timers = useRef(new Map<number, number>());
   const nextId = useRef(1);
@@ -91,10 +83,9 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const scheduleDelete = (job: { run: Run; label?: string }) => {
+  const scheduleDelete = (job: { run: Run }) => {
     const id = nextId.current++;
-    const label = job.label?.trim() || undefined;
-    setItems((list) => [...list, { id, phase: 'pending', run: job.run, label }]);
+    setItems((list) => [...list, { id, phase: 'pending', run: job.run }]);
     timers.current.set(id, window.setTimeout(() => { void send(id, job.run); }, UNDO_MS));
   };
 
@@ -129,13 +120,7 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
             <div key={it.id} className="pb-undo-bar goal-step">
               {it.phase === 'pending' && (
                 <>
-                  {/* The name truncates on its own, so the verb after it always
-                      shows; the shell's truncation tooltip reveals the rest. */}
-                  <span className="pb-tdlg-undo-text">
-                    {it.label
-                      ? <>{namedPre}<span className="pb-tdlg-undo-name">{it.label}</span>{namedPost}</>
-                      : d.undoDelete.pending}
-                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>{d.undoDelete.pending}</span>
                   {/* Countdown: the arc unwinds 360 to 0 and the centre counts 5 to 0,
                       both CSS animations started with this bar - the same moment as
                       the delete timer - so neither can drift from the real delete. */}

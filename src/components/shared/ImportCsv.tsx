@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
@@ -21,10 +21,6 @@ import type { BalanceAdjustment, CategoryMeta, ExpenseTransaction, IncomeTransac
 import { computeRecentTransactions } from '@/lib/stats';
 import { StatementRow } from '@/components/shared/StatementRow';
 import type { StatementEntry } from '@/components/transactions/StatementList';
-import { ImportStepper } from '@/components/importCsv/ImportStepper';
-import { DropZone } from '@/components/importCsv/DropZone';
-import { ColumnPreview, type ColumnRole, type ReadRow } from '@/components/importCsv/ColumnPreview';
-import { BalanceDelta, ReviewFilterBar, StatusChip, type ReviewFilter, type RowStatus } from '@/components/importCsv/ReviewParts';
 
 const MAX_ROWS = 500;
 const MAX_SKIP = 100;
@@ -206,21 +202,6 @@ function useWideImport(): boolean {
   return wide;
 }
 
-// Phones (the bottom-sheet width): review rows fold to one line and open on
-// demand. The same breakpoint as the sheet itself; read in an effect, like
-// useWideImport, so the server and first client render agree.
-function useNarrowImport(): boolean {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 559.98px)');
-    const sync = () => setNarrow(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
-  return narrow;
-}
-
 // On PC the dialog renders two cards side by side inside ONE ModalFrame, so
 // the focus trap, Escape and the backdrop behave as one dialog. Elsewhere it
 // renders the import exactly as before.
@@ -378,9 +359,7 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
 
 function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: ImportPreviewData }) {
   const { d, t, locale } = useTranslation();
-  const x = d.ux.transactionDialogs;
   const wide = useWideImport();
-  const narrow = useNarrowImport();
   const split = wide && !!preview;
   const [step, setStep] = useState<Step>('file');
   const [loading, setLoading] = useState(false);
@@ -415,16 +394,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
   const [titleOverride, setTitleOverride] = useState<Record<number, string>>({});
   const [descOverride, setDescOverride] = useState<Record<number, string>>({});
   const [descOpen, setDescOpen] = useState<Record<number, boolean>>({});
-  // Review presentation only - none of it changes what is imported.
-  // The filter keeps the rows it matched when it was chosen, so a row does
-  // not vanish from "Needs a choice" the moment its last choice is made; the
-  // chip on the row turns to Ready instead.
-  const [filter, setFilter] = useState<ReviewFilter>('all');
-  const [filterRows, setFilterRows] = useState<Set<number> | null>(null);
-  // Phone: which review rows are unfolded. Rows that still need a choice
-  // open when the Review step starts and after a Set all; a tap overrides.
-  const [openSeed, setOpenSeed] = useState<Set<number>>(new Set());
-  const [openOverride, setOpenOverride] = useState<Record<number, boolean>>({});
   // Current total balance in cents, for the before / after preview. Null when it could not be read.
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
 
@@ -629,65 +598,21 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
     return card ? chargeOverdueSince(card, date, importToday) : null;
   };
 
-  // ---- Review presentation (status chips, filter, phone folding) -------
-  // Derived from the same isIncluded / isDup / incomplete / overdueOnCard as
-  // the import itself; nothing here feeds the payload.
-  const needsChoice = (r: PreviewRow, acc = accOverride, cat = catOverride) =>
-    isIncluded(r) && (!acc[r.idx] || !cat[r.idx]);
-  const rowStatus = (r: PreviewRow): RowStatus => {
-    if (r.problem) return 'bad';
-    if (!isIncluded(r)) return 'skipped';
-    if (overdueOnCard(accOverride[r.idx], r.date as string, (r.cents ?? 0) > 0)) return 'overdue';
-    const noAcc = !accOverride[r.idx];
-    const noCat = !catOverride[r.idx];
-    return noAcc && noCat ? 'needsBoth' : noAcc ? 'needsAccount' : noCat ? 'needsCategory' : 'ready';
-  };
-  const matchesFilter = (f: ReviewFilter, r: PreviewRow) =>
-    f === 'needs' ? needsChoice(r) : f === 'dups' ? isDup(r) : f === 'bad' ? r.problem : true;
-  const filterCounts: Record<ReviewFilter, number> = {
-    all: rows.length,
-    needs: incomplete.length,
-    dups: rows.filter(isDup).length,
-    bad: rows.filter((r) => r.problem).length,
-  };
-  const chooseFilter = (f: ReviewFilter) => {
-    setFilter(f);
-    setFilterRows(f === 'all' ? null : new Set(rows.filter((r) => matchesFilter(f, r)).map((r) => r.idx)));
-  };
-  const visibleRows = filterRows ? rows.filter((r) => filterRows.has(r.idx)) : rows;
-  const seedOpen = (acc: Record<number, string>, cat: Record<number, string>) => {
-    setOpenSeed(new Set(rows.filter((r) => needsChoice(r, acc, cat)).map((r) => r.idx)));
-    setOpenOverride({});
-  };
-  const isOpen = (r: PreviewRow) => openOverride[r.idx] ?? openSeed.has(r.idx);
-  const goReview = () => {
-    setFilter('all');
-    setFilterRows(null);
-    seedOpen(accOverride, catOverride);
-    setStep('preview');
-  };
-
-  // The next maps are built here rather than in updater functions so the
-  // phone's folding can be re-seeded from them in the same event; what each
-  // row receives is unchanged (readable rows only; categories by kind).
   const setAll = (kind: 'account' | 'expense' | 'income', value: string) => {
     if (!value) return;
-    let nextAcc = accOverride;
-    let nextCat = catOverride;
     if (kind === 'account') {
-      nextAcc = { ...accOverride };
-      rows.forEach((r) => { if (!r.problem) nextAcc[r.idx] = value; });
-      setAccOverride(nextAcc);
+      setAccOverride((m) => { const next = { ...m }; rows.forEach((r) => { if (!r.problem) next[r.idx] = value; }); return next; });
     } else {
-      nextCat = { ...catOverride };
-      rows.forEach((r) => {
-        if (r.problem) return;
-        const income = (r.cents ?? 0) > 0;
-        if ((kind === 'income') === income) nextCat[r.idx] = value;
+      setCatOverride((m) => {
+        const next = { ...m };
+        rows.forEach((r) => {
+          if (r.problem) return;
+          const income = (r.cents ?? 0) > 0;
+          if ((kind === 'income') === income) next[r.idx] = value;
+        });
+        return next;
       });
-      setCatOverride(nextCat);
     }
-    seedOpen(nextAcc, nextCat);
   };
 
   const doImport = async () => {
@@ -721,28 +646,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
     tag: (r.cents as number) < 0 ? (tagOverride[r.idx] ?? '').trim().slice(0, 50) : '',
   }));
 
-  // Columns step: the first rows as currently read, and the file's own rows
-  // with the mapped columns marked.
-  const rawCell = (r: string[] | undefined, col: string) => (col === '' || !r ? '' : (r[Number(col)] ?? ''));
-  const readRows: ReadRow[] = rows.slice(0, 3).map((r) => {
-    const raw = dataRows[r.idx];
-    const rawAmount = amountMode === 'single'
-      ? rawCell(raw, amountCol)
-      : (rawCell(raw, debitCol).trim() || rawCell(raw, creditCol));
-    // A readable date on a row that still cannot be read means the amount is
-    // what failed (split columns compute a number even then).
-    const amountBad = r.cents === null || r.cents === 0 || (r.problem && r.date !== null);
-    return { idx: r.idx, date: r.date, rawDate: rawCell(raw, dateCol), description: r.description, cents: amountBad ? null : r.cents, rawAmount };
-  });
-  const colWidth = afterSkip.reduce((m, r) => Math.max(m, r.length), 0);
-  const roles: Partial<Record<number, ColumnRole>> = {};
-  const mark = (col: string, role: ColumnRole) => { if (col !== '' && roles[Number(col)] === undefined) roles[Number(col)] = role; };
-  mark(dateCol, 'date');
-  mark(descCol, 'desc');
-  if (amountMode === 'single') mark(amountCol, 'amount');
-  else { mark(debitCol, 'debit'); mark(creditCol, 'credit'); }
-  const headerRow = hasHeader ? (afterSkip[0] ?? null) : namesAbove;
-
   // PC: the If imported pane appears only at the Preview step, and goes away
   // once the import has finished.
   const showPreview = split && step === 'preview' && done === null;
@@ -768,7 +671,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
               <h2 id="pb-import-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.title}</h2>
               <ModalCloseButton onClick={close} disabled={saving} />
             </div>
-            <ImportStepper step={step === 'file' ? 0 : step === 'map' ? 1 : 2} complete={done !== null} />
           </div>
 
           {done !== null ? (
@@ -776,10 +678,14 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
               <SaveSuccess title={d.importCsv.done} body={t(d.importCsv.doneBody, { count: done })} onDone={close} />
             </div>
           ) : step === 'file' ? (
-            <div key={step} className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
+            <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
               {loading ? <LoadingBlock label={d.common.loading} minHeight={160} /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-                  <DropZone onFile={(f) => void onFile(f)} />
+                  <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>{d.importCsv.chooseHint}</p>
+                  <label className="pill" style={{ alignSelf: 'flex-start', padding: '0.6rem 1.1rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Upload size={15} aria-hidden="true" />{d.importCsv.chooseFile}
+                    <input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => void onFile(e.target.files?.[0])} style={{ display: 'none' }} />
+                  </label>
                   {fileError && <p role="status" style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{fileError}</p>}
                   {loadError && <ActionError message={loadError} onRetry={() => { if (fileRef.current) void onFile(fileRef.current); }} />}
                 </div>
@@ -787,76 +693,63 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
             </div>
           ) : step === 'map' ? (
             <>
-              <div key={step} className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
-                <div className="pb-tdlg-map">
-                  <fieldset className="pb-tdlg-group">
-                    <legend className="pb-tdlg-label">{x.tableStarts}</legend>
-                    <div style={twoCol}>
-                      <label style={labelStyle}>{d.importCsv.skipRows}
-                        <input type="text" inputMode="numeric" value={skipText} onChange={(e) => changeSkip(e.target.value)} onBlur={() => setSkipText(String(skip))} className="font-mono-tab" style={fieldStyle} />
-                      </label>
-                      <label className="pb-tdlg-check">
-                        <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
-                        {d.importCsv.hasHeader}
-                      </label>
-                    </div>
-                    <p className="pb-tdlg-hint">{d.importCsv.skipHint}</p>
-                  </fieldset>
-                  <fieldset className="pb-tdlg-group">
-                    <legend className="pb-tdlg-label">{x.columnsGroup}</legend>
-                    <div style={twoCol}>
-                      <label style={labelStyle}>{d.importCsv.dateCol}{select(dateCol, setDateCol, colOptions)}</label>
-                      <label style={labelStyle}>{d.importCsv.dateFormat}
-                        <select value={dateFormat} onChange={(e) => setDateFormat(e.target.value as DateFormat)} style={fieldStyle}>
-                          <option value="ymd">YYYY-MM-DD</option>
-                          <option value="mdy">MM/DD/YYYY</option>
-                          <option value="dmy">DD/MM/YYYY</option>
-                        </select>
-                      </label>
-                      <label style={labelStyle}>{d.importCsv.descCol}{select(descCol, setDescCol, colOptions)}</label>
-                      <label style={labelStyle}>{d.importCsv.amountLayout}
-                        <select value={amountMode} onChange={(e) => setAmountMode(e.target.value as AmountMode)} style={fieldStyle}>
-                          <option value="single">{d.importCsv.amountSingle}</option>
-                          <option value="split">{d.importCsv.amountSplit}</option>
-                        </select>
-                      </label>
-                      {amountMode === 'single' ? (
-                        <>
-                          <label style={labelStyle}>{d.importCsv.amountCol}{select(amountCol, setAmountCol, colOptions)}</label>
-                          <label className="pb-tdlg-check">
-                            <input type="checkbox" checked={flip} onChange={(e) => setFlip(e.target.checked)} />
-                            {d.importCsv.flipSigns}
-                          </label>
-                        </>
-                      ) : (
-                        <>
-                          <label style={labelStyle}>{d.importCsv.debitCol}{select(debitCol, setDebitCol, colOptions)}</label>
-                          <label style={labelStyle}>{d.importCsv.creditCol}{select(creditCol, setCreditCol, colOptions)}</label>
-                        </>
-                      )}
-                    </div>
-                    <p className="pb-tdlg-hint">{d.importCsv.pickLater}</p>
-                    {truncated && <p className="pb-tdlg-hint">{d.importCsv.truncated}</p>}
-                  </fieldset>
-                  <ColumnPreview
-                    readRows={readRows}
-                    rawRows={dataRows.slice(0, 3)}
-                    headerRow={headerRow}
-                    width={colWidth}
-                    roles={roles}
-                  />
+              <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  <div style={twoCol}>
+                    <label style={labelStyle}>{d.importCsv.skipRows}
+                      <input type="text" inputMode="numeric" value={skipText} onChange={(e) => changeSkip(e.target.value)} onBlur={() => setSkipText(String(skip))} className="font-mono-tab" style={fieldStyle} />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', alignSelf: 'end', paddingBottom: '0.5rem' }}>
+                      <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
+                      {d.importCsv.hasHeader}
+                    </label>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: 0 }}>{d.importCsv.skipHint}</p>
+                  <div style={twoCol}>
+                    <label style={labelStyle}>{d.importCsv.dateCol}{select(dateCol, setDateCol, colOptions)}</label>
+                    <label style={labelStyle}>{d.importCsv.dateFormat}
+                      <select value={dateFormat} onChange={(e) => setDateFormat(e.target.value as DateFormat)} style={fieldStyle}>
+                        <option value="ymd">YYYY-MM-DD</option>
+                        <option value="mdy">MM/DD/YYYY</option>
+                        <option value="dmy">DD/MM/YYYY</option>
+                      </select>
+                    </label>
+                    <label style={labelStyle}>{d.importCsv.descCol}{select(descCol, setDescCol, colOptions)}</label>
+                    <label style={labelStyle}>{d.importCsv.amountLayout}
+                      <select value={amountMode} onChange={(e) => setAmountMode(e.target.value as AmountMode)} style={fieldStyle}>
+                        <option value="single">{d.importCsv.amountSingle}</option>
+                        <option value="split">{d.importCsv.amountSplit}</option>
+                      </select>
+                    </label>
+                    {amountMode === 'single' ? (
+                      <>
+                        <label style={labelStyle}>{d.importCsv.amountCol}{select(amountCol, setAmountCol, colOptions)}</label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer', alignSelf: 'end', paddingBottom: '0.5rem' }}>
+                          <input type="checkbox" checked={flip} onChange={(e) => setFlip(e.target.checked)} />
+                          {d.importCsv.flipSigns}
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <label style={labelStyle}>{d.importCsv.debitCol}{select(debitCol, setDebitCol, colOptions)}</label>
+                        <label style={labelStyle}>{d.importCsv.creditCol}{select(creditCol, setCreditCol, colOptions)}</label>
+                      </>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: 0 }}>{d.importCsv.pickLater}</p>
+                  {truncated && <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', margin: 0 }}>{d.importCsv.truncated}</p>}
                 </div>
               </div>
               <div className="pb-modal-foot">
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button type="button" className="pill" onClick={() => setStep('file')} style={{ flex: 1, padding: '0.65rem' }}>{d.importCsv.back}</button>
-                  <button type="button" className="btn-primary" disabled={!mappingOk} onClick={goReview} style={{ flex: 1.4, padding: '0.65rem', opacity: mappingOk ? 1 : 0.6 }}>{d.importCsv.next}</button>
+                  <button type="button" className="btn-primary" disabled={!mappingOk} onClick={() => setStep('preview')} style={{ flex: 1.4, padding: '0.65rem', opacity: mappingOk ? 1 : 0.6 }}>{d.importCsv.next}</button>
                 </div>
               </div>
             </>
           ) : (
             <>
-              <div key={step} className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
+              <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
                 {rows.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.importCsv.noRows}</p>
                 ) : (
@@ -875,154 +768,90 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                         {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{d.enums.incomeCategory[c]}</option>)}
                       </select>
                     </div>
-                    <ReviewFilterBar value={filter} counts={filterCounts} onChange={chooseFilter} />
-                    {visibleRows.length === 0 && (
-                      <div className="pb-tdlg-filter-empty">
-                        <p>{x.filterEmpty}</p>
-                        <button type="button" className="link-btn" onClick={() => chooseFilter('all')}>{x.filterShowAll}</button>
-                      </div>
-                    )}
-                    <ul className={`pb-tdlg-review${narrow ? ' pb-tdlg-review-compact' : ''}`}>
-                      {visibleRows.map((r) => {
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {rows.map((r) => {
                         const on = isIncluded(r);
                         const income = (r.cents ?? 0) > 0;
                         const dup = isDup(r);
-                        const overdue = r.problem ? null : overdueOnCard(accOverride[r.idx], r.date as string, income);
-                        const status = rowStatus(r);
-                        const open = !narrow || isOpen(r);
-                        const panelId = `pb-import-row-${r.idx}`;
-                        const checkbox = (
-                          <input
-                            type="checkbox" checked={on} disabled={r.problem} className="pb-tdlg-review-check"
-                            onChange={(e) => setIncludeOverride((m) => ({ ...m, [r.idx]: e.target.checked }))}
-                            aria-label={r.description || String(r.idx + 1)}
-                          />
-                        );
-                        const titleInput = (
-                          <input
-                            type="text" value={titleOverride[r.idx] ?? r.description} maxLength={200}
-                            onChange={(e) => setTitleOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                            placeholder={d.importCsv.titlePlaceholder} aria-label={d.importCsv.titlePlaceholder}
-                            style={{ ...smallField, fontSize: '0.86rem', height: '2.1rem', marginBottom: '0.2rem' }}
-                          />
-                        );
-                        const metaLine = (
-                          <span className="pb-tdlg-review-meta pb-tnum" style={{ color: r.problem || dup || overdue ? 'var(--wine)' : 'var(--ink-soft)' }}>
-                            {r.problem ? d.importCsv.bad : `${formatDate(r.date as string, locale)}${dup ? ` · ${d.importCsv.dup}` : ''}${r.shifted ? ` · ${d.importCsv.shifted}` : ''}`}
-                            {overdue && (
-                              <>{' · '}{d.importCsv.cardOverdue.replace('{date}', formatDate(overdue, locale))}</>
-                            )}
-                          </span>
-                        );
-                        const amount = !r.problem && (
-                          <span className="font-mono-tab pb-tdlg-review-amount" style={{ color: income ? 'var(--pine)' : 'var(--wine)' }}>
-                            {income ? '+' : '−'}{formatCurrency(Math.abs(r.cents as number) / 100)}
-                          </span>
-                        );
-                        const controls = !r.problem && (
-                          <>
-                            <div style={twoCol}>
-                              <select
-                                value={accOverride[r.idx] ?? ''}
-                                onChange={(e) => setAccOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                                aria-label={d.importCsv.account} style={smallField}
-                              >
-                                <option value="">{d.importCsv.chooseAccount}</option>
-                                {(income ? nonCardOptions : accountOptions).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                              </select>
-                              <select
-                                value={catOverride[r.idx] ?? ''}
-                                onChange={(e) => setCatOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                                aria-label={d.importCsv.spendingCategory} style={smallField}
-                              >
-                                <option value="">{d.importCsv.chooseCategory}</option>
-                                {income
-                                  ? INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{d.enums.incomeCategory[c]}</option>)
-                                  : categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                              </select>
-                              {!income && (
-                                <input
-                                  type="text" value={tagOverride[r.idx] ?? ''} maxLength={50}
-                                  onChange={(e) => setTagOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                                  placeholder={d.importCsv.tagPlaceholder} aria-label={d.importCsv.tagPlaceholder}
-                                  style={smallField}
-                                />
-                              )}
-                            </div>
-                            <div className="pb-tdlg-review-desc">
-                              {descOpen[r.idx] ? (
-                                <input
-                                  type="text" value={descOverride[r.idx] ?? ''} maxLength={500} autoFocus
-                                  onChange={(e) => setDescOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                                  placeholder={d.importCsv.descPlaceholder} aria-label={d.importCsv.descPlaceholder}
-                                  style={smallField}
-                                />
-                              ) : (
-                                <button
-                                  type="button" onClick={() => setDescOpen((m) => ({ ...m, [r.idx]: true }))}
-                                  className="pb-tdlg-review-add"
-                                >
-                                  + {d.importCsv.descAdd}
-                                </button>
-                              )}
-                            </div>
-                          </>
-                        );
-
-                        if (!narrow) {
-                          return (
-                            <li key={r.idx} className="pb-tdlg-review-row" style={{ opacity: r.problem ? 0.6 : 1 }}>
-                              <div className="pb-tdlg-review-top">
-                                {checkbox}
-                                <span style={{ flex: 1, minWidth: 0 }}>
-                                  {r.problem ? (
-                                    <span className="pb-tdlg-review-title">{r.description || '—'}</span>
-                                  ) : titleInput}
-                                  <span className="pb-tdlg-review-line">
-                                    <StatusChip status={status} />
-                                    {metaLine}
-                                  </span>
-                                </span>
-                                <span className="pb-tdlg-review-end">{amount}</span>
-                              </div>
-                              {controls && <div className="pb-tdlg-review-body">{controls}</div>}
-                            </li>
-                          );
-                        }
-
-                        // Phone: one line - tick, title and date, amount and
-                        // status - that unfolds to the title field and choices.
                         return (
-                          <li key={r.idx} className="pb-tdlg-review-row" style={{ opacity: r.problem ? 0.6 : 1 }}>
-                            <div className="pb-tdlg-review-top">
-                              {checkbox}
+                          <li key={r.idx} style={{ padding: '0.6rem 0', borderTop: r.idx === 0 ? 'none' : '1px solid var(--line)', opacity: r.problem ? 0.6 : 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                              <input
+                                type="checkbox" checked={on} disabled={r.problem} style={{ alignSelf: 'flex-start', marginTop: 'calc(1.05rem - 7px)', flexShrink: 0 }}
+                                onChange={(e) => setIncludeOverride((m) => ({ ...m, [r.idx]: e.target.checked }))}
+                                aria-label={r.description || String(r.idx + 1)}
+                              />
                               <span style={{ flex: 1, minWidth: 0 }}>
-                                <span className="pb-tdlg-review-title">{(titleOverride[r.idx] ?? r.description) || '—'}</span>
-                                {metaLine}
+                                {r.problem ? (
+                                  <span style={{ display: 'block', fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description || '—'}</span>
+                                ) : (
+                                  <input
+                                    type="text" value={titleOverride[r.idx] ?? r.description} maxLength={200}
+                                    onChange={(e) => setTitleOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
+                                    placeholder={d.importCsv.titlePlaceholder} aria-label={d.importCsv.titlePlaceholder}
+                                    style={{ ...smallField, fontSize: '0.86rem', height: '2.1rem', marginBottom: '0.2rem' }}
+                                  />
+                                )}
+                                <span style={{ display: 'block', fontSize: '0.74rem', color: r.problem || dup || overdueOnCard(accOverride[r.idx], r.date as string, income) ? 'var(--wine)' : 'var(--ink-soft)' }}>
+                                  {r.problem ? d.importCsv.bad : `${formatDate(r.date as string, locale)}${dup ? ` · ${d.importCsv.dup}` : ''}${r.shifted ? ` · ${d.importCsv.shifted}` : ''}`}
+                                  {!r.problem && overdueOnCard(accOverride[r.idx], r.date as string, income) && (
+                                    <>{' · '}{d.importCsv.cardOverdue.replace('{date}', formatDate(overdueOnCard(accOverride[r.idx], r.date as string, income) as string, locale))}</>
+                                  )}
+                                </span>
                               </span>
-                              <span className="pb-tdlg-review-end">
-                                {amount}
-                                <StatusChip status={status} />
-                              </span>
-                              {r.problem ? <span className="pb-tdlg-review-toggle" aria-hidden="true" /> : (
-                                <button
-                                  type="button" className="pb-tdlg-review-toggle"
-                                  aria-expanded={open} aria-controls={panelId}
-                                  aria-label={open ? x.hideDetails : x.showDetails}
-                                  onClick={() => setOpenOverride((m) => ({ ...m, [r.idx]: !open }))}
-                                >
-                                  <ChevronDown size={18} aria-hidden="true" />
-                                </button>
+                              {!r.problem && (
+                                <span className="font-mono-tab" style={{ fontSize: '0.86rem', fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'flex-start', height: '2.1rem', display: 'flex', alignItems: 'center', color: income ? 'var(--pine)' : 'var(--wine)' }}>
+                                  {income ? '+' : '−'}{formatCurrency(Math.abs(r.cents as number) / 100)}
+                                </span>
                               )}
                             </div>
                             {!r.problem && (
-                              <div id={panelId} className={`collapsible-rows${open ? ' expanded' : ''}`} inert={!open}>
-                                <div className="collapsible-rows-inner">
-                                  <div className="pb-tdlg-review-body">
-                                    {titleInput}
-                                    {controls}
-                                  </div>
-                                </div>
+                              <div style={{ ...twoCol, marginTop: '0.45rem', paddingLeft: '1.6rem' }}>
+                                <select
+                                  value={accOverride[r.idx] ?? ''}
+                                  onChange={(e) => setAccOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
+                                  aria-label={d.importCsv.account} style={smallField}
+                                >
+                                  <option value="">{d.importCsv.chooseAccount}</option>
+                                  {(income ? nonCardOptions : accountOptions).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                                <select
+                                  value={catOverride[r.idx] ?? ''}
+                                  onChange={(e) => setCatOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
+                                  aria-label={d.importCsv.spendingCategory} style={smallField}
+                                >
+                                  <option value="">{d.importCsv.chooseCategory}</option>
+                                  {income
+                                    ? INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{d.enums.incomeCategory[c]}</option>)
+                                    : categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                </select>
+                                {!income && (
+                                  <input
+                                    type="text" value={tagOverride[r.idx] ?? ''} maxLength={50}
+                                    onChange={(e) => setTagOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
+                                    placeholder={d.importCsv.tagPlaceholder} aria-label={d.importCsv.tagPlaceholder}
+                                    style={smallField}
+                                  />
+                                )}
+                              </div>
+                            )}
+                            {!r.problem && (
+                              <div style={{ marginTop: '0.4rem', paddingLeft: '1.6rem' }}>
+                                {descOpen[r.idx] ? (
+                                  <input
+                                    type="text" value={descOverride[r.idx] ?? ''} maxLength={500} autoFocus
+                                    onChange={(e) => setDescOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
+                                    placeholder={d.importCsv.descPlaceholder} aria-label={d.importCsv.descPlaceholder}
+                                    style={smallField}
+                                  />
+                                ) : (
+                                  <button
+                                    type="button" onClick={() => setDescOpen((m) => ({ ...m, [r.idx]: true }))}
+                                    style={{ background: 'none', border: 'none', padding: 0, color: 'var(--pine)', fontSize: '0.76rem', cursor: 'pointer' }}
+                                  >
+                                    + {d.importCsv.descAdd}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </li>
@@ -1033,7 +862,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                 )}
               </div>
               <div className="pb-modal-foot">
-                {balanceCents !== null && <BalanceDelta beforeCents={balanceCents} afterCents={balanceCents + netCents} />}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.84rem' }}>
                   {balanceCents !== null && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
