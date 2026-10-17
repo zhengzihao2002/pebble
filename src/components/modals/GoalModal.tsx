@@ -8,6 +8,7 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
+import { CloseSoon } from '@/components/shared/CloseSoon';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { AmountInput } from '@/components/shared/AmountInput';
@@ -106,21 +107,28 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     setSaved({ name: payload.name, target: payload.target });
   };
 
-  const handleDelete = async (close: () => void) => {
+  // Set once a delete succeeds; the dialog then closes itself.
+  const [deleted, setDeleted] = useState(false);
+
+  const handleDelete = async () => {
     if (!goal || saving) return;
     setSaving(true);
     setSaveError(null);
     const result = await callAction(() => deleteGoalAction({ id: goal.id }));
     setSaving(false);
     if (!result.ok) { setSaveError(translateActionError(d, locale, result)); setSaveErrorKind(result.kind); return; }
-    // Quiet: no confirmation for a delete. Closed after saving has cleared.
-    window.setTimeout(close, 0);
+    // Quiet: no confirmation for a delete. The dialog closes from the next
+    // settled render (CloseSoon below): a close() timed from here could run
+    // while the frame still read busy, and was then silently ignored - the
+    // dialog stayed open over a deleted row.
+    setDeleted(true);
   };
 
   return (
     <ModalFrame onClose={onClose} busy={saving} labelledBy="goal-modal-title" maxWidth={440}>
       {(close) => (
       <>
+        {deleted && !saving && <CloseSoon close={close} />}
         {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.goalModal.deletingOverlay : d.goalModal.saving} />}
 
         <div className="pb-modal-head">
@@ -152,10 +160,10 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
               </p>
             </div>
             <div className="pb-modal-foot">
-              <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete(close)} busy={saving} />
+              <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete()} busy={saving} />
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} disabled={saving} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.goalModal.keepIt}</button>
-                <button type="button" onClick={() => void handleDelete(close)} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
+                <button type="button" onClick={() => void handleDelete()} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
                   {saving ? d.goalModal.deleting : d.goalModal.delete}
                 </button>
               </div>

@@ -20,9 +20,13 @@ export const MARK_STROKE = 46;
 
 const RADIUS = 72;
 const STEM_LENGTH = 244;
-// The glyph's outer box is centred across the canvas and centred a touch
-// above the middle (252) vertically, where a letter looks centred.
-const STEM_X = 256 - RADIUS;
+// Centred OPTICALLY, not by its box. The stem puts most of the ink on the
+// left (box centred, the ink's centre of mass sat 27 units left of the
+// middle), so the letter is nudged right by about half of that - centred by
+// the box it read as sitting a couple of pixels left. Vertically, a touch
+// above the middle (252), where a letter looks centred.
+const OPTICAL_SHIFT_X = 14;
+const STEM_X = 256 - RADIUS + OPTICAL_SHIFT_X;
 const TOP = 252 - STEM_LENGTH / 2;
 const BOTTOM = TOP + STEM_LENGTH;
 const CX = STEM_X + RADIUS;

@@ -17,6 +17,7 @@ import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFiel
 import { composeDescription, descriptionTitle, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
+import { CloseSoon } from '@/components/shared/CloseSoon';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { AmountInput } from '@/components/shared/AmountInput';
@@ -257,7 +258,10 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     setSaved({ title: title.trim(), amount: Number(amount) });
   };
 
-  const handleDelete = async (close: () => void) => {
+  // Set once a delete succeeds; the dialog then closes itself.
+  const [deleted, setDeleted] = useState(false);
+
+  const handleDelete = async () => {
     if (!rule || saving) return;
     setSaving(true);
     setSaveError(null);
@@ -268,14 +272,18 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
       setSaveErrorKind(result.kind);
       return;
     }
-    // Quiet: no confirmation for a delete. Closed after saving has cleared.
-    window.setTimeout(close, 0);
+    // Quiet: no confirmation for a delete. The dialog closes from the next
+    // settled render (CloseSoon below): a close() timed from here could run
+    // while the frame still read busy, and was then silently ignored - the
+    // dialog stayed open over a deleted row.
+    setDeleted(true);
   };
 
   return (
     <ModalFrame onClose={onClose} busy={saving} labelledBy="rule-modal-title" maxWidth={640}>
       {(close) => (
       <>
+        {deleted && !saving && <CloseSoon close={close} />}
         {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.recurring.deletingSchedule : d.recurring.savingSchedule} />}
 
         <div className="pb-modal-head">
@@ -304,10 +312,10 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
               </p>
             </div>
             <div className="pb-modal-foot">
-              <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete(close)} busy={saving} />
+              <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete()} busy={saving} />
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} disabled={saving} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.recurring.keepIt}</button>
-                <button type="button" onClick={() => void handleDelete(close)} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
+                <button type="button" onClick={() => void handleDelete()} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
                   {saving ? d.recurring.deleting : d.recurring.delete}
                 </button>
               </div>

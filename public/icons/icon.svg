@@ -16,8 +16,8 @@
 <rect width="512" height="512" rx="112" fill="url(#tile)"/>
 <rect width="512" height="512" rx="112" fill="url(#glow)"/>
 <g transform="translate(256 256) scale(1.16) translate(-256 -256)" fill="none" stroke-width="46">
-  <path d="M184 202A72 72 0 1 1 321.5 231.9" stroke="#F7F2E7"/>
-  <path d="M317.4 239.6A72 72 0 0 1 184 202" stroke="url(#gold)"/>
-  <path d="M184 130V374" stroke="#F7F2E7" stroke-linecap="round"/>
+  <path d="M198 202A72 72 0 1 1 335.5 231.9" stroke="#F7F2E7"/>
+  <path d="M331.4 239.6A72 72 0 0 1 198 202" stroke="url(#gold)"/>
+  <path d="M198 130V374" stroke="#F7F2E7" stroke-linecap="round"/>
 </g>
 </svg>

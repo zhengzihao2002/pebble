@@ -2041,8 +2041,13 @@ input[data-pb-eye]::-ms-clear { display: none; }
    dark mode that colour is a light tint, so the tile is deepened to keep the
    cream letter crisp. tone="brand" is Original's pine in every theme. Not
    scoped to .pebble-root: --pine falls back to its registered value. */
+@property --pb-mark-dark { syntax: '<number>'; inherits: true; initial-value: 0; }
 .pb-mark {
-  --pb-mark-tile: var(--pine);
+  /* Deepened in dark mode through a transitioned number, so the tile fades
+     with the theme instead of jumping (same idea as the dashboard hero). */
+  --pb-mark-dark: 0;
+  --pb-mark-tile: color-mix(in oklch, var(--pine) calc(100% - 44% * var(--pb-mark-dark)), black);
+  transition: --pb-mark-dark var(--pb-dur-theme, 300ms) ease;
   display: inline-block; flex-shrink: 0; overflow: hidden; vertical-align: middle;
   border-radius: 24%;
   background:
@@ -2054,7 +2059,7 @@ input[data-pb-eye]::-ms-clear { display: none; }
 .pb-mark-ring, .pb-mark-stem { stroke: #F7F2E7; }
 .pb-mark-share { stroke: #E9BC67; }
 .pebble-root.dark .pb-mark,
-.pebble-dark .pebble-root .pb-mark { --pb-mark-tile: color-mix(in oklch, var(--pine) 56%, black); }
+.pebble-dark .pebble-root .pb-mark { --pb-mark-dark: 1; }
 .pb-mark.pb-mark-brand,
 .pebble-root.dark .pb-mark.pb-mark-brand,
 .pebble-dark .pebble-root .pb-mark.pb-mark-brand { --pb-mark-tile: #1F5A45; }
@@ -2170,27 +2175,41 @@ input[data-pb-eye]::-ms-clear { display: none; }
 .pebble-dark .pebble-root .card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), var(--shadow); }
 
 /* Dashboard hero: depth in the gradient - a warm glow top right, shade
-   bottom left - and a soft coloured shadow. */
+   bottom left - and a soft coloured shadow. In dark mode pine is a light
+   tint, which washed the hero out, so there it is a deep tone of pine with
+   the text in ink (checked ~6.5:1 or better on every palette).
+
+   ONE formula for both modes, driven by --pb-hero-dark (0 light, 1 dark).
+   It is a registered <number> and transitions with the theme, so the hero
+   fades between modes with the rest of the page. Two separate light and
+   dark rules swapped their gradients and text colour in a single frame - a
+   flash in the middle of an otherwise smooth switch. */
+@property --pb-hero-dark { syntax: '<number>'; inherits: true; initial-value: 0; }
 .pebble-root .pb-hero {
+  --pb-hero-dark: 0;
+  /* Near-white in both modes (paper on pine, ink on deep pine - both are
+     near-white there), lightly tinted by the theme. Not a blend of --paper
+     and --ink: those fade in opposite directions during a theme switch and
+     the blend dipped to grey halfway. */
+  --pb-hero-fg: color-mix(in oklch, white 90%, var(--pine));
+  color: var(--pb-hero-fg);
+  --ink-soft: color-mix(in srgb, var(--pb-hero-fg) calc(78% - 4% * var(--pb-hero-dark)), transparent);
+  --pb-hero-rule: color-mix(in srgb, var(--pb-hero-fg) calc(22% - 6% * var(--pb-hero-dark)), transparent);
   background:
-    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--gold) 24%, transparent), transparent 70%),
-    radial-gradient(70% 100% at 0% 100%, rgba(0, 0, 0, 0.14), transparent 70%),
-    linear-gradient(150deg, var(--pine), color-mix(in oklch, var(--pine) 72%, var(--gold)));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 24px 48px -28px color-mix(in srgb, var(--pine) 80%, transparent), var(--shadow);
+    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--gold) calc(24% - 9% * var(--pb-hero-dark)), transparent), transparent 70%),
+    radial-gradient(70% 100% at 0% 100%, rgba(0, 0, 0, calc(0.14 * (1 - var(--pb-hero-dark)))), transparent 70%),
+    linear-gradient(150deg,
+      color-mix(in oklch, var(--pine) calc(100% - 58% * var(--pb-hero-dark)), var(--paper)),
+      color-mix(in oklch, color-mix(in oklch, var(--pine) 72%, var(--gold)) calc(100% - 78% * var(--pb-hero-dark)), var(--paper)));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.14 * (1 - var(--pb-hero-dark)))),
+    inset 0 0 0 1px color-mix(in srgb, var(--pine) calc(24% * var(--pb-hero-dark)), transparent),
+    0 24px 48px -28px color-mix(in srgb, var(--pine) calc(80% * (1 - var(--pb-hero-dark))), rgba(0, 0, 0, calc(0.7 * var(--pb-hero-dark)))),
+    var(--shadow);
+  transition: --pb-hero-dark var(--pb-dur-theme) ease;
 }
-/* Dark mode: pine is a light tint there, which washed the hero out. A deep
-   tone of it instead, with the text in ink (checked ~6.5:1 or better on
-   every palette's darkest mix). */
 .pebble-root.dark .pb-hero,
-.pebble-dark .pebble-root .pb-hero {
-  color: var(--ink);
-  --ink-soft: color-mix(in srgb, var(--ink) 74%, transparent);
-  --pb-hero-rule: color-mix(in srgb, var(--ink) 16%, transparent);
-  background:
-    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 70%),
-    linear-gradient(150deg, color-mix(in oklch, var(--pine) 42%, var(--paper)), color-mix(in oklch, var(--pine) 20%, var(--paper)));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 24%, transparent), 0 24px 48px -28px rgba(0, 0, 0, 0.7);
-}
+.pebble-dark .pebble-root .pb-hero { --pb-hero-dark: 1; }
 
 /* Dashboard figures: each icon on a soft chip of its own colour. Smaller in
    a narrow cell (each cell is a size container), so a label like "Savings
@@ -2215,12 +2234,16 @@ html.pebble-dark .pebble-auth-brand .pebble-auth-lang { background: color-mix(in
 html.pebble-dark .pebble-auth-brand .pebble-auth-lang button { color: var(--ink); }
 html.pebble-dark .pebble-auth-brand .pebble-auth-lang button.active { background: var(--ink); color: var(--paper); }
 
-/* Welcome animation: the mark draws itself - the stem, then the ring sweeps
-   round like a chart filling, then the gold share. Reduced motion turns the
-   animations off and shows the finished mark. */
+/* Welcome animation: the mark draws itself - the stem, then ONE continuous
+   sweep round the bowl: the cream ring, then straight on into the gold share.
+   The two arcs move at the same speed: each lasts in proportion to its length
+   (ring 204deg in 0.6s, share 148deg in 0.44s), the share starts the moment
+   the ring ends, and the ring's ease-in meets the share's ease-out at the
+   same velocity. Before, the share ran on its own shorter clock and visibly
+   rushed. Reduced motion turns the animations off and shows the finished mark. */
 .welcome .pb-mark { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(212, 175, 95, 0.35); }
 .welcome .pb-mark path { stroke-dasharray: 100 101; }
 .welcome .pb-mark-stem { animation: welcome-draw 0.45s cubic-bezier(0.33, 1, 0.68, 1) 0.35s both; }
-.welcome .pb-mark-ring { animation: welcome-draw 0.6s cubic-bezier(0.33, 1, 0.68, 1) 0.6s both; }
-.welcome .pb-mark-share { animation: welcome-draw 0.4s cubic-bezier(0.33, 1, 0.68, 1) 1.05s both; }
+.welcome .pb-mark-ring { animation: welcome-draw 0.6s cubic-bezier(0.4, 0, 1, 1) 0.6s both; }
+.welcome .pb-mark-share { animation: welcome-draw 0.44s cubic-bezier(0, 0, 0.6, 1) 1.2s both; }
 @keyframes welcome-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
