@@ -5,6 +5,9 @@
  * Pure: no clock reads (the caller passes its zone-aware `today`) and no UI
  * imports. Spending is every negative amount, the same rule as the stats
  * card, so "spent so far" here equals the Spending tile's like-for-like figure.
+ * The one deliberate difference: "so far" stops at today, so a record dated
+ * after today (counted by the tile, which covers the whole calendar window)
+ * is left out until its day comes.
  *
  * Days are aligned by POSITION from each window's first day: day 16 of
  * October sits over day 16 of September, day 40 of Q4 over day 40 of Q3.

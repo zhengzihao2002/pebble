@@ -48,18 +48,19 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
       range.selectNodeContents(totalEl);
       const totalWidth = range.getBoundingClientRect().width;
       // Column width: the widest row's full content (name untruncated, icon,
-      // gaps, amount, the row's own padding), kept between 240 and 340px -
+      // gaps, figure, the row's own padding), kept between 240 and 340px -
       // the CSS column bounds. Parts are found by data attribute rather than
-      // child position, since a row can now also carry a sleeping badge and
-      // sits inside a button.
+      // child position: a row is a button with two lines (name and star over
+      // last4 and the sleeping badge; the figure over "owed").
       let widest = 0;
       accountsRef.current?.querySelectorAll(':scope > li').forEach((li) => {
         const name = li.querySelector<HTMLElement>('[data-acc-name]');
         const amount = li.querySelector<HTMLElement>('[data-acc-amount]');
-        const star = li.querySelector('[data-acc-star]') ? 20 : 0; // the star beside a starred account
-        let extra = 0;
-        li.querySelectorAll<HTMLElement>('[data-acc-extra]').forEach((el) => { extra += el.offsetWidth + 9; });
-        if (name && amount) widest = Math.max(widest, 15 + name.scrollWidth + amount.scrollWidth + 22 + 13 + star + extra);
+        const meta = li.querySelector<HTMLElement>('[data-acc-meta]');
+        const star = li.querySelector('[data-acc-star]') ? 18 : 0; // the star beside a starred account
+        const text = Math.max((name?.scrollWidth ?? 0) + star, meta?.scrollWidth ?? 0);
+        // 15 icon + 2 x 9 gaps + 13 padding.
+        if (name && amount) widest = Math.max(widest, 15 + text + amount.scrollWidth + 18 + 13);
       });
       const col = Math.min(340, Math.max(240, widest));
       const cols = Math.max(1, Math.ceil(accounts.length / 3));
@@ -110,20 +111,33 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
                   onClick={() => onPickAccount(a.id)}
                 >
                   <AccountIcon size={15} aria-hidden="true" style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-                  {/* Account names are USER DATA. */}
-                  <span data-acc-name="" style={{ flex: 1, minWidth: 0, fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {a.name}
-                    {a.last4 && <span className="font-mono-tab" style={{ color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
+                  {/* Two lines: the name (and star) alone on the first, so it
+                      gets the row's width instead of sharing it with the
+                      last4 and the sleeping badge, which sit quietly under
+                      it. A long name used to cut at "Chase Checkin…" beside
+                      empty space; now only a really long one truncates. */}
+                  <span className="pb-txn-acc-text">
+                    <span className="pb-txn-acc-line">
+                      {/* Account names are USER DATA. */}
+                      <span data-acc-name="" className="pb-txn-acc-name">{a.name}</span>
+                      {a.isPreferred && (
+                        <Star data-acc-star="" size={12} fill="var(--gold)" color="var(--gold)" aria-label={d.accounts.preferred} style={{ flexShrink: 0 }} />
+                      )}
+                    </span>
+                    {(a.last4 || a.status === 'hibernated') && (
+                      <span data-acc-meta="" className="pb-txn-acc-meta">
+                        {/* Not money: pb-tnum, so privacy mode leaves it readable
+                            (the Account filter shows it unblurred anyway). */}
+                        {a.last4 && <span className="pb-tnum">····{a.last4}</span>}
+                        {/* SleepingBadge rule: everywhere a hibernated account appears. */}
+                        {a.status === 'hibernated' && <SleepingBadge />}
+                      </span>
+                    )}
                   </span>
-                  {a.isPreferred && (
-                    <Star data-acc-star="" size={12} fill="var(--gold)" color="var(--gold)" aria-label={d.accounts.preferred} style={{ flexShrink: 0 }} />
-                  )}
-                  {/* SleepingBadge rule: everywhere a hibernated account appears. */}
-                  {a.status === 'hibernated' && <span data-acc-extra="" style={{ display: 'inline-flex', flexShrink: 0 }}><SleepingBadge /></span>}
-                  <span data-acc-amount="" className="font-mono-tab" style={{ fontSize: '0.88rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    {owed !== null
-                      ? <>{formatCurrency(owed)} <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.accountsPage.cardOwed}</span></>
-                      : formatCurrency(value)}
+                  {/* Only the figure blurs in privacy mode; "owed" stays readable. */}
+                  <span data-acc-amount="" className="pb-txn-acc-fig">
+                    <span className="font-mono-tab">{formatCurrency(owed !== null ? owed : value)}</span>
+                    {owed !== null && <span className="pb-txn-acc-owed">{d.accountsPage.cardOwed}</span>}
                   </span>
                   <span className="pb-txn-sr">{d.ux.transactions.showStatement}</span>
                 </button>

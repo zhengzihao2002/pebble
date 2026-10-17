@@ -17,13 +17,19 @@
 .pebble-root .pb-dash > [class*="pb-dash-area-"]:not(.pb-dash-area-top) { display: flex; flex-direction: column; }
 .pebble-root .pb-dash > [class*="pb-dash-area-"] > .card { flex: 1; }
 
+/* Pairs are chosen by how tall each card naturally is, so a row's cards
+   share a height without one of them holding a big empty area: Spending pace
+   sits with Where it went (how fast, and on what), and Income vs spending
+   with the variable-length Upcoming list (money in and out, past and coming).
+   Mid widths give the pace chart the full row and pair Upcoming with the
+   stacked ring-and-list of Where it went, which is about as tall. */
 @container content (min-width: 640px) {
   .pebble-root .pb-dash {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       "top top"
-      "pace upcoming"
-      "where where"
+      "pace pace"
+      "upcoming where"
       "flow flow"
       "attention recent"
       "goals goals";
@@ -34,10 +40,23 @@
     grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-areas:
       "top top top top top top top top top top top top"
-      "flow flow flow flow flow flow flow where where where where where"
-      "pace pace pace pace pace pace upcoming upcoming upcoming upcoming upcoming upcoming"
+      "pace pace pace pace pace pace pace where where where where where"
+      "flow flow flow flow flow flow flow upcoming upcoming upcoming upcoming upcoming"
       "attention attention attention attention goals goals goals goals recent recent recent recent";
   }
+  /* Wide rows share a height with a taller partner (Where it went, the
+     Upcoming list), so the charts may grow further before the cap leaves
+     a blank band above their facts rows. */
+  .pebble-root .pb-dash .pb-dash-chart-box { max-height: 420px; }
+  .pebble-root .pb-dash .pb-dash-chart-box.is-flow { max-height: 540px; }
+  /* The bottom row matches Recent activity's height: the budget and goal
+     lists spread down the card instead of leaving its lower part empty. */
+  .pebble-root .pb-dash-area-attention .pb-dash-budgets { flex: 1; justify-content: space-between; }
+  .pebble-root .pb-dash-area-goals .pb-dash-goal-list { flex: 1; align-content: space-between; }
+  /* A third of the row is a tall, narrow card: each goal stacks ring over
+     text (as in the wide card), which fills it without big empty bands. */
+  .pebble-root .pb-dash-area-goals .pb-dash-goal { flex-direction: column; text-align: center; gap: 0.55rem; }
+  .pebble-root .pb-dash-area-goals .pb-dash-goal-text { align-items: center; }
 }
 @container content (min-width: 640px) {
   .pebble-root .pb-dash-area-top { grid-area: top; }
@@ -68,9 +87,11 @@
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.pebble-root .pb-dash-more { align-self: flex-start; min-height: 2rem; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
+.pebble-root .pb-dash-more { align-self: flex-start; min-height: 2rem; padding: 0; border: 0; background: none; cursor: pointer; font-family: inherit; font-weight: 600; }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-more { min-height: 44px; }
+  /* Card header links ("See all"): text-sized otherwise. */
+  .pebble-root .pb-dash .pb-sec-head-actions .link-btn { min-height: 44px; display: inline-flex; align-items: center; }
 }
 
 /* Legends: dots for series, short strokes for lines. Text stays in ink. */
@@ -93,17 +114,34 @@
 /* ---------- Hero: figure | trajectory | accounts ---------- */
 .pebble-root .pb-dash .pb-hero { margin-bottom: 0; grid-template-areas: "main" "trend" "acct"; }
 .pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; }
-.pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 56px; align-self: end; }
+.pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 40px; align-self: end; }
 .pebble-root .pb-dash .pb-hero-accounts { grid-area: acct; }
 @container content (min-width: 640px) {
   .pebble-root .pb-dash .pb-hero { grid-template-areas: "main acct" "trend acct"; row-gap: 1rem; }
+  /* One visible account hides the list (it would repeat the total): no
+     empty accounts column then, the trajectory takes the room. */
+  .pebble-root .pb-dash .pb-hero:not(:has(> .pb-hero-accounts)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-areas: "main trend";
+  }
 }
 @container content (min-width: 900px) {
   .pebble-root .pb-dash .pb-hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 17rem);
     grid-template-areas: "main trend acct";
   }
+  .pebble-root .pb-dash .pb-hero:not(:has(> .pb-hero-accounts)) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-areas: "main trend";
+  }
   .pebble-root .pb-dash-hero-trend { align-self: center; }
+}
+/* Phone: the hero is the first screen, and the period's four figures should
+   start above the fold - the "am I on track" signal. So a tighter hero, and
+   the change chip and its sentence share one line. */
+@container content (max-width: 639px) {
+  .pebble-root .pb-dash .pb-hero { padding: 1.25rem; gap: 0.9rem; }
+  .pebble-root .pb-dash-hero-change { flex-wrap: nowrap; margin-top: 0.55rem; }
+  .pebble-root .pb-dash-hero-change > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pebble-root .pb-dash-hero-alloc { margin-top: 0.8rem; }
 }
 .pebble-root .pb-dash-hero-change {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem;
@@ -168,12 +206,14 @@
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-dash-select select:hover { border-color: color-mix(in srgb, var(--pine) 40%, var(--line)); }
+.pebble-root .pb-dash-select-sizer { display: none; }
 .pebble-root .pb-dash-select > svg { position: absolute; right: 0.75rem; pointer-events: none; color: var(--ink-soft); }
 .pebble-root .pb-dash-stepper {
   display: inline-flex; align-items: center; height: 2.5rem; min-width: 0;
   border: 1px solid var(--line); border-radius: 999px;
   background-color: color-mix(in srgb, var(--ink) 4%, var(--mist));
 }
+.pebble-root .pb-dash-select.is-period { align-self: stretch; }
 .pebble-root .pb-dash-select.is-period select {
   height: 100%; padding: 0 0.4rem; border: 0; border-radius: 0.5rem; background: transparent; text-align: center; text-align-last: center;
 }
@@ -190,9 +230,23 @@
   .pebble-root .pb-dash-select select, .pebble-root .pb-dash-stepper { height: 2.75rem; }
   .pebble-root .pb-dash-step { width: 2.75rem; }
 }
+/* Phone: one row - the mode select as wide as its own content, the stepper
+   taking the rest. A native select would otherwise size to its longest
+   option ("Last 12 months") and squeeze the period name; if the two cannot
+   share the row (very large text), the stepper wraps to a full row of its
+   own, so the period name is always whole. */
 @container content (max-width: 639px) {
-  .pebble-root .pb-dash-period { width: 100%; flex-wrap: nowrap; }
-  .pebble-root .pb-dash-stepper { flex: 1; }
+  .pebble-root .pb-dash-period { width: 100%; flex-wrap: wrap; }
+  .pebble-root .pb-dash-select.is-mode { flex: 0 0 auto; display: inline-grid; }
+  /* The select and an invisible copy of its chosen label share one grid
+     cell; width 0 + min-width 100% keeps the select's own (longest-option)
+     width out of the sizing, so the label decides it. */
+  .pebble-root .pb-dash-select.is-mode > select { grid-area: 1 / 1; width: 0; min-width: 100%; }
+  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer {
+    display: block; grid-area: 1 / 1; visibility: hidden; height: 0; overflow: hidden; white-space: nowrap;
+    padding: 0 2rem 0 0.95rem; border: 1px solid transparent; font-size: 0.84rem; font-weight: 600;
+  }
+  .pebble-root .pb-dash-stepper { flex: 1 1 0; min-width: 10rem; }
   .pebble-root .pb-dash-select.is-period { flex: 1; }
   .pebble-root .pb-dash-select.is-period select { width: 100%; }
 }
@@ -211,6 +265,18 @@
 
 /* ---------- Charts ---------- */
 .pebble-root .pb-dash-flow, .pebble-root .pb-dash-pace { min-height: 0; }
+/* A chart grows with its card (cards in a grid row share a height) but only
+   so far: past the cap the card keeps the extra room below, and its footer
+   (pace facts, legend) stays at the bottom, level with its row partner's. */
+.pebble-root .pb-dash-chart-box { position: relative; flex: 1 1 auto; min-height: 200px; max-height: 340px; }
+.pebble-root .pb-dash-chart-box.is-flow { min-height: 220px; max-height: 460px; }
+.pebble-root .pb-dash-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: 0.75rem 1rem;
+  margin: auto 0 0; padding-top: 0.85rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-dash-fact { min-width: 0; }
+.pebble-root .pb-dash-fact dt { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-dash-fact dd { margin: 0.15rem 0 0; font-size: 0.95rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .pebble-root .pb-dash-pace-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; margin: -0.3rem 0 0; font-size: 0.9rem; color: var(--ink); }
 .pebble-root .pb-dash-pace-vs { font-size: 0.82rem; font-weight: 500; }
 
@@ -245,6 +311,7 @@
 .pebble-root .pb-dash-pager-btn { width: 32px; height: 32px; border-radius: 50%; }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-pager-btn { width: 44px; height: 44px; }
+  .pebble-root .pb-dash-where-row { min-height: 44px; }
 }
 @container pb-where (max-width: 380px) {
   /* A narrow card drops the change chip before squeezing the names. */
@@ -253,8 +320,9 @@
 }
 
 /* ---------- Day-grouped lists (Upcoming, Recent activity) ---------- */
+.pebble-root .pb-dash-agenda { display: flex; flex-direction: column; min-width: 0; }
 .pebble-root .pb-dash-day { min-width: 0; }
-.pebble-root .pb-dash-day + .pb-dash-day { margin-top: 0.35rem; }
+.pebble-root .pb-dash-day + .pb-dash-day, .pebble-root .pb-dash-agenda > .collapsible-rows .pb-dash-day:first-child:has(> .pb-dash-day-head) { margin-top: 0.6rem; }
 .pebble-root .pb-dash-day-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
   padding: 0.3rem 0; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
@@ -273,11 +341,22 @@
 .pebble-root .pb-dash-row-amount { font-size: 0.87rem; font-weight: 600; white-space: nowrap; }
 .pebble-root .pb-dash-payoff { padding: 0.3rem 0.7rem; font-size: 0.75rem; flex: none; }
 @media (pointer: coarse) {
-  .pebble-root .pb-dash-payoff { min-height: 2.25rem; }
+  .pebble-root .pb-dash-payoff { min-height: 44px; }
+}
+/* A narrow card: the card row wraps, so the Pay off pill takes a line of
+   its own (right-aligned) rather than squeezing the card's name. */
+@container pb-upcoming (max-width: 380px) {
+  .pebble-root .pb-dash-up-row.is-card { flex-wrap: wrap; row-gap: 0.35rem; }
+  /* The name takes flex-basis 0, so nothing would ever wrap on its own: a
+     full-width break after the amount sends the pill to the next line. */
+  .pebble-root .pb-dash-up-row.is-card::after { content: ''; order: 1; flex-basis: 100%; height: 0; }
+  .pebble-root .pb-dash-up-row.is-card > .pb-dash-payoff { order: 2; margin-left: auto; }
 }
 
 /* Recent activity rows reach the card's edge on hover, with the content still aligned. */
 .pebble-root .pb-dash-recent .pb-dash-rows { --pb-inset: calc(0.6rem + 36px + 0.85rem); }
+/* The rows are widened by 0.6rem each side for the hover band; the hairline stays in the content box. */
+.pebble-root .pb-dash-recent .pb-dash-rows > * + *::before { right: 0.6rem; }
 .pebble-root .pb-dash-recent .txn-row-interactive {
   margin: 0 -0.6rem; padding-left: 0.6rem !important; padding-right: 0.6rem !important; border-radius: 0.7rem;
 }
@@ -287,8 +366,22 @@
 /* Upcoming: the two-week rail. 7 x 2 on a narrow card, one row of 14 when wide. */
 .pebble-root .pb-dash-upcoming { container: pb-upcoming / inline-size; }
 .pebble-root .pb-dash-rail { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+/* Touch: 44px cells. A tighter gap and a few px into the card's padding let
+   seven of them fit across a 390px phone. */
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-rail { gap: 2px; margin-inline: -4px; }
+  .pebble-root .pb-dash-rail-day { min-height: 44px; }
+}
 @container pb-upcoming (min-width: 640px) {
   .pebble-root .pb-dash-rail { grid-template-columns: repeat(14, minmax(0, 1fr)); }
+}
+/* With a mouse, a narrower card already fits the fortnight on one line
+   (cells of ~26px); touch keeps the 7 x 2 grid and its larger targets. */
+@media (pointer: fine) {
+  @container pb-upcoming (min-width: 380px) {
+    .pebble-root .pb-dash-rail { grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; }
+    .pebble-root .pb-dash-rail .pb-dash-rail-n { width: 1.45rem; height: 1.45rem; font-size: 0.78rem; }
+  }
 }
 .pebble-root .pb-dash-rail-day {
   display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; min-height: 3.5rem;
@@ -333,6 +426,9 @@
 }
 /* Invisible, wider hit area: a 2px line is too thin to hover or tap. */
 .pebble-root .pb-dash-budget-marker::before { content: ''; position: absolute; top: -6px; bottom: -6px; left: -10px; right: -10px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-budget-marker::before { top: -14px; bottom: -14px; left: -22px; right: -22px; }
+}
 .pebble-root .pb-dash-budget-marker:focus-visible { box-shadow: 0 0 0 2px var(--pine); }
 .pebble-root .pb-dash-budget-tip {
   position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
@@ -340,6 +436,10 @@
   background-color: var(--mist); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow);
   font-size: var(--pb-text-sm); opacity: 0; transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
 }
+/* Near either end of the bar the tip anchors to that side, so it never runs
+   past the card (BudgetRow sets is-start / is-end from the year fraction). */
+.pebble-root .pb-dash-budget-marker.is-end .pb-dash-budget-tip { left: auto; right: -6px; transform: none; }
+.pebble-root .pb-dash-budget-marker.is-start .pb-dash-budget-tip { left: -6px; transform: none; }
 .pebble-root .pb-dash-budget-marker:hover, .pebble-root .pb-dash-budget-marker:focus-visible { z-index: 6; }
 .pebble-root .pb-dash-budget-marker:hover .pb-dash-budget-tip,
 .pebble-root .pb-dash-budget-marker:focus-visible .pb-dash-budget-tip { opacity: 1; }
@@ -356,6 +456,7 @@
   .pebble-root .pb-dash-goal-text { align-items: center; }
 }
 .pebble-root .pb-dash-goal-ring { display: inline-flex; flex: none; border-radius: 50%; }
+.pebble-root .pb-dash-goal-ring-fill { display: inline-flex; border-radius: 50%; }
 /* Goals claim more than the balance: a thin wine outline ties the rings to the notice above. */
 .pebble-root .pb-dash-goal-ring.is-over { box-shadow: 0 0 0 2px var(--mist), 0 0 0 3.5px var(--wine); }
 .pebble-root .pb-dash-goal-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

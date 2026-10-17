@@ -1,1 +1,396 @@
-/* Redesign: transaction dialogs (detail, CSV import, undo). Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: transaction dialogs (detail, CSV import, undo). Loaded after globals.css and kit.css (src/app/layout.tsx).
+   Theme tokens only; dialogs sit outside the content container, so their
+   responsive rules use the card's own pb-modal container. */
+
+/* ============================================================
+   Transaction detail: a receipt
+   ============================================================ */
+.pebble-root .pb-tdlg-head { display: flex; align-items: center; gap: 0.85rem; }
+.pebble-root .pb-tdlg-title {
+  flex: 1; min-width: 0; margin: 0;
+  font-size: 1.22rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere;
+}
+/* Category tile: the category's hue at a soft tint, with a quiet highlight
+   at the top-left. One formula from one hue, so it follows every theme and
+   the light/dark fade (no separate dark rule). */
+.pebble-root .pb-tdlg-tile {
+  flex: none; display: grid; place-items: center;
+  width: 56px; height: 56px; border-radius: 1.05rem;
+  background:
+    radial-gradient(120% 120% at 28% 18%, color-mix(in srgb, var(--pb-tdlg-hue) 24%, transparent), transparent 62%),
+    color-mix(in srgb, var(--pb-tdlg-hue) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pb-tdlg-hue) 16%, transparent);
+}
+
+.pebble-root .pb-tdlg-view { display: flex; flex-direction: column; gap: 1rem; }
+
+/* The receipt block: amount, description body, chips - a soft tinted band,
+   not a card inside the card. */
+.pebble-root .pb-tdlg-receipt {
+  padding: 1.35rem 1.1rem 1.15rem; border-radius: 1.1rem;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+  text-align: center;
+}
+.pebble-root .pb-tdlg-hero { text-align: center; }
+.pebble-root .pb-tdlg-card .pb-modal-body > .pb-tdlg-hero { margin-bottom: 1.1rem; }
+.pebble-root .pb-tdlg-amount {
+  margin: 0; font-size: 2.4rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.pebble-root .pb-tdlg-cents { font-size: 0.5em; vertical-align: 0.82em; margin-left: 0.04em; letter-spacing: 0; }
+.pebble-root .pb-tdlg-desc {
+  margin: 0.55rem auto 0; max-width: 30rem;
+  font-size: 0.82rem; line-height: 1.5; color: var(--ink-soft); white-space: pre-line;
+}
+.pebble-root .pb-tdlg-chips {
+  list-style: none; margin: 0.95rem 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem;
+}
+.pebble-root .pb-tdlg-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; max-width: 100%;
+  padding: 0.28rem 0.7rem 0.28rem 0.6rem; border-radius: 999px;
+  background-color: var(--mist); border: 1px solid var(--line);
+  font-size: 0.76rem; font-weight: 500; color: var(--ink-soft);
+}
+.pebble-root .pb-tdlg-chip > svg { flex: none; }
+.pebble-root .pb-tdlg-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-tdlg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+
+/* Gross -> net: take-home in pine, deductions hatched in a soft wine. */
+.pebble-root .pb-tdlg-net { display: flex; flex-direction: column; gap: 0.5rem; padding: 0 0.15rem; }
+.pebble-root .pb-tdlg-net-track {
+  display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden;
+}
+.pebble-root .pb-tdlg-net-seg { flex-basis: 0; min-width: 4px; background-color: var(--pine); }
+.pebble-root .pb-tdlg-net-ded {
+  flex-basis: 0; min-width: 4px;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 42%, transparent) 0 2px, transparent 2px 5px),
+    color-mix(in srgb, var(--wine) 12%, transparent);
+}
+.pebble-root .pb-tdlg-net-legend {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem;
+  font-size: 0.76rem; color: var(--ink-soft);
+}
+.pebble-root .pb-tdlg-net-legend > span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-tdlg-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.pebble-root .pb-tdlg-key-net { background-color: var(--pine); }
+.pebble-root .pb-tdlg-key-ded {
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 50%, transparent) 0 2px, transparent 2px 4px),
+    color-mix(in srgb, var(--wine) 12%, transparent);
+}
+
+/* Balance strip: the record's own account, before -> after. */
+.pebble-root .pb-tdlg-label {
+  margin: 0 0 0.45rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.pebble-root .pb-tdlg-balance { padding: 0 0.15rem; }
+.pebble-root .pb-tdlg-balance-row {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
+}
+.pebble-root .pb-tdlg-balance-acc {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1 1 8rem;
+  font-size: 0.86rem; font-weight: 500; color: var(--ink);
+}
+.pebble-root .pb-tdlg-balance-acc > svg { flex: none; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-balance-move { display: inline-flex; align-items: center; gap: 0.65rem; flex: none; }
+.pebble-root .pb-tdlg-balance-fig {
+  display: inline-flex; flex-direction: column; align-items: flex-end; gap: 0.05rem;
+  font-size: 0.86rem; color: var(--ink-soft); line-height: 1.25; white-space: nowrap;
+}
+.pebble-root .pb-tdlg-balance-fig:first-child { align-items: flex-start; }
+.pebble-root .pb-tdlg-balance-cap { font-size: 0.66rem; color: var(--ink-faint); letter-spacing: 0.02em; }
+.pebble-root .pb-tdlg-strong { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-tdlg-total { margin: 0.45rem 0 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-slope { display: inline-flex; flex: none; }
+.pebble-root .pb-tdlg-slope svg { display: block; overflow: visible; }
+.pebble-root .pb-tdlg-slope line { stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pebble-root .pb-tdlg-slope circle { fill: currentColor; stroke: var(--mist); stroke-width: 1.5; }
+.pebble-root .pb-tdlg-slope circle.pb-tdlg-slope-from { fill: var(--mist); stroke: currentColor; }
+.pebble-root .pb-tdlg-slope-up { color: var(--pine); }
+.pebble-root .pb-tdlg-slope-down { color: var(--wine); }
+.pebble-root .pb-tdlg-slope-flat { color: var(--ink-faint); }
+
+/* Every detail row as one inset grouped list. */
+.pebble-root .pb-tdlg-rows {
+  margin: 0; padding: 0.2rem 1rem; border-radius: 1rem;
+  border: 1px solid var(--line);
+}
+.pebble-root .pb-tdlg-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  padding: 0.62rem 0; font-size: 0.85rem;
+}
+.pebble-root .pb-tdlg-row + .pb-tdlg-row { border-top: 1px solid var(--line); }
+.pebble-root .pb-tdlg-row dt { color: var(--ink-soft); flex: none; }
+.pebble-root .pb-tdlg-row dd { margin: 0; font-weight: 500; text-align: right; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.pebble-root .pb-tdlg-note { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--ink-soft); }
+
+/* Edit form section labels (Amount / Details / Where & when). */
+.pebble-root .pb-tdlg-section {
+  margin: 0.15rem 0 -0.55rem; padding-top: 0.15rem;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.pebble-root .pb-tdlg-section:not(:first-child) { padding-top: 0.9rem; border-top: 1px solid var(--line); }
+
+/* Phone sheet / narrow card: a compact hero. */
+@container pb-modal (max-width: 480px) {
+  .pebble-root .pb-tdlg-tile { width: 44px; height: 44px; border-radius: 0.85rem; }
+  .pebble-root .pb-tdlg-tile > svg { width: 20px; height: 20px; }
+  .pebble-root .pb-tdlg-title { font-size: 1.08rem; }
+  .pebble-root .pb-tdlg-amount { font-size: 2rem; }
+  .pebble-root .pb-tdlg-receipt { padding: 1.1rem 0.85rem 1rem; }
+  .pebble-root .pb-tdlg-rows { padding: 0.1rem 0.85rem; }
+  /* The date row below already says it; three lines of chips is noise. */
+  .pebble-root .pb-tdlg-chip-date { display: none; }
+}
+
+/* ============================================================
+   Undo bar: the named line truncates only the name.
+   ============================================================ */
+.pebble-root .pb-tdlg-undo-text {
+  flex: 1; min-width: 0; display: flex; align-items: baseline; white-space: nowrap; overflow: hidden;
+}
+.pebble-root .pb-tdlg-undo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+/* Visually hidden, still read and still focusable (the file input). */
+.pebble-root .pb-tdlg-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ============================================================
+   CSV import: a guided three-step wizard
+   ============================================================ */
+/* Stepper in the dialog head. */
+.pebble-root .pb-tdlg-steps { display: flex; flex-direction: column; gap: 0.6rem; }
+.pebble-root .pb-tdlg-steps ol {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; align-items: center; gap: 0.35rem 1.1rem; flex-wrap: wrap;
+}
+.pebble-root .pb-tdlg-step {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-size: 0.8rem; font-weight: 500; color: var(--ink-faint);
+}
+.pebble-root .pb-tdlg-step-dot {
+  display: grid; place-items: center; flex: none; width: 1.4rem; height: 1.4rem; border-radius: 50%;
+  font-size: 0.72rem; font-weight: 700;
+  border: 1.5px solid var(--line); color: var(--ink-faint);
+  transition: background-color var(--pb-dur-std) var(--pb-ease-out), border-color var(--pb-dur-std) var(--pb-ease-out), color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-tdlg-step-current { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-tdlg-step-current .pb-tdlg-step-dot { background-color: var(--pine); border-color: var(--pine); color: var(--paper); }
+.pebble-root .pb-tdlg-step-done { color: var(--ink-soft); }
+.pebble-root .pb-tdlg-step-done .pb-tdlg-step-dot {
+  border-color: color-mix(in srgb, var(--pine) 45%, transparent); color: var(--pine);
+  background-color: color-mix(in srgb, var(--pine) 10%, transparent);
+}
+.pebble-root .pb-tdlg-steps-bar {
+  position: relative; display: block; height: 2px; border-radius: 2px; overflow: hidden;
+  background-color: var(--line);
+}
+.pebble-root .pb-tdlg-steps-bar > span {
+  position: absolute; inset: 0; transform-origin: left center; border-radius: inherit;
+  background-color: var(--pine);
+  transition: transform var(--pb-dur-emph) var(--pb-ease-out);
+}
+
+/* File step: drop zone (also the picker). */
+.pebble-root .pb-tdlg-file { display: flex; flex-direction: column; gap: 0.75rem; }
+.pebble-root .pb-tdlg-drop {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem;
+  min-height: 13rem; padding: 1.75rem 1.25rem; border-radius: 1.25rem; text-align: center; cursor: pointer;
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+  background-color: color-mix(in srgb, var(--ink) 2.5%, transparent);
+  transition: border-color var(--pb-dur-std) var(--pb-ease-out), background-color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-tdlg-drop:hover { border-color: color-mix(in srgb, var(--pine) 55%, transparent); }
+.pebble-root .pb-tdlg-drop:focus-within { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-tdlg-drop-over {
+  border-color: var(--pine); border-style: solid;
+  background-color: color-mix(in srgb, var(--pine) 8%, transparent);
+}
+.pebble-root .pb-tdlg-drop-icon {
+  display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 1rem; margin-bottom: 0.35rem;
+  color: var(--pine);
+  background:
+    radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--pine) 22%, transparent), transparent 70%),
+    color-mix(in srgb, var(--pine) 9%, var(--mist));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 18%, transparent);
+  transition: transform var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-tdlg-drop-over .pb-tdlg-drop-icon { transform: translateY(-3px); }
+.pebble-root .pb-tdlg-drop-title { font-size: 0.98rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-tdlg-drop-or { font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-drop-btn {
+  margin-top: 0.6rem; display: inline-flex; align-items: center; gap: 8px;
+  padding: 0.6rem 1.1rem; pointer-events: none;
+}
+.pebble-root .pb-tdlg-file-hint {
+  display: flex; align-items: flex-start; gap: 0.5rem; margin: 0;
+  font-size: 0.8rem; line-height: 1.5; color: var(--ink-soft);
+}
+.pebble-root .pb-tdlg-file-hint > svg { flex: none; margin-top: 0.22rem; color: var(--ink-faint); }
+/* Touch: nothing to drop onto; the zone is a large tap target instead. */
+@media (pointer: coarse) {
+  .pebble-root .pb-tdlg-drop { min-height: 10rem; }
+  .pebble-root .pb-tdlg-drop-title, .pebble-root .pb-tdlg-drop-or { display: none; }
+  .pebble-root .pb-tdlg-drop-btn { margin-top: 0.25rem; min-height: 44px; }
+}
+
+/* Columns step: two labelled groups, then the live preview. */
+.pebble-root .pb-tdlg-map { display: flex; flex-direction: column; gap: 1.15rem; }
+.pebble-root .pb-tdlg-group { margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+.pebble-root .pb-tdlg-group + .pb-tdlg-group { padding-top: 1.1rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-tdlg-group > legend { padding: 0; float: left; width: 100%; margin-bottom: 0.1rem; }
+.pebble-root .pb-tdlg-group > legend + * { clear: both; }
+.pebble-root .pb-tdlg-check {
+  display: flex; align-items: center; gap: 0.5rem; align-self: end; padding-bottom: 0.5rem;
+  font-size: 0.84rem; cursor: pointer; color: var(--ink);
+}
+.pebble-root .pb-tdlg-hint { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--ink-soft); }
+
+.pebble-root .pb-tdlg-colprev {
+  display: flex; flex-direction: column; gap: 1rem;
+  padding: 1rem 1rem 1.05rem; border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+.pebble-root .pb-tdlg-colprev-empty { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-colprev-hint { margin: 0.45rem 0 0; font-size: 0.72rem; color: var(--ink-faint); }
+.pebble-root .pb-tdlg-read { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.8rem; }
+.pebble-root .pb-tdlg-read th {
+  text-align: left; font-size: 0.68rem; font-weight: 600; color: var(--ink-faint);
+  padding: 0 0.5rem 0.35rem 0; border-bottom: 1px solid var(--line);
+}
+.pebble-root .pb-tdlg-read th:first-child { width: 7.2rem; }
+.pebble-root .pb-tdlg-read th:last-child { width: 6.5rem; }
+.pebble-root .pb-tdlg-read td {
+  padding: 0.45rem 0.5rem 0.45rem 0; color: var(--ink); vertical-align: baseline;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.pebble-root .pb-tdlg-read tr:last-child td { border-bottom: 0; }
+.pebble-root .pb-tdlg-read .pb-tdlg-num { text-align: right; padding-right: 0; }
+.pebble-root .pb-tdlg-read-desc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-tdlg-bad {
+  color: var(--wine); text-decoration: underline wavy color-mix(in srgb, var(--wine) 55%, transparent);
+  text-underline-offset: 3px;
+}
+.pebble-root .pb-tdlg-raw {
+  overflow-x: auto; overscroll-behavior-x: contain; border-radius: 0.7rem;
+  border: 1px solid var(--line); background-color: var(--mist);
+}
+.pebble-root .pb-tdlg-raw:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-tdlg-raw table { border-collapse: collapse; font-size: 0.76rem; min-width: 100%; }
+.pebble-root .pb-tdlg-raw th, .pebble-root .pb-tdlg-raw td {
+  padding: 0.4rem 0.7rem; text-align: left; white-space: nowrap; max-width: 14rem;
+  overflow: hidden; text-overflow: ellipsis; vertical-align: top;
+}
+.pebble-root .pb-tdlg-raw th { border-bottom: 1px solid var(--line); font-weight: 500; }
+.pebble-root .pb-tdlg-raw td { color: var(--ink-soft); }
+.pebble-root .pb-tdlg-raw tr + tr td { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.pebble-root .pb-tdlg-raw .pb-tdlg-raw-mapped { background-color: color-mix(in srgb, var(--pine) 6%, transparent); }
+.pebble-root .pb-tdlg-raw td.pb-tdlg-raw-mapped { color: var(--ink); }
+.pebble-root .pb-tdlg-raw-n { display: block; font-size: 0.66rem; color: var(--ink-faint); }
+.pebble-root .pb-tdlg-raw-name { display: block; margin-top: 0.15rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-tdlg-badge {
+  display: inline-block; margin-top: 0.2rem; padding: 0.05rem 0.45rem; border-radius: 999px;
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, transparent);
+}
+.pebble-root .pb-tdlg-badge-debit { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+
+/* Review step: filter pills, rows with a status chip. */
+.pebble-root .pb-tdlg-filters {
+  display: flex; gap: 0.4rem; margin: 0 0 0.75rem; overflow-x: auto; scrollbar-width: none;
+  padding: 2px; /* focus rings */
+}
+.pebble-root .pb-tdlg-filters::-webkit-scrollbar { display: none; }
+.pebble-root .pb-tdlg-filter {
+  flex: none; padding: 0.32rem 0.8rem; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--line); background-color: transparent; color: var(--ink-soft);
+  font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-tdlg-filter:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 25%, transparent); }
+.pebble-root .pb-tdlg-filter[aria-pressed="true"] {
+  color: var(--pine); border-color: var(--pine); background-color: var(--pine-soft); font-weight: 600;
+}
+.pebble-root .pb-tdlg-filter:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-tdlg-filter-empty { text-align: center; padding: 1.5rem 0 0.5rem; font-size: 0.84rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-filter-empty p { margin: 0 0 0.4rem; }
+
+.pebble-root .pb-tdlg-review { list-style: none; margin: 0; padding: 0; }
+.pebble-root .pb-tdlg-review-row { padding: 0.7rem 0; }
+.pebble-root .pb-tdlg-review-row + .pb-tdlg-review-row { border-top: 1px solid var(--line); }
+.pebble-root .pb-tdlg-review-top { display: flex; align-items: flex-start; gap: 0.6rem; }
+.pebble-root .pb-tdlg-review-check { flex-shrink: 0; margin-top: calc(1.05rem - 7px); }
+.pebble-root .pb-tdlg-review-title {
+  display: block; font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink);
+}
+.pebble-root .pb-tdlg-review-meta { display: block; font-size: 0.74rem; margin-top: 0.1rem; }
+.pebble-root .pb-tdlg-review-end {
+  flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;
+  min-height: 2.1rem; justify-content: center;
+}
+.pebble-root .pb-tdlg-review-amount { font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-tdlg-review-body { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.45rem; padding-left: 1.6rem; }
+.pebble-root .pb-tdlg-review-desc { display: flex; }
+.pebble-root .pb-tdlg-review-add {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--pine); font: inherit; font-size: 0.76rem;
+}
+.pebble-root .pb-tdlg-status {
+  display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;
+  padding: 0.06rem 0.45rem 0.06rem 0.35rem; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 600; line-height: 1.5;
+}
+.pebble-root .pb-tdlg-status-good { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
+.pebble-root .pb-tdlg-status-wait { color: color-mix(in srgb, var(--gold) 70%, var(--ink)); background-color: color-mix(in srgb, var(--gold) 16%, transparent); }
+.pebble-root .pb-tdlg-status-bad { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 11%, transparent); }
+.pebble-root .pb-tdlg-status-quiet { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
+
+/* Phone: one-line rows that unfold. */
+.pebble-root .pb-tdlg-review-compact .pb-tdlg-review-row { padding: 0.6rem 0; }
+.pebble-root .pb-tdlg-review-compact .pb-tdlg-review-top { align-items: center; }
+.pebble-root .pb-tdlg-review-compact .pb-tdlg-review-check { margin-top: 0; }
+.pebble-root .pb-tdlg-review-compact .pb-tdlg-review-end { min-height: 0; gap: 0.2rem; }
+.pebble-root .pb-tdlg-review-compact .pb-tdlg-review-body { padding-left: 0; margin-top: 0.6rem; }
+.pebble-root .pb-tdlg-review-toggle {
+  flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; margin-right: -0.4rem;
+  border: 0; border-radius: 0.7rem; background: transparent; color: var(--ink-soft); cursor: pointer;
+}
+.pebble-root .pb-tdlg-review-toggle > svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .pb-tdlg-review-toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.pebble-root .pb-tdlg-review-toggle:focus-visible { outline: 2px solid var(--pine); outline-offset: 0; }
+@media (pointer: coarse) {
+  .pebble-root .pb-tdlg-review-toggle { width: 44px; height: 44px; }
+  .pebble-root .pb-tdlg-filter { min-height: 36px; }
+}
+
+/* Foot: before -> after as one thin bar above the figures. */
+.pebble-root .pb-tdlg-delta {
+  display: flex; gap: 2px; height: 6px; border-radius: 999px; overflow: hidden;
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.pebble-root .pb-tdlg-delta > span { flex-basis: 0; min-width: 3px; }
+.pebble-root .pb-tdlg-delta-base { background-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+.pebble-root .pb-tdlg-delta-up { background-color: var(--pine); }
+.pebble-root .pb-tdlg-delta-down {
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 55%, transparent) 0 2px, transparent 2px 4px),
+    color-mix(in srgb, var(--wine) 14%, transparent);
+}
+.pebble-root .pb-tdlg-review-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.15rem 0.5rem; margin-top: 0.1rem; }
+.pebble-root .pb-tdlg-review-line > .pb-tdlg-review-meta { margin-top: 0; }
+@container pb-modal (max-width: 480px) {
+  .pebble-root .pb-tdlg-read th:first-child { width: 4.6rem; }
+  .pebble-root .pb-tdlg-read th:last-child { width: 6.2rem; }
+}
+@container pb-modal (max-width: 480px) {
+  /* The before -> after pair takes its own full-width line under the name. */
+  .pebble-root .pb-tdlg-balance-move { flex: 1 1 100%; justify-content: space-between; }
+}

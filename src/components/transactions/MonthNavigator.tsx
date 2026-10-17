@@ -124,7 +124,20 @@ function MonthStripNavigator({
       strip.scrollTo({ left, behavior: firstPlace.current || reduce ? 'auto' : 'smooth' });
     }
     firstPlace.current = false;
-    const ro = new ResizeObserver(place);
+    // A resize (a Mac window narrowed) can leave the chosen month scrolled out
+    // of the strip, so it is re-centred when it no longer fits in view. Not on
+    // the observer's first call, which arrives straight after observe() and
+    // would cut the smooth scroll above short.
+    let firstObserve = true;
+    const ro = new ResizeObserver(() => {
+      place();
+      if (firstObserve) { firstObserve = false; return; }
+      const c = strip.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!c || strip.scrollWidth <= strip.clientWidth) return;
+      if (c.offsetLeft < strip.scrollLeft || c.offsetLeft + c.offsetWidth > strip.scrollLeft + strip.clientWidth) {
+        strip.scrollLeft = c.offsetLeft - (strip.clientWidth - c.offsetWidth) / 2;
+      }
+    });
     ro.observe(strip);
     const id = requestAnimationFrame(() => setReady(true));
     return () => { ro.disconnect(); cancelAnimationFrame(id); };

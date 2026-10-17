@@ -3,13 +3,16 @@
 import { useUndoDelete } from '@/components/shared/UndoDelete';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, Briefcase, Coins, Pencil, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Banknote, Briefcase, CalendarDays, Coins, CreditCard, Hash, Landmark, Pencil, SlidersHorizontal, Trash2, Wallet } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
+import { CloseSoon } from '@/components/shared/CloseSoon';
+import type { StatementEntry } from '@/components/transactions/StatementList';
+import { BalanceFigure } from '@/components/transactions/BalanceFigure';
 import type { CategoryMeta, LedgerRecord } from '@/types';
-import { formatCurrency, formatFullDate, formatLongDate } from '@/lib/format';
+import { formatCurrency, formatFullDate, formatLongDate, splitCents } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction, getAccountsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
@@ -29,6 +32,12 @@ interface TransactionDetailModalProps {
   txn: LedgerRecord | null;
   onClose: () => void;
   categoryMeta: CategoryMeta;
+  /**
+   * Optional: where the record sits in the running balance. The Transactions
+   * page passes the statement entry it opened; Reports, Insights and the
+   * command palette pass nothing, and the receipt's Balance strip stays hidden.
+   */
+  ledgerEntry?: StatementEntry | null;
 }
 
 const FORM_ID = 'txn-edit-form';
@@ -48,17 +57,21 @@ const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, to
 
 type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 
-/**
- * Closes the dialog once the render that made it busy-free has fully settled.
- * ModalFrame reads `busy` through a ref that is refreshed in an effect, so
- * calling close() in the same tick as setBusy(false) would be ignored.
- */
-function CloseSoon({ close }: { close: () => void }) {
-  useEffect(() => {
-    const id = window.setTimeout(close, 0);
-    return () => window.clearTimeout(id);
-  }, [close]);
-  return null;
+// The before -> after slope in the Balance strip: two points, no scale. It
+// carries no figure (both sit beside it as text), only the direction.
+function BalanceSlope({ before, after }: { before: number; after: number }) {
+  const dir = after > before ? 'up' : after < before ? 'down' : 'flat';
+  const y0 = dir === 'up' ? 13 : dir === 'down' ? 3 : 8;
+  const y1 = dir === 'up' ? 3 : dir === 'down' ? 13 : 8;
+  return (
+    <span className={`pb-chart-fade pb-tdlg-slope pb-tdlg-slope-${dir}`} aria-hidden="true">
+      <svg viewBox="0 0 40 16" width="40" height="16">
+        <line x1="4" y1={y0} x2="36" y2={y1} />
+        <circle cx="4" cy={y0} r="2.2" className="pb-tdlg-slope-from" />
+        <circle cx="36" cy={y1} r="2.6" />
+      </svg>
+    </span>
+  );
 }
 
 /**
@@ -71,10 +84,11 @@ function CloseSoon({ close }: { close: () => void }) {
  * hook can sit after an early return. key={txn.id} remounts the content for
  * a different transaction, so one record's draft never bleeds into another.
  */
-function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta }) {
+function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta; ledgerEntry?: StatementEntry | null }) {
   const deleteLocked = useSafetyLock('deleteTransactions');
   const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
+  const x = d.ux.transactionDialogs;
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,10 +163,10 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
   const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
   const isIncome = !isAdjustment && txn.amount > 0;
   const iconColor = isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)');
-  // No category colour: a faint tint of the soft ink token, never a hex.
-  const iconBg = isIncome
-    ? 'var(--pine-soft)'
-    : (meta ? `${meta.color}20` : 'color-mix(in srgb, var(--ink-soft) 14%, transparent)');
+  // The tile's tint and its soft highlight are mixed from this one hue in
+  // CSS (.pb-tdlg-tile). No category colour: the soft ink token, never a hex.
+  // Adjustments stay neutral.
+  const tileHue = isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)');
 
   // balance_adjustment.amount has no sign CHECK - corrections go both ways -
   // so the figure is coloured by sign rather than always red, matching how
@@ -334,12 +348,24 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
           : await callAction(() => deleteTransactionAction({ id, type }));
         return result.ok ? null : translateActionError(d, locale, result);
       },
+      // Names the record in the undo bar; the bar falls back to its generic
+      // line without it.
+      label: headingText,
     });
     setDeleted(true);
   };
 
   // Each row carries a STABLE key alongside its label, so a language switch
   // does not remount every row.
+  //
+  // Privacy mode blurs only MONEY: words (type, category, tag, account) stay
+  // readable, the date and the deductions percent keep tabular digits through
+  // pb-tnum, and only amount / pay rows carry font-mono-tab. Before the
+  // receipt every value wore font-mono-tab, so privacy mode blurred the words
+  // too while the large amount above them stayed sharp.
+  const MONEY_ROWS = new Set(['amount', 'gross', 'net']);
+  const NUMBER_ROWS = new Set(['date', 'deductions']);
+  const rowValueClass = (key: string) => (MONEY_ROWS.has(key) ? 'font-mono-tab' : NUMBER_ROWS.has(key) ? 'pb-tnum' : undefined);
   const rows: { key: string; label: string; value: string }[] = isAdjustment ? [
     { key: 'type', label: d.txnDetail.rowType, value: d.txn.balanceAdjustment },
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
@@ -392,30 +418,105 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
   );
 
   const accountLabelText = txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod;
+
+  // ---- Receipt (view mode) -----------------------------------------------
+  // The figure is formatCurrency's own output split at the decimal point, so
+  // the cents can sit smaller without the amount ever being reformatted.
+  const amountParts = splitCents(amountText);
+  const ownAccount = accounts.find((a) => a.id === txn.accountId);
+  const AccountIcon = !ownAccount ? Wallet : ownAccount.kind === 'credit' ? CreditCard : ownAccount.kind === 'bank' ? Landmark : Coins;
+  const accountChip = accountName ? (ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName) : '';
+
+  // Standard income only: how much of the pay arrived. Side Cash stores
+  // gross = net, so it has nothing to show.
+  const showNetBar = txn.type === 'income' && !isSideCash && txn.grossAmount > 0 && txn.netAmount >= 0 && txn.netAmount <= txn.grossAmount;
+  const deductionAmount = txn.type === 'income' ? txn.grossAmount - txn.netAmount : 0;
+
+  // The Balance strip needs the entry FOR THIS record, with this record's
+  // own account in it; a stand-in entry (balances {}) shows nothing rather
+  // than a wrong figure. before = after - amount: the record's amount is
+  // signed, so one subtraction serves money in and out.
+  const balanceAfterOwn = ledgerEntry && ledgerEntry.transId === txn.id ? ledgerEntry.balancesAfter[txn.accountId] : undefined;
+  const showBalance = typeof balanceAfterOwn === 'number' && Number.isFinite(balanceAfterOwn);
+  const balanceBeforeOwn = showBalance ? Math.round(((balanceAfterOwn as number) - txn.amount) * 100) / 100 : 0;
+  const owed = ownAccount?.kind === 'credit';
+
   const amountBlock = (
-    <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-      <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, color: amountColor }}>
-        {amountSign}{amountText}
+    <div className="pb-tdlg-hero">
+      <p className="font-display pb-money pb-tdlg-amount" style={{ color: amountColor }}>
+        {amountSign}{amountParts.whole}<span className="pb-tdlg-cents">{amountParts.cents}</span>
       </p>
-      {descRest && (
-        <p style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--ink-soft)', marginTop: '0.35rem', whiteSpace: 'pre-line' }}>{descRest}</p>
+      {descRest && <p className="pb-tdlg-desc">{descRest}</p>}
+    </div>
+  );
+
+  const receipt = (
+    <div className="pb-tdlg-receipt" aria-label={x.receiptLabel} role="group">
+      {amountBlock}
+      <ul className="pb-tdlg-chips">
+        <li className="pb-tdlg-chip">
+          {isAdjustment
+            ? <SlidersHorizontal size={13} aria-hidden="true" />
+            : <span className="pb-tdlg-dot" style={{ backgroundColor: iconColor }} aria-hidden="true" />}
+          <span className="pb-tdlg-chip-text">{isAdjustment ? d.txn.balanceAdjustment : categoryLabel(d, txn.category)}</span>
+        </li>
+        {txn.type === 'expense' && txn.tag && (
+          <li className="pb-tdlg-chip"><Hash size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{txn.tag}</span></li>
+        )}
+        {accountChip && (
+          <li className="pb-tdlg-chip"><AccountIcon size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{accountChip}</span></li>
+        )}
+        <li className="pb-tdlg-chip pb-tdlg-chip-date"><CalendarDays size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text pb-tnum">{formatLongDate(txn.date, locale)}</span></li>
+      </ul>
+    </div>
+  );
+
+  const netBar = showNetBar && txn.type === 'income' && (
+    <div className="pb-tdlg-net">
+      <div className="pb-chart-fade pb-tdlg-net-track" role="img" aria-label={x.grossToNet}>
+        <span className="pb-tdlg-net-seg" style={{ flexGrow: txn.netAmount }} />
+        {deductionAmount > 0 && <span className="pb-tdlg-net-ded" style={{ flexGrow: deductionAmount }} />}
+      </div>
+      <div className="pb-tdlg-net-legend">
+        <span><span className="pb-tdlg-key pb-tdlg-key-net" aria-hidden="true" />{renderTemplate(x.netShare, { amount: <span className="font-mono-tab">{formatCurrency(txn.netAmount)}</span> })}</span>
+        <span><span className="pb-tdlg-key pb-tdlg-key-ded" aria-hidden="true" />{renderTemplate(x.deductionsLine, {
+          amount: <span className="font-mono-tab">{formatCurrency(deductionAmount)}</span>,
+          pct: <span className="pb-tnum">{`${deductionPct(txn.grossAmount, txn.netAmount).toFixed(1)}%`}</span>,
+        })}</span>
+      </div>
+    </div>
+  );
+
+  const balanceStrip = showBalance && (
+    <div className="pb-tdlg-balance">
+      <p className="pb-tdlg-label">{x.balance}</p>
+      <div className="pb-tdlg-balance-row">
+        <span className="pb-tdlg-balance-acc"><AccountIcon size={14} aria-hidden="true" /><span className="pb-tdlg-chip-text">{accountName || '—'}</span></span>
+        <span className="pb-tdlg-balance-move">
+          <span className="pb-tdlg-balance-fig"><span className="pb-tdlg-balance-cap">{x.balanceBefore}</span><BalanceFigure value={balanceBeforeOwn} owed={owed} /></span>
+          <BalanceSlope before={balanceBeforeOwn} after={balanceAfterOwn as number} />
+          <span className="pb-tdlg-balance-fig"><span className="pb-tdlg-balance-cap">{x.balanceAfter}</span><BalanceFigure value={balanceAfterOwn as number} owed={owed} className="pb-tdlg-strong" /></span>
+        </span>
+      </div>
+      {ledgerEntry && (
+        <p className="pb-tdlg-total">{renderTemplate(x.totalAfter, { amount: <span className="font-mono-tab">{formatCurrency(ledgerEntry.totalBalanceAfter)}</span> })}</p>
       )}
     </div>
   );
 
   return (
-    <ModalFrame onClose={onClose} busy={busy} labelledBy="txn-detail-title" maxWidth={600}>
+    <ModalFrame onClose={onClose} busy={busy} labelledBy="txn-detail-title" maxWidth={600} cardClassName="pb-tdlg-card">
       {(close) => (
       <>
         {busy && <LoadingOverlay label={mode === 'confirmDelete' ? d.txnDetail.deletingOverlay : d.txnDetail.savingChanges} />}
 
         {/* HEAD: never scrolls. */}
         <div className="pb-modal-head">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: 40, height: 40, borderRadius: '0.75rem', backgroundColor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <Icon size={20} style={{ color: iconColor }} />
-            </div>
-            <h2 id="txn-detail-title" className="font-display" style={{ flex: 1, minWidth: 0, fontSize: '1.1rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{headingText}</h2>
+          <div className="pb-tdlg-head">
+            <span className="pb-tdlg-tile" style={{ '--pb-tdlg-hue': tileHue } as React.CSSProperties} aria-hidden="true">
+              <Icon size={24} style={{ color: iconColor }} />
+            </span>
+            <h2 id="txn-detail-title" className="font-display pb-tdlg-title">{headingText}</h2>
             <ModalCloseButton onClick={close} disabled={busy} />
           </div>
         </div>
@@ -426,28 +527,33 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
             <SaveSuccess title={success.title} body={success.summary} onDone={close} />
           ) : (
             <>
-              {(mode === 'view' || mode === 'confirmDelete') && amountBlock}
+              {mode === 'confirmDelete' && amountBlock}
 
               {mode === 'view' && (
-                <>
-                  <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="pb-tdlg-view">
+                  {receipt}
+                  {netBar}
+                  {balanceStrip}
+                  {/* Every detail row, with its stable key, as one inset list. */}
+                  <dl className="pb-tdlg-rows">
                     {rows.map((r) => (
-                      <div key={r.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem' }}>
-                        <span style={{ color: 'var(--ink-soft)' }}>{r.label}</span>
-                        <span className="font-mono-tab" style={{ fontWeight: 500, textAlign: 'right' }}>{r.value}</span>
+                      <div key={r.key} className="pb-tdlg-row">
+                        <dt>{r.label}</dt>
+                        <dd className={rowValueClass(r.key)}>{r.value}</dd>
                       </div>
                     ))}
-                  </div>
+                  </dl>
                   {isAdjustment && (
-                    <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '1rem', lineHeight: 1.45 }}>
-                      {d.txnDetail.adjustmentNote}
-                    </p>
+                    <p className="pb-tdlg-note">{d.txnDetail.adjustmentNote}</p>
                   )}
-                </>
+                </div>
               )}
 
               {mode === 'edit' && (
                 <form id={FORM_ID} className="pb-form-grid" onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
+                  {/* An expense's amount field already says "Amount"; income
+                      groups its category tiles and pay fields under it. */}
+                  {txn.type === 'income' && <p className="pb-span-2 pb-tdlg-section">{x.sectionAmount}</p>}
                   {txn.type === 'expense' ? (
                     <label style={labelStyle} className="pb-span-2">
                       {d.txnDetail.rowAmount}
@@ -509,6 +615,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
                     </>
                   )}
 
+                  <p className="pb-span-2 pb-tdlg-section">{x.sectionDetails}</p>
                   <div className="pb-span-2" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <TitleDescriptionFields
                       title={title}
@@ -546,6 +653,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
                     </>
                   )}
 
+                  <p className="pb-span-2 pb-tdlg-section">{x.sectionWhereWhen}</p>
                   <label style={labelStyle}>
                     {d.txnDetail.rowDate}
                     <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
@@ -680,7 +788,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta }: { txn: LedgerR
   );
 }
 
-export function TransactionDetailModal({ txn, onClose, categoryMeta }: TransactionDetailModalProps) {
+export function TransactionDetailModal({ txn, onClose, categoryMeta, ledgerEntry }: TransactionDetailModalProps) {
   if (!txn) return null;
-  return <TransactionDetailContent key={txn.id} txn={txn} onClose={onClose} categoryMeta={categoryMeta} />;
+  return <TransactionDetailContent key={txn.id} txn={txn} onClose={onClose} categoryMeta={categoryMeta} ledgerEntry={ledgerEntry} />;
 }

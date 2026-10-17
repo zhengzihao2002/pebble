@@ -83,6 +83,30 @@
   box-shadow: inset 3px 0 0 var(--pine);
 }
 @media (pointer: coarse) { .pebble-root .pb-txn-acc { min-height: 44px; } }
+/* Two lines per row: the name alone on the first (with the star), last4 and
+   the sleeping badge under it; the figure over "owed" on the right. Every
+   row is the same height, so the three-row columns line up whether or not
+   an account has a last4. */
+.pebble-root .pb-txn-acc { min-height: 2.95rem; }
+.pebble-root .pb-txn-acc-text { display: flex; flex-direction: column; justify-content: center; gap: 1px; flex: 1; min-width: 0; }
+.pebble-root .pb-txn-acc-line { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.pebble-root .pb-txn-acc-name { min-width: 0; font-size: 0.84rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-txn-acc-meta {
+  display: flex; align-items: center; gap: 0.4rem; min-width: 0; white-space: nowrap;
+  font-size: 0.7rem; line-height: 1.2; color: var(--ink-soft);
+}
+.pebble-root .pb-txn-acc-meta .pb-sleep-badge { font-size: 0.62rem; line-height: 1.25; padding: 0 0.35rem 0 0.3rem; }
+.pebble-root .pb-txn-acc-fig {
+  display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
+  font-size: 0.88rem; font-weight: 600; line-height: 1.25; white-space: nowrap;
+}
+.pebble-root .pb-txn-acc-owed { font-weight: 400; font-size: 0.7rem; line-height: 1.2; color: var(--ink-soft); }
+/* Stacked (roughly 1024-1280px Mac windows): two wider columns rather than
+   three of about 220px, so a starred account's name is not cut beside its
+   figure. */
+@container content (min-width: 640px) {
+  .pebble-root .pb-txn-today .pb-txn-expanded #pb-txn-accounts { grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); }
+}
 
 /* ============================================================
    This month: title, timeline strip, balance bridge, five figures.
@@ -240,7 +264,7 @@
   width: 30px; height: 30px; border-radius: 50%; border: none;
   display: inline-flex; align-items: center; justify-content: center;
 }
-@media (pointer: coarse) { .pebble-root .pb-txn-search-clear { width: 40px; height: 40px; right: 2px; } }
+@media (pointer: coarse) { .pebble-root .pb-txn-search-clear { width: 44px; height: 44px; right: 0; } }
 .pebble-root .pb-txn-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-txn-type { flex: none; }
 .pebble-root .pb-txn-account-select { flex: 1 1 11rem; min-width: 0; max-width: 17rem; }
@@ -249,7 +273,7 @@
   .pebble-root .pb-txn-type .pb-seg-btn { flex: 1 1 0; }
   .pebble-root .pb-txn-account-select { max-width: none; }
 }
-@media (pointer: coarse) { .pebble-root .pb-txn-type .pb-seg-btn { min-height: 38px; } }
+@media (pointer: coarse) { .pebble-root .pb-txn-type .pb-seg-btn { min-height: 44px; } }
 /* The lens chip: which account's statement is showing, and the way back. */
 .pebble-root .pb-txn-lens-chip {
   display: inline-flex; align-items: center; gap: 0.15rem; min-width: 0; max-width: 100%;
@@ -264,7 +288,9 @@
   border: 0; background: transparent; color: var(--ink-soft);
 }
 .pebble-root .pb-txn-lens-chip button:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
-@media (pointer: coarse) { .pebble-root .pb-txn-lens-chip button { width: 36px; height: 36px; } }
+/* A full 44px target on touch; the negative margin keeps the chip itself
+   from growing taller. */
+@media (pointer: coarse) { .pebble-root .pb-txn-lens-chip button { width: 44px; height: 44px; margin-block: -6px; } }
 
 /* ============================================================
    Statement card: head, bookends, day groups, ledger rows.
@@ -280,6 +306,7 @@
 /* Import CSV sits in the statement's own heading - an action on the
    statement, set apart from the filters - and never wraps its label. */
 .pebble-root .pb-txn-stmt-head .pill { white-space: nowrap; }
+@media (pointer: coarse) { .pebble-root .pb-txn-stmt-head .pill { min-height: 44px; } }
 
 .pebble-root .pb-txn-bookend {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
@@ -289,21 +316,21 @@
 }
 .pebble-root .pb-txn-bookend > :first-child { color: var(--ink-soft); font-weight: 500; }
 .pebble-root .pb-txn-bookend-foot { border-bottom: 0; }
+/* "owed" beside a card's balance: quiet, and outside the blurred figure. */
+.pebble-root .pb-txn-owed { font-weight: 400; color: var(--ink-soft); }
 
 /* Day header: sticks under the glass header (and under the search bar when
-   that sticks too), on the same glass. z-index stays under the header's 10
-   and the search bar's 6. */
+   that sticks too). Plain mist, not glass: on a band this thin the rows
+   scrolling under a translucent one showed through beside the date. A token,
+   so it still fades between themes. z-index stays under the header's 10 and
+   the search bar's 6. */
 .pebble-root .pb-txn-day { position: relative; scroll-margin-top: calc(var(--pb-header-h) + 0.5rem); }
 .pebble-root .pb-txn-day-head {
   position: sticky; top: var(--pb-header-h); z-index: 4;
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
   padding: 0.5rem 1.1rem; border-bottom: 1px solid var(--line);
   font-size: 0.75rem; color: var(--ink-soft);
-  background-color: color-mix(in srgb, var(--mist) 86%, transparent);
-  -webkit-backdrop-filter: saturate(1.5) blur(14px); backdrop-filter: saturate(1.5) blur(14px);
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .pebble-root .pb-txn-day-head { background-color: var(--mist); }
+  background-color: var(--mist);
 }
 @container pb-txn-col (min-width: 640px) {
   .pebble-root .pb-txn-day-head { top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px)); }
@@ -331,21 +358,26 @@
 @keyframes pb-txn-wash { 0%, 25% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Rows (StatementRow with `ledger`). Two lines on a narrow card... */
-.pebble-root .pb-srow-main { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.1rem; }
-.pebble-root .pb-srow-main[role="button"]:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.6rem; }
-.pebble-root .pb-srow-lead { display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0; }
-.pebble-root .pb-srow-acct,
-.pebble-root .pb-srow-balcell,
-.pebble-root .pb-srow-headrow { display: none; }
-.pebble-root .pb-srow-lensname {
+.pebble-root .pb-txn-srow-main { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.1rem; }
+.pebble-root .pb-txn-srow-main[role="button"]:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.6rem; }
+.pebble-root .pb-txn-srow-lead { display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0; }
+.pebble-root .pb-txn-srow-acct,
+.pebble-root .pb-txn-srow-cat,
+.pebble-root .pb-txn-srow-balcell,
+.pebble-root .pb-txn-srow-headrow { display: none; }
+.pebble-root .pb-txn-srow-lensname {
   display: inline-block; max-width: 7.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  vertical-align: bottom; color: var(--ink-soft);
+  vertical-align: bottom; color: var(--ink-soft); margin-right: 0.3em;
 }
+.pebble-root .pb-txn-srow-lensfig { font-weight: 600; }
+/* The tap-open per-account breakdown, inset like the rows above it. */
+.pebble-root .pb-txn-srow-break { padding: 0 1.1rem 0.8rem; }
 @container pb-txn-stmt (min-width: 480px) {
-  .pebble-root .pb-srow-main,
+  .pebble-root .pb-txn-srow-main,
   .pebble-root .pb-txn-stmt-head,
   .pebble-root .pb-txn-bookend,
   .pebble-root .pb-txn-day-head,
+  .pebble-root .pb-txn-srow-break,
   .pebble-root .pb-txn-sum { padding-inline: 1.5rem; }
 }
 @container pb-txn-stmt (min-width: 560px) {
@@ -356,29 +388,45 @@
    [amount] [balance after], under column headings. Under the lens the
    account column gives way to that account's own balance. */
 @container pb-txn-stmt (min-width: 720px) {
-  .pebble-root .pb-srow-main { display: grid; grid-template-columns: minmax(0, 1fr) 10rem auto; column-gap: 1.25rem; }
-  .pebble-root .pb-srow-main.pb-srow-lens { grid-template-columns: minmax(0, 1fr) auto; }
-  .pebble-root .pb-srow-acct { display: flex; align-items: center; gap: 0.4rem; min-width: 0; font-size: 0.8rem; color: var(--ink-soft); }
-  .pebble-root .pb-srow-acct svg { flex: none; }
-  .pebble-root .pb-srow-acct span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pebble-root .pb-srow-money { display: grid; grid-template-columns: 7.5rem 8rem; column-gap: 1rem; align-items: center; }
-  .pebble-root .pb-srow-lens .pb-srow-money { grid-template-columns: 7.5rem 8.5rem 8rem; }
-  .pebble-root .pb-srow-money > * { margin-top: 0 !important; }
-  .pebble-root .pb-srow-balline { display: none; }
-  .pebble-root .pb-srow-balcell { display: block; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
-  .pebble-root .pb-srow-lensbal { font-size: 0.82rem !important; }
-  .pebble-root .pb-srow-lensname { display: none; }
-  .pebble-root .pb-srow-headrow {
+  .pebble-root .pb-txn-srow-main { display: grid; grid-template-columns: minmax(0, 1fr) 10rem auto; column-gap: 1.25rem; }
+  .pebble-root .pb-txn-srow-main.pb-txn-srow-lens { grid-template-columns: minmax(0, 1fr) auto; }
+  .pebble-root .pb-txn-srow-acct { display: flex; align-items: center; gap: 0.4rem; min-width: 0; font-size: 0.8rem; color: var(--ink-soft); }
+  .pebble-root .pb-txn-srow-acct svg { flex: none; }
+  .pebble-root .pb-txn-srow-acct span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pebble-root .pb-txn-srow-money { display: grid; grid-template-columns: 7.5rem 8rem; column-gap: 1rem; align-items: center; }
+  .pebble-root .pb-txn-srow-lens .pb-txn-srow-money { grid-template-columns: 7.5rem 8.5rem 8rem; }
+  .pebble-root .pb-txn-srow-money > * { margin-top: 0 !important; }
+  .pebble-root .pb-txn-srow-balline { display: none; }
+  .pebble-root .pb-txn-srow-balcell { display: block; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
+  .pebble-root .pb-txn-srow-lensbal { font-size: 0.82rem !important; }
+  .pebble-root .pb-txn-srow-lensname { display: none; }
+  .pebble-root .pb-txn-srow-headrow {
     display: grid; padding-block: 0.55rem; border-bottom: 1px solid var(--line); cursor: default;
     font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
   }
-  .pebble-root .pb-srow-headrow .pb-srow-lead { padding-left: calc(36px + 0.85rem); }
-  .pebble-root .pb-srow-headrow .pb-srow-money { text-align: right; }
-  .pebble-root .pb-srow-headrow .pb-srow-money > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pebble-root .pb-txn-srow-headrow .pb-txn-srow-lead { padding-left: calc(36px + 0.85rem); }
+  .pebble-root .pb-txn-srow-headrow .pb-txn-srow-money { text-align: right; }
+  .pebble-root .pb-txn-srow-headrow .pb-txn-srow-money > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+/* The widest statement (a Mac) also gives the category a column, with its
+   colour dot; the subtitle then drops the category so it is not said twice
+   (a row whose subtitle was only the category becomes one line). */
+@container pb-txn-stmt (min-width: 900px) {
+  .pebble-root .pb-txn-srow-main { grid-template-columns: minmax(0, 1fr) 9.5rem 10rem auto; }
+  .pebble-root .pb-txn-srow-main.pb-txn-srow-lens { grid-template-columns: minmax(0, 1fr) 9.5rem auto; }
+  .pebble-root .pb-txn-srow-cat { display: flex; align-items: center; gap: 0.45rem; min-width: 0; font-size: 0.8rem; color: var(--ink-soft); }
+  .pebble-root .pb-txn-srow-cat > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pebble-root .pb-txn-srow-catdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .pebble-root .pb-txn-srow-main .pb-txn-srow-subcat { display: none; }
+  .pebble-root .pb-txn-srow-main .pb-txn-srow-sub-catonly { display: none; }
+}
+/* Column headings keep the heading type, not the cells' 0.8rem. */
+.pebble-root .pb-txn-srow-headrow .pb-txn-srow-acct,
+.pebble-root .pb-txn-srow-headrow .pb-txn-srow-cat,
+.pebble-root .pb-txn-srow-headrow .pb-txn-srow-lensbal { font-size: inherit !important; color: inherit !important; }
 
 /* Search matches, marked inside the title and subtitle. */
-.pebble-root mark.pb-hit {
+.pebble-root mark.pb-txn-hit {
   background-color: color-mix(in srgb, var(--pine) 22%, transparent); color: inherit;
   border-radius: 3px; padding: 0 1px; margin: 0 -1px;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;

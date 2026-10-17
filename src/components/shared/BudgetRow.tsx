@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 
@@ -36,6 +37,7 @@ interface BudgetRowProps {
  * quiet note instead of a "$X / $0.00" bar that read like a bug.
  */
 export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFraction, status, statusColor, markerTip, markerLabel, note }: BudgetRowProps) {
+  const tipId = useId();
   const over = pct > 100;
   const barColor = over ? 'var(--wine)' : pct > 85 ? 'var(--gold)' : 'var(--pine)';
   return (
@@ -56,11 +58,18 @@ export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFra
               <div className="pb-dash-budget-fill" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: barColor }} />
             </div>
             {yearFraction !== undefined && (
+              // Late in the year the marker nears the right edge, so its tip
+              // anchors to the marker's end instead of centring (and to its
+              // start early on): it never runs past the card on a phone. The
+              // tip is also the marker's description: inside role=img it is
+              // presentational, so aria-describedby is what lets assistive
+              // tech read the expected amount.
               <span
-                className="pb-dash-budget-marker" tabIndex={0} role="img" aria-label={markerLabel}
+                className={`pb-dash-budget-marker${yearFraction > 0.6 ? ' is-end' : yearFraction < 0.4 ? ' is-start' : ''}`}
+                tabIndex={0} role="img" aria-label={markerLabel} aria-describedby={markerTip ? tipId : undefined}
                 style={{ left: `${Math.min(1, Math.max(0, yearFraction)) * 100}%` }}
               >
-                {markerTip && <span className="pb-dash-budget-tip">{markerTip}</span>}
+                {markerTip && <span id={tipId} className="pb-dash-budget-tip">{markerTip}</span>}
               </span>
             )}
           </div>

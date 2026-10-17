@@ -129,9 +129,12 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
   };
 
   // Groups by day; `continues` drops the header when the day carries on from
-  // the rows above (the expanded part of a capped list).
+  // the rows above (the expanded part of a capped list). The header's net
+  // therefore counts the whole day from `filtered`, not just this slice, or a
+  // day straddling the cap would leave its expanded rows out of every total.
+  const netOf = (date: string) => filtered.reduce((s, it) => (it.date === date ? s + it.amount : s), 0);
   const groups = (list: UpcomingItem[], continues?: string) => groupByDay(list, (it) => it.date).map((g) => {
-    const net = g.items.reduce((s, it) => s + it.amount, 0);
+    const net = netOf(g.date);
     return (
       <div key={g.date} className="pb-dash-day">
         {g.date !== continues && (
@@ -201,52 +204,60 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
             </div>
           )}
 
-          {cardsShown.length > 0 && (
-            <div className="pb-dash-day">
-              <div className="pb-dash-day-head"><span>{ux.cardPayments}</span></div>
-              <ul className="pb-dash-rows">
-                {cardsShown.map((s) => {
-                  const lvl = reminderLevel(s);
-                  const overdue = lvl === 'overdue';
-                  const tone = overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)';
-                  return (
-                    <li key={`card-${s.card.id}`} className="pb-dash-up-row">
-                      <span aria-hidden="true" className="pb-dash-tile-icon" style={{ backgroundColor: overdue ? 'color-mix(in srgb, var(--wine) 14%, transparent)' : 'color-mix(in srgb, var(--ink) 8%, transparent)' }}>
-                        <CreditCard size={16} style={{ color: overdue ? 'var(--wine)' : 'var(--ink-soft)' }} />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        {/* Card names are USER DATA. */}
-                        <span className="pb-dash-row-title">
-                          {s.card.name}{s.card.last4 ? ` ····${s.card.last4}` : ''}
+          {/* One block, so the day groups sit at their own spacing rather
+              than the card's wider gap between sections. */}
+          <div className="pb-dash-agenda">
+            {cardsShown.length > 0 && (
+              <div className="pb-dash-day">
+                <div className="pb-dash-day-head"><span>{ux.cardPayments}</span></div>
+                <ul className="pb-dash-rows">
+                  {cardsShown.map((s) => {
+                    const lvl = reminderLevel(s);
+                    const overdue = lvl === 'overdue';
+                    const tone = overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)';
+                    return (
+                      <li key={`card-${s.card.id}`} className="pb-dash-up-row is-card">
+                        <span aria-hidden="true" className="pb-dash-tile-icon" style={{ backgroundColor: overdue ? 'color-mix(in srgb, var(--wine) 14%, transparent)' : 'color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+                          <CreditCard size={16} style={{ color: overdue ? 'var(--wine)' : 'var(--ink-soft)' }} />
                         </span>
-                        <span className="pb-dash-row-sub" style={{ color: tone, fontWeight: lvl === 'd7' ? 400 : 600 }}>
-                          {overdue ? t(d.upcomingCard.cardOverdue, { date: formatDate(s.previous, locale) }) : `${dayLabel(s.next)} · ${d.upcomingCard.cardPayment}`}
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          {/* Card names are USER DATA. */}
+                          <span className="pb-dash-row-title">
+                            {s.card.name}{s.card.last4 ? ` ····${s.card.last4}` : ''}
+                          </span>
+                          <span className="pb-dash-row-sub" style={{ color: tone, fontWeight: lvl === 'd7' ? 400 : 600 }}>
+                            {/* The group header already says "Card payments", so the
+                                due day stands alone (it was cut off on phones). */}
+                            {overdue ? t(d.upcomingCard.cardOverdue, { date: formatDate(s.previous, locale) }) : dayLabel(s.next)}
+                          </span>
                         </span>
-                      </span>
-                      <span className="font-mono-tab pb-dash-row-amount">{formatCurrency(s.dueNow)}</span>
-                      <button type="button" className="pill pb-dash-payoff" onClick={() => setPayOff(s.card)}>
-                        {d.accounts.payOffAction}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+                        <span className="font-mono-tab pb-dash-row-amount">{formatCurrency(s.dueNow)}</span>
+                        <button type="button" className="pill pb-dash-payoff" onClick={() => setPayOff(s.card)}>
+                          {d.accounts.payOffAction}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
 
-          {day && shown.length === 0 && cardsShown.length === 0 && (
-            <p className="pb-dash-quiet">{ux.nothingThatDay}</p>
-          )}
-          {groups(shown)}
-          {extra > 0 && (
-            <>
-              {/* The rest of the fortnight expands in place; inert while
-                  collapsed so its rows are not in the tab order. */}
+            {day && shown.length === 0 && cardsShown.length === 0 && (
+              <p className="pb-dash-quiet">{ux.nothingThatDay}</p>
+            )}
+            {groups(shown)}
+            {extra > 0 && (
+              // The rest of the fortnight expands in place; inert while
+              // collapsed so its rows are not in the tab order.
               <div className={`collapsible-rows${expanded ? ' expanded' : ''}`}>
                 <div className="collapsible-rows-inner" inert={!expanded}>
                   {groups(rest, shown[shown.length - 1]?.date)}
                 </div>
               </div>
+            )}
+          </div>
+          {extra > 0 && (
+            <>
               <button type="button" className="link-btn pb-dash-more" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
                 {expanded ? ux.showLess : t(d.upcomingCard.more, { count: extra })}
               </button>

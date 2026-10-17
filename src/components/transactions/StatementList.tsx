@@ -10,6 +10,7 @@ import { StatementRow } from '@/components/shared/StatementRow';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { EmptyState } from '@/components/kit/EmptyState';
+import { BalanceFigure } from './BalanceFigure';
 import { balanceReader, cents, daysInMonth, groupByDay, monthBounds, type DayGroup } from './statementMath';
 
 // A ledger entry with its full transaction record resolved — recentTransactions
@@ -94,6 +95,8 @@ interface DayGroupsProps {
 export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, today, lensAccountId, highlight }: DayGroupsProps) {
   const { d } = useTranslation();
   const label = useDayLabel(today);
+  // A card lens reads as owed, like every other figure under it.
+  const owed = !!lensAccountId && accounts.some((a) => a.id === lensAccountId && a.kind === 'credit');
   return (
     <>
       {groups.map((g) => {
@@ -111,7 +114,7 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
                 {mode === 'statement' && (
                   <span className="pb-txn-day-eod">
                     {renderTemplate(d.ux.transactions.endOfDay, {
-                      amount: <span className="font-mono-tab">{formatCurrency(g.endBalance)}</span>,
+                      amount: <BalanceFigure value={g.endBalance} owed={owed} />,
                     })}
                   </span>
                 )}
@@ -141,13 +144,14 @@ export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
   const { d } = useTranslation();
   const x = d.ux.transactions;
   return (
-    <div className={`pb-srow-main pb-srow-headrow${lensAccount ? ' pb-srow-lens' : ''}`} aria-hidden="true">
-      <div className="pb-srow-lead">{x.colTransaction}</div>
-      {!lensAccount && <div className="pb-srow-acct">{x.colAccount}</div>}
-      <div className="pb-srow-money">
+    <div className={`pb-txn-srow-main pb-txn-srow-headrow${lensAccount ? ' pb-txn-srow-lens' : ''}`} aria-hidden="true">
+      <div className="pb-txn-srow-lead">{x.colTransaction}</div>
+      <div className="pb-txn-srow-cat">{x.colCategory}</div>
+      {!lensAccount && <div className="pb-txn-srow-acct">{x.colAccount}</div>}
+      <div className="pb-txn-srow-money">
         <div>{x.colAmount}</div>
-        {lensAccount && <div className="pb-srow-lensbal">{lensAccount.name}</div>}
-        <div className="pb-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>
+        {lensAccount && <div className="pb-txn-srow-lensbal">{lensAccount.name}</div>}
+        <div className="pb-txn-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>
       </div>
     </div>
   );
@@ -160,6 +164,7 @@ export function StatementList({
   const { d, t, locale } = useTranslation();
   const groups = useMemo(() => groupByDay(entries, balanceReader(lensAccountId ?? null)), [entries, lensAccountId]);
   const lensAccount = lensAccountId ? accounts.find((a) => a.id === lensAccountId) ?? null : null;
+  const owed = lensAccount?.kind === 'credit';
 
   // Bookends turn the list into a statement: the closing figure on top (as
   // of today in the month in progress), the opening at the foot.
@@ -184,7 +189,7 @@ export function StatementList({
           // The carried-forward amount is money: font-mono-tab so privacy
           // mode blurs it like every other figure (it used to be plain text).
           body={renderTemplate(d.transactions.carriedForward, {
-            amount: <span className="font-mono-tab">{formatCurrency(openingBalance)}</span>,
+            amount: <BalanceFigure value={openingBalance} owed={owed} />,
           })}
         />
       ) : (
@@ -193,7 +198,7 @@ export function StatementList({
           {bookends && (
             <div className="pb-txn-bookend">
               <span>{t(d.ux.transactions.closingOn, { date: formatDate(bookends.closingDate, locale) })}</span>
-              <span className="font-mono-tab">{formatCurrency(closingBalance ?? 0)}</span>
+              <span><BalanceFigure value={closingBalance ?? 0} owed={owed} /></span>
             </div>
           )}
           <DayGroups
@@ -203,7 +208,7 @@ export function StatementList({
           {bookends && (
             <div className="pb-txn-bookend pb-txn-bookend-foot">
               <span>{t(d.ux.transactions.openingOn, { date: formatDate(bookends.openingDate, locale) })}</span>
-              <span className="font-mono-tab">{formatCurrency(openingBalance)}</span>
+              <span><BalanceFigure value={openingBalance} owed={owed} /></span>
             </div>
           )}
         </div>

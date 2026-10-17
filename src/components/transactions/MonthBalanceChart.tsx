@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo } from 'react';
+import { useId, useMemo, useRef } from 'react';
 import { Area, AreaChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { LineChart as LineChartIcon } from 'lucide-react';
 import { formatCurrency, formatDate, formatFullDate } from '@/lib/format';
@@ -9,6 +9,9 @@ import { renderTemplate } from '@/lib/i18n/RichText';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { Skeleton } from '@/components/kit/Skeleton';
 import type { DayPoint } from './statementMath';
+import { BalanceFigure } from './BalanceFigure';
+
+const MARGIN = { top: 12, right: 26, bottom: 0, left: 14 };
 
 interface MonthBalanceChartProps {
   /** From daySeries(): point 0 is the opening, then one point per day up to today. */
@@ -19,6 +22,13 @@ interface MonthBalanceChartProps {
   /** Scroll the statement to a day ('YYYY-MM-DD'). */
   onPickDay: (date: string) => void;
   subtitle?: string;
+  /**
+   * A credit card's lens: points and opening arrive as the amount OWED
+   * (negated balance), so the line rises with the debt. Drawn in wine, the
+   * figures read "owed", and the low-point label is left off (the lowest debt
+   * is not a warning).
+   */
+  owed?: boolean;
 }
 
 /**
@@ -37,18 +47,22 @@ interface MonthBalanceChartProps {
  * rather than growing from zero. points is null until the zone-aware today
  * is known (after mount), so the server and first client render agree.
  */
-export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, subtitle }: MonthBalanceChartProps) {
+export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, subtitle, owed = false }: MonthBalanceChartProps) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.transactions;
   const gradientId = `pb-txn-bal-${useId().replace(/:/g, '')}`;
+  const plotRef = useRef<HTMLDivElement>(null);
 
   const low = useMemo(() => {
-    if (!points || points.length < 3 || !hasActivity) return null;
+    if (owed || !points || points.length < 3 || !hasActivity) return null;
     let best = points[1];
     for (const p of points.slice(1)) if (p.balance < best.balance) best = p;
     // Only worth a label when it is actually below where the month began.
     return best.balance < opening - 0.005 ? best : null;
-  }, [points, opening, hasActivity]);
+  }, [points, opening, hasActivity, owed]);
+  const lineColor = owed ? 'var(--wine)' : 'var(--pine)';
+  // BalanceFigure negates for "owed"; these values are already owed amounts.
+  const figure = (v: number) => <BalanceFigure value={owed ? -v : v} owed={owed} />;
 
   const lastDay = points ? points[points.length - 1].day : 0;
   const yPad = useMemo(() => {
@@ -65,25 +79,40 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
         subtitle={subtitle}
         icon={LineChartIcon}
       />
-      <div className="pb-txn-chart pb-chart-fade">
+      <div className="pb-txn-chart pb-chart-fade" ref={plotRef}>
         {!points ? (
           <Skeleton height="100%" radius="0.75rem" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={points}
-              margin={{ top: 12, right: 26, bottom: 0, left: 14 }}
-              onClick={(state) => {
-                const i = typeof state?.activeTooltipIndex === 'number' ? state.activeTooltipIndex : Number(state?.activeTooltipIndex);
-                const p = Number.isFinite(i) ? points[i] : undefined;
-                if (p?.date) onPickDay(p.date);
+              margin={MARGIN}
+              onClick={(state, event) => {
+                const raw = state?.activeTooltipIndex;
+                let i = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+                // A tap (or a click with no hover first) can arrive before the
+                // chart has an active point, so the day is then read from
+                // where the pointer landed on the plot: the x axis is linear
+                // from day 0 to the last day, inside the chart's margins.
+                if (!Number.isFinite(i)) {
+                  const box = plotRef.current?.getBoundingClientRect();
+                  const clientX = (event as { clientX?: number } | undefined)?.clientX;
+                  if (box && typeof clientX === 'number') {
+                    const plotW = box.width - MARGIN.left - MARGIN.right;
+                    if (plotW > 0) i = Math.round(((clientX - box.left - MARGIN.left) / plotW) * lastDay);
+                  }
+                }
+                const p = Number.isFinite(i) ? points[Math.max(0, Math.min(points.length - 1, i))] : undefined;
+                // Point 0 (the opening, no date) goes to the month's first day.
+                const date = p ? (p.date ?? points[1]?.date) : null;
+                if (date) onPickDay(date);
               }}
               style={{ cursor: hasActivity ? 'pointer' : 'default' }}
             >
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--pine)" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="var(--pine)" stopOpacity={0} />
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.22} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
@@ -115,7 +144,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
                   return (
                     <div className="recharts-default-tooltip pb-txn-chart-tip">
                       <p className="pb-txn-chart-tip-date">{formatFullDate(p.date, locale)}</p>
-                      <p>{renderTemplate(x.endOfDay, { amount: <span className="font-mono-tab">{formatCurrency(p.balance)}</span> })}</p>
+                      <p>{renderTemplate(x.endOfDay, { amount: figure(p.balance) })}</p>
                       {p.count > 0 && (
                         <>
                           <p className="pb-txn-chart-tip-soft">
@@ -132,14 +161,14 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
               />
               <Area
                 type="stepAfter" dataKey="balance" isAnimationActive={false}
-                stroke="var(--pine)" strokeWidth={2} strokeLinejoin="round" fill={`url(#${gradientId})`}
+                stroke={lineColor} strokeWidth={2} strokeLinejoin="round" fill={`url(#${gradientId})`}
                 dot={(props: { cx?: number; cy?: number; index?: number }) => {
                   const p = props.index !== undefined ? points[props.index] : undefined;
                   if (!p || p.count === 0 || props.cx === undefined || props.cy === undefined) return <g key={`d${props.index}`} />;
                   const r = 2 + (p.count / maxCount) * 2;
-                  return <circle key={`d${props.index}`} cx={props.cx} cy={props.cy} r={r} className="pb-txn-chart-dot" />;
+                  return <circle key={`d${props.index}`} cx={props.cx} cy={props.cy} r={r} className="pb-txn-chart-dot" style={{ fill: lineColor }} />;
                 }}
-                activeDot={{ r: 4, stroke: 'var(--mist)', strokeWidth: 2, fill: 'var(--pine)' }}
+                activeDot={{ r: 4, stroke: 'var(--mist)', strokeWidth: 2, fill: lineColor }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -149,7 +178,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
         {hasActivity
           ? x.chartHint
           : renderTemplate(d.transactions.carriedForward, {
-            amount: <span className="font-mono-tab">{formatCurrency(opening)}</span>,
+            amount: figure(opening),
           })}
       </p>
     </section>

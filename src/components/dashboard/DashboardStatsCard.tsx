@@ -9,7 +9,6 @@ import { PeriodDot } from '@/components/shared/PeriodLink';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { Sparkline } from '@/components/kit/Sparkline';
 import { ProgressRing } from '@/components/kit/ProgressRing';
-import { healthHue } from '@/lib/healthBar';
 import type { PeriodComparison, RangeStats } from '@/lib/periodCompare';
 
 interface ModeOption { value: string; label: string }
@@ -149,11 +148,15 @@ export function DashboardStatsCard({
         <h3 className="pb-stats-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}><PeriodDot />{d.dashboard.periodTitle}</h3>
         {/* The ONE element carrying this id: PeriodLink scrolls to and pulses it. */}
         <div className="pb-stats-controls pb-dash-period" id="pb-period-control">
-          <span className="pb-dash-select">
+          <span className="pb-dash-select is-mode">
             <select value={statsMode} onChange={(e) => onModeChange(e.target.value)} aria-label={ux.periodType}>
               {/* value is the stored mode key; only the text is translated. */}
               {modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
+            {/* Phone only (dashboard.css): sizes the select to the CHOSEN
+                option, not its longest one, so it shares a row with the
+                stepper. Invisible and hidden from assistive tech. */}
+            <span className="pb-dash-select-sizer" aria-hidden="true">{modes.find((m) => m.value === statsMode)?.label}</span>
             <ChevronDown size={14} aria-hidden="true" />
           </span>
           {periods.length > 0 && (
@@ -209,9 +212,11 @@ export function DashboardStatsCard({
                 <div className="font-mono-tab pb-stats-value">{c.value}</div>
                 {c.metric === 'savingsRate' && income > 0 && (
                   // The ring shows the rate too, so it blurs with it in privacy
-                  // mode. Full at 50%+, coloured like the health bar.
+                  // mode. Full at 50%+. Coloured from theme tokens, which fade
+                  // with a light/dark switch (the health bar's --hp-l/--hp-c
+                  // swap in one frame and would make the ring jump).
                   <span className="pb-chart-fill pb-dash-tile-ring">
-                    <ProgressRing value={Math.max(0, savingsRate) / 50} size={28} stroke={4} color={`oklch(var(--hp-l) var(--hp-c) ${healthHue(savingsRate)})`} />
+                    <ProgressRing value={Math.max(0, savingsRate) / 50} size={28} stroke={4} color={savingsRate >= 20 ? 'var(--pine)' : savingsRate >= 0 ? 'var(--gold)' : 'var(--wine)'} />
                   </span>
                 )}
               </div>

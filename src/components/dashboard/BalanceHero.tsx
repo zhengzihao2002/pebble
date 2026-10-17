@@ -124,7 +124,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
         {trend && trend.length > 1 && (
           <Sparkline
             values={trend.map((p) => p.total)}
-            height={56}
+            height={40}
             color="var(--pb-hero-fg)"
             area
             endDot

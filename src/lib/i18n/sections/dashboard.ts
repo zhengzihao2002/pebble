@@ -41,17 +41,19 @@ export const dashboardEn = {
   inProgress: 'In progress',
   mostSpentWeek: 'Most spent: week of {label}',
   mostSpentMonth: 'Most spent: {label}',
+  flowFacts: 'Averages for this period',
+  avgIncome: 'Income per full {unit}',
+  avgSpending: 'Spending per full {unit}',
+  unitWeek: 'week',
 
   // Where it went
   uncategorised: 'Uncategorised',
   shareOfSpending: '{share} of spending',
-  focusHint: 'Tap a category to single it out',
 
   // Upcoming
   cardPayments: 'Card payments',
   upcomingTotals: 'In {income} · Out {expense} over the next 14 days',
   upcomingTotalsNote: 'Scheduled amounts as stored, not a projected balance.',
-  showMore: 'Show {count} more',
   showLess: 'Show less',
   railLabel: 'Next 14 days, day by day',
   railDay: '{date}: {count} scheduled',
@@ -81,6 +83,11 @@ export const dashboardEn = {
   paceEmptyBody: 'Spending you record is drawn here day by day, beside the period before.',
   paceChartLabel: 'Cumulative spending this period, compared with the period before',
   dayN: 'Day {n}',
+  paceFacts: 'This period in numbers',
+  paceDailyAvg: 'Daily average',
+  paceLastTotal: "Last {unit}'s total",
+  paceBudget: 'Budget this {unit}',
+  paceDaysLeft: 'Days left',
 
   // Needs attention and goals
   noBudget: 'No budget',
@@ -124,17 +131,19 @@ export const dashboardZh: typeof dashboardEn = {
 
   savedSoFar: '累计结余',
   inProgress: '进行中',
-  mostSpentWeek: '支出最多：{label} 当周',
+  mostSpentWeek: '支出最多：{label}当周',
   mostSpentMonth: '支出最多：{label}',
+  flowFacts: '本期平均数',
+  avgIncome: '整{unit}平均收入',
+  avgSpending: '整{unit}平均支出',
+  unitWeek: '周',
 
   uncategorised: '未分类',
   shareOfSpending: '占支出 {share}',
-  focusHint: '点按类别可单独查看',
 
   cardPayments: '信用卡还款',
   upcomingTotals: '未来 14 天：收入 {income} · 支出 {expense}',
   upcomingTotalsNote: '按计划中记录的金额计算，并非预测余额。',
-  showMore: '再显示 {count} 项',
   showLess: '收起',
   railLabel: '未来 14 天（按日）',
   railDay: '{date}：{count} 项计划',
@@ -163,6 +172,11 @@ export const dashboardZh: typeof dashboardEn = {
   paceEmptyBody: '记录的支出会按天画在这里，并与上一期对比。',
   paceChartLabel: '本期累计支出与上一期对比',
   dayN: '第 {n} 天',
+  paceFacts: '本期数据',
+  paceDailyAvg: '日均支出',
+  paceLastTotal: '上{unit}合计',
+  paceBudget: '本{unit}预算',
+  paceDaysLeft: '剩余天数',
 
   noBudget: '无预算',
   setBudgets: '设置预算',

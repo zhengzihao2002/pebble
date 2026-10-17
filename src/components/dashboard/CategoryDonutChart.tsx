@@ -13,7 +13,7 @@ import { PeriodLink } from '@/components/shared/PeriodLink';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { DeltaChip } from '@/components/kit/DeltaChip';
-import { describeRange, earliestDate, shiftedWindow, spendingByCategoryInRange, ymdOf } from '@/lib/periodCompare';
+import { coversHistory, describeRange, earliestDate, shiftedWindow, spendingByCategoryInRange } from '@/lib/periodCompare';
 import { RingSkeleton } from './DashSkeletons';
 
 interface CategoryDonutChartProps {
@@ -114,8 +114,8 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
     if (!ready || !today) return null;
     const cur = shiftedWindow(mode, periodKey, today, 0, true);
     const prev = shiftedWindow(mode, periodKey, today, 1, true);
-    const first = earliestDate(transactions);
-    if (!first || ymdOf(prev.end) < first) return null;
+    // A previous window history only partly covers would show false rises.
+    if (!coversHistory(prev, earliestDate(transactions))) return null;
     const curBy = spendingByCategoryInRange(transactions, cur);
     const prevBy = spendingByCategoryInRange(transactions, prev);
     // Names with no category row are pooled, as buildCategoryBreakdown pools them.
@@ -263,7 +263,9 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="pb-donut-center" aria-live="polite">{centre}</div>
+                {/* Not a live region: hovering slices would read out every
+                    category. The legend rows (aria-pressed) carry the same. */}
+                <div className="pb-donut-center">{centre}</div>
               </div>
             )}
             <p className="pb-donut-summary">{summaryNode}</p>

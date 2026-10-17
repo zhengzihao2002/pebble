@@ -61,8 +61,8 @@ export function TransactionsClient({
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
-  // The whole ledger entry, not only the record: the detail dialog shows
-  // where the record sits in the running balance.
+  // The whole ledger entry, not only the record, so the dialog can later show
+  // where the record sits in the running balance. Today it reads the record.
   const [selectedEntry, setSelectedEntry] = useState<StatementEntry | null>(null);
   // Month changes slide the statement in from the side the month came from.
   const [slide, setSlide] = useState<'older' | 'newer' | null>(null);
@@ -189,13 +189,13 @@ export function TransactionsClient({
 
   const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
   const canGoNewer = selectedMonthIndex > 0;
+  // The slide direction is worked out here, outside the state updater:
+  // updaters must stay pure (StrictMode runs them twice).
   const goToMonth = useCallback((i: number) => {
-    setSelectedMonthIndex((cur) => {
-      if (i === cur || i < 0 || i >= monthOptions.length) return cur;
-      setSlide(i > cur ? 'older' : 'newer');
-      return i;
-    });
-  }, [monthOptions.length]);
+    if (i === selectedMonthIndex || i < 0 || i >= monthOptions.length) return;
+    setSlide(i > selectedMonthIndex ? 'older' : 'newer');
+    setSelectedMonthIndex(i);
+  }, [selectedMonthIndex, monthOptions.length]);
 
   // Optional page shortcuts: [ older month, ] newer. Gated exactly like
   // AppShell's single-key shortcuts: no modifier, no key repeat, not during
@@ -209,15 +209,11 @@ export function TransactionsClient({
       const target = e.target as HTMLElement | null;
       if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
       e.preventDefault();
-      setSelectedMonthIndex((cur) => {
-        const next = e.key === '[' ? Math.min(monthOptions.length - 1, cur + 1) : Math.max(0, cur - 1);
-        if (next !== cur) setSlide(next > cur ? 'older' : 'newer');
-        return next;
-      });
+      goToMonth(e.key === '[' ? selectedMonthIndex + 1 : selectedMonthIndex - 1);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [monthOptions.length]);
+  }, [goToMonth, selectedMonthIndex]);
 
   // ---- Month strip -----------------------------------------------------------
   const monthChips: MonthChip[] = useMemo(() => {
@@ -233,15 +229,26 @@ export function TransactionsClient({
     // The month in progress stops at today: the chart never projects.
     const lastDay = today.startsWith(prefix) ? Number(today.slice(8, 10)) : daysInMonth(year, month);
     const allInMonth = entriesWithRecords.filter((e) => e.record.date >= start && e.record.date < next);
-    return daySeries(fig.entries, allInMonth, year, month, lastDay, fig.opening, balanceReader(lensId));
-  }, [today, selectedMonthInfo, entriesWithRecords, fig, lensId]);
+    // A card lens plots what is OWED (the negated balance), the convention
+    // every other figure under the lens uses, so the line rises with the debt
+    // and matches the red '+' change above it.
+    const read = balanceReader(lensId);
+    return lensIsCard
+      ? daySeries(fig.entries, allInMonth, year, month, lastDay, -fig.opening, (e) => -read(e))
+      : daySeries(fig.entries, allInMonth, year, month, lastDay, fig.opening, read);
+  }, [today, selectedMonthInfo, entriesWithRecords, fig, lensId, lensIsCard]);
 
   // Picking a day on the chart scrolls the statement to that day's group
   // (scroll-margin keeps it clear of the sticky header and search bar) and
   // washes it once in the brand tint. Smooth unless the viewer asked for
-  // reduced motion.
+  // reduced motion. A quiet day (no records) goes to the group whose balance
+  // it carries: the newest day on or before it (groups are newest first), or
+  // the oldest day when it comes before them all.
   const pickDay = useCallback((date: string) => {
-    const group = document.querySelector<HTMLElement>(`.pb-txn-stmt [data-day="${date}"]`);
+    const groups = [...document.querySelectorAll<HTMLElement>('.pb-txn-stmt [data-day]')];
+    const group = groups.find((g) => g.dataset.day === date)
+      ?? groups.find((g) => (g.dataset.day ?? '') <= date)
+      ?? groups[groups.length - 1];
     if (!group) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     group.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
@@ -317,7 +324,11 @@ export function TransactionsClient({
   // the locale. The year and month numbers carry the same information and
   // localize properly.
   const monthLabel = formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale);
-  const delta = cents(closingBalance - openingBalance) / 100;
+  // The month's change, in the terms the figures use: balance for a bank or
+  // cash account (up is good), amount OWED for a card lens (up is bad - the
+  // figures beside it read "owed", so the change must too).
+  const balanceDelta = cents(closingBalance - openingBalance) / 100;
+  const delta = lensIsCard ? -balanceDelta : balanceDelta;
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
   const statementCount = fig.entries.length;
 
@@ -354,7 +365,7 @@ export function TransactionsClient({
             aside={(
               <span className="pb-txn-delta">
                 {renderTemplate(x.deltaThisMonth, {
-                  amount: <DeltaChip delta={lensIsCard ? -delta : delta} text={deltaText} good="up" money />,
+                  amount: <DeltaChip delta={delta} text={deltaText} good={lensIsCard ? 'down' : 'up'} money />,
                 })}
               </span>
             )}
@@ -384,7 +395,8 @@ export function TransactionsClient({
 
         <MonthBalanceChart
           points={chartPoints}
-          opening={openingBalance}
+          opening={lensIsCard ? -openingBalance : openingBalance}
+          owed={lensIsCard}
           hasActivity={statementCount > 0}
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
@@ -405,7 +417,14 @@ export function TransactionsClient({
           onExitLens={() => setAccountFilter(ALL_ACCOUNTS)}
         />
 
-        <div key={monthKey} className={`pb-txn-swap${slideClass}`}>
+        {/* The key also changes when search starts or ends and when the lens
+            changes; the direction is cleared once the slide has played, so
+            those remount in place instead of sliding sideways. */}
+        <div
+          key={monthKey}
+          className={`pb-txn-swap${slideClass}`}
+          onAnimationEnd={(e) => { if (e.target === e.currentTarget) setSlide(null); }}
+        >
           {searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
@@ -449,7 +468,7 @@ export function TransactionsClient({
                   <div style={{ minWidth: 0 }}>
                     <h3 className="pb-txn-stmt-title">{lensAccount ? t(x.lensTitle, { account: lensAccount.name }) : x.statement}</h3>
                     <p className="pb-txn-stmt-sub">
-                      {monthLabel} · <span className="pb-tnum">{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
+                      {monthLabel} · <span className="pb-tnum" style={{ whiteSpace: 'nowrap' }}>{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
                     </p>
                   </div>
                   {importButton}
@@ -465,7 +484,6 @@ export function TransactionsClient({
           txn={selectedEntry.record}
           onClose={() => setSelectedEntry(null)}
           categoryMeta={categoryMeta}
-          ledgerEntry={selectedEntry ?? undefined}
         />
       )}
     </div>

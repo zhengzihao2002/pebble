@@ -9,7 +9,7 @@ import type { Transaction } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { formatCompactCurrency } from '@/lib/chartFormat';
 import { buildPeriodTrend } from '@/lib/periodTrend';
-import { rangeDays, windowBounds } from '@/lib/periodCompare';
+import { rangeDays, statsInRange, windowBounds, type RangeStats } from '@/lib/periodCompare';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PeriodLink } from '@/components/shared/PeriodLink';
 import { SectionHeader } from '@/components/kit/SectionHeader';
@@ -27,17 +27,18 @@ const SPENDING = 'var(--wine)';
 // third money series competing with pine and wine.
 const CUMULATIVE = 'color-mix(in srgb, var(--ink) 70%, transparent)';
 
-type TipItem = { dataKey?: unknown; value?: unknown; payload?: { partial?: boolean; cum?: number } };
+type TipItem = { dataKey?: unknown; value?: unknown; payload?: { partial?: boolean; cum?: number | null; exact?: { income: number; spending: number } } };
 
 /** Income, Spending and Saved (their difference) for the hovered bucket, plus the running total. */
 function SavedTooltip({ active, payload, label }: { active?: boolean; payload?: ReadonlyArray<TipItem>; label?: unknown }) {
   const { d } = useTranslation();
   if (!active || !payload || payload.length === 0) return null;
   const pick = (key: string) => Number(payload.find((p) => p.dataKey === key)?.value ?? 0);
-  const income = pick('income');
-  const spending = pick('spending');
-  const saved = income - spending;
   const point = payload[0]?.payload;
+  // The bucket's exact sums; the bar values are rounded to whole dollars.
+  const income = point?.exact ? point.exact.income : pick('income');
+  const spending = point?.exact ? point.exact.spending : pick('spending');
+  const saved = income - spending;
   const row = (name: string, value: number, color?: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1.25rem' }}>
       <span style={{ color: 'var(--ink-soft)' }}>{name}</span>
@@ -103,30 +104,85 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
     () => (ready && today ? buildPeriodTrend(transactions, mode, periodKey, today, locale) : []),
     [ready, today, transactions, mode, periodKey, locale],
   );
+  // Each bucket's exact dates and cent-exact sums (statsInRange: the stats
+  // card's rules). buildPeriodTrend rounds to whole dollars, which is right
+  // for bar heights but not for figures in words: the tooltip and the running
+  // "saved so far" line read these, so they agree with the facts row below.
   const data = useMemo(() => {
+    if (!today || trendData.length === 0) return [];
+    const win = windowBounds(mode, periodKey, today);
+    const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const weekly = WEEKLY.has(mode);
     // The bucket holding today is the partial one; buckets after it have not
     // happened yet, so the running line stops there instead of running flat
     // into the future.
     let current = trendData.length - 1;
-    if (inProgress && today) {
-      const start = windowBounds(mode, periodKey, today).start;
-      current = WEEKLY.has(mode)
-        ? Math.floor((rangeDays({ start, end: today }) - 1) / 7)
-        : (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
+    if (inProgress) {
+      current = weekly
+        ? Math.floor((rangeDays({ start: win.start, end: now }) - 1) / 7)
+        : (now.getFullYear() - win.start.getFullYear()) * 12 + (now.getMonth() - win.start.getMonth());
     }
-    const out: (typeof trendData[number] & { cum: number | null; partial: boolean })[] = [];
+    const out: (typeof trendData[number] & {
+      cum: number | null; partial: boolean; exact: RangeStats; whole: boolean;
+    })[] = [];
     let running = 0;
     for (let i = 0; i < trendData.length; i++) {
-      const b = trendData[i];
-      running += b.income - b.spending;
-      out.push({ ...b, cum: i <= current ? running : null, partial: inProgress && i === current });
+      const start = weekly
+        ? new Date(win.start.getFullYear(), win.start.getMonth(), win.start.getDate() + i * 7)
+        : new Date(win.start.getFullYear(), win.start.getMonth() + i, 1);
+      const last = weekly
+        ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+        : new Date(start.getFullYear(), start.getMonth() + 1, 0);
+      const end = last > win.end ? win.end : last;
+      const exact = statsInRange(transactions, { start, end });
+      // "So far" stops at today: in the bucket holding today, only the days
+      // up to it count (a future-dated record has not happened yet).
+      if (i < current) running += exact.saved;
+      else if (i === current) running += inProgress ? statsInRange(transactions, { start, end: end < now ? end : now }).saved : exact.saved;
+      out.push({
+        ...trendData[i],
+        cum: i <= current ? Math.round(running * 100) / 100 : null,
+        partial: inProgress && i === current,
+        exact,
+        // Whole: a full week or month inside the window, over before today began.
+        whole: last <= win.end && !(inProgress && last >= now),
+      });
     }
     return out;
-  }, [trendData, inProgress, today, mode, periodKey]);
+  }, [trendData, inProgress, today, mode, periodKey, transactions]);
   const goesNegative = data.some((p) => p.cum !== null && p.cum < 0);
   const peak = data.reduce<(typeof data)[number] | null>((best, p) => (p.spending > 0 && (!best || p.spending > best.spending) ? p : best), null);
   const caption = peak ? t(WEEKLY.has(mode) ? ux.mostSpentWeek : ux.mostSpentMonth, { label: peak.month }) : null;
   const hasData = data.some((p) => p.income > 0 || p.spending > 0);
+
+  // Figures along the card's foot (the card stretches to Upcoming's height
+  // beside it; these sit at its bottom).
+  //
+  // The averages count WHOLE weeks or months only: a partial bucket (the one
+  // holding today, or a month's 3-day tail week) would drag the average down,
+  // and stretching a few days to a whole unit would turn two paydays into a
+  // month's pay. With no whole bucket yet, no average is shown.
+  //
+  // "Saved so far" is the running line's last point: the window up to today
+  // (the whole window once it is over), cent-exact. It equals the Saved tile
+  // except when records are dated after today - the tile counts the whole
+  // calendar window, and those have not happened yet.
+  const facts = useMemo(() => {
+    if (!hasData) return null;
+    let income = 0;
+    let spending = 0;
+    let whole = 0;
+    let saved = 0;
+    for (const p of data) {
+      if (p.cum !== null) saved = p.cum;
+      if (!p.whole) continue;
+      income += p.exact.income;
+      spending += p.exact.spending;
+      whole += 1;
+    }
+    return { income: whole ? income / whole : null, spending: whole ? spending / whole : null, saved };
+  }, [hasData, data]);
+  const unit = WEEKLY.has(mode) ? ux.unitWeek : ux.unitMonth;
 
   const lastIndex = data.reduce((last, p, i) => (p.cum !== null ? i : last), -1);
   const endDot = (props: { cx?: number; cy?: number; index?: number }) => (
@@ -152,9 +208,11 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
         </div>
       ) : (
       // Grows to fill the card when the neighbouring card is taller (the grid
-      // stretches both), never shorter than 220px. The absolute inner box
-      // gives ResponsiveContainer a definite height to measure.
-      <div key={`${mode}-${periodKey ?? ''}`} className="pb-chart-fade pb-chart-fill" style={{ flex: 1, minHeight: 220, position: 'relative' }}>
+      // stretches both), never shorter than 220px - and only up to a cap
+      // (dashboard.css), so a tall neighbour cannot stretch the bars into a
+      // giant plot. The absolute inner box gives ResponsiveContainer a
+      // definite height to measure.
+      <div key={`${mode}-${periodKey ?? ''}`} className="pb-chart-fade pb-chart-fill pb-dash-chart-box is-flow">
       <div style={{ position: 'absolute', inset: 0 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 6, left: 0, bottom: 0 }} barGap={2} barCategoryGap="24%">
@@ -193,6 +251,13 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
         <span><i className="pb-dash-key-line" style={{ backgroundColor: CUMULATIVE }} />{ux.savedSoFar}</span>
         {inProgress && <span><i className="pb-dash-key-hatch" />{ux.inProgress}</span>}
       </div>
+      {facts && ready && (
+        <dl className="pb-dash-facts" aria-label={ux.flowFacts}>
+          {facts.income !== null && <div className="pb-dash-fact"><dt>{t(ux.avgIncome, { unit })}</dt><dd><span className="font-mono-tab">{formatCurrency(facts.income)}</span></dd></div>}
+          {facts.spending !== null && <div className="pb-dash-fact"><dt>{t(ux.avgSpending, { unit })}</dt><dd><span className="font-mono-tab">{formatCurrency(facts.spending)}</span></dd></div>}
+          <div className="pb-dash-fact"><dt>{ux.savedSoFar}</dt><dd><span className="font-mono-tab" style={{ color: facts.saved < 0 ? 'var(--wine)' : undefined }}>{formatCurrency(facts.saved)}</span></dd></div>
+        </dl>
+      )}
     </section>
   );
 }

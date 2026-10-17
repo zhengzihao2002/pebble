@@ -170,6 +170,18 @@ export function earliestDate(transactions: readonly Transaction[]): string | nul
 }
 
 /**
+ * True when recorded history covers the whole window, so it can stand as a
+ * comparison. A window that history only partly covers (records begin halfway
+ * through last year) would set a full current period against a mostly empty
+ * one and report a large false increase. The window must therefore START on
+ * or after the first record's month: someone who began recording on the 12th
+ * still gets "vs last month", since that first month is the best there is.
+ */
+export function coversHistory(r: DateRange, first: string | null): boolean {
+  return first !== null && ymdOf(r.start) >= `${first.slice(0, 8)}01`;
+}
+
+/**
  * A window in words, for comparison labels. A whole month, quarter or year is
  * named ("September 2026", "Q3 2026", "2025"); anything else is a date range.
  * The year is added only when it differs from `today`'s or the range spans two.
@@ -210,10 +222,10 @@ export function describeRange(r: DateRange, locale: Locale, today: Date): string
 
 export interface PeriodComparison {
   current: RangeStats;
-  /** Null when the previous window lies entirely before the first record. */
+  /** Null when recorded history does not cover the previous window (coversHistory). */
   previous: RangeStats | null;
   previousRange: DateRange;
-  /** Up to 6 windows, oldest first, ending with the current one; windows before any history are dropped. */
+  /** Up to 6 windows, oldest first, ending with the current one; windows history does not cover are dropped. */
   series: RangeStats[];
 }
 
@@ -221,7 +233,7 @@ export interface PeriodComparison {
 export function comparePeriods(transactions: readonly Transaction[], mode: string, periodKey: string | null, today: Date, count = 6): PeriodComparison {
   const first = earliestDate(transactions);
   const windows = Array.from({ length: count }, (_, k) => shiftedWindow(mode, periodKey, today, k, true));
-  const hasHistory = (r: DateRange) => first !== null && ymdOf(r.end) >= first;
+  const hasHistory = (r: DateRange) => coversHistory(r, first);
   const series = windows
     .filter((r, k) => k === 0 || hasHistory(r))
     .map((r) => statsInRange(transactions, r))

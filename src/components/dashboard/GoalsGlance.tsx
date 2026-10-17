@@ -63,9 +63,15 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
             return (
               <li key={g.id} className="pb-dash-goal">
                 <span className={`pb-dash-goal-ring${overspent ? ' is-over' : ''}`}>
-                  <ProgressRing value={value} size={64} stroke={6} color={g.color}>
-                    {reached ? <Check size={20} style={{ color: 'var(--pine)' }} aria-hidden="true" /> : <Icon size={20} style={{ color: g.color }} aria-hidden="true" />}
-                  </ProgressRing>
+                  {/* The ring is a ratio of money: with the target known from
+                      the Goals page it gives the amount away, so it blurs and
+                      taps to reveal like every other chart (pb-chart-fill).
+                      The wine outline sits outside it and stays sharp. */}
+                  <span className="pb-chart-fill pb-dash-goal-ring-fill">
+                    <ProgressRing value={value} size={64} stroke={6} color={g.color}>
+                      {reached ? <Check size={20} style={{ color: 'var(--pine)' }} aria-hidden="true" /> : <Icon size={20} style={{ color: g.color }} aria-hidden="true" />}
+                    </ProgressRing>
+                  </span>
                 </span>
                 <span className="pb-dash-goal-text">
                   <span className="pb-dash-goal-name">{g.name}</span>

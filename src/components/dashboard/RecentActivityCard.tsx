@@ -64,8 +64,14 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null }:
   const heading = (ymd: string) =>
     dayHeading(ymd, locale, todayYmd, ymd === todayYmd ? d.upcomingCard.today : ymd === yesterday ? ux.yesterday : undefined);
 
+  // A day's net counts every listed row of that day, not only the part above
+  // the cap: a day that straddles it keeps one header (above), and the rows
+  // in the expanded part would otherwise reach no subtotal at all.
+  const listed = past.slice(0, MORE);
+  const netOf = (date: string) => listed.reduce((s, x) => (x.date === date ? s + x.amount : s), 0);
+
   const groups = (list: Transaction[], continues?: string) => groupByDay(list, (x) => x.date).map((g) => {
-    const net = g.items.reduce((s, x) => s + x.amount, 0);
+    const net = netOf(g.date);
     return (
       <div key={g.date} className="pb-dash-day">
         {g.date !== continues && (
@@ -97,14 +103,18 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null }:
         />
       ) : (
         <>
-          {groups(first)}
-          {rest.length > 0 && (
-            <>
+          <div className="pb-dash-agenda">
+            {groups(first)}
+            {rest.length > 0 && (
               <div className={`collapsible-rows${expanded ? ' expanded' : ''}`}>
                 <div className="collapsible-rows-inner" inert={!expanded}>
                   {groups(rest, first[first.length - 1]?.date)}
                 </div>
               </div>
+            )}
+          </div>
+          {rest.length > 0 && (
+            <>
               <button type="button" className="link-btn pb-dash-more" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
                 {expanded ? ux.showLess : ux.showMoreRecent}
               </button>

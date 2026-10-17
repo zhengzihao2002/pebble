@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { highlight as markHits } from '@/components/transactions/highlight';
+import { BalanceFigure } from '@/components/transactions/BalanceFigure';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -67,9 +68,10 @@ export function StatementRow({
   // txn.category is either a real category NAME (user data) or one of the
   // two income literals - categoryLabel() handles both, translating only
   // the latter.
-  const subtitleParts = isAdjustment ? [d.txn.balanceAdjustment] : uncategorised ? [] : [categoryLabel(d, txn.category)];
-  if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
-  if (showDate) subtitleParts.push(formatDate(txn.date, locale));
+  const categoryText = isAdjustment ? d.txn.balanceAdjustment : uncategorised ? '' : categoryLabel(d, txn.category);
+  const restParts: string[] = [];
+  if (txn.type === 'expense' && txn.tag) restParts.push(txn.tag);
+  if (showDate) restParts.push(formatDate(txn.date, locale));
 
   const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
@@ -158,7 +160,8 @@ export function StatementRow({
   };
 
   const titleText = txn.description.split('\n')[0] || (isAdjustment ? d.txn.balanceAdjustment : '');
-  const subtitleText = subtitleParts.join(' · ');
+  const restText = restParts.join(' · ');
+  const hasSubtitle = categoryText !== '' || restText !== '';
 
   const tile = (
     <div style={{
@@ -176,9 +179,18 @@ export function StatementRow({
       <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {markHits(titleText, highlight)}
       </div>
-      {subtitleText !== '' && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {markHits(subtitleText, highlight)}
+      {/* Category · tag · date. The category part is its own span so the
+          wide ledger, which gives the category a column of its own, can
+          drop it here (CSS) instead of saying it twice. */}
+      {hasSubtitle && (
+        <div
+          className={`pb-txn-srow-sub${restText === '' ? ' pb-txn-srow-sub-catonly' : ''}`}
+          style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        >
+          {categoryText !== '' && (
+            <span className="pb-txn-srow-subcat">{markHits(categoryText, highlight)}{restText !== '' ? ' · ' : ''}</span>
+          )}
+          {markHits(restText, highlight)}
         </div>
       )}
     </div>
@@ -195,19 +207,28 @@ export function StatementRow({
       tabIndex={keyboard ? 0 : undefined}
       onKeyDown={keyboard ? onKeyDown : undefined}
       data-pb-row={keyboard ? '' : undefined}
-      className={ledger ? `pb-srow-main${lensAccount ? ' pb-srow-lens' : ''}` : undefined}
+      className={ledger ? `pb-txn-srow-main${lensAccount ? ' pb-txn-srow-lens' : ''}` : undefined}
       style={ledger ? { cursor: 'pointer' } : {
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: '0.85rem 1.5rem',
         cursor: 'pointer',
       }}
     >
-      {ledger ? <div className="pb-srow-lead">{tile}{text}</div> : <>{tile}{text}</>}
+      {ledger ? <div className="pb-txn-srow-lead">{tile}{text}</div> : <>{tile}{text}</>}
+      {/* Ledger only, shown only on the widest statement: the category with
+          its colour dot (identity only - the label says it in words).
+          Category names are USER DATA; income literals are translated. */}
+      {ledger && (
+        <div className="pb-txn-srow-cat">
+          <span className="pb-txn-srow-catdot" aria-hidden="true" style={{ backgroundColor: isAdjustment || uncategorised ? 'var(--ink-faint)' : accentColor }} />
+          <span>{markHits(categoryText, highlight)}</span>
+        </div>
+      )}
       {/* Ledger only, and shown only once the statement is wide enough: the
           account the record belongs to. Names are USER DATA. Hidden under the
           lens, where every row is the same account. */}
       {ledger && !lensAccount && (
-        <div className="pb-srow-acct">
+        <div className="pb-txn-srow-acct">
           <RowAccountIcon size={13} aria-hidden="true" />
           <span>{rowAccount?.name ?? txn.paymentMethod}</span>
         </div>
@@ -215,7 +236,7 @@ export function StatementRow({
       {/* stopPropagation: the row opens the detail modal, so without it a tap
           here would expand the balances AND open the modal over them. */}
       <div
-        className={ledger ? 'pb-srow-money' : undefined}
+        className={ledger ? 'pb-txn-srow-money' : undefined}
         style={{ textAlign: 'right', flexShrink: 0, cursor: 'pointer' }}
         onClick={canHover ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
         onMouseEnter={canHover ? updateHoverPos : undefined}
@@ -228,18 +249,21 @@ export function StatementRow({
         {/* Account lens: this account's own running balance, above the
             unchanged total line. */}
         {lensAccount && (
-          <div className="pb-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
-            <span className="pb-srow-lensname">{lensAccount.name} </span>
-            <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(balancesAfter[lensAccount.id] ?? 0)}</span>
+          <div className="pb-txn-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
+            {/* The gap is the name's own margin: a space inside the clipped
+                inline-block was swallowed ("Ally Savings$15,675.72"). A card
+                reads as owed, like the rest of its statement. */}
+            <span className="pb-txn-srow-lensname">{lensAccount.name}</span>
+            <BalanceFigure value={balancesAfter[lensAccount.id] ?? 0} owed={lensAccount.kind === 'credit'} className="pb-txn-srow-lensfig" />
           </div>
         )}
-        <div className={`font-mono-tab${ledger ? ' pb-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
+        <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
           {t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })}
         </div>
         {/* The same figure without the "Bal" prefix, for the ledger's
             "Balance after" column (one or the other is displayed). */}
         {ledger && (
-          <div className="font-mono-tab pb-srow-balcell">{formatCurrency(totalBalanceAfter)}</div>
+          <div className="font-mono-tab pb-txn-srow-balcell">{formatCurrency(totalBalanceAfter)}</div>
         )}
       </div>
 
@@ -256,7 +280,12 @@ export function StatementRow({
         }}
       >
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ padding: '0 1.5rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          {/* In the ledger the padding follows the rows' own (narrower on a
+              phone), from CSS; the import preview keeps its 1.5rem. */}
+          <div
+            className={ledger ? 'pb-txn-srow-break' : undefined}
+            style={{ padding: ledger ? undefined : '0 1.5rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}
+          >
             {nonZeroAccounts.length === 0 && (
               <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.txn.noAccountBalances}</div>
             )}

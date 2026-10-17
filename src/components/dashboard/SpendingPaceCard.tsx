@@ -10,7 +10,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { PACE_TOLERANCE } from '@/lib/budgetPace';
-import { earliestDate, shiftedWindow, windowBounds, ymdOf } from '@/lib/periodCompare';
+import { coversHistory, earliestDate, shiftedWindow, windowBounds } from '@/lib/periodCompare';
 import { buildSpendingPace } from '@/lib/spendingPace';
 import { PeriodLink } from '@/components/shared/PeriodLink';
 import { SectionHeader } from '@/components/kit/SectionHeader';
@@ -87,8 +87,8 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
     const current = windowBounds(mode, periodKey, today);
     const previous = shiftedWindow(mode, periodKey, today, 1, false);
     const pace = buildSpendingPace(transactions, current, previous, today);
-    const first = earliestDate(transactions);
-    const hasPrevious = first !== null && ymdOf(previous.end) >= first;
+    // Only a window recorded history fully covers is a fair comparison.
+    const hasPrevious = coversHistory(previous, earliestDate(transactions));
     const annual = Object.values(categoryMeta).reduce((s, m) => s + (m.budget > 0 ? m.budget : 0), 0);
     const budget = annual > 0 ? annual * (BUDGET_SHARE[mode] ?? 1) : 0;
     const data = pace.points.map((p) => ({
@@ -131,6 +131,22 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
   }
 
   const empty = model !== null && model.pace.spentSoFar === 0;
+
+  // The same comparison as a few plain figures, along the card's foot. The
+  // card stretches to its row partner's height (often a long Upcoming list);
+  // the chart is capped so it never becomes a giant empty plot, and this row
+  // sits at the bottom, level with Upcoming's own footer.
+  const facts: { key: string; label: string; value: React.ReactNode }[] = [];
+  if (model && model.pace.todayIndex >= 0) {
+    const elapsed = model.pace.todayIndex + 1;
+    facts.push({ key: 'avg', label: ux.paceDailyAvg, value: <span className="font-mono-tab">{formatCurrency(model.pace.spentSoFar / elapsed)}</span> });
+    if (model.hasPrevious) facts.push({ key: 'last', label: t(ux.paceLastTotal, { unit }), value: <span className="font-mono-tab">{formatCurrency(model.pace.previousTotal)}</span> });
+    if (model.budget > 0) facts.push({ key: 'budget', label: t(ux.paceBudget, { unit }), value: <span className="font-mono-tab">{formatCurrency(model.budget)}</span> });
+    // A count of days, not money: readable in privacy mode. Only for a
+    // calendar month, quarter or year - a rolling window always ends today,
+    // so it would always read 0.
+    if (inProgress && (mode === 'month' || mode === 'quarter' || mode === 'year')) facts.push({ key: 'left', label: ux.paceDaysLeft, value: <span className="pb-tnum">{Math.max(0, model.pace.length - elapsed)}</span> });
+  }
   const todayDay = model && inProgress && model.pace.todayIndex >= 0 && model.pace.todayIndex < model.pace.length - 1 ? model.pace.todayIndex + 1 : null;
   const endDot = (props: { cx?: number; cy?: number; index?: number }) => (
     model && props.index === model.pace.todayIndex && props.cx !== undefined && props.cy !== undefined
@@ -140,7 +156,7 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
 
   return (
     <section className="card pb-dash-card pb-dash-pace" aria-labelledby={`${uid}-title`}>
-      <SectionHeader id={`${uid}-title`} title={ux.paceTitle} icon={Gauge} subtitle={<PeriodLink label={timeFrame} control="dashboard" />} />
+      <SectionHeader id={`${uid}-title`} title={ux.paceTitle} subtitle={<PeriodLink label={timeFrame} control="dashboard" />} />
       {!model ? (
         <BarsSkeleton minHeight={200} />
       ) : empty ? (
@@ -150,10 +166,11 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
       ) : (
         <>
           {headline}
-          <div key={`${mode}-${periodKey ?? ''}`} className="pb-chart-fade pb-chart-fill" style={{ flex: 1, minHeight: 200, position: 'relative' }} role="img" aria-label={ux.paceChartLabel}>
+          {/* Grows with the card up to a cap (dashboard.css), never below 200px. */}
+          <div key={`${mode}-${periodKey ?? ''}`} className="pb-chart-fade pb-chart-fill pb-dash-chart-box" role="img" aria-label={ux.paceChartLabel}>
             <div style={{ position: 'absolute', inset: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={model.data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <ComposedChart data={model.data} margin={{ top: 8, right: 18, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--line)" vertical={false} />
                   <XAxis dataKey="day" type="number" domain={[1, model.data.length]} tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => dateOfDay(Number(v))} minTickGap={28} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={48} />
@@ -177,6 +194,16 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
             {model.hasPrevious && <span><i className="pb-dash-key-line is-dashed" style={{ color: PREVIOUS }} />{ux.legendLast}</span>}
             {model.budget > 0 && <span><i className="pb-dash-key-line is-dotted" style={{ color: BUDGET }} />{ux.legendBudget}</span>}
           </div>
+          {facts.length > 0 && (
+            <dl className="pb-dash-facts" aria-label={ux.paceFacts}>
+              {facts.map((f) => (
+                <div key={f.key} className="pb-dash-fact">
+                  <dt>{f.label}</dt>
+                  <dd>{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </>
       )}
     </section>
