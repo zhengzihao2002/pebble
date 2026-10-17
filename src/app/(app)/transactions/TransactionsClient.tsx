@@ -1,24 +1,35 @@
 'use client';
 
-import { useMemo, useState, useLayoutEffect, useRef } from 'react';
-import { Wallet, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, Search, X, CreditCard, Star } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
 import { getLastNMonths } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { resolveCategoryIcon } from '@/lib/data/icons';
 import { formatCurrency, formatMonthYear } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
+import { renderTemplate } from '@/lib/i18n/RichText';
+import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
+import { todayInZone } from '@/lib/recurring/occurrences';
 import { StatTab } from '@/components/shared/StatTab';
-import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
-import { MonthNavigator } from '@/components/transactions/MonthNavigator';
-import { StatementList, type StatementEntry } from '@/components/transactions/StatementList';
-import { StatementRow } from '@/components/shared/StatementRow';
+import { InfoTooltip } from '@/components/shared/InfoTooltip';
+import type { SelectFieldOption } from '@/components/shared/SelectField';
+import { MonthNavigator, type MonthChip } from '@/components/transactions/MonthNavigator';
+import { StatementList, DayGroups, LedgerHead, type StatementEntry } from '@/components/transactions/StatementList';
+import { TodayLedger } from '@/components/transactions/TodayLedger';
+import { BalanceBridge } from '@/components/transactions/BalanceBridge';
+import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
+import { SearchToolbar, type TypeFilter } from '@/components/transactions/SearchToolbar';
+import { ResultsSummary } from '@/components/transactions/ResultsSummary';
+import { cents, daySeries, daysInMonth, groupByDay, monthBounds, monthFigures, summarizeMonths, balanceReader } from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import { ImportCsvButton } from '@/components/shared/ImportCsv';
+import { DeltaChip } from '@/components/kit/DeltaChip';
+import { EmptyState } from '@/components/kit/EmptyState';
 
 interface TransactionsClientProps {
   transactions: Transaction[];
@@ -35,25 +46,44 @@ interface TransactionsClientProps {
   balancesByAccount: Record<string, number>;
 }
 
-type TypeFilter = 'all' | 'expense' | 'income';
 // Not '' - a category can never be named this, and '' is what SelectField's
 // plain mode treats as "nothing chosen".
 const ALL_ACCOUNTS = '__all__';
+// today only needs reading, not watching: a page left open past midnight
+// picks the new date up on its next render, like the month list does.
+const noSubscribe = () => () => {};
 
 export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
   const { d, t, locale } = useTranslation();
+  const x = d.ux.transactions;
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
-  const [selectedTransaction, setSelectedTransaction] = useState<LedgerRecord | null>(null);
+  // The whole ledger entry, not only the record: the detail dialog shows
+  // where the record sits in the running balance.
+  const [selectedEntry, setSelectedEntry] = useState<StatementEntry | null>(null);
+  // Month changes slide the statement in from the side the month came from.
+  const [slide, setSlide] = useState<'older' | 'newer' | null>(null);
 
   // Search and filters. Client only: they run over the ledger already on the
   // page, so nothing is fetched.
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS);
+
+  // Zone-aware today. The server cannot know the viewer's zone, so the
+  // server snapshot is null and the client reads it after hydration (a clock
+  // read during render would mismatch). A 'YYYY-MM-DD' string, so it compares
+  // stably between renders. Used for the "Today"/"Yesterday" day headers and
+  // to stop the balance chart at today.
+  const timeZoneOverride = useTimeZoneOverride();
+  const today = useSyncExternalStore(
+    noSubscribe,
+    () => todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()),
+    () => null,
+  );
 
   // 13, not 12: the navigator must reach the same month one year back
   // (from August 2026 that is August 2025, which is 13 entries inclusive).
@@ -83,50 +113,36 @@ export function TransactionsClient({
       return acc;
     }, []);
   }, [ledger, recordsById]);
+  const entriesById = useMemo(() => new Map(entriesWithRecords.map((e) => [e.record.id, e])), [entriesWithRecords]);
+  const openDetail = useCallback((txn: LedgerRecord) => {
+    setSelectedEntry(entriesById.get(txn.id) ?? { transId: txn.id, record: txn, balancesAfter: {}, totalBalanceAfter: 0 });
+  }, [entriesById]);
 
-  const { monthEntries, openingBalance, closingBalance, totalDeposits, totalWithdrawals, totalAdjustments } = useMemo(() => {
-    const monthStart = `${selectedMonthInfo.year}-${String(selectedMonthInfo.month + 1).padStart(2, '0')}-01`;
-    const nextMonthDate = new Date(selectedMonthInfo.year, selectedMonthInfo.month + 1, 1);
-    const monthNext = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+  // ---- Accounts ------------------------------------------------------------
+  // Account names are USER DATA. ONE ordering for the Today ledger and the
+  // Account filter (it used to be written twice): starred first, then bank
+  // and cash by highest balance, then credit cards by most owed.
+  const sortedAccounts = useMemo(() => {
+    const rank = (a: Account) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
+    return [...accounts].sort((x, y) => {
+      const bx = balancesByAccount[x.id] ?? 0;
+      const by = balancesByAccount[y.id] ?? 0;
+      if (rank(x) !== rank(y)) return rank(x) - rank(y);
+      // Cards hold negative balances: most owed = lowest balance.
+      return x.kind === 'credit' ? bx - by : by - bx;
+    });
+  }, [accounts, balancesByAccount]);
 
-    // entriesWithRecords is newest-first, so [0] of a filtered slice is
-    // always the most recent entry in it - that's the closing balance for
-    // the month, and the first entry strictly before monthStart is the
-    // closest prior balance (the opening balance), even across a month
-    // with zero activity.
-    const entries = entriesWithRecords.filter((e) => e.record.date >= monthStart && e.record.date < monthNext);
-    const priorEntry = entriesWithRecords.find((e) => e.record.date < monthStart);
-    // With no prior transaction the month opens at accountOpeningTotal,
-    // which is always 0 - every account starts at zero by design.
-    const opening = priorEntry ? priorEntry.totalBalanceAfter : accountOpeningTotal;
-    const closing = entries.length > 0 ? entries[0].totalBalanceAfter : opening;
-    // Adjustments - manual corrections AND transfers, which are stored as a
-    // pair of adjustment rows - get their own figure. Counting them by sign
-    // made a correction read as income or spending, and every transfer
-    // inflated BOTH deposits and withdrawals. A transfer's two rows share a
-    // date and sum to zero, so here they cancel and only corrections remain.
-    // closing = opening + deposits - withdrawals + adjustments still holds.
-    const flows = entries.filter((e) => e.record.type !== 'adjustment');
-    const deposits = flows.reduce((s, e) => (e.record.amount > 0 ? s + e.record.amount : s), 0);
-    const withdrawals = flows.reduce((s, e) => (e.record.amount < 0 ? s + Math.abs(e.record.amount) : s), 0);
-    const adjustmentNet = entries.reduce((s, e) => (e.record.type === 'adjustment' ? s + e.record.amount : s), 0);
+  const accountOptions: SelectFieldOption[] = useMemo(() => [
+    { value: ALL_ACCOUNTS, label: d.txnSearch.allAccounts },
+    ...sortedAccounts.map((a) => ({
+      value: a.id,
+      label: `${a.name}${a.last4 ? ` ····${a.last4}` : ''}${a.isPreferred ? ' ★' : ''}`,
+      icon: a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins,
+    })),
+  ], [sortedAccounts, d]);
 
-    return { monthEntries: entries, openingBalance: opening, closingBalance: closing, totalDeposits: deposits, totalWithdrawals: withdrawals, totalAdjustments: adjustmentNet };
-  }, [entriesWithRecords, selectedMonthInfo, accountOpeningTotal]);
-
-  // Sign written explicitly against Math.abs, as TransactionDetailModal
-  // does, so there is exactly one sign glyph whatever formatCurrency does
-  // with negatives. Rounded to cents first so float residue from a transfer
-  // pair or a set of corrections can never print as a signed zero.
-  const adjustmentCents = Math.round(totalAdjustments * 100);
-  const adjustmentSign = adjustmentCents > 0 ? '+' : adjustmentCents < 0 ? '-' : '';
-  const adjustmentText = `${adjustmentSign}${formatCurrency(Math.abs(adjustmentCents) / 100)}`;
-  const adjustmentColor = adjustmentCents > 0 ? 'var(--pine)' : adjustmentCents < 0 ? 'var(--wine)' : 'var(--ink-soft)';
-
-  const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
-  const canGoNewer = selectedMonthIndex > 0;
-
-  // ---- Search ---------------------------------------------------------------
+  // ---- Search --------------------------------------------------------------
   // Runs over the month shown in the navigator, so every result keeps a
   // correct "balance after". Older records: the command palette.
   const accountNames = useMemo(() => {
@@ -140,8 +156,100 @@ export function TransactionsClient({
   // has a digit, so typing a word never matches every amount.
   const qAmount = q.replace(/[$,\s]/g, '');
   const amountQuery = /[0-9]/.test(qAmount);
-  const searching = q !== '' || typeFilter !== 'all' || accountFilter !== ALL_ACCOUNTS;
-  const monthPrefix = `${selectedMonthInfo.year}-${String(selectedMonthInfo.month + 1).padStart(2, '0')}-`;
+  // ACCOUNT LENS: an account chosen with no text and type All shows that
+  // account's own statement (its opening, closing and flows, day groups with
+  // its running balance) instead of a results list. The rows are the same
+  // ones the account-only filter used to list under a results line; any text
+  // or type filter goes back to results mode, filtered by the account.
+  const lensId = accountFilter !== ALL_ACCOUNTS && q === '' && typeFilter === 'all' && accounts.some((a) => a.id === accountFilter)
+    ? accountFilter
+    : null;
+  const lensAccount = useMemo(() => (lensId ? accounts.find((a) => a.id === lensId) ?? null : null), [accounts, lensId]);
+  const searching = q !== '' || typeFilter !== 'all' || (accountFilter !== ALL_ACCOUNTS && !lensAccount);
+  const { prefix: monthPrefix } = monthBounds(selectedMonthInfo.year, selectedMonthInfo.month);
+
+  const fig = useMemo(
+    () => monthFigures(entriesWithRecords, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
+    [entriesWithRecords, selectedMonthInfo, accountOpeningTotal, lensId],
+  );
+  const { opening: openingBalance, closing: closingBalance, deposits: totalDeposits, withdrawals: totalWithdrawals, adjustments: totalAdjustments } = fig;
+
+  // Sign written explicitly against Math.abs, as TransactionDetailModal
+  // does, so there is exactly one sign glyph whatever formatCurrency does
+  // with negatives. Rounded to cents first so float residue from a transfer
+  // pair or a set of corrections can never print as a signed zero.
+  const adjustmentCents = cents(totalAdjustments);
+  const adjustmentSign = adjustmentCents > 0 ? '+' : adjustmentCents < 0 ? '-' : '';
+  const adjustmentText = `${adjustmentSign}${formatCurrency(Math.abs(adjustmentCents) / 100)}`;
+  const adjustmentColor = adjustmentCents > 0 ? 'var(--pine)' : adjustmentCents < 0 ? 'var(--wine)' : 'var(--ink-soft)';
+
+  // A credit card's statement reads as what it owes, like the Today ledger.
+  const lensIsCard = lensAccount?.kind === 'credit';
+  const balanceText = (v: number) => formatCurrency(lensIsCard ? Math.max(0, -v) : v);
+
+  const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
+  const canGoNewer = selectedMonthIndex > 0;
+  const goToMonth = useCallback((i: number) => {
+    setSelectedMonthIndex((cur) => {
+      if (i === cur || i < 0 || i >= monthOptions.length) return cur;
+      setSlide(i > cur ? 'older' : 'newer');
+      return i;
+    });
+  }, [monthOptions.length]);
+
+  // Optional page shortcuts: [ older month, ] newer. Gated exactly like
+  // AppShell's single-key shortcuts: no modifier, no key repeat, not during
+  // IME composition, not while typing, not while any dialog is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key !== '[' && e.key !== ']') return;
+      if (document.querySelector('.pebble-root [role="dialog"]')) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
+      e.preventDefault();
+      setSelectedMonthIndex((cur) => {
+        const next = e.key === '[' ? Math.min(monthOptions.length - 1, cur + 1) : Math.max(0, cur - 1);
+        if (next !== cur) setSlide(next > cur ? 'older' : 'newer');
+        return next;
+      });
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [monthOptions.length]);
+
+  // ---- Month strip -----------------------------------------------------------
+  const monthChips: MonthChip[] = useMemo(() => {
+    const sums = summarizeMonths(entriesWithRecords, monthOptions, accountOpeningTotal, lensId);
+    return sums.map((m, index) => ({ ...m, index })).reverse();
+  }, [entriesWithRecords, monthOptions, accountOpeningTotal, lensId]);
+
+  // ---- Balance chart ---------------------------------------------------------
+  const chartPoints = useMemo(() => {
+    if (!today) return null;
+    const { year, month } = selectedMonthInfo;
+    const { start, next, prefix } = monthBounds(year, month);
+    // The month in progress stops at today: the chart never projects.
+    const lastDay = today.startsWith(prefix) ? Number(today.slice(8, 10)) : daysInMonth(year, month);
+    const allInMonth = entriesWithRecords.filter((e) => e.record.date >= start && e.record.date < next);
+    return daySeries(fig.entries, allInMonth, year, month, lastDay, fig.opening, balanceReader(lensId));
+  }, [today, selectedMonthInfo, entriesWithRecords, fig, lensId]);
+
+  // Picking a day on the chart scrolls the statement to that day's group
+  // (scroll-margin keeps it clear of the sticky header and search bar) and
+  // washes it once in the brand tint. Smooth unless the viewer asked for
+  // reduced motion.
+  const pickDay = useCallback((date: string) => {
+    const group = document.querySelector<HTMLElement>(`.pb-txn-stmt [data-day="${date}"]`);
+    if (!group) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    group.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    group.classList.remove('pb-txn-day-pulse');
+    void group.offsetWidth; // restart the animation if the same day is picked twice
+    group.classList.add('pb-txn-day-pulse');
+    window.setTimeout(() => group.classList.remove('pb-txn-day-pulse'), 1900);
+  }, []);
 
   const results = useMemo(() => {
     if (!searching) return [];
@@ -164,258 +272,200 @@ export function TransactionsClient({
       );
     });
   }, [searching, entriesWithRecords, typeFilter, accountFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
+  // An account filter alongside text or a type keeps the account's own
+  // balance line on each row.
+  const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;
+  const resultGroups = useMemo(() => groupByDay(results, (e) => e.totalBalanceAfter), [results]);
 
-  // Account names are USER DATA. Same order as the header list: starred
-  // first (marked), bank and cash by balance, credit cards by amount owed.
-  const accountOptions: SelectFieldOption[] = useMemo(() => {
-    const rank = (a: (typeof accounts)[number]) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
-    const sorted = [...accounts].sort((x, y) => {
-      const bx = balancesByAccount[x.id] ?? 0;
-      const by = balancesByAccount[y.id] ?? 0;
-      if (rank(x) !== rank(y)) return rank(x) - rank(y);
-      return x.kind === 'credit' ? bx - by : by - bx;
-    });
-    return [
-      { value: ALL_ACCOUNTS, label: d.txnSearch.allAccounts },
-      ...sorted.map((a) => ({
-        value: a.id,
-        label: `${a.name}${a.last4 ? ` ····${a.last4}` : ''}${a.isPreferred ? ' ★' : ''}`,
-        icon: a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins,
-      })),
-    ];
-  }, [accounts, balancesByAccount, d]);
-
-  // Account list beside the total: columns of 3 rows, growing sideways. When
-  // the columns would not fit beside the total with a comfortable gap, the
-  // header stacks (total on top, list wrapping below, as on phones) - no
-  // column is ever cut. Decided from the width the columns NEED, not by
-  // measuring a clipped list, so it cannot flicker between the two layouts.
-  const [accountsStacked, setAccountsStacked] = useState(false);
-  const accountsRef = useRef<HTMLUListElement>(null);
-  useLayoutEffect(() => {
-    const row = accountsRef.current?.parentElement;
-    const total = row?.querySelector('.pb-txn-total');
-    if (!row || !total || typeof ResizeObserver === 'undefined') return;
-    const COL_GAP = 24;
-    const MIN_SPACE = 68;
-    const check = () => {
-      // The total's text width, whatever box it sits in (stacked or not).
-      const range = document.createRange();
-      range.selectNodeContents(total);
-      const totalWidth = range.getBoundingClientRect().width;
-      // Column width: the widest row's full content (name untruncated, icon,
-      // gaps, amount), kept between 240 and 340px - the CSS column bounds.
-      let widest = 0;
-      accountsRef.current?.querySelectorAll(':scope > li').forEach((li) => {
-        const kids = Array.from(li.children) as HTMLElement[];
-        const name = kids[1];
-        const amount = kids[kids.length - 1];
-        const star = kids.length > 3 ? 20 : 0; // the star beside a starred account
-        if (name && amount) widest = Math.max(widest, 15 + name.scrollWidth + amount.scrollWidth + 22 + star);
-      });
-      const col = Math.min(340, Math.max(240, widest));
-      const cols = Math.max(1, Math.ceil(accounts.length / 3));
-      const need = totalWidth + cols * col + (cols - 1) * COL_GAP + MIN_SPACE * 3;
-      setAccountsStacked(need > row.clientWidth);
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(row);
-    return () => ro.disconnect();
-  }, [accounts.length]);
-
-  // The X clears the typed text only, and shows only when there is text to
-  // clear. Type and Account each have their own All option. Focus returns
-  // to the box because the X disappears with the text.
-  const clearSearch = () => {
+  const clearFilters = () => {
     setQuery('');
-    document.getElementById('pb-txn-search')?.focus();
+    setTypeFilter('all');
+    setAccountFilter(ALL_ACCOUNTS);
   };
 
-  const typeOptions: { value: TypeFilter; label: string }[] = [
-    { value: 'all', label: d.txnSearch.typeAll },
-    { value: 'expense', label: d.enums.kind.expense },
-    { value: 'income', label: d.enums.kind.income },
-  ];
+  // A ledger row in the Today card opens that account's statement; pressing
+  // the open one again returns to all accounts. On a phone the statement is
+  // far below, so it is brought into view.
+  const pickAccount = (id: string) => {
+    const next = accountFilter === id ? ALL_ACCOUNTS : id;
+    setAccountFilter(next);
+    if (next === ALL_ACCOUNTS) return;
+    const stmt = document.getElementById('pb-txn-statement-col');
+    if (stmt && stmt.getBoundingClientRect().top > window.innerHeight * 0.6) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      stmt.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+  };
+
+  // The search bar sticks under the header from 640px; the day headers stick
+  // under both, so its live height is published for them.
+  const barRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const main = mainRef.current;
+    if (!bar || !main || typeof ResizeObserver === 'undefined') return;
+    const write = () => main.style.setProperty('--pb-txn-bar-h', `${bar.offsetHeight}px`);
+    write();
+    const ro = new ResizeObserver(write);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
+
+  // Formatted HERE rather than read from selectedMonthInfo.label: that label
+  // is built in stats.ts, which is shared with server code and cannot know
+  // the locale. The year and month numbers carry the same information and
+  // localize properly.
+  const monthLabel = formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale);
+  const delta = cents(closingBalance - openingBalance) / 100;
+  const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
+  const statementCount = fig.entries.length;
+
+  const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />;
+  const monthKey = `${selectedMonthInfo.year}-${selectedMonthInfo.month}-${lensId ?? ''}-${searching ? 's' : ''}`;
+  const slideClass = slide ? ` pb-txn-slide-${slide}` : '';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <div className={`pb-txn-top${accountsStacked ? ' pb-txn-expanded' : ''}`}>
-          {/* minWidth 0 here and on the list: a flex item cannot shrink below its
-              min-content width, which for the list is a full unshortened row -
-              without it the list pushes past a phone's right edge. */}
-          <div className="pb-txn-total" style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
-            <p className="font-display pb-money pb-txn-total-amount" style={{ fontWeight: 600 }}>{formatCurrency(currentBalance)}</p>
-          </div>
-          {/* Each account's balance as a quiet ledger: one row each, figures
-              right-aligned in tabular numerals so they compare at a glance.
-              Beside the total on wide screens, under it on a phone. Credit
-              cards last, shown as what they owe. Display only - nothing here
-              is submitted. Deliberately NOT StatTab: the row below is
-              month-scoped, these figures are today's. */}
-          {/* Two columns once there is room (many accounts no longer stretch the
-              card tall beside the total). Every row has a top hairline and is
-              nudged up 1px; the list clips, so only the first row's line hides. */}
-          <ul id="pb-txn-accounts" ref={accountsRef} style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0 }}>
-            {[...accounts]
-              // Starred account first; then bank and cash, highest balance first;
-              // then credit cards, most owed first.
-              .sort((x, y) => {
-                const rank = (a: typeof x) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
-                const bx = balancesByAccount[x.id] ?? 0;
-                const by = balancesByAccount[y.id] ?? 0;
-                if (rank(x) !== rank(y)) return rank(x) - rank(y);
-                // Cards hold negative balances: most owed = lowest balance.
-                return x.kind === 'credit' ? bx - by : by - bx;
-              })
-              .map((a) => {
-                const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
-                const value = balancesByAccount[a.id] ?? 0;
-                const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
-                return (
-                  <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.45rem 0', borderTop: '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
-                    <AccountIcon size={15} aria-hidden="true" style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
-                    {/* Account names are USER DATA. */}
-                    <span style={{ flex: 1, minWidth: 0, fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.name}
-                      {a.last4 && <span className="font-mono-tab" style={{ color: 'var(--ink-soft)' }}> ····{a.last4}</span>}
-                    </span>
-                    {a.isPreferred && (
-                      <Star size={12} fill="var(--gold)" color="var(--gold)" aria-label={d.accounts.preferred} style={{ flexShrink: 0 }} />
-                    )}
-                    <span className="font-mono-tab" style={{ fontSize: '0.88rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {owed !== null
-                        ? <>{formatCurrency(owed)} <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.accountsPage.cardOwed}</span></>
-                        : formatCurrency(value)}
-                    </span>
-                  </li>
-                );
-              })}
-          </ul>
-        </div>
-
-        {/* Formatted HERE rather than read from selectedMonthInfo.label:
-            that label is built in stats.ts, which is shared with server code
-            and cannot know the locale. The year and month numbers carry the
-            same information and localize properly. */}
-        <MonthNavigator
-          label={formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
-          canGoOlder={canGoOlder}
-          canGoNewer={canGoNewer}
-          onOlder={() => setSelectedMonthIndex((i) => i + 1)}
-          onNewer={() => setSelectedMonthIndex((i) => i - 1)}
+    <div className="pb-txn-page">
+      {/* The side rail on a wide Mac (sticky, its own 'content' container so
+          the five-figure tiers and the ledger stacking follow the rail's
+          width); simply the top of the page everywhere else. */}
+      <div className="pb-txn-rail themed-scroll">
+        <TodayLedger
+          currentBalance={currentBalance}
+          accounts={sortedAccounts}
+          balancesByAccount={balancesByAccount}
+          selectedAccountId={lensId}
+          onPickAccount={pickAccount}
         />
 
-        <div className="stat-tabs stat-tabs-five">
-          <StatTab icon={Wallet} label={d.transactions.openingBalance} value={formatCurrency(openingBalance)} color="var(--ink-soft)" />
-          <StatTab icon={Wallet} label={d.transactions.closingBalance} value={formatCurrency(closingBalance)} color="var(--pine)" />
-          <StatTab icon={ArrowUpRight} label={d.transactions.deposits} value={formatCurrency(totalDeposits)} color="var(--pine)" />
-          <StatTab icon={ArrowDownRight} label={d.transactions.withdrawals} value={formatCurrency(totalWithdrawals)} color="var(--wine)" />
-          <StatTab icon={SlidersHorizontal} label={d.transactions.adjustments} value={adjustmentText} color={adjustmentColor} valueColor={adjustmentColor} />
-        </div>
-      </div>
-
-      {/* Search and filters. */}
-      <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div style={{ position: 'relative' }}>
-          <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)' }} />
-          <input
-            id="pb-txn-search"
-            type="text"
-            enterKeyHint="search"
-            autoComplete="off"
-            spellCheck={false}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={d.txnSearch.placeholder}
-            aria-label={d.txnSearch.placeholder}
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '0.65rem 2.6rem 0.65rem 2.3rem',
-              borderRadius: '0.7rem', border: '1px solid var(--line)', fontSize: '0.9rem',
-              color: 'var(--ink)', backgroundColor: 'var(--paper)',
-            }}
+        <section className="card pb-txn-month" aria-label={monthLabel}>
+          <MonthNavigator
+            label={monthLabel}
+            canGoOlder={canGoOlder}
+            canGoNewer={canGoNewer}
+            onOlder={() => goToMonth(selectedMonthIndex + 1)}
+            onNewer={() => goToMonth(selectedMonthIndex - 1)}
+            months={monthChips}
+            selectedIndex={selectedMonthIndex}
+            onSelect={goToMonth}
+            controls="pb-txn-statement-col"
+            eyebrow={lensAccount ? t(x.lensEyebrow, { account: lensAccount.name }) : x.thisMonth}
+            aside={(
+              <span className="pb-txn-delta">
+                {renderTemplate(x.deltaThisMonth, {
+                  amount: <DeltaChip delta={lensIsCard ? -delta : delta} text={deltaText} good="up" money />,
+                })}
+              </span>
+            )}
           />
-          {query !== '' && (
-            <button
-              type="button" onClick={clearSearch} className="icon-btn" aria-label={d.txnSearch.clear} title={d.txnSearch.clear}
-              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-          <div role="group" aria-label={d.txnSearch.typeLabel} style={{ display: 'flex', gap: '0.35rem' }}>
-            {typeOptions.map((o) => {
-              const on = typeFilter === o.value;
-              return (
-                <button
-                  key={o.value} type="button" aria-pressed={on} onClick={() => setTypeFilter(o.value)}
-                  style={{
-                    padding: '0.4rem 0.8rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: on ? 600 : 500,
-                    border: `1px solid ${on ? 'var(--pine)' : 'var(--line)'}`,
-                    backgroundColor: on ? 'var(--pine-soft)' : 'transparent',
-                    color: on ? 'var(--pine)' : 'var(--ink-soft)',
-                  }}
-                >
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280 }}>
-            <SelectField
-              value={accountFilter}
-              onChange={setAccountFilter}
-              options={accountOptions}
-              placeholder={d.txnSearch.allAccounts}
-              ariaLabel={d.txnSearch.accountLabel}
+          <BalanceBridge
+            opening={openingBalance}
+            deposits={totalDeposits}
+            withdrawals={totalWithdrawals}
+            adjustments={totalAdjustments}
+            closing={closingBalance}
+          />
+
+          {/* Exactly five tiles, in this order: the tier layout counts them.
+              Closing has its own icon now, so it no longer looks like Opening. */}
+          <div className="stat-tabs stat-tabs-five">
+            <StatTab icon={Wallet} label={d.transactions.openingBalance} value={balanceText(openingBalance)} sublabel={lensIsCard ? d.accountsPage.cardOwed : undefined} color="var(--ink-soft)" />
+            <StatTab icon={CalendarCheck} label={d.transactions.closingBalance} value={balanceText(closingBalance)} sublabel={lensIsCard ? d.accountsPage.cardOwed : undefined} color="var(--pine)" />
+            <StatTab icon={ArrowUpRight} label={d.transactions.deposits} value={formatCurrency(totalDeposits)} color="var(--pine)" />
+            <StatTab icon={ArrowDownRight} label={d.transactions.withdrawals} value={formatCurrency(totalWithdrawals)} color="var(--wine)" />
+            <StatTab
+              icon={SlidersHorizontal} label={d.transactions.adjustments} value={adjustmentText} color={adjustmentColor} valueColor={adjustmentColor}
+              info={lensAccount ? <InfoTooltip label={x.lensAdjInfoLabel}>{x.lensAdjInfo}</InfoTooltip> : undefined}
             />
           </div>
-          <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />
+        </section>
+
+        <MonthBalanceChart
+          points={chartPoints}
+          opening={openingBalance}
+          hasActivity={statementCount > 0}
+          onPickDay={pickDay}
+          subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
+        />
+      </div>
+
+      <div className="pb-txn-main" id="pb-txn-statement-col" ref={mainRef}>
+        <SearchToolbar
+          ref={barRef}
+          query={query}
+          onQuery={setQuery}
+          typeFilter={typeFilter}
+          onTypeFilter={setTypeFilter}
+          accountFilter={accountFilter}
+          onAccountFilter={setAccountFilter}
+          accountOptions={accountOptions}
+          lensAccount={lensAccount}
+          onExitLens={() => setAccountFilter(ALL_ACCOUNTS)}
+        />
+
+        <div key={monthKey} className={`pb-txn-swap${slideClass}`}>
+          {searching ? (
+            <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
+              <div className="pb-txn-stmt-head">
+                <p role="status" className="pb-txn-results-line">
+                  {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
+                  {' · '}{monthLabel}
+                </p>
+                {importButton}
+              </div>
+              {results.length === 0 ? (
+                <EmptyState
+                  icon={SearchX}
+                  title={d.txnSearch.empty}
+                  body={<>{x.noMatchBody}<span className="pb-txn-older-hint"> {x.olderHint}</span></>}
+                  action={<button type="button" className="pill" onClick={clearFilters}>{x.clearFilters}</button>}
+                />
+              ) : (
+                <>
+                  <ResultsSummary results={results} categoryMeta={categoryMeta} />
+                  <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
+                  <DayGroups
+                    groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
+                    onOpenDetail={openDetail} today={today} lensAccountId={resultsLensId} highlight={q || undefined}
+                  />
+                </>
+              )}
+            </div>
+          ) : (
+            <StatementList
+              entries={fig.entries}
+              openingBalance={openingBalance}
+              closingBalance={closingBalance}
+              monthInfo={selectedMonthInfo}
+              today={today}
+              lensAccountId={lensId}
+              accounts={accounts}
+              categoryMeta={categoryMeta}
+              onOpenDetail={openDetail}
+              head={(
+                <div className="pb-txn-stmt-head">
+                  <div style={{ minWidth: 0 }}>
+                    <h3 className="pb-txn-stmt-title">{lensAccount ? t(x.lensTitle, { account: lensAccount.name }) : x.statement}</h3>
+                    <p className="pb-txn-stmt-sub">
+                      {monthLabel} · <span className="pb-tnum">{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
+                    </p>
+                  </div>
+                  {importButton}
+                </div>
+              )}
+            />
+          )}
         </div>
       </div>
 
-      {searching ? (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <p role="status" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', padding: '0.9rem 1.5rem', margin: 0, borderBottom: '1px solid var(--line)' }}>
-            {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
-            {' · '}{formatMonthYear(selectedMonthInfo.year, selectedMonthInfo.month, locale)}
-          </p>
-          {results.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.txnSearch.empty}</p>
-          ) : (
-            results.map((e) => (
-              <StatementRow
-                key={e.record.id}
-                txn={e.record}
-                balancesAfter={e.balancesAfter}
-                accounts={accounts}
-                totalBalanceAfter={e.totalBalanceAfter}
-                onOpenDetail={setSelectedTransaction}
-                categoryMeta={categoryMeta}
-              />
-            ))
-          )}
-        </div>
-      ) : (
-        <StatementList
-          entries={monthEntries}
-          openingBalance={openingBalance}
-          accounts={accounts}
-          categoryMeta={categoryMeta}
-          onOpenDetail={setSelectedTransaction}
-        />
-      )}
-
-      {selectedTransaction && (
+      {selectedEntry && (
         <TransactionDetailModal
-          txn={selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          txn={selectedEntry.record}
+          onClose={() => setSelectedEntry(null)}
           categoryMeta={categoryMeta}
+          ledgerEntry={selectedEntry ?? undefined}
         />
       )}
     </div>

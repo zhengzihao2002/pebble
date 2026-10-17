@@ -83,10 +83,12 @@ function ChevronNavigator({ label, canGoOlder, canGoNewer, onOlder, onNewer }: M
  *
  * Each chip: the short month name (the year on January and on the first
  * chip) over a micro glyph, a pine bar up for money in and a wine bar down
- * for money out, scaled to the busiest month of the 13. The glyphs carry no
- * figures, but proportions are still information, so they sit in
- * .pb-chart-fill and blur with the other charts in privacy mode. A faint
- * line of each month's closing balance runs behind the chips (also blurred).
+ * for money out, scaled to the busiest month of the 13 (square-root scale,
+ * so an ordinary month still shows beside one with a bonus). The glyphs carry
+ * no figures, but proportions are still information, so they sit in
+ * .pb-chart-fill and blur with the other charts in privacy mode. (A closing-
+ * balance line behind the chips was tried and dropped: it ran through the
+ * glyphs and read as clutter; the balance chart below shows that line.)
  * Months without a record are dimmed with a hollow glyph.
  *
  * A tablist with a roving tabindex: Tab reaches the selected month, the arrow
@@ -128,12 +130,9 @@ function MonthStripNavigator({
     return () => { ro.disconnect(); cancelAnimationFrame(id); };
   }, [selectedIndex, months.length, locale]);
 
-  const maxFlow = Math.max(1, ...months.map((m) => Math.max(m.deposits, m.withdrawals)));
-  const closings = months.map((m) => m.closing);
-  const cMin = Math.min(...closings);
-  const cSpan = Math.max(...closings) - cMin || 1;
+  const maxFlow = Math.sqrt(Math.max(1, ...months.map((m) => Math.max(m.deposits, m.withdrawals))));
+  const scale = (v: number) => Math.max(0.1, Math.sqrt(v) / maxFlow);
   const n = months.length;
-  const linePoints = months.map((m, i) => `${(((i + 0.5) / n) * 100).toFixed(2)},${(30 - ((m.closing - cMin) / cSpan) * 26).toFixed(2)}`).join(' ');
 
   const pos = months.findIndex((m) => m.index === selectedIndex);
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -181,13 +180,6 @@ function MonthStripNavigator({
         {chevron('older')}
         <div className="pb-txn-strip themed-scroll" ref={stripRef} role="tablist" aria-label={d.ux.transactions.months} onKeyDown={onKeyDown}>
           <div className="pb-txn-strip-track">
-            {/* The closing-balance line behind the chips. preserveAspectRatio
-                none stretches it to the track; the stroke stays 1.5px. */}
-            <span className="pb-txn-strip-line pb-chart-fill" aria-hidden="true">
-              <svg viewBox="0 0 100 32" preserveAspectRatio="none" focusable="false">
-                <polyline points={linePoints} vectorEffect="non-scaling-stroke" />
-              </svg>
-            </span>
             {thumb && (
               <span
                 className={`pb-txn-strip-thumb${ready ? ' pb-txn-strip-thumb-ready' : ''}`}
@@ -212,8 +204,8 @@ function MonthStripNavigator({
                 >
                   <span className="pb-txn-chip-year pb-tnum" aria-hidden="true">{showYear ? fmt(m, { year: 'numeric' }) : ''}</span>
                   <span className="pb-txn-chip-glyph pb-chart-fill" aria-hidden="true">
-                    <span className="pb-txn-chip-in" style={{ transform: `scaleY(${empty ? 0 : Math.max(0.08, m.deposits / maxFlow)})` }} />
-                    <span className="pb-txn-chip-out" style={{ transform: `scaleY(${empty ? 0 : Math.max(0.08, m.withdrawals / maxFlow)})` }} />
+                    <span className="pb-txn-chip-in" style={{ transform: `scaleY(${empty || m.deposits === 0 ? 0 : scale(m.deposits)})` }} />
+                    <span className="pb-txn-chip-out" style={{ transform: `scaleY(${empty || m.withdrawals === 0 ? 0 : scale(m.withdrawals)})` }} />
                   </span>
                   <span className="pb-txn-chip-month" aria-hidden="true">{fmt(m, { month: 'short' })}</span>
                 </button>

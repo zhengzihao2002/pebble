@@ -1,1 +1,419 @@
 /* Redesign: transactions. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+
+/* ============================================================
+   Page frame. One column in priority order (Today, This month, the balance
+   chart, search, statement). On a wide Mac (content >= 1180px) a two-pane
+   grid: the summary in a sticky left rail, the statement on the right.
+
+   The rail is a container named `content`, so every existing
+   `@container content` rule inside it - the five-figure tiers, the Today
+   ledger's side-by-side layout - answers to the RAIL's width on a Mac and to
+   the page width everywhere else, with no rule rewritten. The statement
+   column is its own container (pb-txn-col) for the search bar and ledger.
+   ============================================================ */
+.pebble-root .pb-txn-page { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.pebble-root .pb-txn-rail {
+  display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
+  container-type: inline-size; container-name: content;
+}
+.pebble-root .pb-txn-main {
+  display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
+  container-type: inline-size; container-name: pb-txn-col;
+}
+/* 1220px: the narrowest width at which the statement column beside the
+   rail still gets its ledger grid (>= 720px). Below it the single column
+   keeps the waterfall, the whole month strip and the grid. */
+@container content (min-width: 1220px) {
+  .pebble-root .pb-txn-page {
+    display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start; gap: 1.5rem;
+  }
+  /* Sticky under the glass header. Taller than the window (many accounts,
+     large text) it scrolls on its own rather than hiding its foot; the
+     padding gives the cards' shadows room inside the scroll box. */
+  .pebble-root .pb-txn-rail {
+    position: sticky; top: calc(var(--pb-header-h) + 1rem);
+    max-height: calc(100dvh - var(--pb-header-h) - 2rem);
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+    gap: 1.25rem; margin: -0.5rem; padding: 0.5rem 0.5rem 1rem;
+  }
+}
+
+/* Card padding: 1.25rem 1.5rem, 1.1rem on a phone. */
+.pebble-root .pb-txn-today,
+.pebble-root .pb-txn-month,
+.pebble-root .pb-txn-chart-card { padding: 1.25rem 1.5rem; }
+@container content (max-width: 559.98px) {
+  .pebble-root .pb-txn-today,
+  .pebble-root .pb-txn-month,
+  .pebble-root .pb-txn-chart-card { padding: 1.1rem; }
+}
+
+/* Zone label: small caps above each summary card. */
+.pebble-root .pb-txn-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin: 0 0 0.35rem;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.pebble-root .pb-txn-eyebrow svg { color: var(--gold); }
+
+/* Screen-reader-only text. */
+.pebble-root .pb-txn-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ============================================================
+   Today.
+   ============================================================ */
+.pebble-root .pb-txn-today .pb-txn-top { margin-bottom: 0; }
+/* Cents at half size and raised, so the dollars read first. */
+.pebble-root .pb-txn-cents { font-size: 0.5em; vertical-align: 0.62em; margin-left: 0.04em; letter-spacing: 0; }
+
+/* Ledger rows are buttons that open the account's statement. */
+.pebble-root .pb-txn-acc {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%; min-width: 0;
+  padding: 0.45rem 0.4rem; margin: 0; border: 0; border-radius: 0.55rem;
+  background: transparent; color: inherit; font: inherit; text-align: left;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-acc:hover { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
+.pebble-root .pb-txn-acc:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-txn-acc-on,
+.pebble-root .pb-txn-acc-on:hover {
+  background-color: color-mix(in srgb, var(--pine) 11%, transparent);
+  box-shadow: inset 3px 0 0 var(--pine);
+}
+@media (pointer: coarse) { .pebble-root .pb-txn-acc { min-height: 44px; } }
+
+/* ============================================================
+   This month: title, timeline strip, balance bridge, five figures.
+   ============================================================ */
+.pebble-root .pb-txn-nav-head {
+  display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
+}
+.pebble-root .pb-txn-month-title { margin: 0; font-size: 1.4rem; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+.pebble-root .pb-txn-nav-aside { min-width: 0; }
+.pebble-root .pb-txn-delta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-txn-delta > span { display: inline-flex; align-items: center; }
+
+.pebble-root .pb-txn-strip-row { display: flex; align-items: center; gap: 0.35rem; margin: 0.9rem 0 1.1rem; min-width: 0; }
+.pebble-root .pb-txn-chev { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+.pebble-root .pb-txn-strip {
+  flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px;
+}
+.pebble-root .pb-txn-strip::-webkit-scrollbar { display: none; }
+/* When the strip scrolls (rail, phone), its edges fade so the cut chips read
+   as "more this way". */
+@container content (max-width: 899.98px) {
+  .pebble-root .pb-txn-strip {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+  }
+  /* Room to scroll the end chips clear of the fades. */
+  .pebble-root .pb-txn-strip-track { padding-inline: 12px; }
+}
+.pebble-root .pb-txn-strip-track { position: relative; display: flex; gap: 2px; min-width: 100%; width: max-content; }
+.pebble-root .pb-txn-strip-thumb {
+  position: absolute; top: 0; bottom: 0; left: 0; z-index: 0; border-radius: 0.85rem; pointer-events: none;
+  background-color: color-mix(in srgb, var(--pine) 11%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 30%, transparent);
+}
+.pebble-root .pb-txn-strip-thumb-ready { transition: transform 320ms var(--pb-ease-out), width 320ms var(--pb-ease-out); }
+.pebble-root .pb-txn-chip {
+  position: relative; z-index: 1; flex: 1 0 3.3rem; min-height: 58px; scroll-snap-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 0.25rem 0.15rem 0.35rem; border: 0; border-radius: 0.85rem; background: transparent;
+  color: var(--ink-soft); font: inherit;
+  transition: color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-chip:hover { color: var(--ink); }
+.pebble-root .pb-txn-chip[aria-selected="true"] { color: var(--ink); }
+.pebble-root .pb-txn-chip[aria-selected="true"] .pb-txn-chip-month { font-weight: 700; }
+.pebble-root .pb-txn-chip:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-txn-chip-year { height: 0.7rem; font-size: 0.58rem; line-height: 0.7rem; color: var(--ink-soft); opacity: 0.8; }
+.pebble-root .pb-txn-chip-month { font-size: 0.76rem; font-weight: 500; line-height: 1.1; white-space: nowrap; }
+/* The glyph: a pine bar rising from the middle for money in, a wine bar
+   hanging from it for money out. Scaled by transform, so a month change
+   animates without layout. */
+.pebble-root .pb-txn-chip-glyph { position: relative; display: block; width: 16px; height: 26px; }
+.pebble-root .pb-txn-chip-glyph::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; margin-top: -0.5px;
+  background-color: color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.pebble-root .pb-txn-chip-in,
+.pebble-root .pb-txn-chip-out {
+  position: absolute; width: 5px; height: calc(50% - 1px);
+  transition: transform var(--pb-dur-emph) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-chip-in { left: 2px; bottom: calc(50% + 1px); border-radius: 2px 2px 0 0; background-color: var(--pine); transform-origin: bottom; }
+.pebble-root .pb-txn-chip-out { right: 2px; top: calc(50% + 1px); border-radius: 0 0 2px 2px; background-color: var(--wine); transform-origin: top; }
+/* No records: dimmed, with a hollow ring where the bars would be. */
+.pebble-root .pb-txn-chip-empty { opacity: 0.6; }
+.pebble-root .pb-txn-chip-empty .pb-txn-chip-glyph::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%; border: 1.5px solid var(--ink-soft); background-color: var(--mist);
+}
+
+/* Balance bridge. The waterfall shows only where it can stand over the five
+   figures (one row of five); elsewhere the flow bar. */
+.pebble-root .pb-txn-bridge { margin-bottom: 1rem; }
+.pebble-root .pb-txn-fall { display: none; }
+.pebble-root .pb-txn-flow { display: flex; gap: 2px; height: 14px; border-radius: 999px; overflow: hidden; }
+@container content (min-width: 900px) {
+  .pebble-root .pb-txn-fall {
+    position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.65rem;
+    height: 6.5rem;
+  }
+  .pebble-root .pb-txn-flow { display: none; }
+}
+.pebble-root .pb-txn-fall-cell { position: relative; }
+.pebble-root .pb-txn-fall-bar { position: absolute; left: 50%; width: 24px; margin-left: -12px; border-radius: 4px; }
+.pebble-root .pb-txn-fall-open { background-color: color-mix(in srgb, var(--ink) 20%, transparent); }
+.pebble-root .pb-txn-fall-in { background-color: var(--pine); }
+.pebble-root .pb-txn-fall-out { background-color: var(--wine); }
+.pebble-root .pb-txn-fall-adj,
+.pebble-root .pb-txn-flow-adj {
+  background-color: color-mix(in srgb, var(--gold) 30%, transparent);
+  background-image: repeating-linear-gradient(135deg, var(--gold) 0 2px, transparent 2px 5px);
+}
+.pebble-root .pb-txn-fall-close { background-color: color-mix(in srgb, var(--ink) 58%, transparent); }
+.pebble-root .pb-txn-fall-flat { height: 2px; margin-top: -1px; border-radius: 1px; }
+.pebble-root .pb-txn-fall-link {
+  position: absolute; left: calc(50% + 12px); width: calc(100% + 0.65rem - 24px); height: 0;
+  border-top: 1px dashed var(--ink-soft); opacity: 0.55;
+}
+.pebble-root .pb-txn-fall-zero { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
+.pebble-root .pb-txn-flow-in { background-color: var(--pine); }
+.pebble-root .pb-txn-flow-out { background-color: var(--wine); }
+.pebble-root .pb-txn-flow-in,
+.pebble-root .pb-txn-flow-out,
+.pebble-root .pb-txn-flow-adj { flex-basis: 0; min-width: 3px; }
+.pebble-root .pb-txn-flow-none { flex: 1; background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+
+/* ============================================================
+   Balance chart.
+   ============================================================ */
+.pebble-root .pb-txn-chart { height: 110px; margin-top: 0.75rem; }
+@container content (min-width: 560px) { .pebble-root .pb-txn-chart { height: 160px; } }
+.pebble-root .pb-txn-chart .pb-skel { height: 100%; }
+.pebble-root .pb-txn-chart-dot { fill: var(--pine); stroke: var(--mist); stroke-width: 1.5; }
+.pebble-root .pb-txn-chart-foot { margin: 0.55rem 0 0; font-size: 0.75rem; color: var(--ink-soft); }
+.pebble-root .pb-txn-chart-tip {
+  background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem;
+  box-shadow: var(--shadow); color: var(--ink); line-height: 1.45;
+}
+.pebble-root .pb-txn-chart-tip p { margin: 0; }
+.pebble-root .pb-txn-chart-tip-date { font-weight: 600; margin-bottom: 0.15rem !important; }
+.pebble-root .pb-txn-chart-tip-soft { color: var(--ink-soft); font-size: 0.75rem; }
+
+/* ============================================================
+   Search bar. Sticks under the header from 640px, on the header's glass
+   (on a pseudo-element, so the bar never becomes a containing block for the
+   account dropdown).
+   ============================================================ */
+.pebble-root .pb-txn-bar { display: flex; flex-direction: column; gap: 0.65rem; padding: 0.85rem 1rem; }
+@container pb-txn-col (min-width: 640px) {
+  .pebble-root .pb-txn-bar {
+    position: sticky; top: var(--pb-header-h); z-index: 6;
+    flex-direction: row; flex-wrap: wrap; align-items: center;
+    background-color: transparent; isolation: isolate;
+  }
+  .pebble-root .pb-txn-bar::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background-color: color-mix(in srgb, var(--mist) 86%, transparent);
+    -webkit-backdrop-filter: saturate(1.5) blur(14px); backdrop-filter: saturate(1.5) blur(14px);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .pebble-root .pb-txn-bar::before { background-color: var(--mist); }
+  }
+}
+.pebble-root .pb-txn-search { position: relative; flex: none; min-width: 0; }
+@container pb-txn-col (min-width: 640px) { .pebble-root .pb-txn-search { flex: 1 1 15rem; } }
+.pebble-root .pb-txn-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); pointer-events: none; }
+.pebble-root #pb-txn-search {
+  width: 100%; box-sizing: border-box; padding: 0.65rem 2.6rem 0.65rem 2.3rem;
+  border-radius: 0.7rem; border: 1px solid var(--line); font-size: 0.9rem;
+  color: var(--ink); background-color: var(--paper);
+}
+.pebble-root .pb-txn-search-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; border-radius: 50%; border: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+@media (pointer: coarse) { .pebble-root .pb-txn-search-clear { width: 40px; height: 40px; right: 2px; } }
+.pebble-root .pb-txn-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
+.pebble-root .pb-txn-type { flex: none; }
+.pebble-root .pb-txn-account-select { flex: 1 1 11rem; min-width: 0; max-width: 17rem; }
+@container pb-txn-col (max-width: 479.98px) {
+  .pebble-root .pb-txn-type { width: 100%; }
+  .pebble-root .pb-txn-type .pb-seg-btn { flex: 1 1 0; }
+  .pebble-root .pb-txn-account-select { max-width: none; }
+}
+@media (pointer: coarse) { .pebble-root .pb-txn-type .pb-seg-btn { min-height: 38px; } }
+/* The lens chip: which account's statement is showing, and the way back. */
+.pebble-root .pb-txn-lens-chip {
+  display: inline-flex; align-items: center; gap: 0.15rem; min-width: 0; max-width: 100%;
+  padding: 0.15rem 0.2rem 0.15rem 0.7rem; border-radius: 999px;
+  background-color: color-mix(in srgb, var(--pine) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 28%, transparent);
+  font-size: 0.78rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-txn-lens-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-txn-lens-chip button {
+  display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--ink-soft);
+}
+.pebble-root .pb-txn-lens-chip button:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+@media (pointer: coarse) { .pebble-root .pb-txn-lens-chip button { width: 36px; height: 36px; } }
+
+/* ============================================================
+   Statement card: head, bookends, day groups, ledger rows.
+   ============================================================ */
+.pebble-root .pb-txn-stmt { container-type: inline-size; container-name: pb-txn-stmt; }
+.pebble-root .pb-txn-stmt-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 1rem 1.1rem 0.9rem; border-bottom: 1px solid var(--line);
+}
+.pebble-root .pb-txn-stmt-title { margin: 0; font-size: 0.98rem; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-txn-stmt-sub { margin: 0.15rem 0 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-txn-results-line { margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
+/* Import CSV sits in the statement's own heading - an action on the
+   statement, set apart from the filters - and never wraps its label. */
+.pebble-root .pb-txn-stmt-head .pill { white-space: nowrap; }
+
+.pebble-root .pb-txn-bookend {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.7rem 1.1rem; border-bottom: 1px solid var(--line);
+  background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+  font-size: 0.8rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-txn-bookend > :first-child { color: var(--ink-soft); font-weight: 500; }
+.pebble-root .pb-txn-bookend-foot { border-bottom: 0; }
+
+/* Day header: sticks under the glass header (and under the search bar when
+   that sticks too), on the same glass. z-index stays under the header's 10
+   and the search bar's 6. */
+.pebble-root .pb-txn-day { position: relative; scroll-margin-top: calc(var(--pb-header-h) + 0.5rem); }
+.pebble-root .pb-txn-day-head {
+  position: sticky; top: var(--pb-header-h); z-index: 4;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.5rem 1.1rem; border-bottom: 1px solid var(--line);
+  font-size: 0.75rem; color: var(--ink-soft);
+  background-color: color-mix(in srgb, var(--mist) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px); backdrop-filter: saturate(1.5) blur(14px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pebble-root .pb-txn-day-head { background-color: var(--mist); }
+}
+@container pb-txn-col (min-width: 640px) {
+  .pebble-root .pb-txn-day-head { top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px)); }
+  .pebble-root .pb-txn-day { scroll-margin-top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px) + 0.5rem); }
+}
+.pebble-root .pb-txn-day-label { display: inline-flex; align-items: baseline; gap: 0.45rem; min-width: 0; white-space: nowrap; }
+.pebble-root .pb-txn-day-long,
+.pebble-root .pb-txn-day-short { font-weight: 600; color: var(--ink); }
+.pebble-root .pb-txn-day-long { display: none; }
+.pebble-root .pb-txn-day-figs { display: inline-flex; align-items: baseline; gap: 0.75rem; white-space: nowrap; }
+.pebble-root .pb-txn-day-figs > .font-mono-tab { font-weight: 600; }
+/* On a narrow card the end-of-day figure gives way: it is the "Bal" of the
+   day's first row, directly below. */
+.pebble-root .pb-txn-day-eod { display: none; }
+@container pb-txn-stmt (min-width: 480px) { .pebble-root .pb-txn-day-eod { display: inline; } }
+.pebble-root .pb-txn-pos { color: var(--pine); }
+.pebble-root .pb-txn-neg { color: var(--wine); }
+.pebble-root .pb-txn-zero { color: var(--ink-soft); }
+/* Picked from the chart: one soft wash of the brand tint, fading out. */
+.pebble-root .pb-txn-day-pulse::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-color: color-mix(in srgb, var(--pine) 12%, transparent);
+  opacity: 0; animation: pb-txn-wash 1.8s var(--pb-ease-out);
+}
+@keyframes pb-txn-wash { 0%, 25% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Rows (StatementRow with `ledger`). Two lines on a narrow card... */
+.pebble-root .pb-srow-main { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.1rem; }
+.pebble-root .pb-srow-main[role="button"]:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.6rem; }
+.pebble-root .pb-srow-lead { display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0; }
+.pebble-root .pb-srow-acct,
+.pebble-root .pb-srow-balcell,
+.pebble-root .pb-srow-headrow { display: none; }
+.pebble-root .pb-srow-lensname {
+  display: inline-block; max-width: 7.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  vertical-align: bottom; color: var(--ink-soft);
+}
+@container pb-txn-stmt (min-width: 480px) {
+  .pebble-root .pb-srow-main,
+  .pebble-root .pb-txn-stmt-head,
+  .pebble-root .pb-txn-bookend,
+  .pebble-root .pb-txn-day-head,
+  .pebble-root .pb-txn-sum { padding-inline: 1.5rem; }
+}
+@container pb-txn-stmt (min-width: 560px) {
+  .pebble-root .pb-txn-day-long { display: inline; }
+  .pebble-root .pb-txn-day-short { display: none; }
+}
+/* ...and a ledger grid once the statement is wide: [transaction] [account]
+   [amount] [balance after], under column headings. Under the lens the
+   account column gives way to that account's own balance. */
+@container pb-txn-stmt (min-width: 720px) {
+  .pebble-root .pb-srow-main { display: grid; grid-template-columns: minmax(0, 1fr) 10rem auto; column-gap: 1.25rem; }
+  .pebble-root .pb-srow-main.pb-srow-lens { grid-template-columns: minmax(0, 1fr) auto; }
+  .pebble-root .pb-srow-acct { display: flex; align-items: center; gap: 0.4rem; min-width: 0; font-size: 0.8rem; color: var(--ink-soft); }
+  .pebble-root .pb-srow-acct svg { flex: none; }
+  .pebble-root .pb-srow-acct span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pebble-root .pb-srow-money { display: grid; grid-template-columns: 7.5rem 8rem; column-gap: 1rem; align-items: center; }
+  .pebble-root .pb-srow-lens .pb-srow-money { grid-template-columns: 7.5rem 8.5rem 8rem; }
+  .pebble-root .pb-srow-money > * { margin-top: 0 !important; }
+  .pebble-root .pb-srow-balline { display: none; }
+  .pebble-root .pb-srow-balcell { display: block; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
+  .pebble-root .pb-srow-lensbal { font-size: 0.82rem !important; }
+  .pebble-root .pb-srow-lensname { display: none; }
+  .pebble-root .pb-srow-headrow {
+    display: grid; padding-block: 0.55rem; border-bottom: 1px solid var(--line); cursor: default;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .pebble-root .pb-srow-headrow .pb-srow-lead { padding-left: calc(36px + 0.85rem); }
+  .pebble-root .pb-srow-headrow .pb-srow-money { text-align: right; }
+  .pebble-root .pb-srow-headrow .pb-srow-money > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Search matches, marked inside the title and subtitle. */
+.pebble-root mark.pb-hit {
+  background-color: color-mix(in srgb, var(--pine) 22%, transparent); color: inherit;
+  border-radius: 3px; padding: 0 1px; margin: 0 -1px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+
+/* Results summary: out / in / net and the spending mix. */
+.pebble-root .pb-txn-sum {
+  display: flex; flex-direction: column; gap: 0.75rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--line);
+}
+.pebble-root .pb-txn-sum-figs { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; font-size: 0.82rem; color: var(--ink-soft); }
+.pebble-root .pb-txn-sum-figs .font-mono-tab { font-weight: 600; }
+.pebble-root .pb-txn-mix { display: grid; gap: 0.45rem; }
+.pebble-root .pb-txn-mix-track { height: 8px; }
+.pebble-root .pb-txn-mix-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; color: var(--ink); }
+.pebble-root .pb-txn-mix-legend li { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; }
+.pebble-root .pb-txn-mix-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pebble-root .pb-txn-mix-pct,
+.pebble-root .pb-txn-mix-more { color: var(--ink-soft); }
+/* The ⌘K hint only where a keyboard is likely. */
+.pebble-root .pb-txn-older-hint { display: none; }
+@media (hover: hover) and (pointer: fine) { .pebble-root .pb-txn-older-hint { display: inline; } }
+
+/* Month change: the statement slides in 6px from the side the month came
+   from. `backwards`, not `both`: a transform left in place after the
+   animation would make this box the containing block for the rows' fixed
+   balance tooltips. Reduced motion: the global rule makes it instant. */
+.pebble-root .pb-txn-slide-older { animation: pb-txn-from-left var(--pb-dur-std) var(--pb-ease-out) backwards; }
+.pebble-root .pb-txn-slide-newer { animation: pb-txn-from-right var(--pb-dur-std) var(--pb-ease-out) backwards; }
+@keyframes pb-txn-from-left { from { opacity: 0; transform: translateX(-6px); } }
+@keyframes pb-txn-from-right { from { opacity: 0; transform: translateX(6px); } }
+
+/* ============================================================
+   Route loading skeleton (loading.tsx).
+   ============================================================ */
+.pebble-root .pb-txn-skel-page { animation: pb-fade-in 0.2s ease 0.18s both; }
+.pebble-root .pb-txn-skel-card { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.pebble-root .pb-txn-skel-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.5rem; border-bottom: 1px solid var(--line); }
+.pebble-root .pb-txn-skel-chips { display: flex; gap: 0.5rem; overflow: hidden; }

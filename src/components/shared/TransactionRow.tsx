@@ -16,9 +16,17 @@ interface TransactionRowProps {
   compact?: boolean;
   onOpenDetail?: (txn: Transaction) => void;
   categoryMeta: CategoryMeta;
+  // OPTIONAL, for the Dashboard's day-grouped feed; every other caller
+  // (Reports) omits them and gets exactly the original row.
+  /** Leave the date out of the subtitle (a day header above already says it). */
+  hideDate?: boolean;
+  /** No side padding or bottom border: the container draws its own inset hairlines. */
+  flush?: boolean;
+  /** With onOpenDetail: also reachable by keyboard (role=button, Tab, Enter/Space). */
+  focusable?: boolean;
 }
 
-export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: TransactionRowProps) {
+export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideDate, flush, focusable }: TransactionRowProps) {
   const { d, t, locale } = useTranslation();
   const meta = categoryMeta[txn.category];
   const Icon = meta ? meta.icon : Banknote;
@@ -29,7 +37,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
   // income literals get a translated label.
   const subtitleParts = [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
-  subtitleParts.push(formatDate(txn.date, locale));
+  if (!hideDate) subtitleParts.push(formatDate(txn.date, locale));
   // txn.tag is USER DATA and stays exactly as stored. paymentMethod is a
   // stored CHECK-constrained value, so only its LABEL is swapped here -
   // txn.paymentMethod itself is never reassigned.
@@ -39,6 +47,13 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
     ? {
         onClick: () => { if (!hasTextSelection()) onOpenDetail(txn); },
         className: 'txn-row-interactive',
+        ...(focusable ? {
+          role: 'button' as const,
+          tabIndex: 0,
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(txn); }
+          },
+        } : {}),
       }
     : {};
 
@@ -47,7 +62,8 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta }: Tra
       {...interactiveProps}
       style={{
         display: 'flex', alignItems: 'center', gap: '0.85rem',
-        padding: compact ? '0.55rem 1.5rem' : '0.85rem 1.5rem', borderBottom: '1px solid var(--line)',
+        padding: flush ? `${compact ? '0.55rem' : '0.85rem'} 0` : compact ? '0.55rem 1.5rem' : '0.85rem 1.5rem',
+        borderBottom: flush ? undefined : '1px solid var(--line)',
         cursor: onOpenDetail ? 'pointer' : 'default',
       }}
     >

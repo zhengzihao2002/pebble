@@ -49,9 +49,10 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
         </p>
         <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0.3rem 0 0' }}>
           {renderTemplate(d.goalOverspend.body, {
-            allocated: formatCurrency(allocated),
-            balance: formatCurrency(totalBalance),
-            shortfall: <strong style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>,
+            // pb-money: amounts inside a sentence blur in privacy mode too.
+            allocated: <span className="pb-money">{formatCurrency(allocated)}</span>,
+            balance: <span className="pb-money">{formatCurrency(totalBalance)}</span>,
+            shortfall: <strong className="pb-money" style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>,
           })}
         </p>
         <Link href="/goals" prefetch={false} className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>

@@ -47,8 +47,10 @@ export function HealthStatusBar({ income, savingsRate }: HealthStatusBarProps) {
           {label}
         </span>
       </div>
+      {/* pb-chart-fill: the fill's width and colour ARE the rate, so in
+          privacy mode the track blurs with the figure (tap to reveal). */}
       <div
-        className={`health-bar-track ${hasRate ? 'rated' : ''}`}
+        className={`health-bar-track pb-chart-fill ${hasRate ? 'rated' : ''}`}
         role="meter"
         aria-label={d.healthBar.title}
         aria-valuemin={0}

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import type { RecurringRule, Transaction } from '@/types';
+import type { BalanceAdjustment, Goal, RecurringRule, Transaction } from '@/types';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
 import { IncomeSpendingChart } from '@/components/dashboard/IncomeSpendingChart';
 import { CategoryDonutChart } from '@/components/dashboard/CategoryDonutChart';
@@ -13,7 +13,11 @@ import { HealthStatusBar } from '@/components/dashboard/HealthStatusBar';
 import { BalanceHero } from '@/components/dashboard/BalanceHero';
 import { DashboardStatsCard } from '@/components/dashboard/DashboardStatsCard';
 import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
+import { SpendingPaceCard } from '@/components/dashboard/SpendingPaceCard';
+import { GoalsGlance } from '@/components/dashboard/GoalsGlance';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
+import { buildBalanceHistory } from '@/lib/balanceHistory';
+import { comparePeriods, describeRange, ymdOf } from '@/lib/periodCompare';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { parseLocalDate } from '@/lib/format';
 import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
@@ -36,9 +40,13 @@ interface DashboardClientProps {
   catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
   /** Recurring rules, for the Upcoming card. */
   rules: RecurringRule[];
+  /** Already loaded for the total; the hero's 90-day balance line walks them too. */
+  adjustments?: BalanceAdjustment[];
+  /** Already loaded for `allocated`; the goals glance shows them. */
+  goals?: Goal[];
 }
 
-export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp, rules }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp, rules, adjustments = [], goals = [] }: DashboardClientProps) {
   const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
@@ -139,14 +147,71 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
     ? statsWindow.rangeLabel
     : `${statsWindow.rangeLabel} · ${modeLabel(statsMode, STATS_MODES.find((m) => m.value === statsMode)?.label ?? statsMode)}`;
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Both render nothing in the common case. */}
-      <CatchUpNotice {...catchUp} />
-      <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
+  // "· includes this month so far" was said of every window; each now names
+  // its own unfinished part.
+  const inProgressNote = statsMode === 'month' ? d.dashboard.inProgressNote
+    : statsMode === 'quarter' ? d.ux.dashboard.inProgressQuarter
+    : statsMode === 'year' ? d.ux.dashboard.inProgressYear
+    : d.ux.dashboard.inProgressToday;
 
-      <section>
-        <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} />
+  // Like-for-like change chips and trends for the four figures. Waits for
+  // the same two things the charts wait for, so it resolves once.
+  const compare = useMemo(
+    () => (today && statsRestored ? comparePeriods(transactions, statsMode, statsPeriod, today) : null),
+    [today, statsRestored, transactions, statsMode, statsPeriod],
+  );
+  const compareLabel = compare && today ? describeRange(compare.previousRange, locale, today) : '';
+
+  // The hero's 90-day line, walked back from the server's total (see
+  // src/lib/balanceHistory.ts), so it always ends at the figure above it.
+  const balanceTrend = useMemo(() => {
+    if (!today) return null;
+    const records = [...transactions, ...adjustments].map((r) => ({ date: r.date, amount: r.amount, accountId: r.accountId }));
+    return buildBalanceHistory(records, accounts.map((a) => a.id), totalBalance, ymdOf(today), 90);
+  }, [today, transactions, adjustments, accounts, totalBalance]);
+
+  // [ and ] step the period, older and newer - only where the stepper shows
+  // and with exactly AppShell's single-key guards: not while typing (the
+  // period selects included), composing, repeating, with a modifier, or
+  // while any dialog is open.
+  // An effect event: reads the current period list without re-subscribing.
+  const step = useEffectEvent((dir: 1 | -1) => {
+    const i = availableStatsPeriods.findIndex((p) => p.key === statsPeriod);
+    const next = i >= 0 ? availableStatsPeriods[i + dir] : undefined;
+    if (next) setStatsPeriod(next.key);
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '[' && e.key !== ']') return;
+      if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (document.querySelector('.pebble-root [role="dialog"]')) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
+      e.preventDefault();
+      // Newest first: "[" (back in time) is the next index.
+      step(e.key === '[' ? 1 : -1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  // LAYOUT. .pb-dash is a grid placed by container queries on the content
+  // area (dashboard.css). The DOM order below IS the phone order - and the
+  // reading and Tab order - so it is the priority order: notices, balance,
+  // the period and its figures, spending pace, what is coming, where it
+  // went, cash flow, budgets, goals, recent activity. Wider screens arrange
+  // the same cards into a bento grid without reordering the DOM. No width
+  // cap here: the shell already caps .pebble-main.
+  return (
+    <div className="pb-dash">
+      {/* The notices sit inside the top area, so when they render nothing
+          (the common case) they leave no empty grid row and no stray gap. */}
+      <section className="pb-dash-area-top">
+        {/* Both render nothing in the common case. */}
+        <CatchUpNotice {...catchUp} />
+        <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
+        <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
         <DashboardStatsCard
           modes={STATS_MODES.map((m) => ({ value: m.value, label: modeLabel(m.value, m.label) }))}
           statsMode={statsMode}
@@ -156,10 +221,13 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
           onPeriodChange={setStatsPeriod}
           rangeLabel={statsWindow.rangeLabel}
           inProgress={statsWindow.inProgress}
+          inProgressNote={inProgressNote}
           income={periodStats.income}
           spending={periodStats.spending}
           savingsRate={periodStats.savingsRate}
           saved={periodStats.saved}
+          compare={compare}
+          compareLabel={compareLabel}
         />
         {/* The same income and rate as the card above - never recomputed. */}
         {showHealthBar && (
@@ -167,18 +235,28 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         )}
       </section>
 
-      {/* Both follow the This period selectors above. */}
-      <section className="dash-charts-grid">
-        <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+      {/* Every chart card follows the This period controls above. */}
+      <div className="pb-dash-area-pace">
+        <SpendingPaceCard timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+      </div>
+      <div className="pb-dash-area-upcoming">
+        <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
+      </div>
+      <div className="pb-dash-area-where">
         <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
-      </section>
-
-      <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
-
-      <section className="dash-two-col">
-        <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} />
-        <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} />
-      </section>
+      </div>
+      <div className="pb-dash-area-flow">
+        <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+      </div>
+      <div className="pb-dash-area-attention">
+        <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
+      </div>
+      <div className="pb-dash-area-goals">
+        <GoalsGlance goals={goals} allocated={allocated} totalBalance={totalBalance} />
+      </div>
+      <div className="pb-dash-area-recent">
+        <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
+      </div>
     </div>
   );
 }
