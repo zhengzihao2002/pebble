@@ -15,11 +15,19 @@ interface Item {
   id: number;
   phase: 'pending' | 'sending' | 'done' | 'failed';
   run: Run;
+  /** What is being deleted, e.g. the transaction's title. Optional. */
+  label?: string;
+  /** The whole name, when label had to be shortened. */
+  fullLabel?: string;
   message?: string;
 }
 
 interface UndoDeleteApi {
-  scheduleDelete: (job: { run: Run }) => void;
+  /**
+   * label is optional: with it the bar names the record ('"Coffee" will be
+   * deleted'), so two bars stacked after two quick deletes can be told apart.
+   */
+  scheduleDelete: (job: { run: Run; label?: string }) => void;
 }
 
 const UndoDeleteContext = createContext<UndoDeleteApi | null>(null);
@@ -46,6 +54,8 @@ export function useUndoDelete(): UndoDeleteApi {
  */
 export function UndoDeleteProvider({ children }: { children: ReactNode }) {
   const { d } = useTranslation();
+  // '“{title}” will be deleted', split so only the name can shrink.
+  const [namedPre, namedPost = ''] = d.ux.transactionDialogs.undoNamed.split('{title}');
   const [items, setItems] = useState<Item[]>([]);
   const timers = useRef(new Map<number, number>());
   const nextId = useRef(1);
@@ -83,9 +93,15 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const scheduleDelete = (job: { run: Run }) => {
+  const scheduleDelete = (job: { run: Run; label?: string }) => {
     const id = nextId.current++;
-    setItems((list) => [...list, { id, phase: 'pending', run: job.run }]);
+    // Long names are cut here, by characters (so a CJK or emoji name is never
+    // split mid-glyph), with the ellipsis right against the closing quote.
+    const full = job.label?.trim() || undefined;
+    const chars = full ? Array.from(full) : [];
+    const label = full && chars.length > 26 ? `${chars.slice(0, 24).join('').trimEnd()}…` : full;
+    const fullLabel = label !== full ? full : undefined;
+    setItems((list) => [...list, { id, phase: 'pending', run: job.run, label, fullLabel }]);
     timers.current.set(id, window.setTimeout(() => { void send(id, job.run); }, UNDO_MS));
   };
 
@@ -120,7 +136,17 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
             <div key={it.id} className="pb-undo-bar goal-step">
               {it.phase === 'pending' && (
                 <>
-                  <span style={{ flex: 1, minWidth: 0 }}>{d.undoDelete.pending}</span>
+                  {/* The named line wraps like the generic one (two lines at
+                      most); a long name was already shortened above, and
+                      carries the whole one as its tooltip (a name, never an
+                      amount). */}
+                  {it.label ? (
+                    <span className="pb-tdlg-undo-text pb-tdlg-undo-text-named">
+                      {namedPre}<span className="pb-tdlg-undo-name" title={it.fullLabel}>{it.label}</span>{namedPost}
+                    </span>
+                  ) : (
+                    <span className="pb-tdlg-undo-text">{d.undoDelete.pending}</span>
+                  )}
                   {/* Countdown: the arc unwinds 360 to 0 and the centre counts 5 to 0,
                       both CSS animations started with this bar - the same moment as
                       the delete timer - so neither can drift from the real delete. */}

@@ -484,6 +484,7 @@ export function TransactionsClient({
           txn={selectedEntry.record}
           onClose={() => setSelectedEntry(null)}
           categoryMeta={categoryMeta}
+          ledgerEntry={selectedEntry}
         />
       )}
     </div>
