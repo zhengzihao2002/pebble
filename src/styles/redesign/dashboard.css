@@ -49,14 +49,10 @@
      a blank band above their facts rows. */
   .pebble-root .pb-dash .pb-dash-chart-box { max-height: 420px; }
   .pebble-root .pb-dash .pb-dash-chart-box.is-flow { max-height: 540px; }
-  /* The bottom row matches Recent activity's height: the budget and goal
-     lists spread down the card instead of leaving its lower part empty. */
-  .pebble-root .pb-dash-area-attention .pb-dash-budgets { flex: 1; justify-content: space-between; }
-  .pebble-root .pb-dash-area-goals .pb-dash-goal-list { flex: 1; align-content: space-between; }
-  /* A third of the row is a tall, narrow card: each goal stacks ring over
-     text (as in the wide card), which fills it without big empty bands. */
-  .pebble-root .pb-dash-area-goals .pb-dash-goal { flex-direction: column; text-align: center; gap: 0.55rem; }
-  .pebble-root .pb-dash-area-goals .pb-dash-goal-text { align-items: center; }
+  /* The bottom row shares Recent activity's height. The budget and goal
+     lists stay packed at the top of their cards (owner's fix: spreading them
+     down the card opened big gaps between rows, and with two goals a hole in
+     the middle); any spare height stays below the last row. */
 }
 @container content (min-width: 640px) {
   .pebble-root .pb-dash-area-top { grid-area: top; }
@@ -114,7 +110,7 @@
 /* ---------- Hero: figure | trajectory | accounts ---------- */
 .pebble-root .pb-dash .pb-hero { margin-bottom: 0; grid-template-areas: "main" "trend" "acct"; }
 .pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; }
-.pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 40px; align-self: end; }
+.pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 44px; align-self: end; }
 .pebble-root .pb-dash .pb-hero-accounts { grid-area: acct; }
 @container content (min-width: 640px) {
   .pebble-root .pb-dash .pb-hero { grid-template-areas: "main acct" "trend acct"; row-gap: 1rem; }
@@ -153,6 +149,32 @@
   color: var(--pb-hero-fg);
   background-color: color-mix(in srgb, var(--pb-hero-fg) 16%, transparent);
 }
+/* The trajectory is a link to the Accounts page's full balance chart. A
+   quiet label says so, a soft band shows on hover, and the line keeps just
+   two words of context - where it starts, and that it ends today. Background
+   and transform only, so the still hero stays still until pointed at. */
+.pebble-root .pb-dash-hero-trend-link {
+  display: flex; flex-direction: column; gap: 0.3rem; min-width: 0;
+  margin: -0.55rem -0.7rem; padding: 0.55rem 0.7rem; border-radius: 0.9rem;
+  color: inherit; text-decoration: none;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-dash-hero-trend-link:hover { background-color: color-mix(in srgb, var(--pb-hero-fg) 9%, transparent); }
+.pebble-root .pb-dash-hero-trend-link:focus-visible { outline: 2px solid var(--pb-hero-fg); outline-offset: 2px; }
+.pebble-root .pb-dash-hero-trend-head {
+  display: inline-flex; align-items: center; gap: 2px; align-self: flex-start;
+  font-size: 0.74rem; font-weight: 600; color: var(--ink-soft);
+}
+.pebble-root .pb-dash-hero-trend-chev { transition: transform var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-dash-hero-trend-link:hover .pb-dash-hero-trend-chev { transform: translateX(2px); }
+.pebble-root .pb-dash-hero-trend-axis {
+  display: flex; justify-content: space-between; gap: 1rem;
+  font-size: 0.68rem; color: var(--ink-soft); line-height: 1.2;
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-hero-trend-link { min-height: 44px; }
+}
+
 /* Still by design: the kit Sparkline's fade-in is switched off here. */
 .pebble-root .pb-dash-hero .pb-spark.pb-chart-fade { animation: none; }
 .pebble-root .pb-dash-hero .pb-spark-line { opacity: 0.8; }
@@ -230,28 +252,83 @@
   .pebble-root .pb-dash-select select, .pebble-root .pb-dash-stepper { height: 2.75rem; }
   .pebble-root .pb-dash-step { width: 2.75rem; }
 }
-/* Phone: one row - the mode select as wide as its own content, the stepper
-   taking the rest. A native select would otherwise size to its longest
-   option ("Last 12 months") and squeeze the period name; if the two cannot
-   share the row (very large text), the stepper wraps to a full row of its
-   own, so the period name is always whole. */
+/* Desktop shows the selects themselves; the faces are the phone's. */
+.pebble-root .pb-dash-select-face { display: none; }
+/* Phone: ALWAYS one row (owner's fix: on an iPhone the two stacked). The
+   mode is as wide as its chosen label, the stepper takes the rest, and the
+   period name shortens ("Oct 2026") and finally truncates rather than wrap.
+   Both selects are laid transparently over a "face" showing the chosen
+   option: a native select is as wide as its LONGEST option ("Last 12
+   months"), and Safari ignores the CSS that tried to size it to the chosen
+   one, which pushed the stepper onto a second line. The selects keep every
+   tap, the iOS wheel and keyboard use; only their painting moves to the face. */
 @container content (max-width: 639px) {
-  .pebble-root .pb-dash-period { width: 100%; flex-wrap: wrap; }
-  .pebble-root .pb-dash-select.is-mode { flex: 0 0 auto; display: inline-grid; }
-  /* The select and an invisible copy of its chosen label share one grid
-     cell; width 0 + min-width 100% keeps the select's own (longest-option)
-     width out of the sizing, so the label decides it. */
-  .pebble-root .pb-dash-select.is-mode > select { grid-area: 1 / 1; width: 0; min-width: 100%; }
-  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer {
-    display: block; grid-area: 1 / 1; visibility: hidden; height: 0; overflow: hidden; white-space: nowrap;
-    padding: 0 2rem 0 0.95rem; border: 1px solid transparent; font-size: 0.84rem; font-weight: 600;
+  .pebble-root .pb-dash-period { width: 100%; flex-wrap: nowrap; gap: 0.4rem; }
+  .pebble-root .pb-dash-select.is-mode { flex: 0 1 auto; max-width: 58%; }
+  .pebble-root .pb-dash-select.is-mode > select,
+  .pebble-root .pb-dash-select.is-period > select {
+    position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; opacity: 0;
   }
-  .pebble-root .pb-dash-stepper { flex: 1 1 0; min-width: 10rem; }
-  .pebble-root .pb-dash-select.is-period { flex: 1; }
-  .pebble-root .pb-dash-select.is-period select { width: 100%; }
+  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer {
+    display: block; box-sizing: border-box; min-width: 0; max-width: 100%;
+    height: 2.5rem; line-height: calc(2.5rem - 2px); padding: 0 2rem 0 0.95rem;
+    border: 1px solid var(--line); border-radius: 999px;
+    background-color: color-mix(in srgb, var(--ink) 4%, var(--mist));
+    color: var(--ink); font-size: 0.84rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: border-color var(--pb-dur-micro) var(--pb-ease-out);
+  }
+  .pebble-root .pb-dash-select.is-mode > svg { z-index: 2; }
+  .pebble-root .pb-dash-select.is-mode:hover > .pb-dash-select-sizer { border-color: color-mix(in srgb, var(--pine) 40%, var(--line)); }
+  /* Focus is drawn on what is seen. */
+  .pebble-root .pb-dash-select.is-mode > select:focus-visible,
+  .pebble-root .pb-dash-select.is-period > select:focus-visible { outline: none; }
+  .pebble-root .pb-dash-select.is-mode:has(> select:focus-visible) > .pb-dash-select-sizer,
+  .pebble-root .pb-dash-select.is-period:has(> select:focus-visible) > .pb-dash-select-face {
+    outline: 2px solid var(--pine); outline-offset: 2px;
+  }
+  .pebble-root .pb-dash-stepper { flex: 1 1 0; min-width: 0; }
+  .pebble-root .pb-dash-select.is-period { flex: 1 1 0; min-width: 0; container: pb-dash-period / inline-size; }
+  .pebble-root .pb-dash-select.is-period > .pb-dash-select-face {
+    display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+    min-width: 0; border-radius: 0.5rem; color: var(--ink); font-size: 0.84rem; font-weight: 600;
+  }
+  .pebble-root .pb-dash-select-face > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pebble-root .pb-dash-face-short { display: none; }
+}
+@container content (max-width: 639px) {
+  @container pb-dash-period (max-width: 7.25rem) {
+    .pebble-root .pb-dash-face-full { display: none; }
+    .pebble-root .pb-dash-face-short { display: block; }
+  }
+}
+@media (pointer: coarse) {
+  @container content (max-width: 639px) {
+    .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { height: 2.75rem; line-height: calc(2.75rem - 2px); }
+  }
+}
+/* A 320px screen (iPhone Display Zoom): a little less padding and type, so
+   "Oct 2026" still fits whole between the 44px arrows. */
+@container content (max-width: 340px) {
+  .pebble-root .pb-dash-period { gap: 0.3rem; }
+  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { padding: 0 1.7rem 0 0.75rem; font-size: 0.8rem; }
+  .pebble-root .pb-dash-select.is-mode > svg { right: 0.6rem; }
+  .pebble-root .pb-dash-select.is-period > .pb-dash-select-face { font-size: 0.8rem; }
 }
 
 .pebble-root .pb-dash-tile { display: flex; flex-direction: column; }
+/* Labels break between words only (the global cell rule breaks anywhere,
+   which split "Income" at a 320px content width); a cell too narrow for the
+   icon, label and (i) steps the label down a size (phones under 390px),
+   and at 360px and below also drops the icon, so it keeps one line. */
+.pebble-root .pb-dash-tile .pb-stats-label { overflow-wrap: normal; word-break: keep-all; }
+.pebble-root .pb-dash-tile .pb-stats-label > span { overflow-wrap: normal; }
+@container (max-width: 7.5rem) {
+  .pebble-root .pb-dash-tile .pb-stats-icon { display: none; }
+}
+@container (max-width: 8.25rem) {
+  .pebble-root .pb-dash-tile .pb-stats-label { gap: 4px; font-size: 0.75rem; }
+}
 .pebble-root .pb-dash-tile-value { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-dash-tile-value .pb-stats-value { min-width: 0; }
 .pebble-root .pb-dash-tile-ring { display: inline-flex; flex: none; }
@@ -261,7 +338,38 @@
 }
 .pebble-root .pb-dash-tile-delta * { overflow-wrap: normal; }
 .pebble-root .pb-dash-tile-vs { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pebble-root .pb-dash-tile-spark { margin-top: auto; padding-top: 0.6rem; height: 24px; box-sizing: content-box; }
+/* The comparison is a button that explains itself (CompareTip): a quiet
+   hover band and a dotted underline under "vs ..." as the affordance; on
+   touch an invisible 44px hit area, so the tile does not grow. */
+.pebble-root .pb-dash-cmp {
+  position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.4rem; max-width: calc(100% + 0.7rem); min-width: 0;
+  margin: -0.15rem -0.35rem; padding: 0.15rem 0.35rem; border: 0; border-radius: 0.5rem;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-dash-cmp:hover, .pebble-root .pb-dash-cmp[aria-expanded="true"] { background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+.pebble-root .pb-dash-cmp:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-dash-cmp .pb-dash-tile-vs {
+  text-decoration: underline dotted color-mix(in srgb, var(--ink-soft) 55%, transparent); text-underline-offset: 3px;
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-cmp::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+}
+/* Portalled into .pebble-root, outside .pb-dash. */
+.pebble-root .pb-dash-cmp-tip {
+  position: fixed; z-index: 60; box-sizing: border-box;
+  padding: 0.65rem 0.8rem; border: 1px solid var(--line); border-radius: 0.7rem;
+  background-color: var(--mist); color: var(--ink); box-shadow: var(--shadow);
+  font-size: 0.78rem; line-height: 1.4;
+  animation: pb-dash-cmp-in var(--pb-dur-micro) var(--pb-ease-out) both;
+}
+@keyframes pb-dash-cmp-in { from { opacity: 0; } to { opacity: 1; } }
+.pebble-root .pb-dash-cmp-tip p { margin: 0; }
+.pebble-root .pb-dash-cmp-title { margin-bottom: 0.4rem !important; font-weight: 600; }
+.pebble-root .pb-dash-cmp-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-cmp-row + .pb-dash-cmp-row { margin-top: 0.15rem !important; }
+.pebble-root .pb-dash-cmp-row .font-mono-tab { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-dash-cmp-says { margin-top: 0.45rem !important; padding-top: 0.45rem; border-top: 1px solid var(--line); color: var(--ink-soft); }
 
 /* ---------- Charts ---------- */
 .pebble-root .pb-dash-flow, .pebble-root .pb-dash-pace { min-height: 0; }
@@ -410,7 +518,10 @@
 }
 
 /* ---------- Needs attention ---------- */
-.pebble-root .pb-dash-budgets { display: flex; flex-direction: column; gap: 1rem; }
+.pebble-root .pb-dash-budgets { display: flex; flex-direction: column; }
+/* The rhythm of the other dashboard lists: rows divided by a hairline, about
+   0.7rem either side of it. */
+.pebble-root .pb-dash-budget + .pb-dash-budget { margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px solid var(--line); }
 .pebble-root .pb-dash-budget { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 0.35rem; }
 .pebble-root .pb-dash-budget-top { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; min-width: 0; }
 .pebble-root .pb-dash-budget-name { display: flex; align-items: center; gap: 0.6rem; min-width: 0; font-size: 0.87rem; font-weight: 600; }
@@ -450,10 +561,22 @@
 .pebble-root .pb-dash-goals { container: pb-goals / inline-size; }
 .pebble-root .pb-dash-goal-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
 .pebble-root .pb-dash-goal { display: flex; align-items: center; gap: 0.9rem; min-width: 0; }
+/* Narrow card (a phone, or a third of the wide bottom row): rows packed at
+   the top with the lists' hairlines, so one, two or three goals never leave
+   a hole. A wide card gives each shown goal an equal column, ring over text -
+   two goals take half each rather than leaving the third column empty - and
+   a single goal stays a row rather than a lone ring in mid-card. */
+.pebble-root .pb-dash-goal-list { align-content: start; }
+.pebble-root .pb-dash-goal + .pb-dash-goal { position: relative; }
+.pebble-root .pb-dash-goal + .pb-dash-goal::before {
+  content: ''; position: absolute; top: -0.45rem; left: calc(64px + 0.9rem); right: 0; border-top: 1px solid var(--line); pointer-events: none;
+}
 @container pb-goals (min-width: 560px) {
-  .pebble-root .pb-dash-goal-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
-  .pebble-root .pb-dash-goal { flex-direction: column; text-align: center; gap: 0.6rem; }
-  .pebble-root .pb-dash-goal-text { align-items: center; }
+  .pebble-root .pb-dash-goal-list:not([data-count="1"]) { grid-template-columns: repeat(var(--pb-goal-cols, 3), minmax(0, 1fr)); gap: 1.25rem; }
+  .pebble-root .pb-dash-goal-list[data-count="2"] { --pb-goal-cols: 2; }
+  .pebble-root .pb-dash-goal-list:not([data-count="1"]) .pb-dash-goal { flex-direction: column; text-align: center; gap: 0.6rem; }
+  .pebble-root .pb-dash-goal-list:not([data-count="1"]) .pb-dash-goal-text { align-items: center; }
+  .pebble-root .pb-dash-goal-list:not([data-count="1"]) .pb-dash-goal::before { display: none; }
 }
 .pebble-root .pb-dash-goal-ring { display: inline-flex; flex: none; border-radius: 50%; }
 .pebble-root .pb-dash-goal-ring-fill { display: inline-flex; border-radius: 50%; }
@@ -463,6 +586,36 @@
 .pebble-root .pb-dash-goal-name { font-size: 0.88rem; font-weight: 600; overflow-wrap: anywhere; }
 .pebble-root .pb-dash-goal-figs { font-size: 0.78rem; color: var(--ink-soft); }
 .pebble-root .pb-dash-goal-date { font-size: 0.74rem; color: var(--ink-soft); }
+/* A footer pinned to the card's foot (margin-top: auto): the goals' combined
+   progress and a way to add one, level with Recent activity's "Show more"
+   in the wide bottom row, where the card shares that card's height. */
+.pebble-root .pb-dash-goals-foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
+  margin-top: auto; padding-top: 0.85rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-dash-goals-add:only-child { margin-left: auto; }
+.pebble-root .pb-dash-goals-sum { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pebble-root .pb-dash-goals-sum-label { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-goals-sum .pb-dash-goal-figs { font-size: 0.85rem; color: var(--ink); }
+.pebble-root .pb-dash-goals-add { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2rem; padding: 0; font-family: inherit; font-weight: 600; cursor: pointer; }
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-goals-add { min-height: 44px; }
+}
+/* The wide bottom row stretches Goals to Recent activity's height. One or two
+   goals would leave most of it blank under rows packed at the top, so there
+   they become larger rings over centred text - one goal alone, two side by
+   side - centred in the space between the header and the footer. */
+@container content (min-width: 1180px) {
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) { flex: 1 1 auto; align-content: center; }
+  .pebble-root .pb-dash-goal-list[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-dash-goal { flex-direction: column; text-align: center; gap: 0.7rem; }
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-dash-goal-text { align-items: center; }
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-dash-goal::before { display: none; }
+  /* The ring's size is inline (a kit prop); its SVG scales by viewBox. */
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-ring,
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-ring > svg { width: 96px !important; height: 96px !important; }
+  .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-ring-center svg { width: 28px; height: 28px; }
+}
 
 /* ---------- Skeletons (cards and the route's loading.tsx) ---------- */
 .pebble-root .pb-dash-skel-bars {

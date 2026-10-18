@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
-import { formatCurrency, splitCents } from '@/lib/format';
+import { formatCurrency, formatDate, splitCents } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
@@ -33,12 +33,15 @@ const MAX_ROWS = 5;
  * Sparkline's fade is switched off inside the hero in dashboard.css).
  *
  * Three zones on a wide screen - figure, trajectory, accounts - so the band
- * no longer has an empty middle; on phones they stack in that order.
+ * no longer has an empty middle; on phones they stack in that order. The
+ * trajectory is a link to the Accounts page, where the same total has axes
+ * and a range picker.
  *
  * Account NAMES are user data and are never translated.
  */
 export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocated = 0, trend = null }: BalanceHeroProps) {
-  const { d, t } = useTranslation();
+  const { d, t, locale } = useTranslation();
+  const ux = d.ux.dashboard;
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
 
   // Measured against the hero figure itself (totalBalance minus where the
@@ -122,15 +125,34 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
 
       <div className="pb-dash-hero-trend">
         {trend && trend.length > 1 && (
-          <Sparkline
-            values={trend.map((p) => p.total)}
-            height={40}
-            color="var(--pb-hero-fg)"
-            area
-            endDot
-            label={d.accountsPage.chartLabel.replace('{period}', period)}
-            className="pb-dash-hero-spark"
-          />
+          // The line has no axes on purpose (it is a glance), so it is also
+          // the way in to the full chart: the Accounts page draws the same
+          // total over 1M-All with axes and a scrubber, at the top of the
+          // page. A real link - keyboard reachable, opens in a new tab with a
+          // modifier - labelled by what it opens, never by an amount.
+          <Link
+            href="/accounts" prefetch={false} className="pb-dash-hero-trend-link"
+            aria-label={t(ux.balanceHistoryLink, { period })}
+          >
+            <span className="pb-dash-hero-trend-head" aria-hidden="true">
+              {ux.balanceHistory}
+              <ChevronRight size={14} className="pb-dash-hero-trend-chev" />
+            </span>
+            <Sparkline
+              values={trend.map((p) => p.total)}
+              height={44}
+              color="var(--pb-hero-fg)"
+              area
+              endDot
+              className="pb-dash-hero-spark"
+            />
+            {/* Just enough to read the line on its own: where it starts and
+                that it ends today. Dates, not money, so never blurred. */}
+            <span className="pb-dash-hero-trend-axis" aria-hidden="true">
+              <span className="pb-tnum">{formatDate(trend[0].date, locale)}</span>
+              <span>{d.upcomingCard.today}</span>
+            </span>
+          </Link>
         )}
       </div>
 

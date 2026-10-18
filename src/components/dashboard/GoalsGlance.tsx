@@ -37,6 +37,12 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
   const overspent = allocated > 0 && allocated > totalBalance;
   const shown = goals.slice(0, MAX_GOALS);
   const more = goals.length - shown.length;
+  // A footer pinned to the card's foot: every goal's combined progress (the
+  // hidden ones too) and a way to add another. In the wide bottom row the
+  // card shares Recent activity's height, so this ends it rather than a blank.
+  const footer = goals.length > 0;
+  // With one goal its own row already says it: the footer is just the action.
+  const together = goals.length > 1 ? goals.reduce((acc, g) => ({ current: acc.current + g.current, target: acc.target + g.target }), { current: 0, target: 0 }) : null;
 
   return (
     <section className="card pb-dash-card pb-dash-goals">
@@ -55,7 +61,11 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
           )}
         />
       ) : (
-        <ul className="pb-dash-goal-list">
+        // data-count lets dashboard.css lay out one, two or three goals
+        // without a hole: a wide card gives each shown goal an equal column
+        // (two goals no longer leave the third column empty), and a narrow
+        // card lists them as rows packed at the top.
+        <ul className="pb-dash-goal-list" data-count={shown.length}>
           {shown.map((g) => {
             const Icon = resolveGoalIcon(g.iconKey);
             const reached = g.target > 0 && g.current >= g.target;
@@ -91,6 +101,24 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
             );
           })}
         </ul>
+      )}
+      {footer && (
+        <div className="pb-dash-goals-foot">
+          {together && (
+            <span className="pb-dash-goals-sum">
+              <span className="pb-dash-goals-sum-label">{ux.goalsTogether}</span>
+              <span className="pb-dash-goal-figs">
+                {renderTemplate(ux.goalOf, {
+                  current: <span className="font-mono-tab">{formatCurrency(together.current)}</span>,
+                  target: <span className="font-mono-tab">{formatCurrency(together.target)}</span>,
+                })}
+              </span>
+            </span>
+          )}
+          <button type="button" className="link-btn pb-dash-goals-add" onClick={() => requestShell('addGoal')}>
+            <Plus size={14} aria-hidden="true" />{d.common.addGoal}
+          </button>
+        </div>
       )}
     </section>
   );

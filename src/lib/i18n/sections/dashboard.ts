@@ -12,10 +12,14 @@ export const dashboardEn = {
   seeAllAccounts: 'See all accounts',
   allocationLabel: 'How much of your balance is set aside for goals',
   overAllocated: 'More than your balance',
+  balanceHistory: 'Balance history',
+  balanceHistoryLink: 'Balance history over the last {period}, on the Accounts page',
 
   // Period command bar
   periodType: 'Period type',
   periodPick: 'Period',
+  // A quarter's short name for a narrow phone (Chinese only; English keeps its label).
+  quarterShort: '{year} Q{q}',
   prevPeriod: 'Previous period',
   nextPeriod: 'Next period',
   inProgressQuarter: '· includes this quarter so far',
@@ -34,7 +38,12 @@ export const dashboardEn = {
   savedMore: 'More saved than {range}',
   savedLess: 'Less saved than {range}',
   noEarlier: 'No earlier period yet',
-  trendLabel: '{name}, last {count} periods',
+  // The comparison's own explanation (hover on a Mac, tap on a phone).
+  // A hidden suffix to the chip's visible text, which stays its name.
+  compareOpen: '(show the figures)',
+  compareTitle: 'Compared with {range}',
+  compareNow: 'This period so far',
+  compareNowDone: 'This period',
 
   // Income vs spending
   savedSoFar: 'Saved so far',
@@ -96,6 +105,8 @@ export const dashboardEn = {
   goalOf: '{current} of {target}',
   reached: 'Reached',
   noGoalsBody: 'Set money aside for something and watch it fill up here.',
+  // Footer under one or two goals.
+  goalsTogether: 'All goals together',
 
   // Recent activity
   yesterday: 'Yesterday',
@@ -108,9 +119,12 @@ export const dashboardZh: typeof dashboardEn = {
   seeAllAccounts: '查看全部账户',
   allocationLabel: '余额中为目标预留的部分',
   overAllocated: '超过了余额',
+  balanceHistory: '余额走势',
+  balanceHistoryLink: '近 {period}的余额走势，前往账户页查看',
 
   periodType: '周期类型',
   periodPick: '周期',
+  quarterShort: '{year}年Q{q}',
   prevPeriod: '上一期',
   nextPeriod: '下一期',
   inProgressQuarter: '· 含本季度至今',
@@ -127,7 +141,10 @@ export const dashboardZh: typeof dashboardEn = {
   savedMore: '比{range}存得多',
   savedLess: '比{range}存得少',
   noEarlier: '暂无上一期可比',
-  trendLabel: '{name}，最近 {count} 期',
+  compareOpen: '（查看具体数字）',
+  compareTitle: '对比{range}',
+  compareNow: '本期至今',
+  compareNowDone: '本期',
 
   savedSoFar: '累计结余',
   inProgress: '进行中',
@@ -184,6 +201,7 @@ export const dashboardZh: typeof dashboardEn = {
   goalOf: '{current} / {target}',
   reached: '已达成',
   noGoalsBody: '为想做的事预留一笔钱，在这里看着它慢慢攒满。',
+  goalsTogether: '全部目标合计',
 
   yesterday: '昨天',
   showMoreRecent: '显示更多',

@@ -7,7 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { PeriodDot } from '@/components/shared/PeriodLink';
 import { DeltaChip } from '@/components/kit/DeltaChip';
-import { Sparkline } from '@/components/kit/Sparkline';
+import { CompareTip } from './CompareTip';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import type { PeriodComparison, RangeStats } from '@/lib/periodCompare';
 
@@ -37,6 +37,23 @@ interface DashboardStatsCardProps {
 }
 
 type Metric = 'income' | 'spending' | 'savingsRate' | 'saved';
+
+/**
+ * A period's name in fewer characters, for a narrow phone: "Oct 2026" for
+ * "October 2026", "2026 Q4" for "2026年第4季度". Read from the stored key
+ * (getAvailablePeriods: "2026-9" for October, "2026-Q4", "2026"), never from
+ * the translated label; anything unrecognised keeps its full label.
+ */
+function shortPeriodLabel(p: PeriodOption, locale: string, format: (year: string, q: string) => string): string {
+  const month = /^(\d{4})-(\d{1,2})$/.exec(p.key);
+  if (month) {
+    if (locale === 'zh') return p.label;
+    return new Date(Number(month[1]), Number(month[2]), 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+  const quarter = /^(\d{4})-Q([1-4])$/.exec(p.key);
+  if (quarter) return locale === 'zh' ? format(quarter[1], quarter[2]) : p.label;
+  return p.label;
+}
 
 /** A change chip's text, tone direction and hover label. Labels carry no amounts. */
 function useDelta() {
@@ -94,22 +111,29 @@ function useDelta() {
  *
  * TILES. Each keeps its label, (i), value and reserved note row, and adds the
  * change against the previous comparable period (like-for-like while the
- * period is in progress - see src/lib/periodCompare.ts) and a small trend of
- * the same figure over the last few comparable periods.
+ * period is in progress - see src/lib/periodCompare.ts). The change explains
+ * itself: hovering or tapping it shows the two figures being compared. (The
+ * tiles once carried a small trend line each too; with the period's charts
+ * just below they were one set of graphs too many, so they went.)
  */
 export function DashboardStatsCard({
   modes, statsMode, onModeChange, periods, statsPeriod, onPeriodChange,
   rangeLabel, inProgress, inProgressNote, income, spending, savingsRate, saved,
   compare = null, compareLabel = '',
 }: DashboardStatsCardProps) {
-  const { d, t } = useTranslation();
+  const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const deltaFor = useDelta();
 
   // Newest first: "previous" is the next index, "next" the one before.
   const idx = periods.findIndex((p) => p.key === statsPeriod);
+  const current = idx >= 0 ? periods[idx] : undefined;
   const older = idx >= 0 ? periods[idx + 1] : undefined;
   const newer = idx > 0 ? periods[idx - 1] : undefined;
+
+  // A tile's figure for one side of the comparison, written as the tile writes it.
+  const figure = (metric: Metric, r: RangeStats) =>
+    metric === 'savingsRate' ? `${r.savingsRate.toFixed(2)}%` : formatCurrency(r[metric]);
 
   const cells = [
     {
@@ -153,9 +177,13 @@ export function DashboardStatsCard({
               {/* value is the stored mode key; only the text is translated. */}
               {modes.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
-            {/* Phone only (dashboard.css): sizes the select to the CHOSEN
-                option, not its longest one, so it shares a row with the
-                stepper. Invisible and hidden from assistive tech. */}
+            {/* Phone only (dashboard.css): the visible face of the select,
+                showing the CHOSEN option, with the native select laid over it
+                transparently (so the iOS wheel still opens). The face sizes
+                the control, rather than the select's own width, which is its
+                longest option and which Safari will not let CSS override - the
+                two controls then could not share one row. Hidden from
+                assistive tech: the select itself is what is announced. */}
             <span className="pb-dash-select-sizer" aria-hidden="true">{modes.find((m) => m.value === statsMode)?.label}</span>
             <ChevronDown size={14} aria-hidden="true" />
           </span>
@@ -171,6 +199,15 @@ export function DashboardStatsCard({
                 <select value={statsPeriod || ''} onChange={(e) => onPeriodChange(e.target.value)} aria-label={ux.periodPick}>
                   {periods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
                 </select>
+                {/* Phone only, like the mode's face: the full name, and a
+                    shorter one the card switches to when the stepper is too
+                    narrow for it ("Oct 2026"), so the row never wraps. */}
+                {current && (
+                  <span className="pb-dash-select-face" aria-hidden="true">
+                    <span className="pb-dash-face-full">{current.label}</span>
+                    <span className="pb-dash-face-short">{shortPeriodLabel(current, locale, (year, q) => t(ux.quarterShort, { year, q }))}</span>
+                  </span>
+                )}
               </span>
               <button
                 type="button" className="pb-dash-step" aria-label={ux.nextPeriod}
@@ -200,7 +237,6 @@ export function DashboardStatsCard({
         {cells.map((c) => {
           const Icon = c.icon;
           const delta = compare?.previous ? deltaFor(c.metric, compare.current, compare.previous, compareLabel) : null;
-          const series = compare && compare.series.length > 1 ? compare.series.map((s) => s[c.metric]) : null;
           return (
             <div key={c.key} className="pb-stats-cell pb-dash-tile">
               <div className="pb-stats-label">
@@ -223,11 +259,27 @@ export function DashboardStatsCard({
               {/* Reserved like the note row, so tiles stay level before the
                   comparison resolves and when there is nothing to compare. */}
               <div className="pb-dash-tile-delta">
-                {delta ? (
-                  <>
-                    <DeltaChip delta={delta.delta} text={delta.text} good={delta.good} label={delta.label} money={delta.money} />
+                {delta && compare?.previous ? (
+                  <CompareTip
+                    hint={ux.compareOpen}
+                    panel={(
+                      <>
+                        <p className="pb-dash-cmp-title">{t(ux.compareTitle, { range: compareLabel })}</p>
+                        <p className="pb-dash-cmp-row">
+                          <span>{inProgress ? ux.compareNow : ux.compareNowDone}</span>
+                          <span className="font-mono-tab">{figure(c.metric, compare.current)}</span>
+                        </p>
+                        <p className="pb-dash-cmp-row">
+                          <span className="pb-tnum">{compareLabel}</span>
+                          <span className="font-mono-tab">{figure(c.metric, compare.previous)}</span>
+                        </p>
+                        <p className="pb-dash-cmp-says">{delta.label}</p>
+                      </>
+                    )}
+                  >
+                    <DeltaChip delta={delta.delta} text={delta.text} good={delta.good} money={delta.money} />
                     <span className="pb-dash-tile-vs">{t(ux.vsRange, { range: compareLabel })}</span>
-                  </>
+                  </CompareTip>
                 ) : compare && !compare.previous ? (
                   <span className="pb-dash-tile-vs">{ux.noEarlier}</span>
                 ) : '\u00a0'}
@@ -235,15 +287,6 @@ export function DashboardStatsCard({
               {/* Every tile reserves the note row, so a tile without a note
                   matches the height of the one that has it. */}
               <div className="pb-stats-note" aria-hidden={c.note ? undefined : true} style={c.note ? undefined : { visibility: 'hidden' }}>{c.note || '\u00a0'}</div>
-              <div className="pb-dash-tile-spark">
-                {series && (
-                  <Sparkline
-                    values={series} height={24} color={c.color} area endDot
-                    baseline={c.metric === 'saved' && series.some((v) => v < 0) ? 0 : undefined}
-                    label={t(ux.trendLabel, { name: c.label, count: series.length })}
-                  />
-                )}
-              </div>
             </div>
           );
         })}
