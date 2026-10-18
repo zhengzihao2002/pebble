@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import type { BalanceAdjustment, ExpenseTransaction, IncomeTransaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
 import { computeRecentTransactions } from '@/lib/stats';
@@ -33,6 +33,7 @@ const readRange = (): Range | null => {
     return isRange(v) ? v : null;
   } catch { return null; }
 };
+const noSubscribe = () => () => {};
 const onStorage = (cb: () => void) => {
   window.addEventListener('storage', cb);
   return () => window.removeEventListener('storage', cb);
@@ -60,10 +61,13 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
   const timeZoneOverride = useTimeZoneOverride();
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => {
-    setToday(todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
-  }, [timeZoneOverride]);
+  // Read in the browser only (the server render has no zone: null), the
+  // Transactions page's pattern. A 'YYYY-MM-DD' string, stable between renders.
+  const today = useSyncExternalStore(
+    noSubscribe,
+    () => todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()),
+    () => null,
+  );
 
   const pickRange = useCallback((r: Range) => {
     setPicked(r);
