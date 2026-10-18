@@ -116,12 +116,24 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
                   {affected.map((id) => {
                     const before = balances[id] ?? 0;
                     const after = before - changeFor(id);
+                    const widest = Math.max(0.01, ...affected.map((k) => Math.abs(balances[k] ?? 0)));
                     return (
-                      <div key={id} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.35rem 0', fontSize: '0.82rem' }}>
+                      <div key={id} className="pb-accounts-same">
+                      {/* Seen, not only read: two identical bars and an "=" badge. */}
+                      <div className="pb-accounts-same-bars pb-chart-fill" aria-hidden="true">
+                        <span className="pb-accounts-same-word">{d.accountsPage.selfBefore}</span>
+                        <span className="pb-accounts-same-track"><span style={{ transform: `scaleX(${Math.abs(before) / widest})` }} /></span>
+                        <span className="pb-accounts-same-eq">=</span>
+                        <span className="pb-accounts-same-word">{d.accountsPage.selfAfter}</span>
+                        <span className="pb-accounts-same-track"><span style={{ transform: `scaleX(${Math.abs(after) / widest})` }} /></span>
+                        <span className="pb-accounts-same-tag">{d.ux.accounts.selfSame}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.35rem 0', fontSize: '0.82rem' }}>
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nameOf(id)}</span>
                         <span className="font-mono-tab" style={{ whiteSpace: 'nowrap', color: 'var(--ink-soft)' }}>
                           {d.accountsPage.selfBefore} {formatCurrency(before)} → {d.accountsPage.selfAfter} <strong style={{ color: 'var(--ink)' }}>{formatCurrency(after)}</strong>
                         </span>
+                      </div>
                       </div>
                     );
                   })}

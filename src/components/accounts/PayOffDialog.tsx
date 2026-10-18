@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -17,7 +17,7 @@ import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
-import { cardStatus } from '@/lib/creditCards';
+import { cardStatus, statementTimeline, type ChargeState } from '@/lib/creditCards';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -43,14 +43,24 @@ export function nextDue(dueDay: number): string {
  *
  * The charges come from the page's own data: no extra request.
  */
-export function PayOffDialog({ card, allAccounts, charges, onClose }: {
+export function PayOffDialog({ card, allAccounts, charges, onClose, today: todayProp }: {
   card: Account;
   allAccounts: Account[];
   /** Every expense currently on this card. */
   charges: ExpenseTransaction[];
   onClose: () => void;
+  /** Zone-aware 'YYYY-MM-DD' from the page, so due groups match its reminders.
+      Optional: without it the device's day is used, as before. */
+  today?: string;
 }) {
   const { d, t, locale } = useTranslation();
+  const x = d.ux.accounts;
+  const [today] = useState(() => {
+    if (todayProp) return todayProp;
+    const now = new Date();
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  });
+  const status = useMemo(() => cardStatus(card, charges, today), [card, charges, today]);
 
   const sources = allAccounts.filter((a) => a.status === 'active' && a.kind !== 'credit');
   const options = useMemo<SelectFieldOption[]>(
@@ -66,11 +76,27 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
   // The charges currently due are preselected, so a reminder's amount and the
   // Pay button agree; when nothing is due yet, every charge is.
   const [selected, setSelected] = useState<Set<string>>(() => {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const due = cardStatus(card, charges, today)?.dueChargeIds ?? [];
     return new Set(due.length > 0 ? due : charges.map((c) => c.id));
   });
+
+  // Charges grouped by statement, with the cut-offs cardStatus uses: overdue,
+  // due on the next date, and rolling to the statement after. A card with no
+  // due day has no statements, so its list stays one flat group.
+  const groups = useMemo(() => {
+    const tl = statementTimeline(card, charges, today);
+    if (!tl) return [{ key: 'all' as const, title: '', ids: list.map((c) => c.id) }];
+    const stateById = new Map(tl.points.map((p) => [p.id, p.state]));
+    const order: { key: ChargeState; title: string }[] = [
+      { key: 'overdue', title: t(x.groupOverdue, { date: formatDate(tl.previous, locale) }) },
+      { key: 'due', title: t(x.groupDue, { date: formatDate(tl.next, locale) }) },
+      { key: 'next', title: x.groupNext },
+    ];
+    return order
+      .map((g) => ({ key: g.key, title: g.title, ids: list.filter((c) => stateById.get(c.id) === g.key).map((c) => c.id) }))
+      .filter((g) => g.ids.length > 0);
+  }, [card, charges, today, list, t, x, locale]);
+  const byId = useMemo(() => new Map(list.map((c) => [c.id, c])), [list]);
   const [from, setFrom] = useState(() => (sources.find((a) => a.isPreferred) ?? sources[0])?.id ?? '');
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +114,12 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
   const toggle = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleGroup = (ids: string[]) => setSelected((prev) => {
+    const next = new Set(prev);
+    const all = ids.every((id) => next.has(id));
+    for (const id of ids) { if (all) next.delete(id); else next.add(id); }
     return next;
   });
 
@@ -125,7 +157,10 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
           </div>
           {!success && list.length > 0 && (
             <p className="pb-money" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
-              {t(d.accounts.payOffOwed, { amount: formatCurrency(owed), date: formatDate(nextDue(card.dueDay ?? 1), locale) })}
+              {/* No due day means no due date: say what is owed, not a made-up "due the 1st". */}
+              {status
+                ? t(d.accounts.payOffOwed, { amount: formatCurrency(owed), date: formatDate(status.next, locale) })
+                : t(x.payOffOwedNoDate, { amount: formatCurrency(owed) })}
             </p>
           )}
         </div>
@@ -145,6 +180,14 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
                 <SelectField value={from} onChange={setFrom} options={options} ariaLabel={d.accounts.payOffFrom} />
               </div>
 
+              {/* How much of what is owed this payment clears; moves as boxes are ticked. */}
+              <div className="pb-accounts-pay-progress">
+                <p className="pb-money">{t(x.payingOf, { amount: formatCurrency(total), owed: formatCurrency(owed) })}</p>
+                <div className="pb-accounts-pay-track pb-chart-fill" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${owed > 0 ? Math.min(1, total / owed) : 0})` }} />
+                </div>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
                 <button
                   type="button" className="pill"
@@ -156,21 +199,40 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
               </div>
 
               <div>
-                {list.map((c) => (
-                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} style={{ flexShrink: 0 }} />
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      {/* Titles are USER DATA. */}
-                      <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {descriptionTitle(c.description) || categoryLabel(d, c.category)}
-                      </span>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{formatDate(c.date, locale)}</span>
-                    </span>
-                    <span className="font-mono-tab" style={{ fontSize: '0.86rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {formatCurrency(Math.abs(c.amount))}
-                    </span>
-                  </label>
-                ))}
+                {groups.map((g) => {
+                  const sum = g.ids.reduce((s, id) => s + Math.abs(byId.get(id)?.amount ?? 0), 0);
+                  const on = g.ids.filter((id) => selected.has(id)).length;
+                  return (
+                    <div key={g.key} className={`pb-accounts-pay-group is-${g.key}`}>
+                      {g.title && (
+                        // Sticky inside the scrolling body, on mist so rows never show through.
+                        <label className="pb-accounts-pay-head">
+                          <GroupBox checked={on === g.ids.length} partial={on > 0 && on < g.ids.length} onChange={() => toggleGroup(g.ids)} label={t(x.selectGroup, { group: g.title })} />
+                          <span className="pb-accounts-pay-head-title">{g.title}</span>
+                          <span className="font-mono-tab pb-accounts-pay-head-sum">{formatCurrency(sum)}</span>
+                        </label>
+                      )}
+                      {g.ids.map((id) => {
+                        const c = byId.get(id)!;
+                        return (
+                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} style={{ flexShrink: 0 }} />
+                            <span style={{ minWidth: 0, flex: 1 }}>
+                              {/* Titles are USER DATA. */}
+                              <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {descriptionTitle(c.description) || categoryLabel(d, c.category)}
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{formatDate(c.date, locale)}</span>
+                            </span>
+                            <span className="font-mono-tab" style={{ fontSize: '0.86rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              {formatCurrency(Math.abs(c.amount))}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -201,4 +263,11 @@ export function PayOffDialog({ card, allAccounts, charges, onClose }: {
       )}
     </ModalFrame>
   );
+}
+
+/** A group's checkbox: ticked, clear, or part-ticked (indeterminate). */
+function GroupBox({ checked, partial, onChange, label }: { checked: boolean; partial: boolean; onChange: () => void; label: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.indeterminate = partial; }, [partial]);
+  return <input ref={ref} type="checkbox" checked={checked} onChange={onChange} aria-label={label} aria-checked={partial ? 'mixed' : checked} style={{ flexShrink: 0 }} />;
 }

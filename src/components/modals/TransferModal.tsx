@@ -2,7 +2,8 @@
 
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Coins, Landmark } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -22,9 +23,21 @@ import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface TransferModalProps {
   onClose: () => void;
+  /** Preselect this account as From (the Accounts page's "Transfer from this
+      account"). Ignored when it cannot send. Default: the preferred account. */
+  initialFromId?: string;
+  /** accountId -> balance today, from a page that already has them. When
+      given, each side shows its balance now and after this transfer. */
+  balances?: Record<string, number>;
 }
 
 const FORM_ID = 'transfer-form';
+
+/** The amount as entered, when it is a positive number; else 0. */
+const amountValidNumber = (v: string) => {
+  const n = Number(v);
+  return v.trim() !== '' && Number.isFinite(n) && n > 0 ? n : 0;
+};
 
 const inputStyle: React.CSSProperties = {
   padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)',
@@ -54,7 +67,7 @@ const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, to
  * down. One icon, rotated by the same container query that sets the layout.
  * Head (title, close) and foot (error, submit) never scroll.
  */
-export function TransferModal({ onClose }: TransferModalProps) {
+export function TransferModal({ onClose, initialFromId, balances }: TransferModalProps) {
   const { d, t, locale } = useTranslation();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -84,9 +97,11 @@ export function TransferModal({ onClose }: TransferModalProps) {
       setAccountsLoaded(true);
       // Preferred account as the source, since money usually leaves the
       // account the user treats as primary.
-      // Cards never take part in a transfer, so the first picks skip them.
-      const usable = result.accounts.filter((a) => a.kind !== 'credit');
-      const preferred = usable.find((a) => a.isPreferred);
+      // Cards never take part in a transfer, and the server refuses
+      // hibernated accounts, so the first picks skip both.
+      const usable = result.accounts.filter((a) => a.kind !== 'credit' && a.status === 'active');
+      const asked = initialFromId ? usable.find((a) => a.id === initialFromId) : undefined;
+      const preferred = asked ?? usable.find((a) => a.isPreferred);
       setFromId((c) => c || preferred?.id || usable[0]?.id || '');
       setToId((c) => c || usable.find((a) => a.id !== (preferred?.id ?? usable[0]?.id))?.id || '');
     });
@@ -95,17 +110,44 @@ export function TransferModal({ onClose }: TransferModalProps) {
   }, []);
 
   const options = useMemo<SelectFieldOption[]>(
-    // Credit cards never send or receive transfers.
-    () => accounts.filter((a) => a.kind !== 'credit').map((a) => ({
-      value: a.id,
-      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
-    })),
-    [accounts],
+    // Credit cards never send or receive transfers. Hibernated accounts take
+    // no new activity - the server refuses them - so they are listed last and
+    // labelled, and choosing one says why before Transfer is pressed rather
+    // than failing after it.
+    () => {
+      const usable = accounts.filter((a) => a.kind !== 'credit');
+      return [...usable.filter((a) => a.status === 'active'), ...usable.filter((a) => a.status !== 'active')].map((a) => {
+        const name = a.last4 ? `${a.name} ····${a.last4}` : a.name;
+        return {
+          value: a.id,
+          label: a.status === 'active' ? name : t(d.ux.accounts.optionHibernated, { name }),
+          icon: a.kind === 'cash' ? Coins : Landmark,
+        };
+      });
+    },
+    [accounts, d, t],
   );
+  const activeIds = useMemo(() => new Set(accounts.filter((a) => a.kind !== 'credit' && a.status === 'active').map((a) => a.id)), [accounts]);
+  const sleepingPicked = [fromId, toId].some((id) => id !== '' && !activeIds.has(id));
+  const swap = () => { setFromId(toId); setToId(fromId); };
+  const amountNum = amountValidNumber(amount);
+  // "Balance $X → $Y" under each side, live from the amount (only when the
+  // page supplied balances).
+  const balanceLine = (id: string, sign: -1 | 1) => {
+    if (!balances || !id || balances[id] === undefined) return null;
+    const now = balances[id];
+    return (
+      <span className="font-mono-tab pb-accounts-transfer-bal">
+        {amountNum > 0
+          ? t(d.ux.accounts.balanceAfter, { now: formatCurrency(now), after: formatCurrency(Math.round((now + sign * amountNum) * 100) / 100) })
+          : t(d.ux.accounts.balanceNow, { now: formatCurrency(now) })}
+      </span>
+    );
+  };
 
   const sameAccount = fromId !== '' && fromId === toId;
   const amountValid = amount.trim() !== '' && Number(amount) > 0;
-  const canSubmit = !!fromId && !!toId && !sameAccount && amountValid && !!date && title.trim() !== '';
+  const canSubmit = !!fromId && !!toId && !sameAccount && !sleepingPicked && amountValid && !!date && title.trim() !== '';
 
   const performSave = async () => {
     if (!canSubmit || saving) return;
@@ -165,27 +207,49 @@ export function TransferModal({ onClose }: TransferModalProps) {
               <div className="pb-span-2 pb-transfer-route">
                 <div className="pb-transfer-account">
                   <span>{d.transfer.from}</span>
-                  <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
+                  {/* One wrapper for the picker and its balance line: the
+                      stacked layout places a block's second child as one row. */}
+                  <div className="pb-accounts-transfer-pick">
+                    <SelectField value={fromId} onChange={setFromId} options={options} ariaLabel={d.transfer.from} />
+                    {balanceLine(fromId, -1)}
+                  </div>
                 </div>
 
-                {/* Decorative: the From / To labels carry the meaning. The icon
-                    points right; CSS turns it down when the blocks stack. */}
-                <span className="pb-transfer-badge" aria-hidden="true">
-                  <span className="pb-transfer-arrow"><ArrowRight size={22} strokeWidth={2.4} /></span>
-                </span>
+                {/* The arrow badge doubles as a swap button. Still a non-div,
+                    so the stacked layout's :first-of-type / :last-of-type
+                    rules keep finding the two blocks. The icon points right;
+                    CSS turns it down when the blocks stack. */}
+                <button type="button" className="pb-transfer-badge pb-accounts-swap" onClick={swap} aria-label={d.ux.accounts.swap} disabled={!fromId && !toId}>
+                  <span className="pb-transfer-arrow"><ArrowRight size={22} strokeWidth={2.4} aria-hidden="true" /></span>
+                </button>
 
                 <div className="pb-transfer-account">
                   <span>{d.transfer.to}</span>
-                  <SelectField value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
+                  <div className="pb-accounts-transfer-pick">
+                    <SelectField value={toId} onChange={setToId} options={options} ariaLabel={d.transfer.to} />
+                    {balanceLine(toId, 1)}
+                  </div>
                 </div>
               </div>
 
               {sameAccount && (
                 <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
               )}
+              {/* The server's own words for the same refusal. */}
+              {sleepingPicked && !sameAccount && (
+                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.serverErrors['validation.transferInactiveAccount']}</p>
+              )}
               {accountError && <div className="pb-span-2"><ActionError message={accountError} /></div>}
               {accountsLoaded && accounts.length === 0 && (
                 <div className="pb-span-2"><NoAccountsNotice onNavigate={close} /></div>
+              )}
+              {/* Accounts, but not two that can take a transfer (only cards,
+                  or hibernated ones): say why the pickers are short. */}
+              {accountsLoaded && accounts.length > 0 && activeIds.size < 2 && (
+                <div className="pb-span-2 pb-accounts-transfer-need">
+                  <span>{d.ux.accounts.transferNeedsTwo}</span>
+                  <Link href="/settings#settings-money" onClick={close} className="pill">{d.accountsPage.manage}</Link>
+                </div>
               )}
 
               <label style={labelStyle} className="pb-span-2">

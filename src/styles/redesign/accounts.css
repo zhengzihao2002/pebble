@@ -1,1 +1,643 @@
-/* Redesign: accounts. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: accounts. Loaded after globals.css and kit.css (src/app/layout.tsx).
+
+   Every rule is scoped under .pebble-root and every new class starts with
+   pb-accounts-. Theme tokens only, so the five palettes in light and dark
+   follow, and nothing swaps a colour formula between a light and a dark
+   selector (the credit-card face uses one formula driven by a transitioned
+   number, like the Dashboard hero). Responsive
+   rules are container queries on `content` (the main column), or on a
+   container a component declares itself (pb-modal for the dialogs).
+
+   TransferModal's swap button and balance lines are styled here too: the
+   dialog is mounted app-wide, and these rules only touch classes it gains. */
+
+/* ---------- Page frame ---------- */
+.pebble-root .pb-accounts { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.pebble-root .pb-accounts > * { min-width: 0; }
+.pebble-root .pb-accounts-cents { font-size: 0.5em; vertical-align: 0.72em; margin-left: 0.04em; letter-spacing: 0; opacity: 0.8; }
+.pebble-root .pb-accounts-hint { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+
+/* ---------- Hero: figure, change, range, chart ---------- */
+.pebble-root .pb-accounts-hero {
+  display: flex; flex-direction: column; gap: 1.1rem;
+  padding: 1.5rem 1.75rem 1rem; box-sizing: border-box;
+}
+@container content (max-width: 559.98px) {
+  .pebble-root .pb-accounts-hero { padding: 1.1rem 1.1rem 0.85rem; gap: 0.95rem; }
+}
+.pebble-root .pb-accounts-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem 1.5rem; }
+.pebble-root .pb-accounts-hero-fig { min-width: 0; flex: 1 1 18rem; }
+/* The label and the scrubbed day share one cell and cross-fade. */
+.pebble-root .pb-accounts-hero-label { display: grid; }
+.pebble-root .pb-accounts-hero-label > p {
+  grid-area: 1 / 1; margin: 0; font-size: 0.82rem; color: var(--ink-soft);
+  transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-accounts-hero-label > p:last-child { opacity: 0; color: var(--ink); font-weight: 600; }
+.pebble-root .pb-accounts-hero-label.is-scrub > p:first-child { opacity: 0; }
+.pebble-root .pb-accounts-hero-label.is-scrub > p:last-child { opacity: 1; }
+.pebble-root .pb-accounts-hero .hero-balance { margin: 0.3rem 0 0; min-height: 1em; }
+.pebble-root .pb-accounts-hero-change {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem 0.55rem;
+  margin: 0.8rem 0 0; min-height: 1.5rem; font-size: 0.86rem;
+}
+.pebble-root .pb-accounts-hero-summary { font-weight: 600; }
+.pebble-root .pb-accounts-hero-since { color: var(--ink-soft); }
+.pebble-root .pb-accounts-hero-change .pb-delta { font-size: 0.76rem; }
+
+/* Range: the pine dot that marks a linked control, then the segmented
+   control. Rounded so the PeriodLink halo (radius 14px) hugs it. */
+.pebble-root .pb-accounts-range { display: flex; align-items: center; gap: 0.5rem; border-radius: 14px; flex: none; max-width: 100%; }
+@container content (max-width: 559.98px) {
+  /* Full width under the figure, within thumb reach. */
+  .pebble-root .pb-accounts-range { flex: 1 1 100%; }
+  .pebble-root .pb-accounts-range .pb-seg { flex: 1; display: flex; }
+  .pebble-root .pb-accounts-range .pb-seg-btn { flex: 1 1 0; padding-inline: 0.3rem; }
+}
+/* With no accounts it controls nothing: hidden, but kept for PeriodLink. */
+.pebble-root .pb-accounts-range.is-idle { visibility: hidden; }
+@media (pointer: coarse) {
+  .pebble-root .pb-accounts-range .pb-seg-btn { min-height: 44px; }
+}
+
+.pebble-root .pb-accounts-chart { height: 300px; margin-inline: -0.35rem; position: relative; }
+.pebble-root .pb-accounts-chart-skel { padding: 0 0.35rem; box-sizing: border-box; }
+@container content (max-width: 559.98px) {
+  /* Bleeds to the card's edges on a phone: every pixel is plot. */
+  .pebble-root .pb-accounts-chart { height: 210px; margin-inline: -1.1rem; }
+  .pebble-root .pb-accounts-chart-skel { padding: 0 1.1rem; }
+}
+.pebble-root .pb-accounts-chart-empty {
+  min-height: 260px; display: grid; place-items: center; border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+.pebble-root .pb-accounts-cta { display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
+.pebble-root .pb-accounts-keyhint { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; color: var(--ink-soft); }
+@media (pointer: coarse) { .pebble-root .pb-accounts-keyhint { display: none; } }
+
+.pebble-root .pb-accounts-hero-foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem;
+  padding-top: 0.85rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-accounts-hero-actions { display: flex; align-items: center; gap: 0.5rem 1rem; margin-left: auto; }
+.pebble-root .pb-accounts-transfer {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.42rem 0.95rem; font-size: 0.8rem; font-weight: 600;
+}
+.pebble-root .pb-accounts-manage {
+  display: inline-flex; align-items: center; gap: 2px; border-radius: 0.4rem;
+  font-size: 0.8rem; font-weight: 600; color: var(--pine); text-decoration: none; white-space: nowrap;
+}
+.pebble-root .pb-accounts-manage:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pebble-root .pb-accounts-manage:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-accounts-transfer,
+  .pebble-root .pb-accounts-manage { min-height: 44px; }
+  .pebble-root .pb-accounts-hero-foot .pb-accounts-hint { display: none; }
+  .pebble-root .pb-accounts-hero-actions { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+
+/* Self-transfer notice: a slim line at the top of the hero. */
+.pebble-root .pb-accounts-self {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.75rem;
+  padding: 0.6rem 0.75rem; border-radius: 0.9rem;
+  background-color: color-mix(in srgb, var(--gold) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 24%, transparent);
+}
+.pebble-root .pb-accounts-self p { flex: 1 1 16rem; margin: 0; font-size: 0.84rem; line-height: 1.45; }
+.pebble-root .pb-accounts-self-icon {
+  display: grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 0.6rem;
+  color: var(--gold); background-color: color-mix(in srgb, var(--gold) 15%, transparent);
+}
+.pebble-root .pb-accounts-self .pill { padding: 0.38rem 0.9rem; font-size: 0.8rem; }
+@media (pointer: coarse) { .pebble-root .pb-accounts-self .pill { min-height: 44px; } }
+
+/* Chart tooltips (hero, sparklines, detail sheet). */
+.pebble-root .pb-accounts-tip {
+  background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: var(--shadow);
+  padding: 0.45rem 0.7rem; font-size: 0.78rem; display: flex; flex-direction: column; gap: 2px;
+}
+.pebble-root .pb-accounts-tip.is-compact { display: block; padding: 0.3rem 0.5rem; font-size: 0.74rem; white-space: nowrap; }
+.pebble-root .pb-accounts-tip-date { color: var(--ink-soft); }
+.pebble-root .pb-accounts-tip-amount { font-weight: 600; }
+.pebble-root .pb-accounts-tip-row { display: flex; justify-content: space-between; gap: 1rem; }
+
+/* Popovers over a mark (statement dots, mix segments, calendar days). */
+.pebble-root .pb-accounts-pop {
+  position: absolute; z-index: 6; pointer-events: none;
+  display: flex; flex-direction: column; gap: 1px; min-width: 8.5rem; max-width: 15rem;
+  padding: 0.5rem 0.7rem; border-radius: 0.65rem; box-sizing: border-box;
+  background-color: var(--mist); border: 1px solid var(--line); box-shadow: var(--shadow-float, var(--shadow));
+  font-size: 0.76rem; line-height: 1.35; color: var(--ink);
+  animation: pb-accounts-pop-in var(--pb-dur-micro) var(--pb-ease-out) both;
+}
+@keyframes pb-accounts-pop-in { from { opacity: 0; } }
+.pebble-root .pb-accounts-pop-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-pop-meta { color: var(--ink-soft); }
+.pebble-root .pb-accounts-pop-amount { font-weight: 600; }
+
+/* ---------- Where your money sits ---------- */
+.pebble-root .pb-accounts-mix { display: flex; flex-direction: column; gap: 1.1rem; padding: 1.25rem 1.5rem; box-sizing: border-box; }
+@container content (max-width: 559.98px) { .pebble-root .pb-accounts-mix { padding: 1.1rem; } }
+/* Three figures on one hairline grid, the Dashboard's technique. */
+.pebble-root .pb-accounts-strip {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0;
+  border: 1px solid var(--line); border-radius: 1rem; overflow: hidden; background-color: var(--line);
+}
+.pebble-root .pb-accounts-strip > div { background-color: var(--mist); padding: 0.8rem 1rem; min-width: 0; }
+.pebble-root .pb-accounts-strip > .is-net { background-color: color-mix(in srgb, var(--pine) 5%, var(--mist)); }
+.pebble-root .pb-accounts-strip dt { display: flex; align-items: center; gap: 0.3rem; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-strip dt .is-in { color: var(--pine); }
+.pebble-root .pb-accounts-strip dt .is-out { color: var(--wine); }
+.pebble-root .pb-accounts-strip dd { margin: 0; }
+.pebble-root .pb-accounts-strip dd.font-mono-tab { margin-top: 0.2rem; font-size: 1.15rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-accounts-strip-hint { margin-top: 0.15rem !important; font-size: 0.7rem; color: var(--ink-soft); line-height: 1.3; }
+@container content (max-width: 559.98px) {
+  /* Assets and Owed side by side, Net across the full width under them. */
+  .pebble-root .pb-accounts-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pebble-root .pb-accounts-strip > .is-net { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+  .pebble-root .pb-accounts-strip > .is-net dd.font-mono-tab { margin-top: 0; }
+  .pebble-root .pb-accounts-strip > div { padding: 0.7rem 0.85rem; }
+  .pebble-root .pb-accounts-strip dd.font-mono-tab { font-size: 1.02rem; }
+  .pebble-root .pb-accounts-strip-hint { display: none; }
+}
+
+.pebble-root .pb-accounts-mix-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@container content (min-width: 720px) {
+  .pebble-root .pb-accounts-mix-body { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+}
+.pebble-root .pb-accounts-mix-bars { position: relative; display: flex; flex-direction: column; gap: 0.9rem; padding-top: 0.2rem; }
+.pebble-root .pb-accounts-mix-cap { display: block; margin-bottom: 0.4rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-mix-bar {
+  display: flex; gap: 2px; height: 22px; min-width: 6px; border-radius: 6px; overflow: hidden;
+}
+.pebble-root .pb-accounts-mix-bar.is-owed { height: 12px; border-radius: 4px; }
+.pebble-root .pb-accounts-mix-bar.is-empty { width: 100%; background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-accounts-mix-seg {
+  flex-basis: 0; min-width: 3px; background-color: var(--pb-seg); cursor: pointer;
+  transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
+}
+/* Hibernated money: hatched, as on the Budgets plan's savings band. */
+.pebble-root .pb-accounts-mix-seg.is-sleeping,
+.pebble-root .pb-accounts-legend-dot.is-sleeping {
+  background: repeating-linear-gradient(135deg, var(--pb-seg) 0 3px, color-mix(in srgb, var(--pb-seg) 35%, transparent) 3px 6px);
+}
+.pebble-root .pb-accounts-mix-seg.is-dim { opacity: 0.32; }
+.pebble-root .pb-accounts-mix-pop { bottom: calc(100% + 2px); transform: translateX(-50%); }
+.pebble-root .pb-accounts-mix-pop.is-owed { bottom: auto; top: calc(100% + 6px); }
+
+.pebble-root .pb-accounts-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-accounts-legend li + li { border-top: 1px solid var(--line); }
+.pebble-root .pb-accounts-legend-row {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 2.6rem; align-items: center; gap: 0.6rem;
+  width: 100%; margin: 0; padding: 0.5rem 0.35rem; border: 0; border-radius: 0.5rem;
+  background: transparent; color: inherit; font: inherit; font-size: 0.82rem; text-align: left; cursor: pointer;
+  transition: opacity var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-accounts-legend-row:hover,
+.pebble-root .pb-accounts-legend-row.is-active { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
+.pebble-root .pb-accounts-legend-row:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-accounts-legend-row.is-dim { opacity: 0.45; }
+@media (pointer: coarse) { .pebble-root .pb-accounts-legend-row { min-height: 44px; } }
+.pebble-root .pb-accounts-legend-dot { width: 10px; height: 10px; border-radius: 3px; background-color: var(--pb-seg); }
+.pebble-root .pb-accounts-legend-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-legend-amt { font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-accounts-legend-pct { text-align: right; font-size: 0.76rem; color: var(--ink-soft); }
+
+/* ---------- Your accounts: grouped sections ---------- */
+.pebble-root .pb-accounts-wallet { display: flex; flex-direction: column; gap: 1.25rem; }
+.pebble-root .pb-accounts-wallet-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.pebble-root .pb-accounts-wallet-head h3 { margin: 0; font-size: 1.12rem; font-weight: 600; }
+.pebble-root .pb-accounts-group { display: flex; flex-direction: column; gap: 0.75rem; }
+.pebble-root .pb-accounts-group-head {
+  display: flex; align-items: center; gap: 0.55rem; min-width: 0; padding: 0.15rem 0;
+}
+.pebble-root .pb-accounts-group-head h4 { margin: 0; font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-accounts-group-icon {
+  display: grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 0.5rem;
+  color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-accounts-group-count { font-size: 0.76rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-accounts-group-sum { margin-left: auto; font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-accounts-group-note { font-weight: 400; color: var(--ink-soft); font-size: 0.78rem; }
+.pebble-root .pb-accounts-group.is-quiet .pb-accounts-group-head h4 { color: var(--ink-soft); }
+.pebble-root .pb-accounts-group-body { display: flex; flex-direction: column; gap: 1rem; }
+@container content (max-width: 559.98px) {
+  /* Sticks under the frosted header while its section scrolls. */
+  .pebble-root .pb-accounts-group-head {
+    position: sticky; top: var(--pb-header-h); z-index: 3;
+    margin-inline: -0.5rem; padding: 0.5rem; border-radius: 0.75rem;
+    background-color: color-mix(in srgb, var(--paper) 82%, transparent);
+    -webkit-backdrop-filter: saturate(1.6) blur(16px); backdrop-filter: saturate(1.6) blur(16px);
+  }
+}
+
+/* Kind chips: bank and cash on pine-soft (as before), cards neutral ink.
+   Cash is told apart by its icon and the tile's gold top hairline. */
+.pebble-root .pb-accounts-chip {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 0.55rem;
+  color: var(--pine); background-color: var(--pine-soft);
+}
+.pebble-root .pb-accounts-chip.is-credit { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+.pebble-root .pb-accounts-name { flex: 1; min-width: 0; font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-last4 { font-weight: 400; color: var(--ink-soft); }
+
+/* Mac tiles. */
+.pebble-root .pb-accounts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.pebble-root .pb-accounts-tile {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 1.1rem 1.25rem 0; box-sizing: border-box;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out);
+  --pb-kind: var(--pine);
+}
+.pebble-root .pb-accounts-tile.is-cash { --pb-kind: var(--gold); }
+/* A hairline of the kind's colour along the top edge. */
+.pebble-root .pb-accounts-tile::before {
+  content: ''; position: absolute; inset: 0 0 auto; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, var(--pb-kind), color-mix(in srgb, var(--pb-kind) 0%, transparent));
+  opacity: 0.75;
+}
+/* Hover tints the border; nothing moves or scales (the tile convention). */
+.pebble-root .pb-accounts-tile.is-openable,
+.pebble-root .pb-accounts-cc.is-openable { cursor: pointer; }
+.pebble-root .pb-accounts-tile.is-openable:hover,
+.pebble-root .pb-accounts-cc.is-openable:hover { border-color: color-mix(in srgb, var(--pine) 35%, var(--line)); }
+.pebble-root .pb-accounts-tile-head { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.pebble-root .pb-accounts-open {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin: -4px -6px -4px 0; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--ink-soft); cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-accounts-open:hover { background-color: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--pine); }
+@media (pointer: coarse) { .pebble-root .pb-accounts-open { width: 44px; height: 44px; margin: -10px -12px -10px 0; } }
+.pebble-root .pb-accounts-tile-balrow { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+.pebble-root .pb-accounts-tile-bal { margin: 0; font-size: 1.6rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+.pebble-root .pb-accounts-change { margin: 0.2rem 0 0; font-size: 0.8rem; font-weight: 600; }
+.pebble-root .pb-accounts-change-label { color: var(--ink-soft); font-weight: 400; }
+.pebble-root .pb-accounts-tile .pb-accounts-spark { margin: 0.2rem -1.25rem 0; }
+.pebble-root .pb-accounts-tile-foot {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.25rem 0.5rem;
+  margin: 0 -1.25rem; padding: 0.6rem 1.25rem 0.8rem; border-top: 1px solid var(--line);
+  font-size: 0.74rem; color: var(--ink-soft);
+}
+/* Hibernated: greyed and dimmed, with the sleeping badge. */
+.pebble-root .pb-accounts-tile.is-sleeping,
+.pebble-root .pb-accounts-cc.is-sleeping,
+.pebble-root .pb-accounts-row.is-sleeping { opacity: 0.78; filter: grayscale(0.85); }
+
+/* Phone rows. */
+.pebble-root .pb-accounts-rows { list-style: none; margin: 0; padding: 0.3rem 0; }
+.pebble-root .pb-accounts-row + .pb-accounts-row { border-top: 1px solid var(--line); margin-inline: 0; }
+.pebble-root .pb-accounts-row-btn {
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px auto 16px; align-items: center; gap: 0.6rem;
+  width: 100%; min-height: 64px; margin: 0; padding: 0.65rem 0.9rem; box-sizing: border-box;
+  border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pebble-root .pb-accounts-row-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.8rem; }
+.pebble-root .pb-accounts-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pebble-root .pb-accounts-row-line { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.pebble-root .pb-accounts-row-line .pb-accounts-name { font-size: 0.88rem; }
+.pebble-root .pb-accounts-row-line .pb-sleep-badge { font-size: 0.6rem; padding: 0 0.3rem; }
+.pebble-root .pb-accounts-row-sub { padding-left: calc(30px + 0.5rem); font-size: 0.72rem; line-height: 1.35; color: var(--ink-soft); white-space: normal; overflow-wrap: anywhere; }
+.pebble-root .pb-accounts-row-trend { min-width: 0; }
+.pebble-root .pb-accounts-row-fig { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; white-space: nowrap; }
+.pebble-root .pb-accounts-row-bal { font-size: 0.9rem; font-weight: 600; }
+.pebble-root .pb-accounts-row-change { font-size: 0.7rem; font-weight: 600; }
+.pebble-root .pb-accounts-row-chev { color: var(--ink-soft); transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .pb-accounts-row.is-open .pb-accounts-row-chev { transform: rotate(180deg); }
+.pebble-root .pb-accounts-row-panel { display: flex; flex-direction: column; gap: 0.5rem; padding: 0 0.9rem 0.85rem; }
+.pebble-root .pb-accounts-row-panel-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-details { display: inline-flex; align-items: center; gap: 2px; padding: 0.35rem 0.6rem 0.35rem 0.85rem; font-size: 0.78rem; font-weight: 600; }
+@media (pointer: coarse) { .pebble-root .pb-accounts-details { min-height: 44px; } }
+/* A word-sized trend only where the name still has room beside it. */
+@container content (max-width: 419.98px) {
+  .pebble-root .pb-accounts-row-btn { grid-template-columns: minmax(0, 1fr) auto 16px; }
+  .pebble-root .pb-accounts-row-trend { display: none; }
+  /* The percent gives way so the name keeps its width; the open panel
+     still shows the full change. */
+  .pebble-root .pb-accounts-row-pct { display: none; }
+}
+
+/* ---------- Credit cards ---------- */
+.pebble-root .pb-accounts-cc-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.pebble-root .pb-accounts-cc {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: center;
+  padding: 1rem; box-sizing: border-box;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+@container content (min-width: 640px) {
+  .pebble-root .pb-accounts-cc { grid-template-columns: minmax(15rem, 21rem) minmax(0, 1fr); gap: 1.5rem; padding: 1.1rem 1.5rem 1.1rem 1.1rem; }
+}
+/* The face: deep and neutral in both modes - one formula, no light/dark
+   swap. Theme pine tints the near-black slightly; the text is near-white. */
+.pebble-root .pb-accounts-cc-face {
+  /* Deep in both modes. One formula driven by --pb-hero-dark, the
+     registered number the Dashboard hero uses (0 light, 1 dark, transitions
+     with the theme), so a switch fades rather than flashes. In dark mode the
+     theme's pine is a light tint, so more of it lifts the face clear of the
+     dark card behind it. Black and white appear only as mixing anchors
+     (as in the hero's formula); every highlight, rule and shadow is a mix of
+     the face's own colours. */
+  --pb-hero-dark: 0;
+  --pb-cc-base: color-mix(in oklch, var(--pine) calc(20% + 16% * var(--pb-hero-dark)), black);
+  --pb-cc-fg: color-mix(in oklch, white 92%, var(--pine));
+  --pb-cc-hi: color-mix(in srgb, var(--pb-cc-fg) calc(12% + 4% * var(--pb-hero-dark)), transparent);
+  position: relative; overflow: hidden; aspect-ratio: 1.586; min-width: 0;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 0.75rem;
+  padding: 1rem 1.15rem; box-sizing: border-box; border-radius: 1rem;
+  color: var(--pb-cc-fg);
+  background:
+    radial-gradient(110% 120% at 100% 0%, color-mix(in srgb, var(--gold) calc(20% - 4% * var(--pb-hero-dark)), transparent), transparent 60%),
+    linear-gradient(150deg, color-mix(in oklch, var(--pb-cc-base) 82%, var(--pb-cc-fg)), var(--pb-cc-base) 55%, color-mix(in oklch, var(--pb-cc-base) 78%, black));
+  box-shadow:
+    inset 0 1px 0 var(--pb-cc-hi),
+    inset 0 0 0 1px color-mix(in srgb, var(--pb-cc-fg) calc(6% + 6% * var(--pb-hero-dark)), transparent),
+    0 14px 28px -18px color-mix(in srgb, var(--pb-cc-base) 85%, transparent);
+  --ink-soft: color-mix(in srgb, var(--pb-cc-fg) 72%, transparent);
+  transition: --pb-hero-dark var(--pb-dur-theme, 300ms) ease;
+}
+.pebble-root.dark .pb-accounts-cc-face,
+.pebble-dark .pebble-root .pb-accounts-cc-face { --pb-hero-dark: 1; }
+@container content (max-width: 559.98px) {
+  .pebble-root .pb-accounts-cc-face { aspect-ratio: auto; min-height: 10.5rem; }
+}
+.pebble-root .pb-accounts-cc-row { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+.pebble-root .pb-accounts-cc-row.is-bottom { justify-content: space-between; }
+.pebble-root .pb-accounts-cc-glyph { flex: none; opacity: 0.85; }
+.pebble-root .pb-accounts-cc-name { flex: 1; min-width: 0; font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-cc-open {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin: -6px -8px -6px 0; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer;
+}
+.pebble-root .pb-accounts-cc-open:hover { background-color: color-mix(in srgb, var(--pb-cc-fg) 14%, transparent); }
+.pebble-root .pb-accounts-cc-open:focus-visible { outline: 2px solid var(--pb-cc-fg); outline-offset: 1px; }
+@media (pointer: coarse) { .pebble-root .pb-accounts-cc-open { width: 44px; height: 44px; margin: -12px -14px -12px 0; } }
+.pebble-root .pb-accounts-cc-owed { text-align: right; }
+.pebble-root .pb-accounts-cc-owed p { margin: 0; }
+.pebble-root .pb-accounts-cc-owed .font-display { font-size: 1.75rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; }
+.pebble-root .pb-accounts-cc-owed-word { font-size: 0.74rem; opacity: 0.75; margin-top: 0.1rem !important; }
+.pebble-root .pb-accounts-cc-num { font-size: 0.92rem; letter-spacing: 0.14em; opacity: 0.88; }
+.pebble-root .pb-accounts-cc-kind { font-size: 0.66rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.pebble-root .pb-accounts-cc-body { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+.pebble-root .pb-accounts-payoff { width: 100%; padding: 0.62rem; }
+@media (pointer: coarse) {
+  .pebble-root .pb-accounts-payoff,
+  .pebble-root .pb-accounts-detail-actions .btn-primary { min-height: 44px; }
+}
+.pebble-root .pb-accounts-payoff:disabled { opacity: 0.5; cursor: default; }
+
+.pebble-root .pb-accounts-limit { display: flex; align-items: center; gap: 0.85rem; }
+.pebble-root .pb-accounts-limit-pct { font-size: 0.72rem; font-weight: 600; }
+.pebble-root .pb-accounts-limit-line { margin: 0; font-size: 0.78rem; color: var(--ink-soft); line-height: 1.4; }
+.pebble-root .pb-accounts-limit-line.is-over { color: var(--wine); font-weight: 600; }
+.pebble-root .pb-accounts-due { margin: 0; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.4; }
+.pebble-root .pb-accounts-due.is-overdue { color: var(--wine); font-weight: 600; }
+.pebble-root .pb-accounts-due.is-soon { color: var(--gold); font-weight: 600; }
+
+/* Statement track. */
+.pebble-root .pb-accounts-track-wrap { display: flex; flex-direction: column; gap: 0.45rem; }
+.pebble-root .pb-accounts-track-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem 0.75rem; }
+.pebble-root .pb-accounts-countdown {
+  display: inline-flex; align-items: center; padding: 0.1rem 0.55rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; line-height: 1.5;
+  color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-accounts-countdown.is-soon { color: var(--gold); background-color: color-mix(in srgb, var(--gold) 14%, transparent); }
+.pebble-root .pb-accounts-countdown.is-overdue { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-accounts-track-caption { font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-track { position: relative; padding-top: 1.05rem; }
+.pebble-root .pb-accounts-track-todaylabel {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-size: 0.64rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink);
+  white-space: nowrap; pointer-events: none;
+}
+.pebble-root .pb-accounts-track-line {
+  position: relative; height: 6px; border-radius: 99px; margin-top: 0.35rem;
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.pebble-root .pb-accounts-track-band { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 15%, transparent); }
+.pebble-root .pb-accounts-track-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background-color: color-mix(in srgb, var(--ink-soft) 70%, transparent); }
+.pebble-root .pb-accounts-track-tick.is-due { background-color: var(--ink-faint); }
+.pebble-root .pb-accounts-track-today { position: absolute; top: -7px; bottom: -7px; width: 2px; margin-left: -1px; border-radius: 2px; background-color: var(--ink); }
+.pebble-root .pb-accounts-track-dots { position: absolute; left: 0; right: 0; top: calc(1.05rem + 0.35rem + 3px); height: 0; }
+.pebble-root .pb-accounts-dot {
+  position: absolute; top: -5px; width: 10px; height: 10px; margin: 0 0 0 -5px; padding: 0; box-sizing: border-box;
+  border: 2px solid var(--ink-soft); border-radius: 50%; background-color: var(--mist); cursor: pointer;
+  transition: box-shadow var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-accounts-dot.is-due { background-color: var(--ink-soft); }
+.pebble-root .pb-accounts-dot.is-overdue { border-color: var(--wine); background-color: var(--wine); }
+.pebble-root .pb-accounts-dot.is-many {
+  top: -8px; width: auto; min-width: 16px; height: 16px; margin-left: -8px; padding: 0 4px;
+  border-radius: 99px; border-width: 1.5px; transform: translateX(calc(8px - 50%));
+  display: grid; place-items: center; font: inherit; font-size: 0.6rem; font-weight: 700; line-height: 1; color: var(--ink);
+}
+.pebble-root .pb-accounts-dot.is-many.is-due { color: var(--mist); }
+.pebble-root .pb-accounts-dot.is-many.is-overdue { color: var(--mist); }
+.pebble-root .pb-accounts-dot.is-active { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); z-index: 1; }
+.pebble-root .pb-accounts-dot:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-accounts-dot::after { content: ''; position: absolute; inset: -12px; }
+}
+.pebble-root .pb-accounts-track-pop { bottom: calc(100% - 0.6rem); transform: translateX(-50%); }
+.pebble-root .pb-accounts-track-pop.is-list { min-width: 11rem; gap: 0.3rem; }
+.pebble-root .pb-accounts-pop-item { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; min-width: 0; }
+.pebble-root .pb-accounts-pop-item + .pb-accounts-pop-item { padding-top: 0.3rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-accounts-pop-item-text { display: flex; flex-direction: column; min-width: 0; }
+.pebble-root .pb-accounts-pop-item .pb-accounts-pop-amount { white-space: nowrap; }
+.pebble-root .pb-accounts-track-labels {
+  position: relative; display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.6rem; min-height: 1rem;
+  font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap;
+}
+.pebble-root .pb-accounts-track-labels-prev { position: absolute; top: 0; transform: translateX(-50%); }
+.pebble-root .pb-accounts-track-empty { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+
+/* ---------- Daily flow ---------- */
+.pebble-root .pb-accounts-flow { display: flex; flex-direction: column; gap: 1rem; padding: 1.25rem 1.5rem; box-sizing: border-box; }
+@container content (max-width: 559.98px) { .pebble-root .pb-accounts-flow { padding: 1.1rem; } }
+.pebble-root .pb-accounts-flow-frame { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.pebble-root .pb-accounts-flow-pager { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-flow-pager .icon-btn { width: 2.2rem; height: 2.2rem; }
+.pebble-root .pb-accounts-flow-pager .icon-btn:disabled { opacity: 0.4; cursor: default; }
+@media (pointer: coarse) { .pebble-root .pb-accounts-flow-pager .icon-btn { width: 44px; height: 44px; } }
+/* Centred: on a Mac a short range does not fill the card, and a grid
+   hugging the left edge looked off-centre over the full-width rows below. */
+.pebble-root .pb-accounts-flow-chart { position: relative; align-self: center; max-width: 100%; }
+.pebble-root .pb-accounts-flow-months {
+  display: grid; grid-template-columns: repeat(var(--pb-cols), var(--pb-cell)); column-gap: 3px;
+  margin-left: 26px; height: 1.1rem; font-size: 0.66rem; color: var(--ink-soft);
+}
+.pebble-root .pb-accounts-flow-months span { white-space: nowrap; overflow: visible; }
+.pebble-root .pb-accounts-flow-grid { display: flex; flex-direction: column; gap: 3px; }
+.pebble-root .pb-accounts-flow-row { display: flex; align-items: center; gap: 3px; }
+.pebble-root .pb-accounts-flow-wd { width: 23px; flex: none; font-size: 0.62rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-flow-cell {
+  display: block; flex: none; width: var(--pb-cell, 12px); height: var(--pb-cell, 12px); box-sizing: border-box;
+  border-radius: 4px; background-color: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.pebble-root .pb-accounts-flow-cell.is-quiet { background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+.pebble-root .pb-accounts-flow-cell.is-out-of-range { background: transparent; }
+.pebble-root .pb-accounts-flow-cell.is-in.is-l0 { background-color: color-mix(in srgb, var(--pine) 20%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-in.is-l1 { background-color: color-mix(in srgb, var(--pine) 36%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-in.is-l2 { background-color: color-mix(in srgb, var(--pine) 54%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-in.is-l3 { background-color: color-mix(in srgb, var(--pine) 72%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-in.is-l4 { background-color: var(--pine); }
+.pebble-root .pb-accounts-flow-cell.is-out.is-l0 { background-color: color-mix(in srgb, var(--wine) 18%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-out.is-l1 { background-color: color-mix(in srgb, var(--wine) 32%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-out.is-l2 { background-color: color-mix(in srgb, var(--wine) 48%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-out.is-l3 { background-color: color-mix(in srgb, var(--wine) 66%, var(--mist)); }
+.pebble-root .pb-accounts-flow-cell.is-out.is-l4 { background-color: var(--wine); }
+.pebble-root .pb-accounts-flow-grid .pb-accounts-flow-cell[role="gridcell"] { cursor: pointer; }
+.pebble-root .pb-accounts-flow-cell.is-today { box-shadow: 0 0 0 1.5px var(--ink); }
+.pebble-root .pb-accounts-flow-cell.is-active { box-shadow: 0 0 0 2px var(--mist), 0 0 0 3.5px var(--ink-soft); }
+.pebble-root .pb-accounts-flow-cell:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-accounts-flow-pop { transform: translate(-14px, calc(-100% - 6px)); min-width: 11rem; }
+.pebble-root .pb-accounts-flow-pop.is-left { transform: translate(calc(-100% + 14px), calc(-100% - 6px)); }
+.pebble-root .pb-accounts-flow-pop-row { display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-flow-pop-row .font-mono-tab { color: var(--ink); }
+.pebble-root .pb-accounts-flow-pop-row.is-net { margin-top: 2px; padding-top: 3px; border-top: 1px solid var(--line); }
+.pebble-root .pb-accounts-flow-legend { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 3px; font-size: 0.7rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-flow-legend .pb-accounts-flow-cell { --pb-cell: 11px; border-radius: 3px; }
+.pebble-root .pb-accounts-flow-legend span:first-child { margin-right: 0.35rem; }
+.pebble-root .pb-accounts-flow-legend span:last-child { margin-left: 0.35rem; }
+.pebble-root .pb-accounts-flow-facts {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0;
+  border: 1px solid var(--line); border-radius: 0.9rem; overflow: hidden; background-color: var(--line);
+}
+.pebble-root .pb-accounts-flow-facts > div { background-color: var(--mist); padding: 0.65rem 0.85rem; min-width: 0; }
+.pebble-root .pb-accounts-flow-facts dt { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-flow-facts dd { margin: 0.2rem 0 0; font-size: 0.86rem; font-weight: 600; }
+.pebble-root .pb-accounts-flow-facts dd .pb-tnum { font-weight: 400; color: var(--ink-soft); font-size: 0.78rem; }
+@container content (max-width: 559.98px) {
+  .pebble-root .pb-accounts-flow-facts { grid-template-columns: minmax(0, 1fr); }
+  .pebble-root .pb-accounts-flow-facts > div { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+  .pebble-root .pb-accounts-flow-facts dd { margin: 0; text-align: right; }
+}
+.pebble-root .pb-accounts-flow-note { margin: -0.35rem 0 0; font-size: 0.72rem; color: var(--ink-soft); line-height: 1.45; }
+
+/* ---------- Loading ---------- */
+.pebble-root .pb-accounts-skel { display: flex; flex-direction: column; gap: 1.5rem; }
+.pebble-root .pb-accounts-skel-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+
+/* ---------- Account detail sheet ---------- */
+.pebble-root .pb-accounts-detail-head { display: flex; align-items: center; gap: 0.75rem; }
+.pebble-root .pb-accounts-detail-head .pb-accounts-chip { width: 36px; height: 36px; border-radius: 0.65rem; }
+.pebble-root .pb-accounts-detail-titles { flex: 1; min-width: 0; }
+.pebble-root .pb-accounts-detail-titles h2 { margin: 0; font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }
+.pebble-root .pb-accounts-detail-titles h2 .pb-accounts-last4 { font-family: inherit; font-size: 0.85em; }
+.pebble-root .pb-accounts-detail-titles p { display: flex; align-items: center; gap: 0.4rem; margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+@container pb-modal (min-width: 680px) {
+  .pebble-root .pb-accounts-detail-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+}
+.pebble-root .pb-accounts-detail-main,
+.pebble-root .pb-accounts-detail-side { display: flex; flex-direction: column; gap: 1.1rem; min-width: 0; }
+.pebble-root .pb-accounts-detail-side { gap: 0.75rem; }
+.pebble-root .pb-accounts-detail-label { margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-figure { margin: 0.15rem 0 0; font-size: 2.4rem; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+.pebble-root .pb-accounts-detail-sub { margin: 0.15rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-chart { height: 190px; }
+.pebble-root .pb-accounts-detail-bars { height: 150px; }
+/* Recharts' keyboard layer focuses the chart on a tap; the box it drew
+   then only belongs to keyboard focus. */
+.pebble-root .pb-accounts-detail-bars .recharts-wrapper:focus:not(:focus-visible),
+.pebble-root .pb-accounts-detail-bars .recharts-surface:focus:not(:focus-visible) { outline: none; }
+.pebble-root .pb-accounts-detail-credit { display: flex; flex-direction: column; gap: 0.9rem; }
+.pebble-root .pb-accounts-detail-cap { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-side .pb-accounts-detail-cap { margin: 0.35rem 0 0; }
+.pebble-root .pb-accounts-detail-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-top: 0.45rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-accounts-detail-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.pebble-root .pb-accounts-detail-quiet { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-stats {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0;
+  border: 1px solid var(--line); border-radius: 0.9rem; overflow: hidden; background-color: var(--line);
+}
+.pebble-root .pb-accounts-detail-stats > div { background-color: var(--mist); padding: 0.65rem 0.8rem; min-width: 0; }
+.pebble-root .pb-accounts-detail-stats > .is-wide { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.pebble-root .pb-accounts-detail-stats > .is-wide dd { margin: 0; }
+.pebble-root .pb-accounts-detail-stats dt { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-detail-stats dt .is-in { color: var(--pine); }
+.pebble-root .pb-accounts-detail-stats dt .is-out { color: var(--wine); }
+.pebble-root .pb-accounts-detail-stats dd { margin: 0.2rem 0 0; font-size: 1rem; font-weight: 600; }
+.pebble-root .pb-accounts-detail-stats dd.pb-accounts-detail-stat-note { margin-top: 0.1rem; font-size: 0.72rem; font-weight: 400; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-detail-list { list-style: none; margin: 0; padding: 0; }
+.pebble-root .pb-accounts-detail-list li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 0.6rem; padding: 0.55rem 0; }
+.pebble-root .pb-accounts-detail-list li + li { border-top: 1px solid var(--line); }
+.pebble-root .pb-accounts-detail-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 0.55rem; color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-accounts-detail-ico.is-in { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
+.pebble-root .pb-accounts-detail-ico.is-move { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
+.pebble-root .pb-accounts-detail-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pebble-root .pb-accounts-detail-title { font-size: 0.84rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-detail-meta { font-size: 0.72rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-accounts-detail-amt { font-size: 0.84rem; font-weight: 600; white-space: nowrap; color: var(--wine); }
+.pebble-root .pb-accounts-detail-amt.is-in { color: var(--pine); }
+.pebble-root .pb-accounts-detail-more { align-self: flex-start; padding: 0.35rem 0.85rem; font-size: 0.78rem; }
+.pebble-root .pb-accounts-detail-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem; }
+.pebble-root .pb-accounts-detail-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
+.pebble-root .pb-accounts-detail-actions .btn-primary { padding: 0.62rem 1rem; }
+.pebble-root .pb-accounts-detail-actions .btn-primary:disabled { opacity: 0.5; cursor: default; }
+@container pb-modal (max-width: 519.98px) {
+  .pebble-root .pb-accounts-detail-actions { width: 100%; }
+  .pebble-root .pb-accounts-detail-actions .btn-primary { flex: 1; }
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-accounts-detail-more,
+  .pebble-root .pb-accounts-detail-foot .pb-accounts-manage { min-height: 44px; }
+}
+
+/* ---------- Pay off: progress and statement groups ---------- */
+.pebble-root .pb-accounts-pay-progress { margin: 0 0 0.85rem; }
+.pebble-root .pb-accounts-pay-progress p { margin: 0 0 0.4rem; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-pay-track { height: 6px; border-radius: 99px; overflow: hidden; background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+.pebble-root .pb-accounts-pay-track > span {
+  display: block; height: 100%; border-radius: 99px; background-color: var(--pine);
+  transform-origin: left center; transition: transform var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-accounts-pay-head {
+  /* Stuck, it also covers the scrolling body's top padding (0.25rem), so
+     no row shows above it. The cover is inside its own box (padding pulled
+     up by a matching negative margin), so unstuck it paints over nothing
+     - a shadow band here used to cut the Select all pill in half. */
+  position: sticky; top: -0.25rem; z-index: 1;
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-top: calc(0.4rem - 0.25rem); padding: calc(0.55rem + 0.25rem) 0 0.45rem;
+  background-color: var(--mist); border-bottom: 1px solid var(--line);
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.pebble-root .pb-accounts-pay-head-title { flex: 1; min-width: 0; }
+.pebble-root .pb-accounts-pay-head-sum { color: var(--ink-soft); }
+.pebble-root .pb-accounts-pay-group.is-overdue .pb-accounts-pay-head-title { color: var(--wine); }
+
+/* ---------- Self-transfer review: "nothing changes", drawn ---------- */
+.pebble-root .pb-accounts-same { padding: 0.45rem 0 0.1rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-accounts-same-bars {
+  display: grid; grid-template-columns: 3.6rem minmax(0, 1fr) auto auto; grid-template-rows: auto auto;
+  align-items: center; column-gap: 0.6rem; row-gap: 0.3rem; padding-top: 0.25rem;
+}
+.pebble-root .pb-accounts-same-word { font-size: 0.7rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-same-track { height: 8px; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 7%, transparent); overflow: hidden; }
+.pebble-root .pb-accounts-same-track > span { display: block; height: 100%; border-radius: 99px; background-color: color-mix(in srgb, var(--ink-soft) 75%, transparent); transform-origin: left center; }
+.pebble-root .pb-accounts-same-eq {
+  grid-column: 3; grid-row: 1 / 3; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  font-size: 0.85rem; font-weight: 700; color: var(--pine); background-color: var(--pine-soft);
+}
+.pebble-root .pb-accounts-same-bars > :nth-child(4) { grid-column: 1; grid-row: 2; }
+.pebble-root .pb-accounts-same-bars > :nth-child(5) { grid-column: 2; grid-row: 2; }
+.pebble-root .pb-accounts-same-tag { grid-column: 4; grid-row: 1 / 3; font-size: 0.72rem; font-weight: 600; color: var(--pine); }
+
+/* ---------- Transfer: swap button, balance lines, the "needs two" note ---------- */
+.pebble-root button.pb-accounts-swap {
+  padding: 0; font: inherit; cursor: pointer;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root button.pb-accounts-swap:hover:not(:disabled) { border-color: var(--pine); }
+.pebble-root button.pb-accounts-swap:disabled { cursor: default; opacity: 0.6; }
+.pebble-root .pb-accounts-transfer-pick { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.pebble-root .pb-accounts-transfer-bal { font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-accounts-transfer-need {
+  display: flex; flex-direction: column; gap: 0.55rem; padding: 0.8rem 0.9rem; border-radius: 0.7rem;
+  background-color: var(--gold-soft); border: 1px solid var(--line);
+  font-size: 0.8rem; line-height: 1.45; color: var(--ink);
+}
+.pebble-root .pb-accounts-transfer-need .pill { align-self: flex-start; padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; color: var(--ink); }

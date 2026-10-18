@@ -93,6 +93,45 @@ export function reminderLevel(s: CardStatus): ReminderLevel | null {
   return null;
 }
 
+export type ChargeState = 'overdue' | 'due' | 'next';
+
+export interface StatementTimeline {
+  /** The due date before `next` (where the track starts). */
+  previous: string;
+  next: string;
+  /** Statement cut-offs: charges on or before cutNow are covered by `next`. */
+  cutPrev: string;
+  cutNow: string;
+  daysLeft: number;
+  /** Every charge on the card, oldest first, with the statement it is on. */
+  points: { id: string; date: string; amount: number; state: ChargeState }[];
+}
+
+/**
+ * Which statement each charge is on - the same cut-offs as cardStatus, so a
+ * charge drawn as "due" is exactly one counted in dueNow. Null when the card
+ * has no due day (no statements to draw).
+ */
+export function statementTimeline(card: Account, charges: ExpenseTransaction[], today: string): StatementTimeline | null {
+  if (card.kind !== 'credit' || !card.dueDay) return null;
+  const { next, previous } = dueDates(card.dueDay, today);
+  const cutNow = addDays(next, -STATEMENT_GRACE_DAYS);
+  const cutPrev = addDays(previous, -STATEMENT_GRACE_DAYS);
+  const points = charges
+    .filter((c) => c.accountId === card.id)
+    .map((c) => ({
+      id: c.id, date: c.date, amount: round(Math.abs(c.amount)),
+      state: (c.date <= cutPrev ? 'overdue' : c.date <= cutNow ? 'due' : 'next') as ChargeState,
+    }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return { previous, next, cutPrev, cutNow, daysLeft: daysBetween(today, next), points };
+}
+
+/** Whole days from a to b ('YYYY-MM-DD'); negative when b is earlier. */
+export function daysFromTo(a: string, b: string): number {
+  return daysBetween(a, b);
+}
+
 /**
  * The due date a single charge has already missed on this card, or null.
  * Same rule as cardStatus: a charge is covered by the first due date at least
