@@ -20,6 +20,8 @@ import { useFitRows } from './useFitRows';
 const BASE_ROWS = 4;
 const PHONE_ROWS = 5;
 const MAX_ROWS = 16;
+// The rows' natural gap (dashboard.css, .pb-dash-budgets), in rem.
+const ROW_GAP_REM = 1.4;
 
 interface NeedsAttentionCardProps {
   transactions: Transaction[];
@@ -51,7 +53,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
   // As many as fit the height the card is given (see useFitRows) - it once
   // stopped at four, leaving a blank band under them beside a taller Recent
   // activity - with the true remaining count beside the title.
-  const [fitRef, fit] = useFitRows<HTMLDivElement>(BASE_ROWS, PHONE_ROWS, Math.min(ranked.length, MAX_ROWS));
+  const [fitRef, fit] = useFitRows<HTMLDivElement>(BASE_ROWS, PHONE_ROWS, Math.min(ranked.length, MAX_ROWS), ROW_GAP_REM);
   const more = ranked.length - fit.count;
 
   const header = (
@@ -97,7 +99,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
       ) : (
         <div
           ref={fitRef} className="pb-dash-budgets pb-dash-fit" data-fit={fit.fill ? 'fill' : undefined}
-          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px` } : undefined}
+          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px`, ...(fit.gap ? { ['--pb-fit-gap' as string]: `${fit.gap}px` } : null) } : undefined}
         >
           {topBudgets.map((b, i) => {
             const s = statusOf(b);

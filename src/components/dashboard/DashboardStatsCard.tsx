@@ -8,7 +8,6 @@ import { renderTemplate } from '@/lib/i18n/RichText';
 import { PeriodDot } from '@/components/shared/PeriodLink';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { CompareTip } from './CompareTip';
-import { ProgressRing } from '@/components/kit/ProgressRing';
 import type { PeriodComparison, RangeStats } from '@/lib/periodCompare';
 
 interface ModeOption { value: string; label: string }
@@ -53,44 +52,6 @@ function shortPeriodLabel(p: PeriodOption, locale: string, format: (year: string
   const quarter = /^(\d{4})-Q([1-4])$/.exec(p.key);
   if (quarter) return locale === 'zh' ? format(quarter[1], quarter[2]) : p.label;
   return p.label;
-}
-
-/** The rate as the tip says it: the tile's own figure (a negative rate is
-    said as "more than you earned", so without its sign). */
-const ratePct = (rate: number) => `${Math.abs(rate).toFixed(2)}%`;
-
-const RATE_TARGET = 20;
-const RING = 28;
-const RING_STROKE = 4;
-
-/**
- * The savings rate as a ring: the share of income kept, so 53% fills about
- * half of it (it used to fill at 50%, which read as "full" for anyone saving
- * half their pay). Negative is an empty ring in wine. Colour keeps its
- * meaning - pine at 20% and up, gold below, wine under zero - and a small
- * tick marks 20%, the healthy line. Theme tokens only, which fade with a
- * light/dark switch (the health bar's --hp-l/--hp-c swap in one frame and
- * would make the ring jump). The ring shows the rate, so it sits in
- * pb-chart-fill and blurs with the figure in privacy mode.
- */
-function RateRing({ rate }: { rate: number }) {
-  const color = rate >= RATE_TARGET ? 'var(--pine)' : rate >= 0 ? 'var(--gold)' : 'var(--wine)';
-  // The tick: across the ring's band at 20% of the way round from the top.
-  const a = (RATE_TARGET / 100) * 2 * Math.PI;
-  const c = RING / 2;
-  const r = (RING - RING_STROKE) / 2;
-  const at = (rr: number) => ({ x: c + rr * Math.sin(a), y: c - rr * Math.cos(a) });
-  const p1 = at(r - RING_STROKE / 2 - 1);
-  const p2 = at(r + RING_STROKE / 2 + 1);
-  return (
-    <span className="pb-chart-fill pb-dash-tile-ring">
-      <ProgressRing value={Math.min(1, Math.max(0, rate / 100))} size={RING} stroke={RING_STROKE} color={color}>
-        <svg className="pb-dash-rate-tick" width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} aria-hidden="true" focusable="false">
-          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />
-        </svg>
-      </ProgressRing>
-    </span>
-  );
 }
 
 /** A change chip's text, tone direction and hover label. Labels carry no amounts. */
@@ -283,31 +244,7 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="pb-dash-tile-value">
-                {c.metric === 'savingsRate' && income > 0 ? (
-                  // The figure and its ring explain themselves: hover (Mac),
-                  // focus or tap (phone) says what the ring shows, in the
-                  // change chip's popover. In privacy mode a tap on the
-                  // blurred figure or ring reveals it first, as everywhere.
-                  <CompareTip
-                    className="pb-dash-rate-btn" hint={ux.rateOpen} closeOnPanelTap
-                    panel={(
-                      <>
-                        <p className="pb-dash-cmp-title">{d.dashboard.savingsRate}</p>
-                        <p className="pb-dash-rate-says">
-                          {renderTemplate(savingsRate < 0 ? ux.rateOver : ux.rateKept, {
-                            rate: <span className="font-mono-tab">{ratePct(savingsRate)}</span>,
-                          })}
-                        </p>
-                        <p className="pb-dash-cmp-says">{ux.rateHealthy}</p>
-                      </>
-                    )}
-                  >
-                    <span className="font-mono-tab pb-stats-value">{c.value}</span>
-                    <RateRing rate={savingsRate} />
-                  </CompareTip>
-                ) : (
-                  <div className="font-mono-tab pb-stats-value">{c.value}</div>
-                )}
+                <div className="font-mono-tab pb-stats-value">{c.value}</div>
               </div>
               {/* Reserved like the note row, so tiles stay level before the
                   comparison resolves and when there is nothing to compare. */}

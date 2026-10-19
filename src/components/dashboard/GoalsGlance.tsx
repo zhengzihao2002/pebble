@@ -25,6 +25,8 @@ interface GoalsGlanceProps {
 // many rows as fit that height (useFitRows), up to MAX_FILL.
 const MAX_GOALS = 3;
 const MAX_FILL = 16;
+// The rows' natural gap (dashboard.css, .pb-dash-goal-list), in rem.
+const GOAL_GAP_REM = 0.9;
 
 /**
  * NEW: goals as progress, not only as the overspend warning. A ring per goal
@@ -39,7 +41,7 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const overspent = allocated > 0 && allocated > totalBalance;
-  const [fitRef, fit] = useFitRows<HTMLUListElement>(MAX_GOALS, MAX_GOALS, Math.min(goals.length, MAX_FILL));
+  const [fitRef, fit] = useFitRows<HTMLUListElement>(MAX_GOALS, MAX_GOALS, Math.min(goals.length, MAX_FILL), GOAL_GAP_REM);
   // Filling: every candidate row is laid out (those that do not fit are
   // hidden) so they can be measured; otherwise just the goals shown.
   const shown = goals.slice(0, fit.fill ? MAX_FILL : fit.count);
@@ -76,7 +78,7 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
         <ul
           ref={fitRef} className="pb-dash-goal-list pb-dash-fit" data-count={Math.min(goals.length, MAX_GOALS)}
           data-fit={fit.fill ? 'fill' : undefined}
-          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px` } : undefined}
+          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px`, ...(fit.gap ? { ['--pb-fit-gap' as string]: `${fit.gap}px` } : null) } : undefined}
         >
           {shown.map((g, i) => {
             const Icon = resolveGoalIcon(g.iconKey);

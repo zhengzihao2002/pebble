@@ -11,13 +11,6 @@ interface CompareTipProps {
   hint: string;
   /** The popover's content. Money inside it wears font-mono-tab. */
   panel: React.ReactNode;
-  /** The trigger's class; the change chip's .pb-dash-cmp when omitted. */
-  className?: string;
-  /** On a touch screen, a tap inside the panel that is not on a figure
-      closes it, so a control it covers is one tap away (the savings-rate
-      panel opens over the tiles' change chips on a phone). A tap on a
-      figure still only reveals it in privacy mode. Off by default. */
-  closeOnPanelTap?: boolean;
 }
 
 const WIDTH = 232;
@@ -29,8 +22,7 @@ const LEAVE_MS = 150;
 /**
  * A tile's change against the previous period, explained on demand: hover
  * (or keyboard focus) on a Mac, tap on a phone, shows the two figures being
- * compared. The savings-rate tile's figure and ring use it too, to say what
- * the ring shows. The custom popover rather than a native title: the figures are
+ * compared. The custom popover rather than a native title: the figures are
  * money, which must blur in privacy mode, and a title cannot.
  *
  * Portals into .pebble-root (never body - the theme lives there) because the
@@ -42,14 +34,12 @@ const LEAVE_MS = 150;
  * mode. The tap toggle reads the open state at pointerdown, before a phone's
  * tap-focus runs, so a second tap on an open trigger closes it.
  */
-export function CompareTip({ children, hint, panel, className = 'pb-dash-cmp', closeOnPanelTap = false }: CompareTipProps) {
+export function CompareTip({ children, hint, panel }: CompareTipProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const tap = useRef<{ type: string; was: boolean }>({ type: 'mouse', was: false });
-  // The pointer type of the last press inside the panel (closeOnPanelTap).
-  const panelTap = useRef('mouse');
   // Set by Escape: hover and focus may not reopen it until they end.
   const dismissed = useRef(false);
   const leaveTimer = useRef<number | null>(null);
@@ -119,12 +109,6 @@ export function CompareTip({ children, hint, panel, className = 'pb-dash-cmp', c
       // A press inside keeps focus on the trigger, so it stays open; the
       // click still reaches AppShell's capture-phase privacy reveal.
       onMouseDown={(e) => e.preventDefault()}
-      onPointerDown={closeOnPanelTap ? (e) => { panelTap.current = e.pointerType; } : undefined}
-      onClick={closeOnPanelTap ? (e) => {
-        const type = panelTap.current;
-        panelTap.current = 'mouse';
-        if (type !== 'mouse' && !(e.target as Element).closest?.('.font-mono-tab')) setOpen(false);
-      } : undefined}
       onPointerEnter={(e) => { if (e.pointerType === 'mouse') cancelLeave(); }}
       onPointerLeave={(e) => { if (e.pointerType === 'mouse') leaveSoon(); }}
     >
@@ -135,7 +119,7 @@ export function CompareTip({ children, hint, panel, className = 'pb-dash-cmp', c
   return (
     <>
       <button
-        ref={triggerRef} type="button" className={className}
+        ref={triggerRef} type="button" className="pb-dash-cmp"
         aria-expanded={open} aria-describedby={open ? id : undefined}
         onPointerDown={(e) => { tap.current = { type: e.pointerType, was: open }; }}
         onPointerEnter={(e) => {

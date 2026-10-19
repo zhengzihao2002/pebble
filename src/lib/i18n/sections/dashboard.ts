@@ -44,11 +44,6 @@ export const dashboardEn = {
   compareTitle: 'Compared with {range}',
   compareNow: 'This period so far',
   compareNowDone: 'This period',
-  // The savings-rate ring's tip. {rate} is a percentage.
-  rateOpen: '(what the ring shows)',
-  rateKept: 'You kept {rate} of what you earned this period.',
-  rateOver: 'You spent {rate} more than you earned this period.',
-  rateHealthy: '20% or more is a healthy rate. The small mark on the ring is at 20%.',
 
   // Income vs spending
   savedSoFar: 'Saved so far',
@@ -150,10 +145,6 @@ export const dashboardZh: typeof dashboardEn = {
   compareTitle: '对比{range}',
   compareNow: '本期至今',
   compareNowDone: '本期',
-  rateOpen: '（这个圆环表示什么）',
-  rateKept: '本期你存下了收入的 {rate}。',
-  rateOver: '本期支出超过了收入，多花了收入的 {rate}。',
-  rateHealthy: '储蓄率达到 20% 或以上就算健康，圆环上的小刻度就在 20% 处。',
 
   savedSoFar: '累计结余',
   inProgress: '进行中',

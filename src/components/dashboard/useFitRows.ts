@@ -9,6 +9,8 @@ interface FitState {
   count: number;
   /** Bottom of the `base`-th row, in px: the filling list's min-height. */
   floor: number;
+  /** Space between rows while filling, in px (0 = the list's natural gap). */
+  gap: number;
 }
 
 /**
@@ -26,6 +28,10 @@ interface FitState {
  * half-cut row). Everywhere else - a phone, or a card with the row to itself
  * - the list shows a fixed `fixed` rows.
  *
+ * Filling, the rows shown are spread to the list's full height with equal
+ * gaps (`gap`, which the list applies as --pb-fit-gap; `gapRem` is its
+ * natural gap, the one dashboard.css gives it when not filling).
+ *
  * The first render (server and hydration) always shows `base` rows; the
  * measuring happens in layout effects, before paint, and again whenever a
  * ResizeObserver sees the list or any of its rows change size (the partner
@@ -33,31 +39,42 @@ interface FitState {
  * breakpoint flips, a web font swaps in and a row re-wraps), and once more
  * when the page's fonts have loaded.
  */
-export function useFitRows<T extends HTMLElement>(base: number, fixed: number, total: number) {
+export function useFitRows<T extends HTMLElement>(base: number, fixed: number, total: number, gapRem: number) {
   const ref = useRef<T>(null);
-  const [state, setState] = useState<FitState>({ fill: false, count: base, floor: 0 });
+  const [state, setState] = useState<FitState>({ fill: false, count: base, floor: 0, gap: 0 });
   const observed = useRef<{ el: Element; ro: ResizeObserver; rows: Set<Element> } | null>(null);
 
   const measure = useEffectEvent(() => {
     const el = ref.current;
     if (!el) return;
-    const update = (next: FitState) => setState((s) => (s.fill === next.fill && s.count === next.count && s.floor === next.floor ? s : next));
+    const update = (next: FitState) => setState((s) => (s.fill === next.fill && s.count === next.count && s.floor === next.floor && s.gap === next.gap ? s : next));
     const fillable = total > base && getComputedStyle(el).getPropertyValue('--pb-dash-fill').trim() === '1';
-    if (!fillable) { update({ fill: false, count: fixed, floor: 0 }); return; }
+    if (!fillable) { update({ fill: false, count: fixed, floor: 0, gap: 0 }); return; }
     // Turning fill on renders every row; they are measured on the next pass.
-    if (!state.fill) { update({ fill: true, count: base, floor: 0 }); return; }
-    const box = el.getBoundingClientRect();
+    if (!state.fill) { update({ fill: true, count: base, floor: 0, gap: 0 }); return; }
+    // From the rows' own heights and the list's NATURAL gap (gapRem, in the
+    // root's rem so it follows the text size), never from where the rows sit:
+    // the gap applied below moves them, and measuring that would feed back.
+    const heights = Array.from(el.children).map((row) => row.getBoundingClientRect().height);
+    if (heights.length === 0) return;
+    const gap0 = gapRem * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+    const bottom = (n: number) => heights.slice(0, n).reduce((a, h) => a + h, 0) + Math.max(0, n - 1) * gap0;
+    const floor = Math.ceil(bottom(Math.min(base, heights.length)));
     const padTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
-    const top = box.top + el.clientTop + padTop;
-    const bottoms = Array.from(el.children).map((row) => row.getBoundingClientRect().bottom - top);
-    if (bottoms.length === 0) return;
-    // The min-height first (it depends only on the rows' width), then the fit.
-    const floor = Math.ceil(bottoms[Math.min(base, bottoms.length) - 1]);
-    if (floor !== state.floor) { update({ ...state, floor }); return; }
     const room = el.clientHeight - padTop;
     let n = 0;
-    while (n < bottoms.length && bottoms[n] <= room + 0.5) n++;
-    update({ ...state, count: Math.max(n, Math.min(base, bottoms.length)) });
+    while (n < heights.length && bottom(n + 1) <= room + 0.5) n++;
+    const count = Math.max(n, Math.min(base, heights.length));
+    // The height left under the last whole row is shared out between the
+    // rows, so the list ends level with the card's foot and every gap is the
+    // same - not rows packed at the top over a blank band. Only while rows
+    // remain hidden ("+N more"): then the spare is less than one row, so
+    // the gaps grow by a fraction of a row at most.
+    const spare = room - bottom(count);
+    const gap = count > 1 && count < heights.length && spare > 0
+      ? Math.floor((gap0 + spare / (count - 1)) * 10) / 10
+      : 0;
+    update({ fill: true, count, floor, gap });
   });
 
   // Every render: the list element can appear late (Needs attention renders
@@ -90,5 +107,5 @@ export function useFitRows<T extends HTMLElement>(base: number, fixed: number, t
   }, []);
 
   // The ref apart from the values, which are plain render-time data.
-  return [ref, { fill: state.fill, count: Math.min(state.count, total), floor: state.floor }] as const;
+  return [ref, { fill: state.fill, count: Math.min(state.count, total), floor: state.floor, gap: state.gap }] as const;
 }
