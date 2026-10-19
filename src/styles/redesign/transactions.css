@@ -435,6 +435,10 @@
   .pebble-root .pb-txn-sum-figs > span { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; font-size: 0.74rem; }
   .pebble-root .pb-txn-sum-figs > span .font-mono-tab { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+/* Income view: Standard Income / Side Cash under the figures, one soft line. */
+.pebble-root .pb-txn-sum-split { display: flex; flex-wrap: wrap; gap: 0.1rem 0; margin: -0.35rem 0 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-txn-sum-split > span { white-space: nowrap; }
+.pebble-root .pb-txn-sum-split > span + span::before { content: '·'; margin: 0 0.5rem; }
 /* The month's in / out / net in the statement's own heading (All view):
    one block with the title, not a second band under it. */
 .pebble-root .pb-txn-stmt-head:has(+ .pb-txn-sum-stmt) { border-bottom: 0; padding-bottom: 0.35rem; }
@@ -498,6 +502,12 @@
 .pebble-root .pb-txn-mix-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-txn-mix-pct,
 .pebble-root .pb-txn-mix-more { color: var(--ink-soft); }
+.pebble-root .pb-txn-mix-more:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+/* A phone-width statement: the tooltip opens below the bar, over the legend
+   (which lights in sync), not over the Total out / Average figures above. */
+@container pb-txn-stmt (max-width: 479.98px) {
+  .pebble-root .pb-txn-mix-tip { top: calc(100% + 4px); bottom: auto; }
+}
 /* The ⌘K hint only where a keyboard is likely. */
 .pebble-root .pb-txn-older-hint { display: none; }
 @media (hover: hover) and (pointer: fine) { .pebble-root .pb-txn-older-hint { display: inline; } }

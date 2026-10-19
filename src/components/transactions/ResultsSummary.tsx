@@ -74,14 +74,20 @@ export function ResultsSummary({ results, categoryMeta, type }: { results: State
               : renderTemplate(x.totalIn, { amount: <span className="font-mono-tab pb-txn-pos">{formatCurrency(inn)}</span> })}
           </span>
           {count > 1 && <span>{renderTemplate(x.avgAmount, { amount: <span className="font-mono-tab">{formatCurrency(avg)}</span> })}</span>}
-          {/* Income categories are stored literals; only their labels are translated. */}
-          {type === 'income' && byIncome.size > 1 && [...byIncome.entries()].sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
+        </div>
+      )}
+      {/* The income split as its own soft line, not more figures in the
+          row (on a phone it would put one figure alone on a second line).
+          Income categories are stored literals; only labels are translated. */}
+      {type === 'income' && byIncome.size > 1 && (
+        <p className="pb-txn-sum-split">
+          {[...byIncome.entries()].sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
             <span key={cat}>
               {categoryLabel(d, cat)}{' '}
               <span className="font-mono-tab">{formatCurrency(v)}</span>
             </span>
           ))}
-        </div>
+        </p>
       )}
       {type !== 'income' && out > 0 && mix.length > 0 && (
         <SpendingMix mix={mix} total={out} categoryMeta={categoryMeta} />

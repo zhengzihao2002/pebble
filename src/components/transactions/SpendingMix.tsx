@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -31,7 +31,12 @@ interface SpendingMixProps {
  * again, tapping elsewhere or Escape lets go.
  *
  * Segments are buttons on a taller transparent hit strip (44px on touch), so
- * an 8px bar is still easy to hit. Category colours are user data and only
+ * an 8px bar is still easy to hit. On touch a sliver of a few pixels is
+ * still too thin for a finger, so a tap is resolved by the strip itself: a
+ * segment 44px wide or more takes the tap where it lands, otherwise the
+ * segment whose centre is nearest the finger (within 22px) does. And "+N
+ * more" opens the legend to every category, each a 44px target on touch, so
+ * every category can be reached without aiming at the bar at all. Category colours are user data and only
  * mark identity; the tooltip and legend carry the name in ink. The amount is
  * only ever in the tooltip, in font-mono-tab (blurred in privacy mode), never
  * in an aria-label; the segments themselves sit in pb-chart-fill, so in
@@ -47,6 +52,10 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
+  const [allKeys, setAllKeys] = useState(false);
+  // The kind of pointer behind the next click: a click event's own
+  // pointerType is not there in every browser (older Safari).
+  const lastPointer = useRef('mouse');
 
   // A tap anywhere else lets go of a pinned category.
   useEffect(() => {
@@ -74,8 +83,7 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
   const color = (cat: string) => categoryMeta[cat]?.color ?? 'var(--ink-faint)';
   const toggle = (cat: string) => setPinned((p) => (p === cat ? null : cat));
   // Hover only from a real mouse: a phone's simulated hover would fight the tap.
-  const handlers = (cat: string) => ({
-    onClick: () => toggle(cat),
+  const hoverFocus = (cat: string) => ({
     onPointerEnter: (e: { pointerType: string }) => { if (e.pointerType === 'mouse') setHover(cat); },
     onPointerLeave: (e: { pointerType: string }) => { if (e.pointerType === 'mouse') setHover(null); },
     // Keyboard focus shows the tooltip. Only a visible focus: a mouse click
@@ -84,6 +92,31 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
     onFocus: (e: { currentTarget: HTMLElement }) => { if (e.currentTarget.matches(':focus-visible')) setFocused(cat); },
     onBlur: () => setFocused(null),
   });
+  const handlers = (cat: string) => ({ onClick: () => toggle(cat), ...hoverFocus(cat) });
+
+  // Every click on the bar - mouse, keyboard (Enter / Space) or tap - is
+  // resolved here, so a tap can pick a sliver by proximity.
+  const onStripClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const strip = stripRef.current;
+    const under = (e.target as HTMLElement).closest<HTMLElement>('[data-cat]');
+    if (!strip) return;
+    // A keyboard click (detail 0) or a mouse: the segment it was on.
+    if (e.detail === 0 || lastPointer.current !== 'touch') {
+      if (under?.dataset.cat) toggle(under.dataset.cat);
+      return;
+    }
+    let pick = under && under.offsetWidth >= 44 ? under : null;
+    if (!pick) {
+      let best = 23;
+      for (const seg of strip.querySelectorAll<HTMLElement>('[data-cat]')) {
+        const r = seg.getBoundingClientRect();
+        const dist = Math.abs(r.left + r.width / 2 - e.clientX);
+        if (dist < best) { best = dist; pick = seg; }
+      }
+    }
+    pick ??= under;
+    if (pick?.dataset.cat) toggle(pick.dataset.cat);
+  };
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key !== 'Escape' || (!pinned && !focused)) return;
     e.stopPropagation();
@@ -92,14 +125,20 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
   };
 
   const shown = active ? mix.find(([c]) => c === active) ?? null : null;
-  const top = mix.slice(0, 3);
+  const keys = allKeys ? mix : mix.slice(0, 3);
 
   return (
     <div ref={rootRef} className={`pb-txn-mix${active ? ' has-focus' : ''}`} onKeyDown={onKeyDown}>
       <p className="filter-label" style={{ margin: 0 }}>{x.spendingMix}</p>
       <div className="pb-txn-mix-bar">
-        <div className="pb-chart-fill">
-          <div ref={stripRef} className="pb-txn-mix-strip" role="group" aria-label={x.spendingMix}>
+        {/* data-pb-keep-revealed: in privacy mode, once revealed, later taps
+            reach the segments instead of blurring the bar again. */}
+        <div className="pb-chart-fill" data-pb-keep-revealed="">
+          <div
+            ref={stripRef} className="pb-txn-mix-strip" role="group" aria-label={x.spendingMix}
+            onPointerDown={(e) => { lastPointer.current = e.pointerType; }}
+            onClick={onStripClick}
+          >
             {mix.map(([cat, v]) => (
               <button
                 key={cat} type="button" data-cat={cat}
@@ -107,7 +146,7 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
                 style={{ flexGrow: v, ['--pb-txn-seg' as string]: color(cat) }}
                 aria-pressed={pinned === cat}
                 aria-label={`${categoryLabel(d, cat)}, ${share(v, total)}`}
-                {...handlers(cat)}
+                {...hoverFocus(cat)}
               />
             ))}
           </div>
@@ -120,14 +159,14 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
             </p>
             <p className="font-mono-tab pb-txn-mix-tip-amount">{formatCurrency(shown[1])}</p>
             <p className="pb-tnum pb-txn-mix-tip-soft">
-              <span>{t(d.ux.dashboard.shareOfSpending, { share: share(shown[1], total) })}</span>
+              <span>{t(x.shareOfSpending, { share: share(shown[1], total) })}</span>
               <span>{shown[2] === 1 ? x.countOne : t(x.countOther, { count: shown[2] })}</span>
             </p>
           </div>
         )}
       </div>
       <ul className="pb-txn-mix-legend">
-        {top.map(([cat, v]) => (
+        {keys.map(([cat, v]) => (
           <li key={cat}>
             <button
               type="button"
@@ -141,7 +180,13 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
             </button>
           </li>
         ))}
-        {mix.length > 3 && <li className="pb-txn-mix-more">{t(x.moreCategories, { count: mix.length - 3 })}</li>}
+        {mix.length > 3 && (
+          <li>
+            <button type="button" className="pb-txn-mix-key pb-txn-mix-more" aria-expanded={allKeys} onClick={() => setAllKeys((v) => !v)}>
+              {allKeys ? x.fewerCategories : t(x.moreCategories, { count: mix.length - 3 })}
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   );

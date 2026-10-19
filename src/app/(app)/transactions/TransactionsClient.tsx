@@ -465,7 +465,9 @@ export function TransactionsClient({
                 <>
                   <div className="pb-txn-stmt-head">
                     <div style={{ minWidth: 0 }}>
-                      <h3 className="pb-txn-stmt-title">{lensAccount ? t(x.lensTitle, { account: lensAccount.name }) : x.statement}</h3>
+                      {/* Neutral in the lens too: the account is already named by the
+                          selector, the lens column heading and the chart. */}
+                      <h3 className="pb-txn-stmt-title">{x.statement}</h3>
                       <p className="pb-txn-stmt-sub">
                         {monthLabel} · <span className="pb-tnum" style={{ whiteSpace: 'nowrap' }}>{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
                       </p>
