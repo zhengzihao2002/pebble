@@ -67,3 +67,28 @@ export function computeCurrentMonth(
     daysInMonth,
   };
 }
+
+/**
+ * Cumulative spend for each day of the month in progress, day 1 through
+ * today: element i is everything spent from the 1st to day i + 1. Same bounds
+ * and classification as computeCurrentMonth() (expenses only, nothing after
+ * today), so the last element always equals its `spending`.
+ *
+ * Additive: drawn as the month-so-far line on the Analysis page.
+ */
+export function computeCurrentMonthDaily(
+  transactions: readonly Transaction[],
+  today: string,
+  startYmd: string,
+): number[] {
+  const dayOfMonth = Number(today.slice(8, 10));
+  const perDay = new Array<number>(dayOfMonth).fill(0);
+  for (const t of transactions) {
+    if (t.date < startYmd || t.date > today) continue;
+    if (!isExpense(t)) continue;
+    const i = Number(t.date.slice(8, 10)) - 1;
+    if (i >= 0 && i < dayOfMonth) perDay[i] += Math.abs(t.amount);
+  }
+  let running = 0;
+  return perDay.map((v) => (running += v));
+}

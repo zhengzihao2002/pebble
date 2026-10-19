@@ -60,12 +60,19 @@ function isStandardIncome(t: Transaction): t is IncomeTransaction {
   return !isExpense(t) && !isSideCash(t);
 }
 
+/**
+ * Upper bounds of each stability band, as a coefficient of variation.
+ * Exported so the page's stability meter draws its bands from the same
+ * numbers band() classifies with - the two cannot drift apart.
+ */
+export const STABILITY_THRESHOLDS = { veryStable: 0.10, stable: 0.25, variable: 0.50 } as const;
+
 function band(cv: number): StabilityBand {
   // Conventional thresholds, not derived. A salaried income lands near 0; 0.5
   // means the typical month is half again away from the mean.
-  if (cv < 0.10) return 'veryStable';
-  if (cv < 0.25) return 'stable';
-  if (cv < 0.50) return 'variable';
+  if (cv < STABILITY_THRESHOLDS.veryStable) return 'veryStable';
+  if (cv < STABILITY_THRESHOLDS.stable) return 'stable';
+  if (cv < STABILITY_THRESHOLDS.variable) return 'variable';
   return 'highlyVariable';
 }
 
