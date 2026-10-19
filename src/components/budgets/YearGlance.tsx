@@ -16,8 +16,8 @@ const MIN_FORECAST_FRACTION = 14 / 365;
  * NEW: the year at a glance. A ring for how much of the year's budgets is
  * used (pine, wine only once spending passes them - wine means over budget
  * and nothing else) with an ink tick where an even pace would be today, so
- * "am I on track" reads before any figure. Beside it the ring's own scale is
- * not repeated; the plan card's four figures sit next to it.
+ * "am I on track" reads before any figure. The plan card's four figures sit
+ * beside it.
  *
  * Its partner, YearForecast, says where spending lands on Dec 31 if it keeps
  * its year-to-date rate: totalSpent / yearFraction(today). Both use exactly
@@ -90,7 +90,14 @@ export function YearForecast({ totalBudget, totalSpent, fraction, status, unbudg
       <span className="pb-tnum">{t(ux.yearGone, { pct: String(Math.round(fraction * 100)) })}</span>
     </p>
   );
-  if (totalBudget <= 0 || status === null) return <div className="pb-bud-forecast">{yearLine}</div>;
+  if (totalBudget <= 0 || status === null) {
+    return (
+      <div className="pb-bud-forecast">
+        <p className="pb-bud-fc-cmp">{d.budgetPlan.noBudgets}</p>
+        {yearLine}
+      </div>
+    );
+  }
 
   const projected = totalSpent / fraction;
   const gap = Math.abs(projected - totalBudget);

@@ -105,10 +105,11 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
   }
   const left = totalBudget - totalSpent;
   const overall = totalSpent > totalBudget;
-  // The pill's tone: wine only once spending passes the budgets (the label
-  // keeps its own test above, unchanged).
-  const paceTone: PaceStatus | null = pace === null ? null : overall && totalBudget > 0 ? 'over' : pace;
-  if (paceTone === 'over') paceNote = t(d.budgetPlan.overBudgetBy, { amount: formatCurrency(totalSpent - totalBudget) });
+  // The pill's tone: wine only once spending passes the budgets AND the
+  // label says Over pace, so icon, colour and word always agree.
+  const overBudget = pace !== null && overall && totalBudget > 0;
+  const paceTone: PaceStatus | null = pace === null ? null : overBudget && pace === 'overPace' ? 'over' : pace;
+  if (overBudget) paceNote = t(d.budgetPlan.overBudgetBy, { amount: formatCurrency(totalSpent - totalBudget) });
   const unbudgetedSpent = entries.reduce((s, e) => (e.budget === 0 ? s + e.spent : s), 0);
 
   // NEW notes under the figures, derived from the same totals: the monthly
@@ -158,7 +159,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                   ) : c.value}
                 </div>
                 {/* Every cell reserves its note line, so the four stay level. */}
-                <div className="pb-stats-note font-mono-tab" aria-hidden={c.note ? undefined : true} style={c.note ? (c.key === 'pace' && paceTone === 'over' ? { color: 'var(--wine)' } : undefined) : { visibility: 'hidden' }}>
+                <div className="pb-stats-note font-mono-tab" aria-hidden={c.note ? undefined : true} style={c.note ? (c.key === 'pace' && overBudget ? { color: 'var(--wine)' } : undefined) : { visibility: 'hidden' }}>
                   {c.note || ' '}
                 </div>
               </div>

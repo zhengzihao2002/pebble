@@ -83,6 +83,6 @@ export const budgetsZh: typeof budgetsEn = {
   endOf: '{month}底',
   aboutMonthly: '约每月 {amount}',
 
-  unbSummaryOne: '今年有 1 个类别共 {amount} 未设预算',
-  unbSummaryOther: '今年有 {count} 个类别共 {amount} 未设预算',
+  unbSummaryOne: '今年有 1 个类别未设预算，共支出 {amount}',
+  unbSummaryOther: '今年有 {count} 个类别未设预算，共支出 {amount}',
 };

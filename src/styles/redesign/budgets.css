@@ -213,6 +213,10 @@
 .pebble-root .pb-bud .pb-bud-row > .pb-row-details { grid-area: det; }
 /* Editing on a narrow card: the editor takes its own line, not a corner. */
 .pebble-root .pb-bud .pb-bud-row.is-editing { grid-template-areas: "name name" "figs figs" "bar bar" "left more" "det det"; }
+/* Closed rows drop the empty details line, so its row gap does not leave a
+   band under the bar. */
+.pebble-root .pb-bud .pb-bud-row:not(:has(> .pb-row-details)) { grid-template-areas: "name figs" "bar bar" "left more"; }
+.pebble-root .pb-bud .pb-bud-row.is-editing:not(:has(> .pb-row-details)) { grid-template-areas: "name name" "figs figs" "bar bar" "left more"; }
 @container pb-bud-rows (min-width: 640px) {
   .pebble-root .pb-bud .pb-bud-row,
   .pebble-root .pb-bud .pb-bud-row.is-editing {
@@ -220,6 +224,8 @@
     grid-template-areas: "name spark bar figs" "name spark left more" "det det det det";
     row-gap: 0.2rem; column-gap: 1.25rem; padding: 0.95rem 1.5rem;
   }
+  .pebble-root .pb-bud .pb-bud-row:not(:has(> .pb-row-details)),
+  .pebble-root .pb-bud .pb-bud-row.is-editing:not(:has(> .pb-row-details)) { grid-template-areas: "name spark bar figs" "name spark left more"; }
   .pebble-root .pb-bud .pb-bud-row > .pb-bud-row-spark { display: flex; align-items: center; }
 }
 @container pb-bud-rows (min-width: 900px) {
@@ -377,8 +383,8 @@
 /* Small controls keep their look and gain a 44px hit area: an invisible
    extension of the button itself, so a tap just beside them still counts. */
 @media (pointer: coarse) {
-  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn) { position: relative; }
-  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn)::after {
+  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn, .pb-donut-pager .icon-btn) { position: relative; }
+  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn, .pb-donut-pager .icon-btn)::after {
     content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%);
   }
   .pebble-root .pb-bud .pb-bud-edit { width: 44px; height: 44px; margin: -6px -6px -6px 0; }

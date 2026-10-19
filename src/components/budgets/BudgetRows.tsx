@@ -114,7 +114,7 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>
           {t(d.budgetRow.spent, { amount: formatCurrency(e.spent) })}
         </span>
-        {pace && <span className="pb-bud-row-pace">{' · '}{pace}</span>}
+        {pace && <span className="pb-bud-row-pace">{' · '}<span className="font-mono-tab">{pace}</span></span>}
       </div>
       <div className="pb-row-more">
         <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -211,7 +211,7 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
         const Icon = GROUP_ICON[g.status];
         const total = g.rows.reduce((s, e) => s + (g.status === 'over' ? e.spent - e.budget : e.budget - e.spent), 0);
         return (
-          <div key={`${g.status}:${g.rows[0].name}`} className="pb-bud-group" data-status={g.status}>
+          <div key={g.status} className="pb-bud-group" data-status={g.status}>
             <div className="pb-bud-group-head">
               <span className="pb-bud-group-title">
                 <span className="pb-bud-group-icon" aria-hidden="true"><Icon size={12} strokeWidth={2.6} /></span>

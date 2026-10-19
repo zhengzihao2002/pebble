@@ -27,6 +27,56 @@ function monthStart(year: number, mi: number): number {
   return (Date.UTC(year, mi, 1) - start) / (Date.UTC(year + 1, 0, 1) - start);
 }
 
+/** Month, what was spent, and the monthly share of the yearly budget. */
+function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthlyLabel }: {
+  active?: boolean; payload?: ReadonlyArray<TipItem>; tag: string; budget: number;
+  inProgress: string; spentLabel: string; monthlyLabel: string;
+}) {
+  const p = payload?.[0]?.payload;
+  if (!active || !p?.key) return null;
+  return (
+    <div style={{ backgroundColor: 'var(--mist)', border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.5rem 0.7rem', fontSize: '0.78rem', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 150 }}>
+      <span style={{ fontWeight: 600 }}>
+        {new Date(Number(p.key.slice(0, 4)), Number(p.key.slice(5, 7)) - 1, 1).toLocaleDateString(tag, { month: 'long', year: 'numeric' })}
+        {p.current && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>{` · ${inProgress}`}</span>}
+      </span>
+      <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+        <span style={{ color: 'var(--ink-soft)' }}>{spentLabel}</span>
+        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.amount ?? 0)}</span>
+      </span>
+      {budget > 0 && (
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+          <span style={{ color: 'var(--ink-soft)' }}>{monthlyLabel}</span>
+          <span className="font-mono-tab">{formatCurrency(budget / 12)}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** A point on the Year to date line: when, the running total, and the pace. */
+function CumTip({ active, payload, spentLabel, paceLabel }: {
+  active?: boolean; payload?: ReadonlyArray<CumItem>; spentLabel: string; paceLabel: string;
+}) {
+  const p = payload?.[0]?.payload;
+  if (!active || !p?.label || p.spent == null) return null;
+  return (
+    <div className="pb-bud-tip">
+      <span style={{ fontWeight: 600 }}>{p.label}</span>
+      <span className="pb-bud-tip-row">
+        <span>{spentLabel}</span>
+        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.spent)}</span>
+      </span>
+      {p.pace != null && (
+        <span className="pb-bud-tip-row">
+          <span>{paceLabel}</span>
+          <span className="font-mono-tab">{formatCurrency(p.pace)}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
  * A category's spending by month for one calendar year - this year by
  * default, or one of the previous three with spending - so the bars add up to
@@ -115,63 +165,18 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   let run = 0;
   for (let mi = 0; mi <= lastMonth; mi++) {
     const label = mi === 0
-      ? new Date(shown, 0, 1).toLocaleDateString(tag, { month: 'short', day: 'numeric' })
-      : t(ux.endOf, { month: monthDate(data[mi - 1].key).toLocaleDateString(tag, { month: 'long' }) });
+      ? new Date(shown, 0, 1).toLocaleDateString(tag, { month: 'short', day: 'numeric', year: 'numeric' })
+      : t(ux.endOf, { month: monthDate(data[mi - 1].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) });
     cum.push({ x: ticks[mi], label, spent: Math.round(run * 100) / 100, pace: budget > 0 ? budget * ticks[mi] : null });
     run += data[mi].amount;
   }
   cum.push({
     x: todayX,
-    label: isCurrent ? ux.todayTick : t(ux.endOf, { month: monthDate(data[11].key).toLocaleDateString(tag, { month: 'long' }) }),
+    label: isCurrent ? ux.todayTick : t(ux.endOf, { month: monthDate(data[11].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) }),
     spent: Math.round(run * 100) / 100, pace: budget > 0 ? budget * todayX : null, today: isCurrent,
   });
   // The pace line carries on to Dec 31 past today.
   if (isCurrent && budget > 0) cum.push({ x: 1, label: '', spent: null, pace: budget });
-
-  // Month, what was spent, and the monthly share of the yearly budget.
-  const MonthTip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<TipItem> }) => {
-    const p = payload?.[0]?.payload;
-    if (!active || !p?.key) return null;
-    return (
-      <div style={{ backgroundColor: 'var(--mist)', border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.5rem 0.7rem', fontSize: '0.78rem', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 150 }}>
-        <span style={{ fontWeight: 600 }}>
-          {monthDate(p.key).toLocaleDateString(tag, { month: 'long', year: 'numeric' })}
-          {p.current && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>{` · ${d.budgetDetails.inProgress}`}</span>}
-        </span>
-        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-          <span style={{ color: 'var(--ink-soft)' }}>{d.budgetRow.tipSpent}</span>
-          <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.amount ?? 0)}</span>
-        </span>
-        {budget > 0 && (
-          <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-            <span style={{ color: 'var(--ink-soft)' }}>{d.budgetRow.tipMonthly}</span>
-            <span className="font-mono-tab">{formatCurrency(budget / 12)}</span>
-          </span>
-        )}
-      </div>
-    );
-  };
-
-  // A point on the Year to date line: when, the running total, and the pace.
-  const CumTip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<CumItem> }) => {
-    const p = payload?.[0]?.payload;
-    if (!active || !p?.label || p.spent == null) return null;
-    return (
-      <div className="pb-bud-tip">
-        <span style={{ fontWeight: 600 }}>{p.label}{!p.today && ` ${shown}`}</span>
-        <span className="pb-bud-tip-row">
-          <span>{d.budgetPage.spentSoFar}</span>
-          <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.spent)}</span>
-        </span>
-        {p.pace != null && (
-          <span className="pb-bud-tip-row">
-            <span>{ux.evenPace}</span>
-            <span className="font-mono-tab">{formatCurrency(p.pace)}</span>
-          </span>
-        )}
-      </div>
-    );
-  };
 
   const suggestions = [
     { key: 'typical', value: typical, hint: d.budgetSuggest.averageHint, caption: d.budgetRow.typicalCaption },
@@ -204,7 +209,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval={0} />
-                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip />} />
+                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={budget} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} />} />
                 {budget > 0 && <ReferenceLine y={budget / 12} stroke="var(--ink-soft)" strokeDasharray="4 4" />}
                 <Bar dataKey="amount" name={name} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
                   {data.map((p) => <Cell key={p.key} fill={color} fillOpacity={p.current ? 0.5 : 1} />)}
@@ -221,7 +226,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
                   dataKey="x" type="number" domain={[0, 1]} ticks={labelTicks} tickFormatter={tickLabel}
                   tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval={0}
                 />
-                <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip />} />
+                <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} />} />
                 {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 10, fill: 'var(--ink-soft)' }} />}
                 {budget > 0 && (
                   <Line dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
