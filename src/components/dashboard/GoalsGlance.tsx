@@ -11,6 +11,7 @@ import { requestShell } from '@/components/layout/shellEvents';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
+import { useFitRows } from './useFitRows';
 
 interface GoalsGlanceProps {
   goals: Goal[];
@@ -19,8 +20,11 @@ interface GoalsGlanceProps {
   totalBalance: number;
 }
 
-// A glance, not the Goals page: three rings at most, the rest behind See all.
+// A glance, not the Goals page: three rings, the rest behind See all - or,
+// where the card shares Recent activity's height (the wide bottom row), as
+// many rows as fit that height (useFitRows), up to MAX_FILL.
 const MAX_GOALS = 3;
+const MAX_FILL = 16;
 
 /**
  * NEW: goals as progress, not only as the overspend warning. A ring per goal
@@ -35,8 +39,11 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const overspent = allocated > 0 && allocated > totalBalance;
-  const shown = goals.slice(0, MAX_GOALS);
-  const more = goals.length - shown.length;
+  const [fitRef, fit] = useFitRows<HTMLUListElement>(MAX_GOALS, MAX_GOALS, Math.min(goals.length, MAX_FILL));
+  // Filling: every candidate row is laid out (those that do not fit are
+  // hidden) so they can be measured; otherwise just the goals shown.
+  const shown = goals.slice(0, fit.fill ? MAX_FILL : fit.count);
+  const more = goals.length - fit.count;
   // A footer pinned to the card's foot: every goal's combined progress (the
   // hidden ones too) and a way to add another. In the wide bottom row the
   // card shares Recent activity's height, so this ends it rather than a blank.
@@ -64,14 +71,19 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
         // data-count lets dashboard.css lay out one, two or three goals
         // without a hole: a wide card gives each shown goal an equal column
         // (two goals no longer leave the third column empty), and a narrow
-        // card lists them as rows packed at the top.
-        <ul className="pb-dash-goal-list" data-count={shown.length}>
-          {shown.map((g) => {
+        // card lists them as rows packed at the top. It counts at most three,
+        // so a filling list (more than three goals, as rows) keeps that layout.
+        <ul
+          ref={fitRef} className="pb-dash-goal-list pb-dash-fit" data-count={Math.min(goals.length, MAX_GOALS)}
+          data-fit={fit.fill ? 'fill' : undefined}
+          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px` } : undefined}
+        >
+          {shown.map((g, i) => {
             const Icon = resolveGoalIcon(g.iconKey);
             const reached = g.target > 0 && g.current >= g.target;
             const value = g.target > 0 ? g.current / g.target : 0;
             return (
-              <li key={g.id} className="pb-dash-goal">
+              <li key={g.id} className={`pb-dash-goal${i >= fit.count ? ' is-out' : ''}`}>
                 <span className={`pb-dash-goal-ring${overspent ? ' is-over' : ''}`}>
                   {/* The ring is a ratio of money: with the target known from
                       the Goals page it gives the amount away, so it blurs and

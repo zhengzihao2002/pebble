@@ -355,6 +355,30 @@
 @media (pointer: coarse) {
   .pebble-root .pb-dash-cmp::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
 }
+/* The savings-rate figure and ring are one button (CompareTip) that says
+   what the ring shows. Laid out exactly like the other tiles' value rows -
+   the margins cancel the padding of the hover band - and on touch an
+   invisible 44px hit area, so the tile does not grow. */
+.pebble-root .pb-dash-rate-btn {
+  position: relative; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
+  margin: -0.15rem -0.35rem; padding: 0.15rem 0.35rem; border: 0; border-radius: 0.5rem;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-dash-rate-btn .pb-stats-value { min-width: 0; }
+/* Above the coarse-pointer hit band (::before), so a tap on the figure or the
+   ring always reaches it - blurred or revealed - and the privacy toggle runs
+   both ways; only the band around and between them falls to the button. */
+.pebble-root .pb-dash-rate-btn > :not(.pb-dash-sr) { position: relative; }
+.pebble-root .pb-dash-rate-btn:hover, .pebble-root .pb-dash-rate-btn[aria-expanded="true"] { background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+.pebble-root .pb-dash-rate-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-rate-btn::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+}
+/* The 20% tick: ink across the ring's band, over track and arc alike. */
+.pebble-root .pb-dash-rate-tick { display: block; }
+.pebble-root .pb-dash-rate-tick line { stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
+.pebble-root .pb-dash-rate-says { color: var(--ink); }
 /* Portalled into .pebble-root, outside .pb-dash. */
 .pebble-root .pb-dash-cmp-tip {
   position: fixed; z-index: 60; box-sizing: border-box;
@@ -616,6 +640,35 @@
   .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-ring > svg { width: 96px !important; height: 96px !important; }
   .pebble-root .pb-dash-goal-list:is([data-count="1"], [data-count="2"]) .pb-ring-center svg { width: 28px; height: 28px; }
 }
+
+/* ---------- Lists that fill their card (useFitRows) ----------
+   Where a card shares its grid row with a taller partner, --pb-dash-fill: 1
+   lets its list show as many rows as fit the height it is given: Needs
+   attention wherever it sits beside Recent activity (two columns and up),
+   Goals in the wide bottom row while its goals are rows (a card wide enough
+   for columns keeps three). A phone has no partner to match and shows a
+   fixed count. */
+@container content (min-width: 640px) {
+  .pebble-root .pb-dash-budgets { --pb-dash-fill: 1; }
+}
+@container content (min-width: 1180px) {
+  .pebble-root .pb-dash-goal-list { --pb-dash-fill: 1; }
+}
+@container pb-goals (min-width: 560px) {
+  .pebble-root .pb-dash-goal-list { --pb-dash-fill: 0; }
+}
+/* Filling: the list takes the card's spare height (flex-basis 0, so its
+   rows never add to the card's height) but never less than its first rows
+   (--pb-fit-floor, measured), so the card is exactly as tall as before.
+   Clipped below; the top and side padding (cancelled by the margins) keeps
+   the first row's pace tip and focus rings and the goal rings' wine outline
+   clear of the clip. Rows that do not fit whole are hidden - also from
+   assistive tech and the tab order. */
+.pebble-root .pb-dash-fit[data-fit="fill"] {
+  flex: 1 1 0px; min-height: var(--pb-fit-floor, 0px); overflow: hidden;
+  padding: 0.6rem 0.75rem 0; margin: -0.6rem -0.75rem 0;
+}
+.pebble-root .pb-dash-fit > .is-out { visibility: hidden; }
 
 /* ---------- Skeletons (cards and the route's loading.tsx) ---------- */
 .pebble-root .pb-dash-skel-bars {

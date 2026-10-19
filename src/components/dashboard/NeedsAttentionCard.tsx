@@ -13,6 +13,13 @@ import { ymdOf } from '@/lib/periodCompare';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { RowsSkeleton } from './DashSkeletons';
+import { useFitRows } from './useFitRows';
+
+// Rows on the first render (server and hydration) and the fewest a card that
+// fills its row shows; a phone's fixed count; the most a filling card renders.
+const BASE_ROWS = 4;
+const PHONE_ROWS = 5;
+const MAX_ROWS = 16;
 
 interface NeedsAttentionCardProps {
   transactions: Transaction[];
@@ -22,12 +29,35 @@ interface NeedsAttentionCardProps {
 }
 
 export function NeedsAttentionCard({ transactions, categoryMeta, today = null }: NeedsAttentionCardProps) {
-  const { d } = useTranslation();
+  const { d, t } = useTranslation();
   const ux = d.ux.dashboard;
+
+  // Budgets are annual, so "spent" is always the CURRENT year - read per
+  // render rather than from a module-load constant, which would keep showing
+  // last year's totals for as long as the container stayed warm into January.
+  // Every category with a budget or spending, most used first.
+  const ranked = !today ? [] : (() => {
+    const categorySpent = computeCategorySpent(transactions, today.getFullYear());
+    return Object.entries(categoryMeta)
+      .map(([name, meta]) => {
+        const spent = categorySpent[name] || 0;
+        const pct = meta.budget > 0 ? (spent / meta.budget) * 100 : (spent > 0 ? 100 : 0);
+        return { name, ...meta, spent, pct };
+      })
+      .filter((e) => e.budget > 0 || e.spent > 0)
+      .sort((a, b) => b.pct - a.pct);
+  })();
+
+  // As many as fit the height the card is given (see useFitRows) - it once
+  // stopped at four, leaving a blank band under them beside a taller Recent
+  // activity - with the true remaining count beside the title.
+  const [fitRef, fit] = useFitRows<HTMLDivElement>(BASE_ROWS, PHONE_ROWS, Math.min(ranked.length, MAX_ROWS));
+  const more = ranked.length - fit.count;
 
   const header = (
     <SectionHeader
       title={d.needsAttention.title}
+      subtitle={today && more > 0 ? t(d.upcomingCard.more, { count: more }) : undefined}
       actions={<Link href="/budgets" prefetch={false} className="link-btn">{d.common.seeAll} <ChevronRight size={14} /></Link>}
     />
   );
@@ -38,21 +68,10 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
     return <section className="card pb-dash-card pb-dash-attention">{header}<RowsSkeleton rows={3} minHeight={160} /></section>;
   }
 
-  // Budgets are annual, so "spent" is always the CURRENT year - read per
-  // render rather than from a module-load constant, which would keep showing
-  // last year's totals for as long as the container stayed warm into January.
-  const categorySpent = computeCategorySpent(transactions, today.getFullYear());
   const yf = yearFraction(ymdOf(today));
-
-  const topBudgets = Object.entries(categoryMeta)
-    .map(([name, meta]) => {
-      const spent = categorySpent[name] || 0;
-      const pct = meta.budget > 0 ? (spent / meta.budget) * 100 : (spent > 0 ? 100 : 0);
-      return { name, ...meta, spent, pct };
-    })
-    .filter((e) => e.budget > 0 || e.spent > 0)
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 4);
+  // Filling: every candidate row is laid out (the ones that do not fit are
+  // hidden) so they can be measured; otherwise just the rows shown.
+  const topBudgets = ranked.slice(0, fit.fill ? MAX_ROWS : fit.count);
 
   const money = (n: number) => <span className="pb-money">{formatCurrency(n)}</span>;
 
@@ -76,12 +95,16 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
           action={<Link href="/budgets" prefetch={false} className="btn-primary pb-dash-cta">{ux.setBudgets}</Link>}
         />
       ) : (
-        <div className="pb-dash-budgets">
-          {topBudgets.map((b) => {
+        <div
+          ref={fitRef} className="pb-dash-budgets pb-dash-fit" data-fit={fit.fill ? 'fill' : undefined}
+          style={fit.fill ? { ['--pb-fit-floor' as string]: `${fit.floor}px` } : undefined}
+        >
+          {topBudgets.map((b, i) => {
             const s = statusOf(b);
             return (
               <BudgetRow
                 key={b.name} {...b}
+                className={i >= fit.count ? 'is-out' : undefined}
                 yearFraction={yf}
                 status={s.text} statusColor={s.color}
                 markerLabel={ux.paceMarker}

@@ -21,6 +21,8 @@ interface BudgetRowProps {
   markerLabel?: string;
   /** Second line under the name, used for a category without a budget. */
   note?: React.ReactNode;
+  /** Extra class on the row (the Dashboard hides rows that do not fit). */
+  className?: string;
 }
 
 /**
@@ -36,12 +38,12 @@ interface BudgetRowProps {
  * A category with spending but no budget has nothing to fill, so it shows a
  * quiet note instead of a "$X / $0.00" bar that read like a bug.
  */
-export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFraction, status, statusColor, markerTip, markerLabel, note }: BudgetRowProps) {
+export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFraction, status, statusColor, markerTip, markerLabel, note, className }: BudgetRowProps) {
   const tipId = useId();
   const over = pct > 100;
   const barColor = over ? 'var(--wine)' : pct > 85 ? 'var(--gold)' : 'var(--pine)';
   return (
-    <div className="pb-dash-budget">
+    <div className={className ? `pb-dash-budget ${className}` : 'pb-dash-budget'}>
       <div className="pb-dash-budget-top">
         <span className="pb-dash-budget-name">
           <span className="pb-dash-budget-icon" aria-hidden="true" style={{ backgroundColor: `${color}1f` }}>
