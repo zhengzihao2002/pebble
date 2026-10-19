@@ -1,1 +1,408 @@
-/* Redesign: goals. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: goals. Loaded after globals.css and kit.css (src/app/layout.tsx).
+
+   Everything is scoped under .pebble-root .pb-goals (the goals page wrapper)
+   or under classes this area owns (.pb-goal-*, .pb-goals-*), so the shared
+   classes reused here - .goals-grid, .add-goal-tile, .pb-bar-*, .pb-plan-*,
+   .pill, .btn-primary, .icon-btn - only change on this page. The goal editor
+   preview (.pb-goal-prev-*, .pb-goal-pick-*) lives in GoalModal, which the
+   shell also mounts, so those rules are scoped by their own class only.
+   Theme tokens only, so all five palettes in light and dark follow, and no
+   rule swaps a look between a light and a dark selector (every token fades
+   with the theme; a goal's own colour is user data and never changes with
+   it). Responsive rules are container queries on `content` (the main
+   column). */
+
+/* ---------- Page ---------- */
+.pebble-root .pb-goals { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.pebble-root .pb-goals > * { min-width: 0; }
+
+/* ---------- Allocation hero ---------- */
+.pebble-root .pb-goals-hero {
+  display: flex; flex-direction: column; gap: 1.25rem; min-width: 0;
+  padding: 1.25rem 1.5rem 1.4rem; box-sizing: border-box;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-goals-hero { padding: 1.1rem; gap: 1.1rem; }
+}
+.pebble-root .pb-goals-hero-title { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-goals-hero .pb-sec-head-sub { margin-top: 0.25rem; line-height: 1.45; }
+
+.pebble-root .pb-goals-hero-top {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem 2rem; align-items: end; min-width: 0;
+}
+@container content (min-width: 640px) {
+  .pebble-root .pb-goals-hero-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+}
+.pebble-root .pb-goals-hero-label { margin: 0 0 0.25rem; font-size: var(--pb-text-sm); color: var(--ink-soft); font-weight: 500; }
+.pebble-root .pb-goals-hero-num {
+  margin: 0; font-size: 2.6rem; line-height: 1.05; font-weight: 600; letter-spacing: -0.015em; color: var(--ink);
+  white-space: nowrap;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-goals-hero-num { font-size: 2.2rem; }
+}
+
+/* The two halves of the balance, side by side with a hairline between. */
+.pebble-root .pb-goals-hero-split {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; min-width: 0;
+}
+.pebble-root .pb-goals-hero-cell { min-width: 0; padding: 0 1rem; container-type: inline-size; }
+.pebble-root .pb-goals-hero-cell:first-child { padding-left: 0; }
+.pebble-root .pb-goals-hero-cell + .pb-goals-hero-cell { border-left: 1px solid var(--line); }
+@container content (min-width: 640px) {
+  .pebble-root .pb-goals-hero-cell:first-child { padding-left: 1.5rem; border-left: 1px solid var(--line); }
+  .pebble-root .pb-goals-hero-cell { padding: 0 1.5rem; }
+}
+.pebble-root .pb-goals-hero-cell dt {
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;
+  font-size: 0.78rem; color: var(--ink-soft); line-height: 1.3;
+}
+.pebble-root .pb-goals-hero-cell dd { margin: 0; }
+.pebble-root .pb-goals-hero-cell dd.font-mono-tab {
+  /* Never split a figure (a lone minus sign on its own line); a long one
+     scales down with its cell instead. */
+  font-size: min(1.2rem, 12cqi); font-weight: 600; color: var(--ink); white-space: nowrap;
+}
+.pebble-root .pb-goals-hero-pct { margin-top: 0.1rem !important; font-size: 0.74rem; color: var(--ink-faint); min-height: 1.1em; }
+/* Legend keys: the goals' own colours in a little stripe (set inline from
+   the goals that hold money), and the pine hatch for what is free. */
+.pebble-root .pb-goals-key { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 3px; }
+.pebble-root .pb-goals-key-goals { background: var(--pb-goals-key, var(--gold)); }
+.pebble-root .pb-goals-key-free {
+  background: repeating-linear-gradient(135deg, var(--pine) 0 2.5px, color-mix(in srgb, var(--pine) 55%, var(--mist)) 2.5px 4px);
+}
+
+/* The ribbon: the Budgets plan bar, a little taller. */
+.pebble-root .pb-goals-ribbon { position: relative; min-width: 0; }
+.pebble-root .pb-goals-ribbon-wrap { position: relative; }
+.pebble-root .pb-goals .pb-goals-ribbon-track { height: 24px; }
+.pebble-root .pb-goals .pb-goals-ribbon-track .pb-plan-seg { cursor: pointer; }
+/* Where the goals claim more than the balance: a wine bracket over the
+   right-hand end of the ribbon (the part the balance does not cover). */
+.pebble-root .pb-goals-over-zone {
+  position: absolute; top: -4px; bottom: -4px; right: 0; pointer-events: none;
+  border: 2px solid var(--wine); border-radius: 0 999px 999px 0;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 26%, transparent) 0 3px, transparent 3px 7px);
+  box-sizing: border-box;
+}
+.pebble-root .pb-goals-ribbon-labels {
+  display: flex; gap: 2px; margin-top: 0.55rem; min-width: 0;
+  font-size: 0.75rem; line-height: 1.3; color: var(--ink-soft);
+}
+.pebble-root .pb-goals-ribbon-labels > span {
+  flex-basis: 0; min-width: 0; overflow: hidden;
+  display: flex; flex-direction: column; gap: 0.05rem; padding-right: 0.35rem;
+}
+.pebble-root .pb-goals-ribbon-name { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-goals-ribbon-share { color: var(--ink-faint); }
+/* "Unallocated" is our own label and is never cut: it hugs the ribbon's
+   right end and grows leftwards as far as it needs. */
+.pebble-root .pb-goals-ribbon-labels > span.is-free { min-width: max-content; align-items: flex-end; text-align: right; padding-right: 0; }
+.pebble-root .pb-goals-ribbon-labels > span.is-free .pb-goals-ribbon-name { overflow: visible; }
+/* Phone: a wrapping legend (dot, name, share) instead of labels squeezed
+   under the segments. */
+.pebble-root .pb-goals-ribbon-legend { display: none; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-goals-ribbon-labels { display: none; }
+  .pebble-root .pb-goals-ribbon-legend {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; list-style: none; margin: 0.7rem 0 0; padding: 0;
+    font-size: 0.75rem; line-height: 1.3; color: var(--ink-soft);
+  }
+  .pebble-root .pb-goals-ribbon-legend > li { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 100%; }
+  .pebble-root .pb-goals-ribbon-legend .pb-goals-ribbon-name { overflow-wrap: anywhere; white-space: normal; }
+  .pebble-root .pb-goals-ribbon-legend .pb-donut-dot { flex: none; }
+}
+.pebble-root .pb-goals-over-label {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.05rem;
+  margin: 0.55rem 0 0 auto; text-align: right; font-size: 0.75rem; line-height: 1.3; color: var(--wine);
+}
+.pebble-root .pb-goals-over-label > span:first-child { color: var(--ink-soft); }
+.pebble-root .pb-goals-over-note {
+  margin: 0; padding: 0.7rem 0.9rem; border-radius: 0.8rem;
+  font-size: 0.82rem; line-height: 1.5; color: var(--wine);
+  background-color: color-mix(in srgb, var(--wine) 8%, transparent);
+}
+
+/* ---------- Goals list ---------- */
+.pebble-root .pb-goals-list { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.pebble-root .pb-goals-list-head { align-items: center; }
+.pebble-root .pb-goals .pb-goals-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
+}
+.pebble-root .pb-goals-subhead {
+  display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0;
+  font-size: 0.9rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-goals-subhead-icon {
+  display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 0.45rem;
+  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent);
+}
+.pebble-root .pb-goals-subhead-count {
+  padding: 0.05rem 0.45rem; border-radius: 99px; font-size: 0.72rem; font-weight: 600;
+  color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* ---------- Goal card ---------- */
+.pebble-root .pb-goal-card {
+  position: relative; display: flex; flex-direction: column; gap: 1rem; min-width: 0;
+  padding: 1.25rem 1.25rem 1.2rem; box-sizing: border-box; overflow: hidden;
+}
+/* A soft wash of the goal's colour across the top. Only the reached goal
+   gets it, so "done" is celebrated rather than dimmed. */
+.pebble-root .pb-goal-card.is-reached {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--pb-goal) 13%, transparent), transparent 62%);
+}
+.pebble-root .pb-goal-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.95rem; align-items: center; }
+.pebble-root .pb-goal-ring { display: inline-flex; border-radius: 50%; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-goal-ring .pb-ring { width: 64px !important; height: 64px !important; }
+  .pebble-root .pb-goal-ring .pb-ring > svg { width: 100%; height: 100%; }
+}
+.pebble-root .pb-goal-id { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.pebble-root .pb-goal-name {
+  margin: 0; font-size: 0.98rem; font-weight: 600; color: var(--ink); line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.pebble-root .pb-goal-amount { margin: 0; line-height: 1.25; color: var(--ink-soft); font-size: 0.8rem; }
+.pebble-root .pb-goal-amount .font-display { font-size: 1.35rem; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+.pebble-root .pb-goal-of { white-space: nowrap; }
+.pebble-root .pb-goal-there { margin: 0; font-size: 0.76rem; color: var(--ink-soft); line-height: 1.35; text-wrap: pretty; }
+.pebble-root .pb-goal-edit {
+  align-self: start; width: 2rem; height: 2rem; border-radius: 0.6rem; position: relative;
+}
+.pebble-root .pb-goal-edit:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-goal-edit::after { content: ''; position: absolute; inset: -0.4rem; }
+}
+
+/* Facts: target date and countdown, then the monthly pace. One soft band. */
+.pebble-root .pb-goal-facts {
+  list-style: none; margin: 0; padding: 0.65rem 0.8rem; border-radius: 0.8rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+  font-size: 0.78rem; color: var(--ink-soft); line-height: 1.4; text-wrap: pretty;
+}
+.pebble-root .pb-goal-facts li { display: flex; align-items: flex-start; gap: 0.45rem; min-width: 0; }
+.pebble-root .pb-goal-facts li > svg { flex: none; margin-top: 0.12rem; color: var(--ink-faint); }
+.pebble-root .pb-goal-when { color: var(--ink); font-weight: 500; }
+.pebble-root .pb-goal-pace { color: var(--ink); }
+.pebble-root .pb-goal-pace > svg { color: var(--gold) !important; }
+.pebble-root .pb-goal-pace.is-passed { color: var(--ink-soft); }
+.pebble-root .pb-goal-pace.is-passed > svg { color: var(--ink-faint) !important; }
+
+.pebble-root .pb-goal-add,
+.pebble-root .pb-goal-done { margin-top: auto; width: 100%; min-height: 2.6rem; box-sizing: border-box; }
+.pebble-root .pb-goal-add:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+/* Reached: a quiet success chip, not a dimmed button. Still disabled - the
+   server refuses more money for a filled goal too. */
+.pebble-root .pb-goal-done {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.55rem 1rem; border-radius: 0.7rem; border: 1px solid color-mix(in srgb, var(--pb-goal, var(--pine)) 30%, transparent);
+  background-color: color-mix(in srgb, var(--pb-goal, var(--pine)) 10%, transparent);
+  color: var(--ink); font-size: 0.85rem; font-weight: 600; cursor: default; opacity: 1;
+}
+.pebble-root .pb-goal-done > svg { color: var(--pb-goal, var(--pine)); }
+@media (pointer: coarse) {
+  .pebble-root .pb-goal-add, .pebble-root .pb-goal-done { min-height: 2.75rem; }
+}
+
+/* Add-goal tile: the same height as a card beside it. */
+.pebble-root .pb-goals .add-goal-tile { min-height: 0; height: 100%; border-radius: 1.25rem; }
+.pebble-root .pb-goals .add-goal-tile.pb-goals-empty-tile { min-height: 15rem; gap: 0.6rem; padding: 2rem 1.5rem; }
+.pebble-root .pb-goals-empty-body { max-width: 26rem; font-size: 0.84rem; line-height: 1.5; color: var(--ink-soft); }
+
+/* ---------- Timeline ---------- */
+.pebble-root .pb-goals-tl { padding: 1.25rem 1.5rem; box-sizing: border-box; min-width: 0; }
+.pebble-root .pb-goals-tl-v { display: none; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-goals-tl { padding: 1.1rem; }
+  .pebble-root .pb-goals-tl-h { display: none; }
+  .pebble-root .pb-goals-tl-v { display: block; }
+}
+
+/* Wide: a months axis, a Today line, a ring per goal on its target date. */
+.pebble-root .pb-goals-tl-plot { position: relative; min-width: 0; }
+.pebble-root .pb-goals-tl-grid { position: absolute; top: 1.5rem; bottom: 12px; width: 1px; background-color: var(--line); }
+.pebble-root .pb-goals-tl-axis { position: absolute; left: 0; right: 0; bottom: 12px; height: 1px; background-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+.pebble-root .pb-goals-tl-today {
+  position: absolute; top: 0; bottom: 12px; width: 0; border-left: 1.5px solid var(--ink);
+}
+.pebble-root .pb-goals-tl-today > span {
+  position: absolute; top: 0; left: 0; transform: translateX(-50%);
+  padding: 0.1rem 0.5rem; border-radius: 99px; white-space: nowrap;
+  font-size: 0.7rem; font-weight: 600; color: var(--paper); background-color: var(--ink);
+}
+.pebble-root .pb-goals-tl-mark { position: absolute; bottom: 0; width: 0; }
+.pebble-root .pb-goals-tl-stem {
+  position: absolute; left: 0; bottom: 12px; top: calc(var(--pb-ring) / 2); width: 1.5px; transform: translateX(-50%);
+  background-color: color-mix(in srgb, var(--pb-goal) 55%, transparent);
+}
+.pebble-root .pb-goals-tl-dot {
+  position: absolute; left: 0; bottom: 12px; width: 9px; height: 9px; border-radius: 50%;
+  transform: translate(-50%, 50%); background-color: var(--pb-goal); box-shadow: 0 0 0 2px var(--mist);
+}
+.pebble-root .pb-goals-tl-btn {
+  position: absolute; top: 0; left: calc(var(--pb-ring) / -2);
+  display: flex; align-items: center; gap: 0.5rem; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 999px;
+}
+.pebble-root .pb-goals-tl-mark.is-flip .pb-goals-tl-btn { left: auto; right: calc(var(--pb-ring) / -2); flex-direction: row-reverse; text-align: right; }
+.pebble-root .pb-goals-tl-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+.pebble-root .pb-goals-tl-ring { display: inline-flex; flex: none; border-radius: 50%; background-color: var(--mist); }
+.pebble-root .pb-goals-tl-mark .pb-goals-tl-ring { transition: box-shadow var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-goals-tl-mark.is-active .pb-goals-tl-ring { box-shadow: 0 0 0 2px var(--mist), 0 0 0 4px var(--pb-goal); }
+.pebble-root .pb-goals-tl-text { display: flex; flex-direction: column; min-width: 0; max-width: 9rem; line-height: 1.25; }
+.pebble-root .pb-goals-tl-name { font-size: 0.8rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-goals-tl-date { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-goals-tl-btn:hover .pb-goals-tl-name { color: var(--pine); }
+.pebble-root .pb-goals-tl-ticks { position: relative; height: 1.2rem; margin-top: 0.15rem; }
+.pebble-root .pb-goals-tl-ticks > span {
+  position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap;
+  font-size: 0.7rem; color: var(--ink-faint);
+}
+.pebble-root .pb-goals-tl-undated { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.9rem; }
+.pebble-root .pb-goals-tl-undated .pill { display: inline-flex; align-items: center; gap: 0.4rem; }
+.pebble-root .pb-goals-tl-undated .pill[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+
+.pebble-root .pb-goals-tl-detail {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-goals-tl-facts { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.pebble-root .pb-goals-tl-fname { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.pebble-root .pb-goals-tl-figs { margin: 0; font-size: 0.82rem; color: var(--ink-soft); }
+.pebble-root .pb-goals-tl-figs .font-mono-tab:first-child { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-goals-tl-meta {
+  margin: 0.1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem;
+  font-size: 0.76rem; color: var(--ink-soft);
+}
+.pebble-root .pb-goals-tl-meta > svg { margin-right: -0.45rem; color: var(--ink-faint); }
+.pebble-root .pb-goals-tl-pace { display: inline-flex; min-width: 0; align-items: center; gap: 0.3rem; color: var(--ink); }
+.pebble-root .pb-goals-tl-pace > svg { color: var(--gold); flex: none; }
+.pebble-root .pb-goals-tl-reached {
+  padding: 0.02rem 0.45rem; border-radius: 99px; font-weight: 600; font-size: 0.7rem;
+  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent);
+}
+.pebble-root .pb-goals-tl-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pebble-root .pb-goals-tl-action { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-goals-tl-actions .pill { padding: 0.55rem 0.95rem; }
+.pebble-root .pb-goals-tl-actions .pb-goal-done { width: auto; margin: 0; min-height: 0; }
+
+/* Narrow: a vertical rail, goals listed under their target month. */
+.pebble-root .pb-goals-tl-vlist { list-style: none; margin: 0; padding: 0; position: relative; }
+.pebble-root .pb-goals-tl-vlist::before {
+  content: ''; position: absolute; left: 5px; top: 0.6rem; bottom: 0.6rem; width: 1.5px;
+  background-color: var(--line);
+}
+.pebble-root .pb-goals-tl-group + .pb-goals-tl-group { margin-top: 0.9rem; }
+.pebble-root .pb-goals-tl-month {
+  position: sticky; top: var(--pb-header-h); z-index: 2;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem;
+  /* Covers the rail too, so nothing scrolling under a stuck header shows
+     to its left. */
+  margin: 0 -0.25rem 0.4rem 0; padding: 0.35rem 0.25rem 0.35rem 1.1rem;
+  font-size: 0.8rem; font-weight: 600; color: var(--ink); background-color: var(--mist);
+}
+.pebble-root .pb-goals-tl-month::before {
+  content: ''; position: absolute; left: 1px; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+  transform: translateY(-50%); background-color: var(--mist); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.pebble-root .pb-goals-tl-group.is-past .pb-goals-tl-month { color: var(--ink-soft); }
+.pebble-root .pb-goals-tl-month-note { font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); }
+.pebble-root .pb-goals-tl-vtoday {
+  position: relative; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.7rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink);
+}
+.pebble-root .pb-goals-tl-vtoday > span {
+  width: 11px; height: 11px; border-radius: 50%; flex: none; margin-left: 0;
+  background-color: var(--ink); box-shadow: 0 0 0 3px var(--mist);
+}
+.pebble-root .pb-goals-tl-vtoday::after { content: ''; flex: 1; height: 1.5px; background-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.pebble-root .pb-goals-tl-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-goals-tl-row { position: relative; display: flex; align-items: center; gap: 0.35rem; padding-left: 1.1rem; }
+.pebble-root .pb-goals-tl-row + .pb-goals-tl-row::before {
+  content: ''; position: absolute; left: calc(1.1rem + 52px); right: 0; top: 0; height: 1px; background-color: var(--line);
+}
+.pebble-root .pb-goals-tl-vdot {
+  position: absolute; left: 1px; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+  transform: translateY(-50%); background-color: var(--pb-goal); box-shadow: 0 0 0 2px var(--mist);
+}
+.pebble-root .pb-goals-tl-rowbtn {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  border-radius: 0.6rem;
+}
+.pebble-root .pb-goals-tl-rowbtn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-fname { font-size: 0.88rem; }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-figs { font-size: 0.78rem; }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-meta { font-size: 0.74rem; }
+.pebble-root .pb-goals-tl-chev { flex: none; color: var(--ink-faint); }
+.pebble-root .pb-goals-tl-add { flex: none; width: 2.25rem; height: 2.25rem; border-radius: 0.65rem; position: relative; }
+.pebble-root .pb-goals-tl-add:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-goals-tl-add { width: 2.75rem; height: 2.75rem; }
+  .pebble-root .pb-goals-tl-rowbtn { min-height: 2.75rem; }
+}
+
+/* ---------- Goal editor (GoalModal) ---------- */
+/* A live preview of the card's header, updating as you type. */
+.pebble-root .pb-goal-prev {
+  display: flex; align-items: center; gap: 0.85rem; min-width: 0;
+  padding: 0.85rem 1rem; border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--pb-goal) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-goal) 22%, transparent);
+  transition: background-color var(--pb-dur-std) var(--pb-ease-out), border-color var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-goal-prev-ring { display: inline-flex; border-radius: 50%; }
+.pebble-root .pb-goal-prev-text { min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.pebble-root .pb-goal-prev-name { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; line-height: 1.3; }
+.pebble-root .pb-goal-prev-name.is-placeholder { color: var(--ink-faint); }
+.pebble-root .pb-goal-prev-figs { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-goal-prev-figs .font-mono-tab:first-child { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-goal-prev-meta { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+
+/* Larger pickers: 44px targets, a check on the chosen colour. */
+.pebble-root .pb-goal-pick-row { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 3px; }
+.pebble-root .pb-goal-pick-icon,
+.pebble-root .pb-goal-pick-color {
+  width: 2.75rem; height: 2.75rem; display: grid; place-items: center; padding: 0; cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-goal-pick-icon {
+  border-radius: 0.75rem; border: 1px solid var(--line); background-color: transparent; color: var(--ink-soft);
+}
+.pebble-root .pb-goal-pick-icon:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.pebble-root .pb-goal-pick-icon[aria-pressed="true"] {
+  color: var(--pb-goal); border: 2px solid var(--pb-goal);
+  background-color: color-mix(in srgb, var(--pb-goal) 12%, transparent);
+}
+.pebble-root .pb-goal-pick-color {
+  border-radius: 50%; border: 0; color: #fff; background-color: var(--pb-swatch);
+}
+.pebble-root .pb-goal-pick-color > svg { filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 0.55)); }
+.pebble-root .pb-goal-pick-color[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--mist), 0 0 0 4px var(--pb-swatch); }
+.pebble-root .pb-goal-pick-icon:focus-visible,
+.pebble-root .pb-goal-pick-color:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+
+/* Compact rows: the ring already shows how far along; the percent would
+   only wrap onto its own line at phone width. */
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-figs > .pb-tnum { display: none; }
+/* A mouse needs less: all eight icons fit on one row of the 440px dialog. */
+@media (pointer: fine) {
+  .pebble-root .pb-goal-pick-icon { width: 2.5rem; height: 2.5rem; }
+}
+
+/* The edit button floats in the corner, so only the name makes room for it
+   and the figures below use the card's full width (no stray "go" line). */
+.pebble-root .pb-goal-top { position: relative; grid-template-columns: auto minmax(0, 1fr); }
+.pebble-root .pb-goal-top > .pb-goal-edit { position: absolute; top: 0; right: 0; }
+.pebble-root .pb-goal-name { padding-right: 2.5rem; }
+
+/* Compact facts are spans inside the row button (phrasing content only). */
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-facts > span { display: block; }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-facts > .pb-goals-tl-meta { display: flex; }
+
+/* Touch: the Cards / Timeline switch gets a 44px target. */
+@media (pointer: coarse) {
+  .pebble-root .pb-goals-list-head .pb-seg-btn { min-height: 44px; }
+}

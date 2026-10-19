@@ -19,13 +19,15 @@ export function AddGoalTile({ empty = false }: { empty?: boolean }) {
   return (
     <>
       <button
-        type="button" className="add-goal-tile" onClick={() => setAdding(true)}
+        type="button" className={`add-goal-tile${empty ? ' pb-goals-empty-tile' : ''}`} onClick={() => setAdding(true)}
         style={empty ? { gridColumn: '1 / -1' } : undefined}
       >
         <span className="add-goal-tile-badge" aria-hidden="true">
           <Plus size={20} />
         </span>
         {empty && <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--ink)' }}>{d.goals.emptyTitle}</span>}
+        {/* With nothing to look at yet, one line on what a goal is here. */}
+        {empty && <span className="pb-goals-empty-body">{d.ux.goals.emptyBody}</span>}
         <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{d.common.addGoal}</span>
       </button>
       {adding && <GoalModal onClose={() => setAdding(false)} />}

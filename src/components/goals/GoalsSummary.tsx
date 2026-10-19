@@ -50,13 +50,22 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
   // Keyed by a stable identifier rather than by the translated label: the
   // React key must not change when the language does.
   const split: { key: string; label: string; value: number; tone: 'goals' | 'free'; color?: string; pct: number | null }[] = [
-    { key: 'allocated', label: d.goals.setAside, value: allocated, tone: 'goals', pct: total > 0 ? (allocated / total) * 100 : null },
+    { key: 'allocated', label: d.goals.setAside, value: allocated, tone: 'goals', pct: total > 0 && !overAllocated ? (allocated / total) * 100 : null },
+    // (Over-allocated: a share above 100% of the balance says nothing the
+    // wine figures and the bracket do not say better, so none is shown.)
     {
       key: 'unallocated', label: d.goals.unallocated, value: unallocated, tone: 'free',
       color: unallocated < 0 ? 'var(--wine)' : 'var(--pine)',
       pct: total > 0 && unallocated >= 0 ? (unallocated / total) * 100 : null,
     },
   ];
+
+  // The "set aside" key is a stripe of the goals' own colours (up to four),
+  // so it reads as "these goals" against the pine hatch of what is free.
+  const keyColors = withMoney.slice().sort((a, b) => b.current - a.current).slice(0, 4).map((g) => g.color);
+  const goalsKey = keyColors.length > 1
+    ? `linear-gradient(90deg, ${keyColors.map((c, i) => `${c} ${(i / keyColors.length) * 100}% ${((i + 1) / keyColors.length) * 100}%`).join(', ')})`
+    : keyColors[0];
 
   const slices: AllocationSlice[] = withMoney
     .slice()
@@ -89,7 +98,10 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
           {split.map((r) => (
             <div key={r.key} className="pb-goals-hero-cell">
               <dt>
-                <i className={`pb-goals-key pb-goals-key-${r.tone}`} aria-hidden="true" />
+                <i
+                  className={`pb-goals-key pb-goals-key-${r.tone}`} aria-hidden="true"
+                  style={r.tone === 'goals' && goalsKey ? { ['--pb-goals-key' as string]: goalsKey } : undefined}
+                />
                 {r.label}
               </dt>
               <dd className="font-mono-tab" style={r.color ? { color: r.color } : undefined}>{formatCurrency(r.value)}</dd>

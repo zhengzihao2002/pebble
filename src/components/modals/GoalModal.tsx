@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { CalendarDays, Check, Trash2 } from 'lucide-react';
 import { addGoalAction, deleteGoalAction, updateGoalAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -15,9 +15,13 @@ import { AmountInput } from '@/components/shared/AmountInput';
 import { playEventSound } from '@/lib/sound/useSound';
 import { GOAL_ICON_OPTIONS, GOAL_COLOR_OPTIONS } from '@/data/seed';
 import { resolveGoalIcon } from '@/lib/data/icons';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, formatGoalDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
+import { renderTemplate } from '@/lib/i18n/RichText';
+import { ProgressRing } from '@/components/kit/ProgressRing';
+import { timeToTarget } from '@/components/goals/goalMath';
+import { useGoalsToday } from '@/components/goals/useGoalsToday';
 import type { Goal } from '@/types';
 
 interface GoalModalProps {
@@ -36,7 +40,7 @@ type Mode = 'form' | 'confirmDelete';
  * value stays 'YYYY-MM-DD' whatever the browser's picker displays.
  */
 export function GoalModal({ onClose, goal }: GoalModalProps) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
   const isEdit = goal !== undefined;
 
   const [mode, setMode] = useState<Mode>('form');
@@ -54,6 +58,8 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
   const [color, setColor] = useState(goal?.color ?? GOAL_COLOR_OPTIONS[0]);
 
   const PreviewIcon = resolveGoalIcon(iconKey);
+  // For the preview's countdown only; null on the first frame.
+  const today = useGoalsToday();
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%' };
   const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
@@ -172,7 +178,49 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
         ) : (
           <>
             <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
-              <form id="goal-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <form
+                id="goal-form" onSubmit={handleSubmit}
+                style={{ display: 'flex', flexDirection: 'column', gap: '1rem', ['--pb-goal' as string]: color }}
+              >
+                {/* Live preview of the goal's card header - ring, icon, colour,
+                    name, figures and target date - updating as you type. It
+                    replaces the small icon chip that sat beside the name field
+                    (same live icon + colour, now with the rest of the card).
+                    aria-hidden: the fields themselves are what a screen reader
+                    should hear, not a second copy of them. */}
+                {(() => {
+                  const t0 = Number(target) || 0;
+                  const c0 = Number(current) || 0;
+                  const reachedPreview = t0 > 0 && c0 >= t0;
+                  const when = timeToTarget(d, today, date);
+                  return (
+                    <div className="pb-goal-prev" aria-hidden="true">
+                      <span className="pb-goal-prev-ring pb-chart-fill">
+                        <ProgressRing value={t0 > 0 ? c0 / t0 : 0} size={52} stroke={5} color={color}>
+                          {reachedPreview
+                            ? <Check size={19} strokeWidth={2.6} style={{ color }} />
+                            : <PreviewIcon size={19} style={{ color }} />}
+                        </ProgressRing>
+                      </span>
+                      <div className="pb-goal-prev-text">
+                        {/* The name is user data, shown exactly as typed. */}
+                        <p className={`pb-goal-prev-name${name.trim() ? '' : ' is-placeholder'}`}>{name.trim() || d.ux.goals.previewName}</p>
+                        <p className="pb-goal-prev-figs">
+                          {renderTemplate(d.ux.dashboard.goalOf, {
+                            current: <span className="font-mono-tab">{formatCurrency(c0)}</span>,
+                            target: <span className="font-mono-tab">{formatCurrency(t0)}</span>,
+                          })}
+                        </p>
+                        <p className="pb-goal-prev-meta pb-tnum">
+                          {date
+                            ? <>{t(d.goalCard.target, { date: formatGoalDate(date, locale) })}{when ? ` · ${when.text}` : ''}</>
+                            : <><CalendarDays size={12} style={{ verticalAlign: '-1px', marginRight: 4 }} />{d.ux.goals.previewNoDate}</>}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <label style={labelStyle}>
                   {d.goalModal.targetAmount}
                   <div style={{ position: 'relative' }}>
@@ -188,12 +236,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
 
                 <label style={labelStyle}>
                   {d.goalModal.name}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span aria-hidden="true" style={{ width: 38, height: 38, borderRadius: '0.7rem', backgroundColor: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <PreviewIcon size={18} style={{ color }} />
-                    </span>
-                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder={d.goalModal.namePlaceholder} required style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
-                  </div>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder={d.goalModal.namePlaceholder} required style={inputStyle} />
                 </label>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
@@ -219,21 +262,18 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                 {/* A div, not a label: <label> forwards clicks to its first button. */}
                 <div style={labelStyle}>
                   <span>{d.goalModal.icon}</span>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: 3 }}>
+                  {/* 44px targets (were 38px): selection shows as the goal's
+                      colour, border and tint (goals.css). */}
+                  <div className="pb-goal-pick-row">
                     {/* key is the stored iconKey, resolved by resolveGoalIcon().
                         Never translated, never a label. */}
                     {GOAL_ICON_OPTIONS.map(({ key, icon: OptIcon }, i) => (
                       <button
                         key={key} type="button" onClick={() => setIconKey(key)}
                         aria-label={`${d.goalModal.icon} ${i + 1}`} aria-pressed={iconKey === key}
-                        style={{
-                          width: 38, height: 38, borderRadius: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: iconKey === key ? `2px solid ${color}` : '1px solid var(--line)',
-                          backgroundColor: iconKey === key ? `${color}20` : 'transparent', color: iconKey === key ? color : 'var(--ink-soft)',
-                          outlineOffset: 2,
-                        }}
+                        className="pb-goal-pick-icon"
                       >
-                        <OptIcon size={17} />
+                        <OptIcon size={19} />
                       </button>
                     ))}
                   </div>
@@ -241,16 +281,17 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
 
                 <div style={labelStyle}>
                   <span>{d.goalModal.color}</span>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: 3 }}>
+                  {/* 44px swatches with a check on the chosen one, so the
+                      choice is not shown by a ring colour alone. */}
+                  <div className="pb-goal-pick-row">
                     {GOAL_COLOR_OPTIONS.map((c, i) => (
                       <button
                         key={c} type="button" onClick={() => setColor(c)}
                         aria-label={`${d.goalModal.color} ${i + 1}`} aria-pressed={color === c}
-                        style={{
-                          width: 30, height: 30, borderRadius: '50%', backgroundColor: c,
-                          border: color === c ? '2px solid var(--ink)' : '2px solid transparent', outlineOffset: 2,
-                        }}
-                      />
+                        className="pb-goal-pick-color" style={{ ['--pb-swatch' as string]: c }}
+                      >
+                        {color === c && <Check size={18} strokeWidth={2.8} aria-hidden="true" />}
+                      </button>
                     ))}
                   </div>
                 </div>

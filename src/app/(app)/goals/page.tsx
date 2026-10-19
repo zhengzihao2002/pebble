@@ -2,24 +2,27 @@ import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getGoals, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
-import { formatCurrency } from '@/lib/format';
-import { getDictionary, t } from '@/lib/i18n';
+import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
-import { GoalCard } from '@/components/goals/GoalCard';
-import { AddGoalTile } from '@/components/goals/AddGoalTile';
+import { GoalsSummary } from '@/components/goals/GoalsSummary';
+import { GoalsView } from '@/components/goals/GoalsView';
 
 export const dynamic = 'force-dynamic';
 
-// No client shell: this page has no interactive state of its own. GoalCard
-// resolves its own icon from goal.iconKey, so no LucideIcon crosses the
-// server/client boundary. The add-goal trigger is the last tile in the grid
-// (AddGoalTile, which owns its own dialog); on a phone the centre + menu opens
-// the AppShell copy of the same dialog.
+// No client shell: the page itself has no interactive state. The allocation
+// hero (GoalsSummary) is a Server Component rendering its text from the
+// dictionary resolved here; only its ribbon popup is a client piece. The goals
+// below are GoalsView, a client island that owns the Cards / Timeline switch
+// and the zone-aware today the countdowns need. GoalCard resolves its own icon
+// from goal.iconKey, so no LucideIcon crosses the server/client boundary. The
+// add-goal trigger is the last tile in the grid (AddGoalTile, which owns its
+// own dialog); on a phone the centre + menu opens the AppShell copy of the
+// same dialog.
 //
-// That also makes this the ONLY page whose user-visible text is rendered on
-// the server, and therefore the only caller of resolveUserLocale(). Every
-// other page is a thin query shell handing props to a *Client.tsx, where
-// useTranslation() applies instead.
+// That also makes this the ONLY page whose user-visible text is (partly)
+// rendered on the server, and therefore the only caller of
+// resolveUserLocale(). Every other page is a thin query shell handing props to
+// a *Client.tsx, where useTranslation() applies instead.
 //
 // Goals hold no real money. goal.current_amount records how much of the
 // existing balance has been mentally set aside, so the balance below is the
@@ -60,46 +63,13 @@ export default async function GoalsPage() {
   // claiming too much.
   const overAllocated = allocated > 0 && unallocated < 0;
 
-  // Keyed by a stable identifier rather than by the translated label: the
-  // React key must not change when the language does.
-  const summaryRows: { key: string; label: string; value: number; color?: string }[] = [
-    { key: 'total', label: d.goals.totalBalance, value: balances.total },
-    { key: 'allocated', label: d.goals.setAside, value: allocated },
-    { key: 'unallocated', label: d.goals.unallocated, value: unallocated, color: unallocated < 0 ? 'var(--wine)' : 'var(--pine)' },
-  ];
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.goals.allocatedTitle}</h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          {d.goals.allocatedBlurb}
-        </p>
-
-        <div className="stat-tabs">
-          {summaryRows.map((r) => (
-            <div key={r.key} className="stat-tab">
-              <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{r.label}</p>
-              {/* formatCurrency stays pinned to en-US in every locale - these
-                  are the user's actual dollars, not a localized quantity. */}
-              <p className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: r.color ?? 'var(--ink)' }}>
-                {formatCurrency(r.value)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {overAllocated && (
-          <p style={{ fontSize: '0.8rem', color: 'var(--wine)', marginTop: '1rem', lineHeight: 1.5 }}>
-            {t(d.goals.overAllocated, { amount: formatCurrency(Math.abs(unallocated)) })}
-          </p>
-        )}
-      </div>
-
-      <div className="goals-grid">
-        {goals.map((g) => <GoalCard key={g.id} goal={g} />)}
-        <AddGoalTile empty={goals.length === 0} />
-      </div>
+    <div className="pb-goals">
+      <GoalsSummary
+        d={d} goals={goals} total={balances.total}
+        allocated={allocated} unallocated={unallocated} overAllocated={overAllocated}
+      />
+      <GoalsView goals={goals} />
     </div>
   );
 }

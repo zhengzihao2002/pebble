@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createElement, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, ChevronRight, Pencil, Plus, TrendingUp } from 'lucide-react';
 import type { Goal } from '@/types';
 import { formatCurrency, formatGoalDate, formatMonthYear } from '@/lib/format';
@@ -17,7 +17,9 @@ import { daysBetween, isGoalDate, isReached, monthlyPace, progressOf, timeToTarg
 // Horizontal layout constants (px). A marker is its ring plus a label beside
 // it; markers that would overlap climb to the next lane.
 const LANE_H = 70;
-const BASE_H = 26;
+// Lane 0's ring centre sits this far above the plot's bottom: clear of the
+// axis (12px up) by the largest ring's radius and a gap, so its stem shows.
+const BASE_H = 56;
 const LABEL_W = 150;
 const RING_MIN = 34;
 const RING_MAX = 54;
@@ -76,15 +78,17 @@ interface PartProps {
   onAdd: (g: Goal) => void;
 }
 
-function GoalRing({ goal, size }: { goal: Goal; size: number }) {
-  const Icon = resolveGoalIcon(goal.iconKey);
+// blur: wrap the ring in pb-chart-fill so privacy mode blurs it. Off for
+// rings inside a button (a tap would only reveal the ring, not select the
+// goal) - a percent is not money, and the same percent shows as text.
+function GoalRing({ goal, size, blur = true }: { goal: Goal; size: number; blur?: boolean }) {
   const glyph = Math.round(size * 0.36);
   return (
-    <span className="pb-chart-fill pb-goals-tl-ring">
+    <span className={`${blur ? 'pb-chart-fill ' : ''}pb-goals-tl-ring`}>
       <ProgressRing value={progressOf(goal)} size={size} stroke={size >= 48 ? 6 : 5} color={goal.color}>
         {isReached(goal)
           ? <Check size={glyph} strokeWidth={2.6} style={{ color: goal.color }} aria-hidden="true" />
-          : <Icon size={glyph} style={{ color: goal.color }} aria-hidden="true" />}
+          : createElement(resolveGoalIcon(goal.iconKey), { size: glyph, style: { color: goal.color }, 'aria-hidden': true })}
       </ProgressRing>
     </span>
   );
@@ -106,7 +110,10 @@ function TimelineWide({ goals, today, onEdit, onAdd }: PartProps) {
     return () => ro.disconnect();
   }, []);
 
-  const dated = goals.filter((g) => isGoalDate(g.date)).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const dated = useMemo(
+    () => goals.filter((g) => isGoalDate(g.date)).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    [goals],
+  );
   const undated = goals.filter((g) => !isGoalDate(g.date));
   const firstOpen = dated.find((g) => !isReached(g)) ?? dated[0] ?? undated[0] ?? null;
   const [selectedId, setSelectedId] = useState<string | null>(firstOpen?.id ?? null);
@@ -161,7 +168,8 @@ function TimelineWide({ goals, today, onEdit, onAdd }: PartProps) {
     return { markers, lanes, ticks, todayFrac: x(today) };
   }, [dated, today, width, locale]);
 
-  const plotH = layout.lanes * LANE_H + BASE_H + 18;
+  // Room above the top lane for its ring and the Today label.
+  const plotH = (layout.lanes - 1) * LANE_H + BASE_H + RING_MAX / 2 + 34;
 
   return (
     <div className="card pb-goals-tl pb-goals-tl-h">
@@ -190,7 +198,7 @@ function TimelineWide({ goals, today, onEdit, onAdd }: PartProps) {
                 aria-label={t(ux.goalAria, { name: goal.name, pct: pctNum, date: formatGoalDate(goal.date, locale) })}
                 onClick={() => setSelectedId(goal.id)}
               >
-                <GoalRing goal={goal} size={size} />
+                <GoalRing goal={goal} size={size} blur={false} />
                 <span className="pb-goals-tl-text" aria-hidden="true">
                   <span className="pb-goals-tl-name">{goal.name}</span>
                   <span className="pb-goals-tl-date pb-tnum">{formatGoalDate(goal.date, locale)}</span>
@@ -246,28 +254,36 @@ function GoalFacts({ goal, today, compact = false }: { goal: Goal; today: string
   const when = timeToTarget(d, today, goal.date);
   const pace = monthlyPace(goal, today);
   const money = (n: number) => <span className="font-mono-tab">{formatCurrency(n)}</span>;
+  // Compact rows sit inside a <button>, which takes phrasing content only.
+  const Box = compact ? 'span' : 'div';
+  const Line = compact ? 'span' : 'p';
+  // A reached goal is not late: no countdown or "passed" once its date is gone.
+  const whenText = !when ? null
+    : compact ? (reached && when.passed ? null : when.text)
+    : !when.passed || !reached ? ` · ${when.text}` : null;
   return (
-    <div className="pb-goals-tl-facts">
-      <p className="pb-goals-tl-fname">{goal.name}</p>
-      <p className="pb-goals-tl-figs">
+    <Box className="pb-goals-tl-facts">
+      <Line className="pb-goals-tl-fname">{goal.name}</Line>
+      <Line className="pb-goals-tl-figs">
         {renderTemplate(d.ux.dashboard.goalOf, { current: money(goal.current), target: money(goal.target) })}
         <span className="pb-tnum"> · {Math.round(progressOf(goal) * 100)}%</span>
-      </p>
-      <p className="pb-goals-tl-meta">
+      </Line>
+      <Line className="pb-goals-tl-meta">
         {!compact && <CalendarDays size={13} aria-hidden="true" />}
         <span className="pb-tnum">
           {compact ? null : t(d.goalCard.target, { date: formatGoalDate(goal.date, locale) })}
-          {when && (compact ? when.text : !when.passed || !reached ? ` · ${when.text}` : null)}
+          {whenText}
         </span>
         {pace !== null && (
           <span className="pb-goals-tl-pace">
             <TrendingUp size={13} aria-hidden="true" />
-            {renderTemplate(compact ? ux.monthlyPaceShort : ux.monthlyPace, { amount: money(pace) })}
+            {/* One span, so the template's text pieces are not separate flex items. */}
+            <span>{renderTemplate(compact ? ux.monthlyPaceShort : ux.monthlyPace, { amount: money(pace) })}</span>
           </span>
         )}
         {reached && <span className="pb-goals-tl-reached">{ux.reached}</span>}
-      </p>
-    </div>
+      </Line>
+    </Box>
   );
 }
 
@@ -282,7 +298,9 @@ function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
 
   // Groups by target month; the Today marker goes before the first group
   // that is not entirely in the past.
-  const groups: { key: string; label: string; past: boolean; goals: Goal[] }[] = [];
+  // late: a past month that still holds an unfinished goal - only then does
+  // the header say "Past target date" (a finished goal is not late).
+  const groups: { key: string; label: string; past: boolean; late: boolean; goals: Goal[] }[] = [];
   for (const g of sorted) {
     const key = isGoalDate(g.date) ? g.date.slice(0, 7) : 'none';
     let group = groups[groups.length - 1];
@@ -291,11 +309,13 @@ function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
         key,
         label: key === 'none' ? '—' : formatMonthYear(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, locale),
         past: key !== 'none' && key < today.slice(0, 7),
+        late: false,
         goals: [],
       };
       groups.push(group);
     }
     group.goals.push(g);
+    if (group.past && !isReached(g)) group.late = true;
   }
   const todayAt = groups.findIndex((g) => !g.past);
 
@@ -309,7 +329,7 @@ function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
             )}
             <h3 className="pb-goals-tl-month">
               <span>{group.label}</span>
-              {group.past && <span className="pb-goals-tl-month-note">{ux.pastDue}</span>}
+              {group.late && <span className="pb-goals-tl-month-note">{ux.pastDue}</span>}
             </h3>
             <ul className="pb-goals-tl-rows">
               {group.goals.map((g) => {
@@ -322,7 +342,7 @@ function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
                       aria-label={t(d.goalCard.editAria, { name: g.name })}
                       onClick={() => onEdit(g)}
                     >
-                      <GoalRing goal={g} size={44} />
+                      <GoalRing goal={g} size={44} blur={false} />
                       <GoalFacts goal={g} today={today} compact />
                       <ChevronRight size={16} className="pb-goals-tl-chev" aria-hidden="true" />
                     </button>

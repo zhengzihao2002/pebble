@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { CalendarDays, Check, Pencil, Plus, TrendingUp } from 'lucide-react';
 import type { Goal } from '@/types';
 import { formatCurrency, formatGoalDate } from '@/lib/format';
@@ -39,7 +39,6 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
   // A filled goal takes no more - the server refuses it too.
   const reached = goal.current >= goal.target;
   const pct = (goal.current / goal.target) * 100;
-  const Icon = resolveGoalIcon(goal.iconKey);
   const when = timeToTarget(d, today, goal.date);
   const pace = monthlyPace(goal, today);
   const money = (n: number) => <span className="font-mono-tab">{formatCurrency(n)}</span>;
@@ -50,6 +49,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
   });
 
   return (
+    <>
     <article
       className={`card pb-goal-card pb-rise${reached ? ' is-reached' : ''}`}
       style={{ ['--pb-goal' as string]: goal.color, ['--pb-i' as string]: Math.min(index, 8) }}
@@ -62,7 +62,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
           <ProgressRing value={pct / 100} size={76} stroke={7} color={goal.color}>
             {reached
               ? <Check size={24} strokeWidth={2.6} className="goal-done-badge" style={{ color: goal.color }} aria-hidden="true" />
-              : <Icon size={24} style={{ color: goal.color }} aria-hidden="true" />}
+              : createElement(resolveGoalIcon(goal.iconKey), { size: 24, style: { color: goal.color }, 'aria-hidden': true })}
           </ProgressRing>
         </span>
         <div className="pb-goal-id">
@@ -70,7 +70,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
           <p className="pb-goal-name">{goal.name}</p>
           <p className="pb-goal-amount">
             <span className="font-display pb-money">{formatCurrency(goal.current)}</span>{' '}
-            <span className="pb-goal-of">{renderTemplate(d.phrasing.ofTarget, { total: money(goal.target) })}</span>
+            <span className="pb-goal-of">{renderTemplate(ux.cardOfTarget, { total: money(goal.target) })}</span>
           </p>
           <p className="pb-goal-there">
             {renderTemplate(d.goalCard.thereSuffix, { pct: <span className="pb-tnum">{Math.round(pct)}</span>, rest })}
@@ -115,8 +115,12 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
         {reached ? <><Check size={15} />{d.goalCard.goalReached}</> : <><Plus size={15} />{d.goalCard.addAmount}</>}
       </button>
 
-      {editing && <GoalModal goal={goal} onClose={() => setEditing(false)} />}
-      {adding && <AddToGoalModal goal={goal} onClose={() => setAdding(false)} />}
     </article>
+    {/* The dialogs sit OUTSIDE the article: its entrance animation (a
+        transform) and overflow: hidden would otherwise make it the
+        containing block of the fixed overlay and clip the dialog. */}
+    {editing && <GoalModal goal={goal} onClose={() => setEditing(false)} />}
+    {adding && <AddToGoalModal goal={goal} onClose={() => setAdding(false)} />}
+    </>
   );
 }

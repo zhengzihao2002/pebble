@@ -23,7 +23,9 @@ export const goalsEn = {
   yourGoals: 'Your goals',
   countInProgress: '{count} in progress',
   countReached: '{count} reached',
-  inProgress: 'In progress',
+  // After a card's large current amount. Chinese uses the slash the
+  // timeline and editor preview use, so it stays on one line.
+  cardOfTarget: 'of {total}',
   reached: 'Reached',
   viewLabel: 'Show goals as',
   viewCards: 'Cards',
@@ -39,7 +41,6 @@ export const goalsEn = {
   targetPassed: 'Target passed',
   monthlyPace: 'Set aside about {amount} a month to make it',
   monthlyPaceShort: 'about {amount} a month',
-  allSetAside: 'Fully set aside',
 
   // Timeline
   timelineLabel: 'Goals by target date',
@@ -52,6 +53,9 @@ export const goalsEn = {
   // Goal editor preview
   previewName: 'Your goal',
   previewNoDate: 'Pick a target date',
+
+  // Empty grid
+  emptyBody: 'Name something you are saving for and set part of your balance aside for it. No money moves; each goal tracks its share and how much a month gets you there.',
 };
 
 export const goalsZh: typeof goalsEn = {
@@ -68,7 +72,7 @@ export const goalsZh: typeof goalsEn = {
   yourGoals: '你的目标',
   countInProgress: '{count} 个进行中',
   countReached: '{count} 个已达成',
-  inProgress: '进行中',
+  cardOfTarget: '/ {total}',
   reached: '已达成',
   viewLabel: '目标显示方式',
   viewCards: '卡片',
@@ -83,7 +87,6 @@ export const goalsZh: typeof goalsEn = {
   targetPassed: '已过目标日期',
   monthlyPace: '每月约存 {amount} 即可按时达成',
   monthlyPaceShort: '约每月 {amount}',
-  allSetAside: '已全部预留',
 
   timelineLabel: '按目标日期排列的目标',
   today: '今天',
@@ -94,4 +97,6 @@ export const goalsZh: typeof goalsEn = {
 
   previewName: '你的目标',
   previewNoDate: '请选择目标日期',
+
+  emptyBody: '为想存钱实现的事设一个目标，从余额中划出一部分给它。资金不会转移，每个目标只记录自己的份额，以及每月需存多少才能按时达成。',
 };

@@ -118,7 +118,7 @@ export function GoalsAllocationBar({ slices, total, allocated, unallocated }: Go
           the bracket's label takes the right-hand end instead. */}
       <div className="pb-goals-ribbon-labels" aria-hidden="true">
         {rows.map((r) => (
-          <span key={r.key} style={{ flexGrow: r.value }}>
+          <span key={r.key} className={r.free ? 'is-free' : undefined} style={{ flexGrow: r.value }}>
             {r.value / base >= LABEL_SHARE && (
               <>
                 <span className="pb-goals-ribbon-name">{r.name}</span>
@@ -128,6 +128,20 @@ export function GoalsAllocationBar({ slices, total, allocated, unallocated }: Go
           </span>
         ))}
       </div>
+      {/* Phone: every slice as a wrapping legend instead (goals.css swaps
+          them by width). Decorative for the same reason as the labels. */}
+      <ul className="pb-goals-ribbon-legend" aria-hidden="true">
+        {rows.map((r) => (
+          <li key={r.key}>
+            <span
+              className={`pb-donut-dot${r.free ? ' pb-plan-savings' : ''}`}
+              style={r.free ? undefined : { backgroundColor: r.color }}
+            />
+            <span className="pb-goals-ribbon-name">{r.name}</span>
+            <span className="pb-goals-ribbon-share pb-tnum">{formatShare(r.value, base)}</span>
+          </li>
+        ))}
+      </ul>
       {over && (
         <p className="pb-goals-over-label" style={{ width: `max(${overShare * 100}%, 9rem)` }}>
           <span>{ux.overShort}</span>

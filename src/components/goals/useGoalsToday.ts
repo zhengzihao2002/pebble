@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
@@ -13,9 +13,18 @@ import { todayInZone } from '@/lib/recurring/occurrences';
  */
 export function useGoalsToday(): string | null {
   const timeZoneOverride = useTimeZoneOverride();
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => {
-    setToday(todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
-  }, [timeZoneOverride]);
-  return today;
+  // useSyncExternalStore rather than a mount effect: the server snapshot
+  // (null) is what hydration renders, the client snapshot follows right after,
+  // with no setState inside an effect. A string snapshot compares by value,
+  // so it is stable between renders.
+  return useSyncExternalStore(
+    noSubscribe,
+    () => todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()),
+    () => null,
+  );
+}
+
+// The day is read on each render; nothing to subscribe to.
+function noSubscribe(): () => void {
+  return () => {};
 }

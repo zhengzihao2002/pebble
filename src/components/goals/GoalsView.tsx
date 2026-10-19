@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { CalendarRange, Check, LayoutGrid } from 'lucide-react';
 import type { Goal } from '@/types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -16,6 +16,16 @@ type View = 'cards' | 'timeline';
 // A per-viewer convenience only (never shared, never read by the server).
 const VIEW_KEY = 'pebble-goals-view';
 
+function readStoredView(): View | null {
+  try {
+    const stored = window.localStorage.getItem(VIEW_KEY);
+    return stored === 'timeline' || stored === 'cards' ? stored : null;
+  } catch { return null; /* storage unavailable: the default stands */ }
+}
+function noSubscribe(): () => void {
+  return () => {};
+}
+
 /**
  * The goals themselves, below the allocation hero. Cards stay the default
  * view, so nothing is lost; Timeline is another way into the same dialogs.
@@ -29,17 +39,14 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
   const { d, t } = useTranslation();
   const ux = d.ux.goals;
   const today = useGoalsToday();
-  // Static first render (cards), then the remembered choice: no hydration
-  // mismatch, and storage that throws (private mode) just keeps cards.
-  const [view, setView] = useState<View>('cards');
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(VIEW_KEY);
-      if (stored === 'timeline' || stored === 'cards') setView(stored);
-    } catch { /* storage unavailable: the default stands */ }
-  }, []);
+  // Static first render (cards: the server snapshot), then the remembered
+  // choice: no hydration mismatch, and storage that throws (private mode)
+  // just keeps cards. A choice made here wins over what was stored.
+  const stored = useSyncExternalStore(noSubscribe, readStoredView, () => null);
+  const [picked, setPicked] = useState<View | null>(null);
+  const view: View = picked ?? stored ?? 'cards';
   const choose = (v: View) => {
-    setView(v);
+    setPicked(v);
     try { window.localStorage.setItem(VIEW_KEY, v); } catch { /* not remembered */ }
   };
 
