@@ -1,16 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
-import { formatMonthYear, parseLocalDate } from '@/lib/format';
+import { formatCurrency, formatMonthYear, parseLocalDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { periodValueLabel } from '@/lib/i18n/enumLabels';
+import { categoryLabel, periodValueLabel } from '@/lib/i18n/enumLabels';
+import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
 import { compareSameDayIds } from '@/lib/stats';
 import { ReportFilters } from '@/components/reports/ReportFilters';
-import { ReportResults } from '@/components/reports/ReportResults';
+import { ReportResults, type ReportEmptyInfo } from '@/components/reports/ReportResults';
+import { ReportToolbar } from '@/components/reports/ReportToolbar';
+import { ReportFilterChips, type ActiveFilterChip } from '@/components/reports/ReportFilterChips';
+import { ReportSummary, type ReportDelta, type ShareSlice } from '@/components/reports/ReportSummary';
+import { ReportTimeline } from '@/components/reports/ReportTimeline';
+import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
+import { previousWindow, resolvePeriodBounds, shiftCustomRange, stepPeriod, diffDays, type Bounds } from '@/components/reports/periodBounds';
+import { buildReportBuckets, type ReportBucket } from '@/components/reports/reportBuckets';
+import { categoryMonthlySeries } from '@/components/reports/categorySeries';
+import { buildReportCsv, downloadCsv } from '@/components/reports/ReportExport';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { ExpenseTransaction, Transaction } from '@/types';
 import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField, ReportPeriodGroup } from '@/components/reports/types';
@@ -71,6 +81,10 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
+  // The summary's timeline chart, hidden by choice. Persisted beside the
+  // other prefs; restored with === true like every field added later.
+  const [chartHidden, setChartHidden] = useState(false);
+  const privacyOn = usePebbleStore((s) => s.privacyOn);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   // Resolved once client-side, zone-aware - never getToday(), which reflects
@@ -168,6 +182,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       setPeriodExpanded(saved.periodExpanded === true);
       setGroupSortExpanded(saved.groupSortExpanded === true);
       setFindExpanded(saved.findExpanded === true);
+      setChartHidden(saved.chartHidden === true);
       setGroupsExpanded(saved.groupsExpanded);
       // Validated, not trusted: localStorage can hold anything, and prefs
       // written before custom ranges existed have neither field.
@@ -200,10 +215,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
       filtersExpanded, groupsExpanded, customStart, customEnd,
       accountsExpanded, categoriesExpanded, periodExpanded, groupSortExpanded, findExpanded, typesExpanded,
+      chartHidden,
     });
   }, [restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
       filtersExpanded, groupsExpanded, customStart, customEnd, accountsExpanded, categoriesExpanded,
-      periodExpanded, groupSortExpanded, findExpanded, typesExpanded]);
+      periodExpanded, groupSortExpanded, findExpanded, typesExpanded, chartHidden]);
 
   // Choosing Custom range with no dates yet (first use, or prefs saved before
   // this feature) fills the current month to date, zone-aware via `today`.
@@ -606,86 +622,476 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   }
   const filterSummary = filterSummaryParts.join(' · ');
 
+  // ---------------------------------------------------------------------
+  // The redesign's derived pieces. All read the state and rows above; none
+  // filters anything - periodFiltered stays the one result set.
+  // ---------------------------------------------------------------------
+  const ux = dict.ux.reports;
+  const loc = INTL_LOCALE[locale];
+  const fmtYmd = (ymd: string, o: Intl.DateTimeFormatOptions) => parseLocalDate(ymd).toLocaleDateString(loc, o);
+
+  // The span the report covers (null for Month/Quarter across All years).
+  let dataRange: Bounds | null = null;
+  for (const t of periodFiltered) {
+    if (!dataRange) dataRange = { startYmd: t.date, endYmd: t.date };
+    else {
+      if (t.date < dataRange.startYmd) dataRange.startYmd = t.date;
+      if (t.date > dataRange.endYmd) dataRange.endYmd = t.date;
+    }
+  }
+  const bounds = resolvePeriodBounds({
+    periodGroup, subPeriod: effectiveSubPeriod, subYear: effectiveSubYear,
+    rollingWindow, customRange, today, dataRange,
+  });
+
+  // Money in and out, as the hero and the copied summary show them.
+  let inSum = 0;
+  let outSum = 0;
+  for (const t of periodFiltered) { if (t.amount > 0) inSum += t.amount; else outSum -= t.amount; }
+
+  // Comparison with the previous comparable period, over the same filters
+  // (baseFiltered) - to date when this one is still in progress.
+  const prevWin = previousWindow(periodGroup, bounds, customRange, today);
+  let delta: ReportDelta | null = null;
+  if (prevWin && periodFiltered.length > 0) {
+    const within = (rows: Transaction[], b: Bounds) => rows.filter((t) => t.date >= b.startYmd && t.date <= b.endYmd);
+    const prevRows = within(baseFiltered, prevWin.bounds);
+    if (prevRows.length > 0) {
+      const cur = within(periodFiltered, prevWin.current).reduce((s, t) => s + amt(t), 0);
+      const prev = prevRows.reduce((s, t) => s + amt(t), 0);
+      const b = prevWin.bounds;
+      const period = prevWin.toDate
+        ? `${fmtYmd(b.startYmd, { month: 'short', day: 'numeric' })} – ${fmtYmd(b.endYmd, b.startYmd.slice(0, 7) === b.endYmd.slice(0, 7) ? { day: 'numeric' } : { month: 'short', day: 'numeric' })}`
+        : prevWin.kind === 'month' ? formatMonthYear(Number(b.startYmd.slice(0, 4)), Number(b.startYmd.slice(5, 7)) - 1, locale)
+        : prevWin.kind === 'quarter' ? tr(dict.reports.quarterOfYear, { quarter: dict.quarters[`Q${Math.floor((Number(b.startYmd.slice(5, 7)) - 1) / 3) + 1}` as 'Q1'], year: b.startYmd.slice(0, 4) })
+        : prevWin.kind === 'year' ? b.startYmd.slice(0, 4)
+        : tr(prevWin.kind === 'months' ? ux.prevMonths : ux.prevDays, { count: prevWin.count });
+      const diff = cur - prev;
+      delta = mixed
+        // A net can change sign, so a percentage of it means little: the
+        // difference in money instead (blurred in privacy mode).
+        ? { delta: diff, text: formatCurrency(Math.abs(diff)), money: true, good: 'up', period }
+        : { delta: prev === 0 ? 0 : diff, text: `${Math.round(Math.abs(diff / (prev || 1)) * 100)}%`, money: false, good: includeExpense ? 'down' : 'up', period };
+    }
+  }
+
+  // The side the share bar, daily average, largest and top category describe:
+  // spending whenever expenses are shown, else income.
+  const mainSide: 'in' | 'out' = includeExpense ? 'out' : 'in';
+  const mainRows = periodFiltered.filter((t) => (mainSide === 'out' ? t.amount < 0 : t.amount > 0));
+  const mainTotal = mainRows.reduce((s, t) => s + Math.abs(t.amount), 0);
+  const byCat = new Map<string, number>();
+  for (const t of mainRows) byCat.set(t.category, (byCat.get(t.category) ?? 0) + Math.abs(t.amount));
+  const ranked = [...byCat.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const shares: ShareSlice[] = ranked.slice(0, 6).map(([key, value]) => ({ key, value, share: mainTotal ? value / mainTotal : 0 }));
+  const restValue = ranked.slice(6).reduce((s, [, v]) => s + v, 0);
+  if (restValue > 0) shares.push({ key: '__other__', value: restValue, share: mainTotal ? restValue / mainTotal : 0 });
+  const isolated = selectedCategories.size === 1 ? Array.from(selectedCategories)[0] : null;
+  // Same setter as the Categories pills: one category, or back to all.
+  const isolateCategory = (cat: string) =>
+    setSelectedCategories(isolated === cat ? new Set(availableCats) : new Set([cat]));
+  const elapsedDays = bounds && today ? diffDays(bounds.startYmd, bounds.endYmd < today ? bounds.endYmd : today) + 1 : 0;
+  const dailyAverage = bounds && elapsedDays > 0 && mainTotal > 0 ? mainTotal / elapsedDays : null;
+  const largest = mainRows.reduce<Transaction | null>((best, t) => (!best || Math.abs(t.amount) > Math.abs(best.amount) ? t : best), null);
+
+  // Timeline chart over the bounds.
+  const timeline = bounds && periodFiltered.length > 0 ? buildReportBuckets(periodFiltered, bounds, today) : null;
+  const hasDaySections = categoryGroup === 'none' && sortField === 'date';
+  const pickMonth = timeline?.granularity === 'month';
+  const canPick = !!timeline && (pickMonth || hasDaySections);
+  const onPickBucket = (b: ReportBucket) => {
+    if (pickMonth) {
+      // Drill down: open that month, through the same setters as the selects.
+      setPeriodGroup('month');
+      setSubPeriod(MONTH_NAMES[Number(b.startYmd.slice(5, 7)) - 1]);
+      setSubYear(b.startYmd.slice(0, 4));
+      return;
+    }
+    const days = Array.from(document.querySelectorAll<HTMLElement>('[data-rep-day]'));
+    const hit = days.find((el) => (el.dataset.repDay ?? '') >= b.startYmd && (el.dataset.repDay ?? '') <= b.endYmd);
+    if (!hit) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    hit.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+    hit.classList.remove('pb-rep-pulse');
+    void hit.offsetWidth;
+    hit.classList.add('pb-rep-pulse');
+    window.setTimeout(() => hit.classList.remove('pb-rep-pulse'), 1900);
+  };
+  const timelineMode = mixed ? 'mixed' : includeExpense ? 'expense' : 'income';
+
+  // Category trends: 12 months ending with the report's end (or today).
+  const seriesEnd = bounds ? (today && bounds.endYmd > today ? today : bounds.endYmd) : today;
+  const series = categoryGroup === 'category' && seriesEnd ? categoryMonthlySeries(baseFiltered, seriesEnd, 12, amt) : null;
+
+  // Period stepper.
+  const stepTarget = (dir: 1 | -1) =>
+    periodGroup === 'custom'
+      ? null
+      : stepPeriod(periodGroup, effectiveSubPeriod, effectiveSubYear, yearOptions, today, dir);
+  const earliest = typeRows.reduce<string | null>((m, t) => (m === null || t.date < m ? t.date : m), null);
+  const customStep = (dir: 1 | -1) => (periodGroup === 'custom' ? shiftCustomRange(customRange, dir, today, earliest) : null);
+  const canStep = (dir: 1 | -1) => (periodGroup === 'custom' ? customStep(dir) !== null : stepTarget(dir) !== null);
+  const step = (dir: 1 | -1) => {
+    if (periodGroup === 'custom') {
+      const next = customStep(dir);
+      if (next) { setCustomStart(next.startYmd); setCustomEnd(next.endYmd); }
+      return;
+    }
+    const target = stepTarget(dir);
+    if (!target) return;
+    setSubPeriod(target.subPeriod);
+    setSubYear(target.subYear);
+  };
+  const steppable = periodGroup === 'month' || periodGroup === 'quarter' || periodGroup === 'year'
+    || (periodGroup === 'custom' && customStart !== '' && customEnd !== '' && !customRangeInverted);
+  const currentYearHasRows = !!currentYearStr && yearOptions.includes(currentYearStr);
+  const awayFromCurrent = !!today && (
+    (periodGroup === 'year' && currentPeriodValue !== null && effectiveSubPeriod !== currentPeriodValue)
+    || ((periodGroup === 'month' || periodGroup === 'quarter') && currentYearHasRows
+      && (effectiveSubPeriod !== currentPeriodValue || effectiveSubYear !== currentYearStr)));
+  const goCurrent = () => {
+    setSubPeriod('All');
+    if ((periodGroup === 'month' || periodGroup === 'quarter') && currentYearStr) setSubYear(currentYearStr);
+  };
+  const concreteYear = effectiveSubYear !== 'All' ? Number(effectiveSubYear) : null;
+  const stepLabel = (() => {
+    if (periodGroup === 'month' && concreteYear !== null && MONTH_NAMES.includes(effectiveSubPeriod)) {
+      const m = MONTH_NAMES.indexOf(effectiveSubPeriod);
+      // zh: '26年10月' - the four-digit '2026年10月' does not fit a 390px toolbar.
+      const short = locale === 'zh'
+        ? `${String(concreteYear).slice(-2)}年${m + 1}月`
+        : new Date(concreteYear, m, 1).toLocaleDateString(loc, { month: 'short', year: 'numeric' });
+      return { long: formatMonthYear(concreteYear, m, locale), short };
+    }
+    if (periodGroup === 'quarter' && concreteYear !== null && QUARTER_NAMES.includes(effectiveSubPeriod)) {
+      const q = tr(dict.reports.quarterOfYear, { quarter: dict.quarters[effectiveSubPeriod as 'Q1'], year: concreteYear });
+      return { long: q, short: q };
+    }
+    if (periodGroup === 'custom' && bounds) {
+      const sameYear = bounds.startYmd.slice(0, 4) === bounds.endYmd.slice(0, 4);
+      const o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) };
+      return { long: periodSummary, short: `${fmtYmd(bounds.startYmd, o)} – ${fmtYmd(bounds.endYmd, o)}` };
+    }
+    if (isRollingWindowKey(periodGroup)) return { long: periodSummary, short: dict.reports[periodGroup] };
+    return { long: periodSummary, short: periodSummary };
+  })();
+
+  // Remount key for the cross-fade: language-independent, so a language
+  // switch keeps every card (and ReportResults' local state) in place; a
+  // custom range stays one key, so typing a date does not remount it.
+  const periodKey = periodGroup === 'custom' ? 'custom'
+    : `${periodGroup}|${effectiveSubPeriod}|${effectiveSubYear}|${rollingWindow?.startYmd ?? ''}`;
+
+  // Active filters as removable chips. Each × resets only its own dimension;
+  // Clear resets them all but never the period, grouping or sort.
+  const clearAllFilters = () => {
+    applyTypes(new Set<ReportType>(['expense', 'income']));
+    clearAccounts();
+    setDescQuery('');
+    setSelectedTags(new Set());
+  };
+  const chips: ActiveFilterChip[] = [];
+  if (selectedTypes.size !== 2) {
+    chips.push({ key: 'types', label: typePart, onRemove: () => applyTypes(new Set<ReportType>(['expense', 'income'])) });
+  }
+  if (!allSelected && selectedTypes.size > 0) {
+    chips.push({
+      key: 'categories',
+      label: selectedCategories.size === 0 ? `${dict.reports.categoriesLabel} · ${dict.reports.noneSelected}`
+        : selectedCategories.size === 1 ? categoryLabel(dict, Array.from(selectedCategories)[0])
+        : tr(dict.reports.categoriesOther, { count: selectedCategories.size }),
+      onRemove: () => setSelectedCategories(new Set(availableCats)),
+    });
+  }
+  if (selectedAccounts.size > 0) {
+    const one = selectedAccounts.size === 1 ? accounts.find((a) => selectedAccounts.has(a.id)) : undefined;
+    chips.push({
+      key: 'accounts',
+      label: one ? (one.last4 ? `${one.name} ····${one.last4}` : one.name) : tr(dict.reports.accountsOther, { count: selectedAccounts.size }),
+      onRemove: clearAccounts,
+    });
+  }
+  if (showTagFilter && selectedTags.size > 0) {
+    chips.push({
+      key: 'tags',
+      label: selectedTags.size === 1 ? Array.from(selectedTags)[0] : tr(dict.reports.selectedCount, { count: selectedTags.size }),
+      onRemove: () => setSelectedTags(new Set()),
+    });
+  }
+  if (descQuery.trim()) chips.push({ key: 'find', label: `“${descQuery.trim()}”`, onRemove: () => setDescQuery('') });
+
+  const emptyInfo: ReportEmptyInfo = {
+    kind: selectedTypes.size === 0 ? 'none' : !periodOptions.hasRows ? 'period' : 'filtered',
+    period: periodSummary,
+    onShowBoth: () => applyTypes(new Set<ReportType>(['expense', 'income'])),
+    onClearFilters: chips.length > 0 && selectedTypes.size > 0 ? clearAllFilters : null,
+    onGoCurrent: awayFromCurrent ? goCurrent : null,
+    onAllTime: periodGroup !== 'all' && selectedTypes.size > 0 ? () => handlePeriodGroupChange('all') : null,
+  };
+
+  // Export: exactly the rows shown, in the order shown.
+  const shownRows = periodGroups.flatMap((pg) => (pg.subGroups ? pg.subGroups.flatMap((sg) => sg.items) : pg.items ?? []));
+  const exportCsv = () => {
+    const csv = buildReportCsv(shownRows, accounts, {
+      header: ux.csvHeader, expense: ux.csvExpense, income: ux.csvIncome,
+      category: (c) => categoryLabel(dict, c),
+    });
+    const slug = periodGroup === 'month' && bounds ? bounds.startYmd.slice(0, 7)
+      : periodGroup === 'year' && bounds ? bounds.startYmd.slice(0, 4)
+      : bounds ? `${bounds.startYmd}_${bounds.endYmd}` : periodGroup;
+    downloadCsv(csv, `pebble-report-${slug}.csv`);
+  };
+  const copySummary = async () => {
+    const lines = [filterSummary];
+    if (mixed) {
+      lines.push(tr(ux.summaryIn, { amount: formatCurrency(inSum) }), tr(ux.summaryOut, { amount: formatCurrency(outSum) }), tr(ux.summaryNet, { amount: formatCurrency(grandTotal) }));
+    } else {
+      lines.push(tr(ux.summaryTotal, { amount: formatCurrency(grandTotal) }));
+    }
+    lines.push(tr(ux.summaryCount, { count: periodFiltered.length }));
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Column-header sort: the active column flips direction, another starts
+  // descending. Same two states the Sort select writes.
+  const sortByColumn = (field: SortField) => {
+    if (sortField === field) setSortDir((dir) => (dir === 'desc' ? 'asc' : 'desc'));
+    else { setSortField(field); setSortDir('desc'); }
+  };
+
+  // Page shortcuts, with exactly AppShell's single-key guards (not while
+  // typing, composing, repeating, with a modifier, or under a dialog):
+  // [ ] step the period, f opens Find, e expands or collapses every group,
+  // j / k move between transaction rows (Enter opens one).
+  const onPageKey = useEffectEvent((e: KeyboardEvent) => {
+    const k = e.key;
+    if (!['[', ']', 'f', 'e', 'j', 'k'].includes(k)) return;
+    if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (document.querySelector('.pebble-root [role="dialog"]')) return;
+    const target = e.target as HTMLElement | null;
+    if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
+    if (k === '[' || k === ']') {
+      const dir = k === '[' ? -1 : 1;
+      if (!steppable || !canStep(dir)) return;
+      e.preventDefault();
+      step(dir);
+    } else if (k === 'f') {
+      e.preventDefault();
+      setFiltersExpanded(true);
+      setFindExpanded(true);
+      // After the panel and section have opened (they are inert while closed).
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        document.querySelector<HTMLInputElement>('.pb-rep-find-input')?.focus();
+      }));
+    } else if (k === 'e') {
+      if (categoryGroup !== 'category' || allGroupKeys.length === 0) return;
+      e.preventDefault();
+      handleToggleAllGroups();
+    } else {
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.pb-rep-results .pb-rep-row[role="button"]'))
+        .filter((el) => el.offsetParent !== null && !el.closest('[inert]'));
+      if (rows.length === 0) return;
+      e.preventDefault();
+      const i = rows.indexOf(document.activeElement as HTMLElement);
+      const next = rows[i === -1 ? 0 : Math.max(0, Math.min(rows.length - 1, i + (k === 'j' ? 1 : -1)))];
+      next.focus();
+      next.scrollIntoView({ block: 'nearest' });
+    }
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => onPageKey(e);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  // The toolbar's live height, for the sticky period and day headers under
+  // it. Written straight to the wrapper's style: no re-render per resize.
+  const ready = restored && today !== null;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = barRef.current;
+    const page = pageRef.current;
+    if (!bar || !page) return;
+    const set = () => page.style.setProperty('--pb-rep-bar-h', `${bar.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [ready]);
+
+  // First frame: the saved filters and the zone-aware date are not known yet.
+  // The report's outline instead of the whole unfiltered history (which used
+  // to paint and then snap to the real view).
+  if (!ready) return <ReportSkeleton />;
+
+  const heroKind = selectedTypes.size === 0 ? 'none' : mixed ? 'net' : includeExpense ? 'spent' : 'received';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <ReportFilters
-        expanded={filtersExpanded}
-        onToggleExpanded={() => setFiltersExpanded((v) => !v)}
-        filterSummary={filterSummary}
-        selectedTypes={selectedTypes}
-        onToggleType={toggleType}
-        onToggleAllTypes={toggleAllTypes}
-        typesExpanded={typesExpanded}
-        onToggleTypesExpanded={() => setTypesExpanded((v) => !v)}
+    <div className="pb-rep" ref={pageRef}>
+      <ReportToolbar
+        ref={barRef}
+        label={stepLabel.long}
+        shortLabel={stepLabel.short}
+        steppable={steppable}
+        canPrev={steppable && canStep(-1)}
+        canNext={steppable && canStep(1)}
+        onPrev={() => step(-1)}
+        onNext={() => step(1)}
+        showCurrent={awayFromCurrent}
+        onCurrent={goCurrent}
         periodGroup={periodGroup}
-        onPeriodGroupChange={handlePeriodGroupChange}
-        customStart={customStart}
-        customEnd={customEnd}
-        onCustomStartChange={setCustomStart}
-        onCustomEndChange={setCustomEnd}
-        customRangeInverted={customRangeInverted}
-        subPeriod={effectiveSubPeriod}
-        onSubPeriodChange={setSubPeriod}
-        subPeriodOptions={subPeriodOptions}
-        subPeriodLabel={subPeriodLabel}
-        subYear={effectiveSubYear}
-        onSubYearChange={setSubYear}
-        yearOptions={yearOptions}
-        showYearSelector={showYearSelector}
-        categoryGroup={categoryGroup}
-        onCategoryGroupChange={setCategoryGroup}
-        sortDir={sortDir}
-        onSortDirChange={setSortDir}
-        sortField={sortField}
-        onSortFieldChange={setSortField}
-        descQuery={descQuery}
-        onDescQueryChange={setDescQuery}
-        accounts={accounts}
-        periodAccounts={periodAccounts}
-        periodHasRows={periodOptions.hasRows}
-        selectedAccounts={selectedAccounts}
-        onToggleAccount={toggleAccount}
-        onClearAccounts={clearAccounts}
-        accountsExpanded={accountsExpanded}
-        onToggleAccountsExpanded={() => setAccountsExpanded((v) => !v)}
-        periodCategories={periodCategories}
-        selectedCategories={selectedCategories}
-        allSelected={allSelected}
-        onToggleCategory={toggleCategory}
-        onToggleAllCategories={() => setSelectedCategories(allSelected ? new Set() : new Set(availableCats))}
-        categoriesExpanded={categoriesExpanded}
-        onToggleCategoriesExpanded={() => setCategoriesExpanded((v) => !v)}
-        periodSummary={periodSummary}
-        periodExpanded={periodExpanded}
-        onTogglePeriodExpanded={() => setPeriodExpanded((v) => !v)}
-        groupSortExpanded={groupSortExpanded}
-        onToggleGroupSortExpanded={() => setGroupSortExpanded((v) => !v)}
-        findExpanded={findExpanded}
-        onToggleFindExpanded={() => setFindExpanded((v) => !v)}
-        showTagFilter={showTagFilter}
-        singleSelectedCategory={singleSelectedCategory}
-        availableTags={availableTags}
-        selectedTags={selectedTags}
-        onToggleTag={toggleTag}
-        onClearTags={() => setSelectedTags(new Set())}
+        onModeChange={handlePeriodGroupChange}
+        showExpand={categoryGroup === 'category' && allGroupKeys.length > 0}
+        anyExpanded={anyGroupsExpanded}
+        onToggleAll={handleToggleAllGroups}
+        onExport={exportCsv}
+        canExport={shownRows.length > 0}
+        onCopy={copySummary}
+        copyBlocked={privacyOn}
       />
 
-      <ReportResults
-        periodGroups={periodGroups}
-        periodFilteredCount={periodFiltered.length}
-        grandTotal={grandTotal}
-        accent={accent}
-        tinted={mixed}
-        categoryGroup={categoryGroup}
-        showPeriodHeaders={showPeriodHeaders}
-        expandedCategoryGroups={expandedCategoryGroups}
-        onToggleCategoryGroup={toggleCategoryGroupExpanded}
-        hasGroupKeys={allGroupKeys.length > 0}
-        anyGroupsExpanded={anyGroupsExpanded}
-        onToggleAllGroups={handleToggleAllGroups}
-        categoryMeta={categoryMeta}
-        onOpenDetail={setSelectedTransaction}
-      />
+      <ReportFilterChips chips={chips} onClearAll={clearAllFilters} summary={filterSummary} />
+
+      {/* The Filters card comes first in the DOM: on a phone (and on a Mac
+          while it is closed) it sits above the summary as it always did. Open
+          on a wide Mac, the grid moves it into a sticky inspector column on
+          the right, beside the report instead of pushing it down. */}
+      <div className={`pb-rep-grid${filtersExpanded ? ' has-inspector' : ''}`}>
+        <aside className="pb-rep-side-col">
+          <ReportFilters
+            expanded={filtersExpanded}
+            onToggleExpanded={() => setFiltersExpanded((v) => !v)}
+            filterSummary={filterSummary}
+            selectedTypes={selectedTypes}
+            onToggleType={toggleType}
+            onToggleAllTypes={toggleAllTypes}
+            typesExpanded={typesExpanded}
+            onToggleTypesExpanded={() => setTypesExpanded((v) => !v)}
+            periodGroup={periodGroup}
+            onPeriodGroupChange={handlePeriodGroupChange}
+            customStart={customStart}
+            customEnd={customEnd}
+            onCustomStartChange={setCustomStart}
+            onCustomEndChange={setCustomEnd}
+            customRangeInverted={customRangeInverted}
+            subPeriod={effectiveSubPeriod}
+            onSubPeriodChange={setSubPeriod}
+            subPeriodOptions={subPeriodOptions}
+            subPeriodLabel={subPeriodLabel}
+            subYear={effectiveSubYear}
+            onSubYearChange={setSubYear}
+            yearOptions={yearOptions}
+            showYearSelector={showYearSelector}
+            categoryGroup={categoryGroup}
+            onCategoryGroupChange={setCategoryGroup}
+            sortDir={sortDir}
+            onSortDirChange={setSortDir}
+            sortField={sortField}
+            onSortFieldChange={setSortField}
+            descQuery={descQuery}
+            onDescQueryChange={setDescQuery}
+            accounts={accounts}
+            periodAccounts={periodAccounts}
+            periodHasRows={periodOptions.hasRows}
+            selectedAccounts={selectedAccounts}
+            onToggleAccount={toggleAccount}
+            onClearAccounts={clearAccounts}
+            accountsExpanded={accountsExpanded}
+            onToggleAccountsExpanded={() => setAccountsExpanded((v) => !v)}
+            periodCategories={periodCategories}
+            selectedCategories={selectedCategories}
+            allSelected={allSelected}
+            onToggleCategory={toggleCategory}
+            onToggleAllCategories={() => setSelectedCategories(allSelected ? new Set() : new Set(availableCats))}
+            categoriesExpanded={categoriesExpanded}
+            onToggleCategoriesExpanded={() => setCategoriesExpanded((v) => !v)}
+            periodSummary={periodSummary}
+            periodExpanded={periodExpanded}
+            onTogglePeriodExpanded={() => setPeriodExpanded((v) => !v)}
+            groupSortExpanded={groupSortExpanded}
+            onToggleGroupSortExpanded={() => setGroupSortExpanded((v) => !v)}
+            findExpanded={findExpanded}
+            onToggleFindExpanded={() => setFindExpanded((v) => !v)}
+            showTagFilter={showTagFilter}
+            singleSelectedCategory={singleSelectedCategory}
+            availableTags={availableTags}
+            selectedTags={selectedTags}
+            onToggleTag={toggleTag}
+            onClearTags={() => setSelectedTags(new Set())}
+          />
+          <p className="pb-rep-keys" aria-hidden="true">{ux.shortcutsHint}</p>
+        </aside>
+
+        {/* Keyed on the period: a period change cross-fades the content
+            rather than swapping every card in one frame. */}
+        <div className="pb-rep-main pb-rep-swap" key={periodKey}>
+          {periodFiltered.length > 0 && (
+            <ReportSummary
+              eyebrow={periodSummary}
+              kind={heroKind}
+              total={grandTotal}
+              accent={accent}
+              count={periodFiltered.length}
+              inSum={inSum}
+              outSum={outSum}
+              mixed={mixed}
+              delta={delta}
+              shares={shares.length > 1 || isolated ? shares : []}
+              shareSide={mainSide}
+              isolated={isolated}
+              onIsolate={isolateCategory}
+              dailyAverage={dailyAverage}
+              largest={largest}
+              topCategory={ranked.length > 1 ? { key: ranked[0][0], value: ranked[0][1] } : null}
+              categoryMeta={categoryMeta}
+              onOpenDetail={setSelectedTransaction}
+              showChartToggle={!!timeline && timeline.buckets.length > 1}
+              chartHidden={chartHidden}
+              onToggleChart={() => setChartHidden((v) => !v)}
+              timeline={timeline && timeline.buckets.length > 1 ? (
+                <ReportTimeline
+                  key={`${periodKey}-${timelineMode}`}
+                  buckets={timeline.buckets}
+                  granularity={timeline.granularity}
+                  mode={timelineMode}
+                  canPick={canPick}
+                  onPick={onPickBucket}
+                  hint={canPick ? (pickMonth ? ux.drillMonth : ux.drillDay) : null}
+                  label={tr(ux.chartLabel, {
+                    type: typePart,
+                    granularity: timeline.granularity === 'day' ? ux.byDay : timeline.granularity === 'week' ? ux.byWeek : ux.byMonth,
+                    period: periodSummary,
+                  })}
+                />
+              ) : null}
+            />
+          )}
+
+          <ReportResults
+            periodGroups={periodGroups}
+            periodFilteredCount={periodFiltered.length}
+            tinted={mixed}
+            categoryGroup={categoryGroup}
+            showPeriodHeaders={showPeriodHeaders}
+            expandedCategoryGroups={expandedCategoryGroups}
+            onToggleCategoryGroup={toggleCategoryGroupExpanded}
+            categoryMeta={categoryMeta}
+            onOpenDetail={setSelectedTransaction}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={sortByColumn}
+            series={series}
+            empty={emptyInfo}
+          />
+        </div>
+      </div>
 
       {selectedTransaction && (
         <TransactionDetailModal

@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronRight, Search, X } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel, periodValueLabel } from '@/lib/i18n/enumLabels';
@@ -13,8 +13,8 @@ import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField } f
 // on the right. Each row opens to its controls below.
 
 // Same timing as .collapsible-rows, so the chevron and the slide finish
-// together. That class is shared with the report groups and a settings
-// dialog, so it is matched here rather than retimed there.
+// together. That class lives in globals.css (shared), so it is matched here
+// rather than retimed there; the report's category rows match it too.
 const chevronTransition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
 // Matches the compact selects on the dashboard charts.
@@ -44,16 +44,30 @@ const chipStyle: React.CSSProperties = {
   background: 'color-mix(in srgb, var(--ink) 8%, transparent)',
   fontSize: '0.78rem', fontWeight: 500, color: 'var(--ink-soft)',
 };
+// A section that is narrowing the report: a pine-tinted chip led by a pine
+// dot, so "this one is on" is not told by colour alone and the default "All"
+// chips stay quiet beside it.
+const activeChipStyle: React.CSSProperties = {
+  ...chipStyle,
+  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+  background: 'color-mix(in srgb, var(--pine) 13%, transparent)', color: 'var(--ink)', fontWeight: 600,
+};
+const activeDotStyle: React.CSSProperties = { width: 6, height: 6, borderRadius: '50%', background: 'var(--pine)', flexShrink: 0 };
+// The chip text truncates on its own element, so the AppShell tooltip still
+// finds the ellipsis when the chip has a dot.
+const chipTextStyle: React.CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 
 // One row of the grouped list. 4px of side padding on the button and the
 // content keeps titles aligned with the controls below them, and gives focus
 // rings room inside .collapsible-rows-inner's overflow: hidden.
-function FilterSection({ id, name, summary, open, onToggle, children }: {
+function FilterSection({ id, name, summary, open, onToggle, children, active = false }: {
   id: string;
   name: string;
   /** One chip per entry; empty strings are skipped. */
   summary: string | string[];
   open: boolean;
+  /** The section narrows the report (not at its default). */
+  active?: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
@@ -67,9 +81,16 @@ function FilterSection({ id, name, summary, open, onToggle, children }: {
         {/* Always shown, open or closed, so toggling never changes the text.
             Each value is a chip; a chip truncates, so a long one cannot wrap
             the row. */}
-        <span style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', overflow: 'hidden' }}>
+        <span className="pb-rep-fs-chips" style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', overflow: 'hidden' }}>
           {(Array.isArray(summary) ? summary : [summary]).filter(Boolean).map((chip, i) => (
-            <span key={i} style={chipStyle}>{chip}</span>
+            active ? (
+              <span key={i} style={activeChipStyle}>
+                <span style={activeDotStyle} aria-hidden="true" />
+                <span style={chipTextStyle}>{chip}</span>
+              </span>
+            ) : (
+              <span key={i} style={chipStyle}>{chip}</span>
+            )
           ))}
         </span>
         <ChevronRight
@@ -77,7 +98,9 @@ function FilterSection({ id, name, summary, open, onToggle, children }: {
           style={{ color: 'var(--ink-soft)', flexShrink: 0, transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: chevronTransition }}
         />
       </button>
-      <div id={id} className={`collapsible-rows ${open ? 'expanded' : ''}`}>
+      {/* inert while closed: the 0fr grid only hides it visually, and Tab
+          used to walk into invisible selects and pills. */}
+      <div id={id} className={`collapsible-rows ${open ? 'expanded' : ''}`} inert={!open}>
         <div className="collapsible-rows-inner">
           <div style={{ padding: '0.2rem 4px 1rem' }}>{children}</div>
         </div>
@@ -240,7 +263,7 @@ export function ReportFilters({
   const panelId = `${uid}-panel`;
 
   return (
-    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+    <div className="card pb-rep-filters" style={{ display: 'flex', flexDirection: 'column' }}>
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
@@ -259,7 +282,7 @@ export function ReportFilters({
         />
       </button>
 
-      <div id={panelId} className={`collapsible-rows ${expanded ? 'expanded' : ''}`}>
+      <div id={panelId} className={`collapsible-rows ${expanded ? 'expanded' : ''}`} inert={!expanded}>
         <div className="collapsible-rows-inner">
           {/* 4px of side and bottom padding so focus rings are not clipped by
               .collapsible-rows-inner's overflow: hidden (a 2px outline at a 2px
@@ -271,12 +294,12 @@ export function ReportFilters({
                 literals; only the text is translated. */}
             <FilterSection
               id={`${uid}-types`} name={dict.reports.transactionType} summary={typesSummary}
-              open={typesExpanded} onToggle={onToggleTypesExpanded}
+              open={typesExpanded} onToggle={onToggleTypesExpanded} active={selectedTypes.size !== 2}
             >
               <div style={pillRowStyle}>
-                <button onClick={onToggleAllTypes} className={`pill ${selectedTypes.size === 2 ? 'active' : ''}`}>{dict.reports.all}</button>
+                <button onClick={onToggleAllTypes} aria-pressed={selectedTypes.size === 2} className={`pill ${selectedTypes.size === 2 ? 'active' : ''}`}>{dict.reports.all}</button>
                 {(['expense', 'income'] as const).map((k) => (
-                  <button key={k} onClick={() => onToggleType(k)} className={`pill ${selectedTypes.has(k) ? 'active' : ''}`}>
+                  <button key={k} onClick={() => onToggleType(k)} aria-pressed={selectedTypes.has(k)} className={`pill ${selectedTypes.has(k) ? 'active' : ''}`}>
                     {k === 'expense' ? dict.reports.expenses : dict.reports.income}
                   </button>
                 ))}
@@ -411,15 +434,29 @@ export function ReportFilters({
 
             <FilterSection
               id={`${uid}-find`} name={dict.reports.find} summary={findSummary}
-              open={findExpanded} onToggle={onToggleFindExpanded}
+              open={findExpanded} onToggle={onToggleFindExpanded} active={findQuery !== ''}
             >
               <div style={{ position: 'relative' }}>
                 <Search size={15} aria-hidden="true" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)' }} />
+                {/* pb-rep-find-input: the page's 'f' shortcut focuses it. */}
                 <input
                   value={descQuery} onChange={(e) => onDescQueryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && descQuery !== '' && !e.nativeEvent.isComposing) { e.preventDefault(); onDescQueryChange(''); }
+                  }}
+                  className="pb-rep-find-input"
                   placeholder={dict.reports.descriptionPlaceholder} aria-label={dict.reports.find}
-                  style={{ width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.1rem', borderRadius: '0.7rem', border: '1px solid var(--line)', fontSize: '0.83rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.55rem 2.6rem 0.55rem 2.1rem', borderRadius: '0.7rem', border: '1px solid var(--line)', fontSize: '0.83rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' }}
                 />
+                {/* Clears the text only, like the Transactions search. */}
+                {descQuery !== '' && (
+                  <button
+                    type="button" className="icon-btn pb-rep-find-clear" aria-label={dict.txnSearch.clear} title={dict.txnSearch.clear}
+                    onClick={(e) => { onDescQueryChange(''); (e.currentTarget.previousElementSibling as HTMLElement | null)?.focus(); }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             </FilterSection>
 
@@ -429,15 +466,15 @@ export function ReportFilters({
             {showAccounts && (
               <FilterSection
                 id={`${uid}-accounts`} name={dict.reports.onlyAccounts} summary={accountsSummary}
-                open={accountsExpanded} onToggle={onToggleAccountsExpanded}
+                open={accountsExpanded} onToggle={onToggleAccountsExpanded} active={accountsActive}
               >
                 {accountsEmpty ? (
                   <p style={emptyLineStyle}>{dict.reports.noRecordsInPeriod}</p>
                 ) : (
                   <div style={pillRowStyle}>
-                    <button onClick={onClearAccounts} className={`pill ${selectedAccounts.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
+                    <button onClick={onClearAccounts} aria-pressed={selectedAccounts.size === 0} className={`pill ${selectedAccounts.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
                     {periodAccounts.map((a) => (
-                      <button key={a.id} onClick={() => onToggleAccount(a.id)} className={`pill ${selectedAccounts.has(a.id) ? 'active' : ''}`}>
+                      <button key={a.id} onClick={() => onToggleAccount(a.id)} aria-pressed={selectedAccounts.has(a.id)} className={`pill ${selectedAccounts.has(a.id) ? 'active' : ''}`}>
                         {a.name}
                       </button>
                     ))}
@@ -449,19 +486,19 @@ export function ReportFilters({
             {showCategories && (
               <FilterSection
                 id={`${uid}-categories`} name={dict.reports.categoriesLabel} summary={categoriesSummary}
-                open={categoriesExpanded} onToggle={onToggleCategoriesExpanded}
+                open={categoriesExpanded} onToggle={onToggleCategoriesExpanded} active={categoriesActive}
               >
                 {categoriesEmpty ? (
                   <p style={emptyLineStyle}>{dict.reports.noRecordsInPeriod}</p>
                 ) : (
                   <div style={pillRowStyle}>
-                    <button onClick={onToggleAllCategories} className={`pill ${allSelected ? 'active' : ''}`}>{dict.reports.all}</button>
+                    <button onClick={onToggleAllCategories} aria-pressed={allSelected} className={`pill ${allSelected ? 'active' : ''}`}>{dict.reports.all}</button>
                     {/* c is the stored category name - the React key, the toggle
                         argument and the filter all use it untranslated. Only the
                         two income literals get a label; user categories pass
                         through categoryLabel unchanged. */}
                     {periodCategories.map((c) => (
-                      <button key={c} onClick={() => onToggleCategory(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{categoryLabel(dict, c)}</button>
+                      <button key={c} onClick={() => onToggleCategory(c)} aria-pressed={selectedCategories.has(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{categoryLabel(dict, c)}</button>
                     ))}
                   </div>
                 )}
@@ -473,12 +510,12 @@ export function ReportFilters({
                 id={`${uid}-tags`}
                 name={tr(dict.reports.subCategoryOf, { category: categoryLabel(dict, singleSelectedCategory ?? '') })}
                 summary={tagsSummary}
-                open={tagsExpanded} onToggle={() => setTagsExpanded((v) => !v)}
+                open={tagsExpanded} onToggle={() => setTagsExpanded((v) => !v)} active={selectedTags.size > 0}
               >
                 <div style={pillRowStyle}>
-                  <button onClick={onClearTags} className={`pill ${selectedTags.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
+                  <button onClick={onClearTags} aria-pressed={selectedTags.size === 0} className={`pill ${selectedTags.size === 0 ? 'active' : ''}`}>{dict.reports.all}</button>
                   {availableTags.map((tag) => (
-                    <button key={tag} onClick={() => onToggleTag(tag)} className={`pill ${selectedTags.has(tag) ? 'active' : ''}`}>{tag}</button>
+                    <button key={tag} onClick={() => onToggleTag(tag)} aria-pressed={selectedTags.has(tag)} className={`pill ${selectedTags.has(tag) ? 'active' : ''}`}>{tag}</button>
                   ))}
                 </div>
               </FilterSection>

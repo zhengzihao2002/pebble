@@ -24,9 +24,18 @@ interface TransactionRowProps {
   flush?: boolean;
   /** With onOpenDetail: also reachable by keyboard (role=button, Tab, Enter/Space). */
   focusable?: boolean;
+  // OPTIONAL, for Reports; every other caller omits them and gets exactly the
+  // row above.
+  /** With focusable: keep row taps silent (role=button would otherwise make
+      AppShell play the click sound, which plain rows never did). */
+  silent?: boolean;
+  /** Shown before the category tile (Reports' rank number). */
+  lead?: React.ReactNode;
+  /** Extra class names on the row. */
+  className?: string;
 }
 
-export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideDate, flush, focusable }: TransactionRowProps) {
+export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideDate, flush, focusable, silent, lead, className }: TransactionRowProps) {
   const { d, t, locale } = useTranslation();
   const meta = categoryMeta[txn.category];
   const Icon = meta ? meta.icon : Banknote;
@@ -46,16 +55,17 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
   const interactiveProps = onOpenDetail
     ? {
         onClick: () => { if (!hasTextSelection()) onOpenDetail(txn); },
-        className: 'txn-row-interactive',
+        className: className ? `txn-row-interactive ${className}` : 'txn-row-interactive',
         ...(focusable ? {
           role: 'button' as const,
           tabIndex: 0,
           onKeyDown: (e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDetail(txn); }
           },
+          ...(silent ? { 'data-no-click-sound': '' } : {}),
         } : {}),
       }
-    : {};
+    : className ? { className } : {};
 
   return (
     <div
@@ -67,6 +77,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         cursor: onOpenDetail ? 'pointer' : 'default',
       }}
     >
+      {lead}
       <div style={{
         width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',

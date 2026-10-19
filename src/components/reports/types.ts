@@ -54,6 +54,9 @@ export interface ReportFilterPrefs {
   // both rather than trusting localStorage.
   customStart?: string;
   customEnd?: string;
+  // The summary's timeline chart, hidden by the person. Optional: older prefs
+  // have no such field, and restore reads only === true.
+  chartHidden?: boolean;
 }
 
 export interface ReportCategorySubGroup {
