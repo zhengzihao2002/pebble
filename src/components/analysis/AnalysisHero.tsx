@@ -36,8 +36,10 @@ function lastVsAvg(months: MonthlyFlow[], pick: (m: MonthlyFlow) => number, avg:
  * dollars because it is an estimate; the exact figures sit beside it.
  *
  * Gradient and its dark-mode fade come from the shared .pb-hero (one formula
- * driven by --pb-hero-dark, so the switch fades). Ring and sparklines are
- * inside pb-chart-fade (kit), so privacy mode blurs them too.
+ * driven by --pb-hero-dark, so the switch fades). The ring shows a share,
+ * not an amount, so it stays readable in privacy mode (like the rate in the
+ * sentence beside it); the sparklines are inside pb-chart-fade (kit), so
+ * privacy mode blurs them.
  */
 export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
   const { d, t } = useTranslation();
@@ -80,7 +82,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
         </div>
 
         <div className="pb-ana-hero-rate">
-          <div className="pb-chart-fade pb-ana-hero-ring">
+          <div className="pb-ana-hero-ring">
             <ProgressRing value={rate !== null && rate > 0 ? rate : 0} size={124} stroke={10} color="var(--pb-hero-fg)">
               <span className="pb-ana-hero-ring-pct pb-tnum">{rate === null ? '—' : pct(rate)}</span>
             </ProgressRing>

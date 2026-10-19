@@ -31,6 +31,9 @@ interface PeriodBarProps {
  * (short labels; the full name is each option's aria-label) and, on a narrow
  * bar or at very large text, the original native select - which keeps the
  * id "analysis-window" and its <label htmlFor>. CSS shows one at a time.
+ * The visible "Period" text is a plain span beside the segments (it shows
+ * only when they do); the segments' radiogroup is named by its aria-label
+ * (period + current choice), and the select by its own label.
  *
  * The bar publishes its own height as --pb-ana-bar-h, so section headings
  * scroll to just below it rather than under it.
@@ -61,18 +64,19 @@ export function PeriodBar({ windowKey, onChange, analysisWindow, rail, active, o
     rl.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
   }, [active]);
 
-  const options = ANALYSIS_WINDOW_KEYS.map((k) => ({ value: k, label: x.windowShort[k] }));
+  const options = ANALYSIS_WINDOW_KEYS.map((k) => ({ value: k, label: x.windowShort[k], ariaLabel: d.analysis.windowLabels[k] }));
   const count = analysisWindow?.calendarMonths ?? 0;
 
   return (
     <div ref={ref} id={PERIOD_BAR_ID} className="pb-ana-bar">
       <div className="pb-ana-bar-period">
-        <label className="filter-label pb-ana-bar-label" htmlFor="analysis-window" id="analysis-window-label">
+        <span className="filter-label pb-ana-bar-label" id="analysis-window-label" aria-hidden="true">
           <PeriodDot />
           {d.analysis.period.label}
-        </label>
-        {/* Wide bar: short labels. Each option's full name ("Last 12 complete
-            months") is read out through the group's title line beside it. */}
+        </span>
+        {/* Wide bar: short labels. The group's aria-label names the period
+            and the current choice in full ("Period: Last 12 complete
+            months"); each option's aria-label is its full name. */}
         <div className="pb-ana-seg-wrap">
           <SegmentedControl<AnalysisWindowKey>
             options={options} value={windowKey} onChange={onChange}
@@ -82,6 +86,7 @@ export function PeriodBar({ windowKey, onChange, analysisWindow, rail, active, o
         </div>
         {/* Narrow bar or huge text: the original select, same id and label. */}
         <span className="pb-ana-select">
+          <label className="pb-ana-vh" htmlFor="analysis-window">{d.analysis.period.label}</label>
           <select id="analysis-window" value={windowKey} onChange={(e) => onChange(e.target.value as AnalysisWindowKey)}>
             {/* value is the stored AnalysisWindowKey; only the text is translated. */}
             {ANALYSIS_WINDOW_KEYS.map((k) => (

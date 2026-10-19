@@ -37,8 +37,8 @@ export function StabilityMeter({ cv, band }: { cv: number; band: StabilityBand |
 
 /**
  * Gross pay split into take-home (pine) and withheld (gold), with both
- * shares in words beside the bar. Shares, not amounts - but wrapped in
- * pb-chart-fill with every other visual so privacy mode treats it alike.
+ * shares in words beside the bar. Shares, not amounts, so - like the
+ * legend - it stays readable in privacy mode.
  */
 export function PaycheckSplit({ rate }: { rate: number }) {
   const { d, t } = useTranslation();
@@ -47,7 +47,7 @@ export function PaycheckSplit({ rate }: { rate: number }) {
   const net = 100 - withheld;
   return (
     <div className="pb-ana-paysplit">
-      <span className="pb-ana-split pb-chart-fill" role="img" aria-label={t(x.splitLabel, { net: net.toFixed(0), withheld: withheld.toFixed(0) })}>
+      <span className="pb-ana-split" role="img" aria-label={t(x.splitLabel, { net: net.toFixed(0), withheld: withheld.toFixed(0) })}>
         <span className="is-in" style={{ flexGrow: net }} />
         <span className="is-gold" style={{ flexGrow: withheld }} />
       </span>

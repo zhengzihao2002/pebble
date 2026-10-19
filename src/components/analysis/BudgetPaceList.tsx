@@ -33,6 +33,9 @@ export function BudgetPaceList({ variance, pace, categoryMeta }: {
   ];
   for (const v of variance) groups.find((g) => g.status === statusOf(v))!.rows.push(v);
   const marker = t(x.paceMarker, { pct: pct(pace) });
+  // Every marker says the same thing (the year's pace), so only the first
+  // one is a tab stop; the rest keep their hover tip and label.
+  const firstCategory = groups.find((g) => g.rows.length > 0)?.rows[0]?.category;
 
   return (
     <div className="pb-ana-pace">
@@ -44,7 +47,8 @@ export function BudgetPaceList({ variance, pace, categoryMeta }: {
             <span className="pb-tnum pb-ana-pace-count">{g.rows.length}</span>
           </p>
           <ul className="pb-ana-pace-rows">
-            {/* v.category is USER DATA and renders exactly as stored. */}
+            {/* v.category is USER DATA: shown as stored, except that the built-in
+                income category names are translated for display. */}
             {g.rows.map((v) => {
               const meta = categoryMeta[v.category];
               const Icon = meta?.icon ?? Tag;
@@ -70,7 +74,7 @@ export function BudgetPaceList({ variance, pace, categoryMeta }: {
                         style={{ display: 'block', width: `${Math.min(v.usedShare * 100, 100)}%`, backgroundColor: v.overBudget ? 'var(--wine)' : color }}
                       />
                     </span>
-                    <span className="pb-row-marker" style={{ left: `${pace * 100}%` }} tabIndex={0} role="img" aria-label={marker} data-tip={marker} />
+                    <span className="pb-row-marker" style={{ left: `${pace * 100}%` }} tabIndex={v.category === firstCategory ? 0 : -1} role="img" aria-label={marker} data-tip={marker} />
                   </span>
                 </li>
               );

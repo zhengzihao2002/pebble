@@ -9,6 +9,8 @@ export interface SegmentOption<T extends string> {
   /** The label shown - translated by the caller. */
   label: string;
   icon?: LucideIcon;
+  /** Optional fuller name read aloud instead of a short visible label. */
+  ariaLabel?: string;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -92,7 +94,7 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={o.value} type="button" role="radio" data-index={i}
-            aria-checked={checked} tabIndex={checked ? 0 : -1}
+            aria-checked={checked} tabIndex={checked ? 0 : -1} aria-label={o.ariaLabel}
             onClick={() => onChange(o.value)}
             className="pb-seg-btn"
           >

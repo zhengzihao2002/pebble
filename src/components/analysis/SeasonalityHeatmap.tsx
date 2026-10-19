@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { formatCurrency } from '@/lib/format';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
@@ -102,6 +102,16 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
     locale === 'zh' ? String(m + 1) : new Date(2000, m, 1).toLocaleDateString(INTL_LOCALE[locale], { month: 'narrow' })
   ));
 
+  // Prev / next through the months that can be shown: the touch path, since
+  // a square is far smaller than a finger at phone width. Shown only on a
+  // coarse pointer (see analysis.css); the arrow keys do the same on the grid.
+  const steppable = flat.filter((c) => c.state === 'data' || c.state === 'empty' || c.state === 'progress');
+  const at = shown ? steppable.findIndex((c) => c.key === shown.key) : -1;
+  const step = (by: number) => {
+    const next = steppable[at + by];
+    if (next) setFocusKey(next.key);
+  };
+
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -12, ArrowDown: 12 };
     if (!(e.key in moves) || !tabKey) return;
@@ -163,6 +173,7 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
           ))}
         </div>
 
+        <div className="pb-ana-heat-detail-row">
         <div className="pb-ana-heat-detail" aria-hidden="true">
           {shown ? (
             <>
@@ -178,6 +189,15 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
               )}
             </>
           ) : <span>{x.heatHint}</span>}
+        </div>
+          <div className="pb-ana-heat-step">
+            <button type="button" className="pb-ana-heat-step-btn" aria-label={x.heatPrev} disabled={at <= 0} onClick={() => step(-1)}>
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button type="button" className="pb-ana-heat-step-btn" aria-label={x.heatNext} disabled={at < 0 || at >= steppable.length - 1} onClick={() => step(1)}>
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <div className="pb-ana-heat-legend" aria-hidden="true">

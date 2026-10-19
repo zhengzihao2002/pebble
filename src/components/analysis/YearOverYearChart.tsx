@@ -59,8 +59,8 @@ export function YearOverYearChart({ data }: { data: YearStats[] }) {
           <Tooltip cursor={{ fill: CURSOR }} formatter={(v) => formatCurrency(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="top" align="right" height={28} iconType="circle" iconSize={8}
             formatter={(value) => <span style={{ color: 'var(--ink)' }}>{value}</span>} />
-          <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
-          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+          <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

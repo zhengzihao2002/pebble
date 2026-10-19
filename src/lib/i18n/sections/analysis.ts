@@ -9,7 +9,6 @@
  */
 export const analysisEn = {
   // Period bar
-  periodControl: 'Analysis period',
   windowShort: {
     '3m': '3M',
     '6m': '6M',
@@ -26,9 +25,7 @@ export const analysisEn = {
   followsPeriod: 'Follows the period: {range}',
   periodLinkAria: '{label} - set by the analysis period. Go to it',
   allHistory: 'All history',
-  thisYear: 'This calendar year',
   next3Months: 'Next 3 months',
-  standing: 'Standing figure',
   estimate: 'Estimate',
 
   // At a glance
@@ -71,7 +68,6 @@ export const analysisEn = {
   paycheckTooltip: 'Paycheck shows each month’s gross pay split into take-home and withheld.',
   avgLine: 'avg {amount}',
   vsAverage: '{pct} vs average',
-  highest: 'Highest month',
   takeHome: 'Take-home',
   withheld: 'Withheld',
   gross: 'Gross',
@@ -88,7 +84,7 @@ export const analysisEn = {
 
   // Seasonality heatmap
   heatTitle: 'Every month, every year',
-  heatTooltipLabel: 'How the every month, every year grid works',
+  heatTooltipLabel: 'How to read this grid',
   heatTooltip: 'Each square is one month of your history. In Net, green months kept money and wine months drew it down; the stronger the colour, the bigger the amount. In Spending, the stronger the colour, the more you spent. The month in progress is outlined and never coloured, because it is not finished.',
   heatNet: 'Net',
   heatSpending: 'Spending',
@@ -105,6 +101,8 @@ export const analysisEn = {
   cellEmpty: '{month}: no activity',
   cellFuture: '{month}: not yet',
   heatHint: 'Point at or tap a month for its figures.',
+  heatPrev: 'Previous month',
+  heatNext: 'Next month',
   heatGrid: 'Monthly net by year',
   heatGridSpend: 'Monthly spending by year',
 
@@ -121,7 +119,6 @@ export const analysisEn = {
   aheadOfPace: 'Ahead of pace',
   onPace: 'On pace',
   paceMarker: 'You are {pct} through the year',
-  paceRowAria: '{category}: {status}',
 
   // Coming up
   showMore: 'Show {count} more',
@@ -130,16 +127,12 @@ export const analysisEn = {
   monthTotals: '{label} totals',
 
   // Income
-  variation: 'Variation',
-  ofGross: 'of gross',
   stabilityMeter: 'Income variation {pct}%, on a scale from very steady to highly variable',
   splitLabel: 'Take-home {net}% and withheld {withheld}% of gross pay',
 
   // Cushion and commitments
   cushion: 'Cushion',
   cushionSub: 'How long your balance lasts',
-  overflow: '24+ months',
-  monthsScale: 'Months, on one scale from 0 to 24',
   fixedShare: 'Fixed costs are about {pct} of your average monthly spend (a standing figure against the period’s average).',
   commitSplit: 'Committed out compared with committed in',
 
@@ -157,7 +150,6 @@ export const analysisEn = {
 };
 
 export const analysisZh: typeof analysisEn = {
-  periodControl: '分析时间段',
   windowShort: {
     '3m': '3个月',
     '6m': '6个月',
@@ -173,9 +165,7 @@ export const analysisZh: typeof analysisEn = {
   followsPeriod: '随时间段变化：{range}',
   periodLinkAria: '{label}，由分析时间段决定。前往设置',
   allHistory: '全部历史',
-  thisYear: '本日历年',
   next3Months: '未来三个月',
-  standing: '固定数值',
   estimate: '估算',
 
   atAGlance: '一览',
@@ -215,7 +205,6 @@ export const analysisZh: typeof analysisEn = {
   paycheckTooltip: '“工资”视图把每月税前工资拆分为到手部分和预扣部分。',
   avgLine: '平均 {amount}',
   vsAverage: '较平均 {pct}',
-  highest: '最高月份',
   takeHome: '到手',
   withheld: '预扣',
   gross: '税前',
@@ -226,11 +215,11 @@ export const analysisZh: typeof analysisEn = {
   noPay: '本月无工资',
 
   year: '年份',
-  saved: '储蓄',
+  saved: '结余',
   soFar: '截至目前',
 
   heatTitle: '历年每月',
-  heatTooltipLabel: '“历年每月”如何解读',
+  heatTooltipLabel: '如何解读这张图',
   heatTooltip: '每格代表你历史中的一个月。在“净额”下，绿色表示当月有结余，酒红色表示动用了存款；颜色越深，金额越大。在“支出”下，颜色越深表示花得越多。进行中的月份只画轮廓、不着色，因为它还没结束。',
   heatNet: '净额',
   heatSpending: '支出',
@@ -247,12 +236,14 @@ export const analysisZh: typeof analysisEn = {
   cellEmpty: '{month}：无记录',
   cellFuture: '{month}：尚未到来',
   heatHint: '指向或轻点某个月份查看数字。',
+  heatPrev: '上个月',
+  heatNext: '下个月',
   heatGrid: '按年份排列的每月净额',
   heatGridSpend: '按年份排列的每月支出',
 
   today: '今天',
   flat: '平均估算',
-  seasonal: '季节调整',
+  seasonal: '季节性调整',
   seasonalGap: '季节性差额',
   pathLabel: '今天的余额与两种年末估算，画在同一刻度上',
   yearDone: '今年已过去 {pct}',
@@ -261,22 +252,17 @@ export const analysisZh: typeof analysisEn = {
   aheadOfPace: '快于进度',
   onPace: '进度正常',
   paceMarker: '今年已过去 {pct}',
-  paceRowAria: '{category}：{status}',
 
   showMore: '再显示 {count} 项',
   showLess: '收起',
   inOutSplit: '应收与应付对比',
   monthTotals: '{label}合计',
 
-  variation: '波动',
-  ofGross: '占税前',
   stabilityMeter: '收入波动 {pct}%，刻度从非常稳定到波动很大',
   splitLabel: '到手占税前 {net}%，预扣占 {withheld}%',
 
   cushion: '缓冲',
   cushionSub: '你的余额能撑多久',
-  overflow: '24个月以上',
-  monthsScale: '月数，统一刻度 0 至 24',
   fixedShare: '固定支出约占你月均支出的 {pct}（固定数值与本时间段平均值的对比）。',
   commitSplit: '固定支出与固定收入对比',
 

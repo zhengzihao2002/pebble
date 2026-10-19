@@ -42,7 +42,8 @@ export function TopCategories({ categories, categoryMeta }: { categories: Catego
         </span>
         <span className="pb-ana-cat-main">
           <span className="pb-ana-cat-line">
-            {/* c.category is USER DATA and renders exactly as stored. */}
+            {/* c.category is USER DATA: shown as stored, except that the built-in
+                income category names are translated for display. */}
             <span className="pb-ana-cat-name" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{categoryLabel(d, c.category)}</span>
             <span className="pb-ana-cat-figs">
               <span className="font-mono-tab">{formatCurrency(c.total)}</span>

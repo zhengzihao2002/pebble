@@ -47,10 +47,13 @@ export function UpcomingTimeline({ months, categoryMeta }: { months: UpcomingMon
         </span>
         {/* it.description is USER DATA and renders as stored (title + note). */}
         <span className="pb-ana-up-text">
+          {/* No stored title: the category once, as the title, no note line. */}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title || categoryLabel(d, it.category)}</span>
-          <span className="pb-ana-up-note" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {description || categoryLabel(d, it.category)}
-          </span>
+          {title && (description || it.category) && (
+            <span className="pb-ana-up-note" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {description || categoryLabel(d, it.category)}
+            </span>
+          )}
         </span>
         <span className="font-mono-tab pb-ana-up-amt" style={{ color: income ? 'var(--pine)' : 'var(--ink)' }}>
           {income ? '+' : '−'}{formatCurrency(Math.abs(it.amount))}

@@ -70,7 +70,8 @@ export function DeductionChart({ data, view = 'rate' }: { data: MonthlyDeduction
   return (
     <div className="pb-chart-fade pb-ana-chart">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 18, bottom: 0, left: 0 }}>
+        {/* right: 30 leaves room for the centred last tick ('Sep 2026'). */}
+        <LineChart data={data} margin={{ top: 8, right: 30, bottom: 0, left: 0 }}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
