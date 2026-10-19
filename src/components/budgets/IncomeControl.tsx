@@ -1,6 +1,8 @@
 'use client';
 
+import { Download } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -11,11 +13,6 @@ import type { IncomeEstimateMode, ManualIncomeFrequency } from '@/store/usePebbl
 export const MANUAL_FREQUENCIES: ManualIncomeFrequency[] = ['weekly', 'biweekly', 'semimonthly', 'monthly', 'yearly'];
 export const MANUAL_FREQUENCY_MULTIPLIER: Record<ManualIncomeFrequency, number> = {
   weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, yearly: 1,
-};
-
-const smallField: React.CSSProperties = {
-  fontSize: '0.8rem', padding: '0.35rem 0.5rem', borderRadius: '0.5rem', border: '1px solid var(--line)',
-  color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box',
 };
 
 interface IncomeControlProps {
@@ -35,75 +32,86 @@ interface IncomeControlProps {
  * Expected annual income for the plan card - what the Modify budget dialog
  * offered, on the page itself. 'system' is the trailing-12-month estimate;
  * 'manual' annualizes one paycheck. Neither is ever written to Postgres.
+ *
+ * The mode is a two-way switch (kit SegmentedControl) rather than a form
+ * select: it writes the same saved preference. The manual fields open under
+ * it; the frequency stays a native select (five long labels, and the iOS
+ * wheel suits it).
  */
 export function IncomeControl({
   mode, onModeChange, frequency, onFrequencyChange, manualAmount, onManualAmountChange,
   effectiveAnnual, latestStandardIncomeNet,
 }: IncomeControlProps) {
   const { d, t } = useTranslation();
+  const ux = d.ux.budgets;
   const manual = mode === 'manual';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center' }}>
-          {d.budgetModal.estimatedIncome}
-          <InfoTooltip label={d.budgetModal.tooltipLabel}>
-            {manual ? d.budgetModal.manualTooltip : (
-              <>
-                <strong>{d.budgetModal.tooltipHeadline}</strong>
-                {' '}{d.budgetModal.tooltipBody}
-                {' '}<strong>{t(d.budgetModal.tooltipCounts, { range: d.budgetModal.tooltipRangeFallback })}</strong>
-                {' '}<strong>{d.budgetModal.tooltipFixed}</strong> {d.budgetModal.tooltipFixedRest}
-              </>
-            )}
-          </InfoTooltip>
-        </span>
-        <span className="font-mono-tab" style={{ fontSize: '1rem', fontWeight: 600 }}>
-          {effectiveAnnual !== null ? formatCurrency(effectiveAnnual) : '—'}
-        </span>
-        <select
+    <div className="pb-bud-income">
+      <div className="pb-bud-income-head">
+        <div className="pb-bud-income-fig">
+          <span className="pb-bud-income-label">
+            {d.budgetModal.estimatedIncome}
+            <InfoTooltip label={d.budgetModal.tooltipLabel}>
+              {manual ? d.budgetModal.manualTooltip : (
+                <>
+                  <strong>{d.budgetModal.tooltipHeadline}</strong>
+                  {' '}{d.budgetModal.tooltipBody}
+                  {' '}<strong>{t(d.budgetModal.tooltipCounts, { range: d.budgetModal.tooltipRangeFallback })}</strong>
+                  {' '}<strong>{d.budgetModal.tooltipFixed}</strong> {d.budgetModal.tooltipFixedRest}
+                </>
+              )}
+            </InfoTooltip>
+          </span>
+          <span className="font-mono-tab pb-bud-income-value">
+            {effectiveAnnual !== null ? formatCurrency(effectiveAnnual) : '—'}
+          </span>
+        </div>
+        <SegmentedControl<IncomeEstimateMode>
+          size="sm"
+          ariaLabel={d.budgetModal.estimatedIncome}
           value={manual ? 'manual' : 'system'}
-          onChange={(e) => onModeChange(e.target.value as IncomeEstimateMode)}
-          aria-label={d.budgetModal.estimatedIncome}
-          style={{ ...smallField, marginLeft: 'auto' }}
-        >
-          <option value="system">{d.budgetModal.estimateModeSystem}</option>
-          <option value="manual">{d.budgetModal.estimateModeManual}</option>
-        </select>
+          onChange={onModeChange}
+          options={[
+            { value: 'system', label: ux.modeSystem },
+            { value: 'manual', label: ux.modeManual },
+          ]}
+          className="pb-bud-income-mode"
+        />
       </div>
 
       {manual && (
-        <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.72rem', color: 'var(--ink-soft)', flex: '1 1 120px', minWidth: 0 }}>
+        <div className="pb-bud-income-manual goal-step">
+          <label className="pb-bud-field pb-bud-field-amount">
             {d.budgetModal.manualAmountLabel}
-            <span style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', fontSize: '0.8rem' }}>$</span>
+            <span className="pb-bud-field-money">
+              <span aria-hidden="true">$</span>
               <AmountInput
                 value={manualAmount} onValueChange={onManualAmountChange} placeholder="0.00"
-                className="font-mono-tab" style={{ ...smallField, width: '100%', paddingLeft: '1.2rem' }}
+                className="font-mono-tab pb-bud-input"
               />
             </span>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.72rem', color: 'var(--ink-soft)', flex: '1 1 130px', minWidth: 0 }}>
+          <label className="pb-bud-field">
             {d.budgetModal.manualFrequencyLabel}
-            <select value={frequency} onChange={(e) => onFrequencyChange(e.target.value as ManualIncomeFrequency)} style={{ ...smallField, width: '100%' }}>
+            <select className="pb-bud-input" value={frequency} onChange={(e) => onFrequencyChange(e.target.value as ManualIncomeFrequency)}>
               {MANUAL_FREQUENCIES.map((f) => <option key={f} value={f}>{d.budgetModal.frequencies[f]}</option>)}
             </select>
           </label>
           <button
-            type="button" className="pill"
+            type="button" className="pill pb-bud-import"
             onClick={() => { if (latestStandardIncomeNet != null) onManualAmountChange(String(Math.round(latestStandardIncomeNet * 100) / 100)); }}
             disabled={latestStandardIncomeNet == null}
             title={latestStandardIncomeNet == null ? d.budgetModal.importNoData : undefined}
             aria-label={d.budgetModal.importAria}
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem', whiteSpace: 'nowrap', opacity: latestStandardIncomeNet == null ? 0.5 : 1 }}
+            style={{ opacity: latestStandardIncomeNet == null ? 0.5 : 1 }}
           >
+            <Download size={14} aria-hidden="true" />
             {d.budgetModal.importButton}
           </button>
+          <p className="pb-bud-income-note">{d.budgetModal.manualAnnualNote}</p>
         </div>
       )}
-      {manual && <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--ink-soft)' }}>{d.budgetModal.manualAnnualNote}</p>}
     </div>
   );
 }

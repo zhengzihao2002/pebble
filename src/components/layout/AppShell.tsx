@@ -398,6 +398,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         ?? target?.closest?.('.pb-chart-fill, .pb-donut-ring, .pb-chart-fade')
         ?? target?.closest?.('.recharts-wrapper')) as HTMLElement | null;
       if (!amount) return;
+      // Opt-out for an interactive chart (data-pb-keep-revealed): once
+      // revealed, later taps go to the chart itself; the eye button or a
+      // page change blurs it again. Every other figure and chart toggles.
+      if (amount.classList.contains('pb-revealed') && amount.hasAttribute('data-pb-keep-revealed')) return;
       e.preventDefault();
       e.stopPropagation();
       // A second tap blurs it again - no trip through the eye button.

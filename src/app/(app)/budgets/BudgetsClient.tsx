@@ -112,8 +112,13 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
     return best && best.type === 'income' ? best.netAmount : null;
   }, [transactions]);
 
+  // Which cards render (each hides itself when empty), so a wide screen only
+  // splits into the list and a side column when both have something to show.
+  const hasRows = entries.some((e) => e.budget > 0);
+  const hasSide = others.length > 0 || entries.some((e) => e.budget === 0 && e.spent > 0);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="pb-bud" data-split={hasRows && hasSide ? '' : undefined}>
       <BudgetPlanCard
         entries={entries}
         totalBudget={totalBudget}
@@ -134,7 +139,7 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
         )}
       />
       <BudgetRows entries={entries} today={today} history={history} />
-      <UnbudgetedList entries={entries} others={others} history={history} />
+      <UnbudgetedList entries={entries} others={others} history={history} today={today} />
     </div>
   );
 }

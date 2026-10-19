@@ -1,1 +1,387 @@
-/* Redesign: budgets. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: budgets. Loaded after globals.css and kit.css (src/app/layout.tsx).
+
+   Everything is scoped under .pebble-root .pb-bud (the BudgetsClient
+   wrapper), so the classes this page shares with the Dashboard - .pb-stats-*,
+   .pb-bar-*, .pb-donut-* - change here only, never there. Theme tokens only,
+   so all five palettes in light and dark follow, and no rule swaps a look
+   between a light and a dark selector (each token fades with the theme).
+   Responsive rules are container queries: `content` (the main column) for
+   the page, and containers the cards declare for their own insides. */
+
+/* ---------- Page: the plan, then the list, with a side column on a Mac ---------- */
+.pebble-root .pb-bud { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; align-items: start; }
+.pebble-root .pb-bud > * { min-width: 0; }
+@container content (min-width: 1320px) {
+  /* Only when both the list and the unbudgeted card have something to show. */
+  .pebble-root .pb-bud[data-split] { grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem); }
+  .pebble-root .pb-bud[data-split] > .pb-bud-plan { grid-column: 1 / -1; }
+}
+.pebble-root .pb-bud-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- Plan card ---------- */
+.pebble-root .pb-bud .pb-plan-head { padding: 1.25rem 1.5rem 0; }
+.pebble-root .pb-bud .pb-plan-body { padding: 1.25rem 1.5rem 1.4rem; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-bud .pb-plan-head { padding: 1.1rem 1.1rem 0; }
+  .pebble-root .pb-bud .pb-plan-body { padding: 1.1rem; }
+}
+
+/* Year at a glance: ring and forecast side by side, the four figures under
+   them; a wide card puts all three in one row. DOM order is ring, figures,
+   forecast - areas place them, the reading order stays. */
+.pebble-root .pb-bud-glance {
+  display: grid; align-items: center; gap: 1.1rem 1.25rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "ring fc" "stats stats";
+  padding: 1.1rem 1.1rem 1.25rem;
+}
+@container content (min-width: 640px) {
+  .pebble-root .pb-bud-glance { padding: 1.25rem 1.5rem 1.5rem; column-gap: 2rem; }
+}
+@container content (min-width: 960px) {
+  .pebble-root .pb-bud-glance { grid-template-columns: auto minmax(0, 1.35fr) minmax(0, 1fr); grid-template-areas: "ring stats fc"; }
+  .pebble-root .pb-bud-glance > .pb-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pebble-root .pb-bud-forecast { align-self: stretch; justify-content: center; padding-left: 1.75rem; border-left: 1px solid var(--line); }
+}
+
+/* The ring: drawn at 148px and scaled by its box. */
+.pebble-root .pb-bud-ring { grid-area: ring; position: relative; width: 100px; aspect-ratio: 1; justify-self: center; }
+@container content (min-width: 640px) { .pebble-root .pb-bud-ring { width: 148px; } }
+.pebble-root .pb-bud-ring > .pb-skel { position: absolute; inset: 0; }
+.pebble-root .pb-bud-ring .pb-ring { width: 100% !important; height: 100% !important; }
+.pebble-root .pb-bud-ring .pb-ring > svg { width: 100%; height: 100%; }
+.pebble-root .pb-bud-ring .pb-ring-center { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
+.pebble-root .pb-bud-ring-pct { font-size: 1.3rem; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
+.pebble-root .pb-bud-ring-sub { font-size: 0.7rem; color: var(--ink-soft); }
+@container content (min-width: 640px) { .pebble-root .pb-bud-ring-pct { font-size: 1.65rem; } }
+/* Even pace today: an ink tick across the ring, rotated into place inline.
+   It fades in after the arc has swept. */
+.pebble-root .pb-bud-ring-tick { position: absolute; inset: 0; pointer-events: none; animation: pb-chart-in var(--pb-dur-emph) var(--pb-ease-out) 600ms both; }
+.pebble-root .pb-bud-ring-tick > span {
+  position: absolute; left: 50%; top: -3px; width: 3px; height: calc(8.1% + 6px); margin-left: -1.5px;
+  border-radius: 2px; background-color: var(--ink); box-shadow: 0 0 0 2px var(--mist);
+}
+
+/* The four figures: one bordered strip, hairlines between (the same 1px-gap
+   technique as the Dashboard's), on the card's own surface. */
+.pebble-root .pb-bud-glance > .pb-stats-grid {
+  grid-area: stats; border: 1px solid var(--line); border-radius: 1rem; overflow: hidden;
+}
+.pebble-root .pb-bud-glance .pb-stats-cell { padding: 0.85rem 1rem; }
+.pebble-root .pb-bud-pace {
+  display: inline-flex; align-items: center; gap: 0.35rem; max-width: 100%;
+  padding: 0.16rem 0.65rem 0.16rem 0.45rem; border-radius: 999px;
+  font-size: clamp(0.8rem, 9cqi, 0.95rem); font-weight: 600; white-space: nowrap;
+}
+.pebble-root .pb-bud-pace[data-tone="underPace"],
+.pebble-root .pb-bud-pace[data-tone="onPace"] { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
+.pebble-root .pb-bud-pace[data-tone="overPace"] { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+.pebble-root .pb-bud-pace[data-tone="over"] { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+
+/* Forecast: where the year lands at the current rate. */
+.pebble-root .pb-bud-forecast { grid-area: fc; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.pebble-root .pb-bud-forecast p { margin: 0; }
+.pebble-root .pb-bud-fc-label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 500; color: var(--ink-soft); }
+.pebble-root .pb-bud-fc-figure { font-size: 0.92rem; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.pebble-root .pb-bud-fc-figure .font-mono-tab { font-size: 1.15rem; }
+@container content (min-width: 640px) {
+  .pebble-root .pb-bud-fc-figure { font-size: 1.15rem; }
+  .pebble-root .pb-bud-fc-figure .font-mono-tab { font-size: 1.4rem; }
+}
+.pebble-root .pb-bud-fc-cmp { font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-fc-cmp .font-mono-tab { color: var(--ink); font-weight: 600; }
+.pebble-root .pb-bud-fc-year { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 0.35rem !important; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-fc-tick { width: 3px; height: 12px; border-radius: 2px; background-color: var(--ink); flex: none; }
+.pebble-root .pb-bud-fc-note { margin-top: 0.2rem !important; font-size: 0.74rem; line-height: 1.4; color: var(--ink-soft); }
+.pebble-root .pb-bud-fc-note .font-mono-tab { color: var(--ink); font-weight: 500; }
+.pebble-root .pb-bud-forecast > .pb-skel + .pb-skel { margin-top: 0.25rem; }
+
+/* Expected income: the figure, the two-way switch, the manual fields. */
+.pebble-root .pb-bud-income { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.15rem; }
+.pebble-root .pb-bud-income-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem 1rem; }
+.pebble-root .pb-bud-income-fig { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.pebble-root .pb-bud-income-label { display: inline-flex; align-items: center; font-size: var(--pb-text-sm); color: var(--ink-soft); }
+.pebble-root .pb-bud-income-value { font-size: 1.25rem; font-weight: 600; line-height: 1.25; color: var(--ink); }
+@container content (max-width: 479px) {
+  .pebble-root .pb-bud-income-mode { display: flex; width: 100%; }
+  .pebble-root .pb-bud-income-mode .pb-seg-btn { flex: 1 1 0; }
+}
+.pebble-root .pb-bud-income-manual {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: end; gap: 0.65rem 0.75rem;
+  padding: 0.85rem 0.95rem; border-radius: 0.95rem; background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.pebble-root .pb-bud-import { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+@container content (min-width: 640px) {
+  .pebble-root .pb-bud-income-manual { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .pebble-root .pb-bud-import { grid-column: auto; min-height: 2.5rem; }
+}
+.pebble-root .pb-bud-income-note { grid-column: 1 / -1; margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-input {
+  width: 100%; box-sizing: border-box; height: 2.5rem; padding: 0 0.75rem;
+  border-radius: 0.7rem; border: 1px solid var(--line); background-color: var(--mist); color: var(--ink);
+  font: inherit; font-size: 0.88rem;
+}
+.pebble-root .pb-bud-input:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-bud-field-money { position: relative; display: block; }
+.pebble-root .pb-bud-field-money > span[aria-hidden] { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.88rem; color: var(--ink-soft); pointer-events: none; }
+.pebble-root .pb-bud-field-money .pb-bud-input { padding-left: 1.45rem; }
+
+/* The ribbon: taller, its segments named underneath where there is room. */
+.pebble-root .pb-bud .pb-plan-body .pb-bar-track { height: 28px; }
+.pebble-root .pb-bud .pb-plan-seg { cursor: pointer; }
+.pebble-root .pb-bud-ribbon-labels { display: flex; gap: 2px; margin-top: 0.5rem; }
+.pebble-root .pb-bud-ribbon-labels:not(:has(> span:not(:empty))) { display: none; }
+.pebble-root .pb-bud-ribbon-labels > span { flex-basis: 0; min-width: 3px; display: flex; flex-direction: column; gap: 1px; overflow: hidden; line-height: 1.25; }
+.pebble-root .pb-bud-ribbon-labels > span:not(:empty) { padding-left: 0.4rem; border-left: 1px solid var(--line); }
+.pebble-root .pb-bud-ribbon-name { font-size: 0.72rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-bud-ribbon-share { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
+
+/* Legend: a magnitude hairline under each row; two columns once wide (the
+   card measures itself and pages twelve at a time then). */
+.pebble-root .pb-bud .pb-donut-legend { margin-top: 1.1rem; }
+.pebble-root .pb-bud .pb-donut-legend[data-wide] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.5rem; }
+.pebble-root .pb-bud .pb-donut-legend[data-wide] > .pb-donut-row:nth-child(2) { border-top: 0; }
+.pebble-root .pb-bud .pb-donut-row { row-gap: 0.4rem; padding: 0.55rem 0; }
+.pebble-root .pb-bud-legend-bar {
+  grid-column: 2 / -1; display: block; height: 3px; border-radius: 99px; overflow: hidden;
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.pebble-root .pb-bud-legend-bar > span { display: block; height: 100%; border-radius: inherit; }
+.pebble-root .pb-bud .pb-donut-filler .pb-bud-legend-bar { visibility: hidden; }
+
+/* ---------- Budget list ---------- */
+.pebble-root .pb-bud-rows { container: pb-bud-rows / inline-size; padding: 0; }
+.pebble-root .pb-bud-rows-head { padding: 1.25rem 1.5rem 1rem; }
+.pebble-root .pb-bud-rows .pb-rows-note { margin: 0; padding: 0; font-size: inherit; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-bud-rows-head { padding: 1.1rem 1.1rem 0.9rem; }
+}
+/* The marker's key, so the ink tick on every bar explains itself. */
+.pebble-root .pb-bud-key { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-key-tick { position: relative; width: 22px; height: 6px; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 9%, transparent); flex: none; }
+.pebble-root .pb-bud-key-tick::after { content: ''; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background-color: var(--ink); }
+
+/* Section header: sticks under the glass header while its rows scroll by,
+   then gives way to the next. Opaque (a tinted mix over mist), so rows
+   never show through; tokens only, so it fades with the theme. */
+.pebble-root .pb-bud-group { position: relative; }
+.pebble-root .pb-bud-group-head {
+  position: sticky; top: var(--pb-header-h); z-index: 4;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.5rem 1.5rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: linear-gradient(color-mix(in srgb, var(--ink) 3.5%, transparent), color-mix(in srgb, var(--ink) 3.5%, transparent)), var(--mist);
+  font-size: 0.74rem; color: var(--ink-soft);
+}
+@container content (max-width: 639px) { .pebble-root .pb-bud-group-head { padding: 0.5rem 1.1rem; } }
+.pebble-root .pb-bud-group-title {
+  display: inline-flex; align-items: center; gap: 0.45rem; min-width: 0;
+  font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink);
+}
+.pebble-root .pb-bud-group-icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 99px; flex: none; }
+.pebble-root .pb-bud-group[data-status="over"] .pb-bud-group-icon { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 14%, transparent); }
+.pebble-root .pb-bud-group[data-status="overPace"] .pb-bud-group-icon { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 10%, transparent); }
+.pebble-root .pb-bud-group[data-status="onPace"] .pb-bud-group-icon,
+.pebble-root .pb-bud-group[data-status="underPace"] .pb-bud-group-icon { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 13%, transparent); }
+.pebble-root .pb-bud-group-count {
+  padding: 0 0.42rem; border-radius: 99px; letter-spacing: 0; font-weight: 600;
+  color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-bud-group-sum { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.pebble-root .pb-bud-group[data-status="over"] .pb-bud-group-sum { color: var(--wine); }
+
+/* A row. Phone: name and figure, the bar, then spent and pace beside the
+   details toggle. Wide: name | this year's months | bar | figure on one
+   line, spent and pace under the bar. Grid areas over the shared .pb-row-*
+   pieces; this page's rules outrank the original ones in globals.css. */
+.pebble-root .pb-bud .pb-bud-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name figs" "bar bar" "left more" "det det";
+  align-items: center; row-gap: 0.45rem; column-gap: 1rem;
+  padding: 0.95rem 1.1rem;
+}
+.pebble-root .pb-bud-group-head + .pb-bud-row { border-top: 0; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-name { grid-area: name; }
+.pebble-root .pb-bud .pb-bud-row > .pb-bud-row-spark { grid-area: spark; display: none; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-figs { grid-area: figs; justify-self: end; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-bar { grid-area: bar; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-left { grid-area: left; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-more { grid-area: more; }
+.pebble-root .pb-bud .pb-bud-row > .pb-row-details { grid-area: det; }
+/* Editing on a narrow card: the editor takes its own line, not a corner. */
+.pebble-root .pb-bud .pb-bud-row.is-editing { grid-template-areas: "name name" "figs figs" "bar bar" "left more" "det det"; }
+@container pb-bud-rows (min-width: 640px) {
+  .pebble-root .pb-bud .pb-bud-row,
+  .pebble-root .pb-bud .pb-bud-row.is-editing {
+    grid-template-columns: minmax(9rem, 14rem) 4.5rem minmax(0, 1fr) minmax(8.5rem, auto);
+    grid-template-areas: "name spark bar figs" "name spark left more" "det det det det";
+    row-gap: 0.2rem; column-gap: 1.25rem; padding: 0.95rem 1.5rem;
+  }
+  .pebble-root .pb-bud .pb-bud-row > .pb-bud-row-spark { display: flex; align-items: center; }
+}
+@container pb-bud-rows (min-width: 900px) {
+  .pebble-root .pb-bud .pb-bud-row,
+  .pebble-root .pb-bud .pb-bud-row.is-editing { grid-template-columns: minmax(12rem, 16rem) 4.5rem minmax(0, 1fr) minmax(10rem, auto); column-gap: 1.75rem; }
+}
+
+.pebble-root .pb-bud .pb-budget-icon { width: 36px; height: 36px; border-radius: 0.7rem; }
+.pebble-root .pb-bud .pb-row-name { gap: 0.75rem; align-items: center; }
+.pebble-root .pb-bud-row-title { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.pebble-root .pb-bud-row-name { font-size: 0.92rem; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.pebble-root .pb-bud-row-sub { font-size: 0.74rem; font-weight: 400; color: var(--ink-soft); }
+
+.pebble-root .pb-bud-row-figs { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pebble-root .pb-bud-row-left { font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap; text-align: right; }
+.pebble-root .pb-bud-row-amt { font-size: 0.98rem; font-weight: 650; color: var(--pine); }
+.pebble-root .pb-bud-row-left.is-over .pb-bud-row-amt { color: var(--wine); }
+.pebble-root .pb-bud .pb-bud-edit { width: 32px; height: 32px; padding: 0; border-radius: 50%; border-color: transparent; flex: none; }
+.pebble-root .pb-bud .pb-bud-edit:hover { border-color: var(--line); background-color: color-mix(in srgb, var(--pine) 8%, transparent); }
+.pebble-root .pb-bud .pb-bud-edit:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+
+.pebble-root .pb-bud .pb-row-track { height: 8px; background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+.pebble-root .pb-bud .pb-row-marker { box-shadow: 0 0 0 1.5px var(--mist); }
+.pebble-root .pb-bud .pb-row-marker:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-bud .pb-row-left { text-align: left; font-size: 0.76rem; font-weight: 600; min-width: 0; }
+.pebble-root .pb-bud-row-pace { color: var(--ink-soft); font-weight: 400; }
+.pebble-root .pb-bud .pb-row-more { text-align: right; }
+.pebble-root .pb-bud .pb-row-details { padding-top: 0.75rem; container: pb-bud-det / inline-size; }
+
+.pebble-root .pb-bud-more {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0.2rem 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--pine); white-space: nowrap;
+}
+.pebble-root .pb-bud-more:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 0.4rem; }
+
+/* The months strip. */
+.pebble-root .pb-bud-spark { display: inline-block; line-height: 0; }
+.pebble-root .pb-bud-spark svg { display: block; overflow: visible; }
+.pebble-root .pb-bud-spark-future { fill: color-mix(in srgb, var(--ink) 16%, transparent); }
+.pebble-root .pb-bud-spark-ref { stroke: var(--ink-soft); stroke-width: 1; opacity: 0.55; }
+
+/* First frame: the rows' shape. */
+.pebble-root .pb-bud-skel-row { display: flex; align-items: center; gap: 0.85rem; padding: 1rem 1.5rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-bud-skel-lines { flex: 1; display: flex; flex-direction: column; gap: 0.65rem; }
+@container content (max-width: 639px) { .pebble-root .pb-bud-skel-row { padding: 1rem 1.1rem; } }
+
+/* Privacy: the marker's own tooltip names an amount, so it blurs too. */
+.pebble-root.pb-private .pb-bud .pb-row-marker::after { filter: blur(6px); }
+
+/* ---------- Details drawer ---------- */
+.pebble-root .pb-bud-det {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem;
+  padding: 1rem; border-radius: 1rem; background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+@container pb-bud-det (min-width: 620px) {
+  .pebble-root .pb-bud-det { grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr); gap: 1.5rem; padding: 1.1rem 1.25rem; }
+  .pebble-root .pb-bud-qs { padding-left: 1.5rem; border-left: 1px solid var(--line); }
+  .pebble-root .pb-bud-qs-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+.pebble-root .pb-bud-det-empty { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-det-chart { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.pebble-root .pb-bud-det-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.pebble-root .pb-bud-det-years { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pebble-root .pb-bud-det-years .pill { padding: 0.28rem 0.72rem; font-size: 0.76rem; }
+.pebble-root .pb-bud-det-view { margin-left: auto; }
+.pebble-root .pb-bud-det-plot { width: 100%; height: 160px; }
+.pebble-root .pb-bud-det-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem 1rem; }
+.pebble-root .pb-bud-det-foot p { margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-det-key { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-det-key-dash { width: 16px; height: 1.5px; background: repeating-linear-gradient(90deg, var(--ink-soft) 0 4px, transparent 4px 7px); }
+.pebble-root .pb-bud-tip {
+  display: flex; flex-direction: column; gap: 3px; min-width: 170px; padding: 0.5rem 0.7rem;
+  background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: var(--shadow); font-size: 0.78rem;
+}
+.pebble-root .pb-bud-tip-row { display: flex; justify-content: space-between; gap: 1rem; }
+.pebble-root .pb-bud-tip-row > :first-child { color: var(--ink-soft); }
+
+/* Quick set: two cards. A pick only fills the editor - nothing saves. */
+.pebble-root .pb-bud-qs { display: flex; flex-direction: column; gap: 0.55rem; min-width: 0; }
+.pebble-root .pb-bud-qs-title { font-size: 0.82rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-bud-qs-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+@container pb-bud-det (min-width: 420px) { .pebble-root .pb-bud-qs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pebble-root .pb-bud-qs-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; min-width: 0;
+  padding: 0.7rem 0.85rem; border-radius: 0.85rem; border: 1px solid var(--line); background-color: var(--mist);
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-bud-qs-card:hover { border-color: var(--pine); background-color: color-mix(in srgb, var(--pine) 5%, var(--mist)); }
+.pebble-root .pb-bud-qs-card:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-bud-qs-amt { font-size: 0.95rem; font-weight: 650; overflow-wrap: anywhere; }
+.pebble-root .pb-bud-qs-unit { font-size: 0.74rem; font-weight: 500; color: var(--ink-soft); }
+.pebble-root .pb-bud-qs-month { font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-qs-cap { margin-top: 0.2rem; font-size: 0.7rem; line-height: 1.35; color: var(--ink-soft); }
+
+/* ---------- Spending without a budget ---------- */
+.pebble-root .pb-bud-unb { container: pb-bud-unb / inline-size; display: flex; flex-direction: column; gap: 0.8rem; padding: 1.25rem 1.5rem; }
+@container content (max-width: 639px) { .pebble-root .pb-bud-unb { padding: 1.1rem; } }
+.pebble-root .pb-bud-unb .pb-unb-list { margin: 0; }
+.pebble-root .pb-bud .pb-bud-unb-row {
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "actions" "det";
+  row-gap: 0.15rem; padding: 0.65rem 0;
+}
+.pebble-root .pb-bud-unb-main {
+  grid-area: main; display: grid; align-items: center; column-gap: 0.75rem; row-gap: 0.35rem;
+  grid-template-columns: 36px minmax(0, 1fr) auto; grid-template-areas: "tile name amt" "tile mag mag";
+}
+.pebble-root .pb-bud-unb-main > .pb-budget-icon { grid-area: tile; }
+.pebble-root .pb-bud-unb-main > .pb-unb-name { grid-area: name; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-bud-unb-main > .pb-unb-amount { grid-area: amt; font-weight: 600; color: var(--ink); text-align: right; }
+.pebble-root .pb-bud-unb-mag { grid-area: mag; display: block; height: 3px; border-radius: 99px; overflow: hidden; background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-bud-unb-mag > span { display: block; height: 100%; border-radius: inherit; opacity: 0.75; }
+.pebble-root .pb-bud-unb-actions {
+  grid-area: actions; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding-left: calc(36px + 0.75rem);
+}
+.pebble-root .pb-bud-unb-actions:has(> :only-child) { justify-content: flex-end; }
+.pebble-root .pb-bud-unb-details { grid-area: det; margin-top: 0.6rem; container: pb-bud-det / inline-size; }
+@container pb-bud-unb (min-width: 560px) {
+  .pebble-root .pb-bud .pb-bud-unb-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main actions" "det det"; column-gap: 1.25rem; }
+  .pebble-root .pb-bud-unb-actions { padding-left: 0; gap: 1rem; }
+}
+.pebble-root .pb-bud-set { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.34rem 0.8rem 0.34rem 0.6rem; white-space: nowrap; }
+
+/* Other categories: a chip each, wrapping into a grid. */
+.pebble-root .pb-bud-others { padding-top: 0.9rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-bud-others[data-alone] { padding-top: 0; border-top: 0; }
+.pebble-root .pb-bud-others-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-bud-others-toggle:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 0.4rem; }
+.pebble-root .pb-bud-others-hint { margin: 0.3rem 0 0.7rem; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-chips { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.5rem; }
+.pebble-root .pb-bud-chip { min-width: 0; }
+.pebble-root .pb-bud-chip.is-editing {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;
+  padding: 0.5rem 0.6rem; border-radius: 0.85rem; background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.pebble-root .pb-bud-chip-name { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.84rem; font-weight: 600; }
+.pebble-root .pb-bud-chip-btn {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 2.6rem;
+  padding: 0.4rem 0.6rem 0.4rem 0.4rem; border-radius: 0.85rem; border: 1px solid var(--line); background-color: var(--mist);
+  color: var(--ink); font: inherit; font-size: 0.82rem; text-align: left; cursor: pointer;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-bud-chip-btn:hover { border-color: var(--pine); }
+.pebble-root .pb-bud-chip-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-bud .pb-bud-chip-icon { width: 26px; height: 26px; border-radius: 0.5rem; }
+.pebble-root .pb-bud-chip-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-bud-chip-plus { flex: none; color: var(--ink-soft); transition: color var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-bud-chip-btn:hover .pb-bud-chip-plus { color: var(--pine); }
+
+/* ---------- Touch ---------- */
+/* Small controls keep their look and gain a 44px hit area: an invisible
+   extension of the button itself, so a tap just beside them still counts. */
+@media (pointer: coarse) {
+  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn) { position: relative; }
+  .pebble-root .pb-bud :is(.pb-bud-more, .pb-bud-others-toggle, .pb-bud-det-years .pill, .pb-bud-set, .pb-seg-btn)::after {
+    content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%);
+  }
+  .pebble-root .pb-bud .pb-bud-edit { width: 44px; height: 44px; margin: -6px -6px -6px 0; }
+  .pebble-root .pb-bud .pb-bud-chip-btn { min-height: 44px; }
+  .pebble-root .pb-bud .pb-bud-input { min-height: 44px; font-size: 16px; } /* 16px: iOS zooms into smaller fields */
+}
