@@ -23,7 +23,7 @@ import { TodayLedger } from '@/components/transactions/TodayLedger';
 import { BalanceBridge } from '@/components/transactions/BalanceBridge';
 import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
 import { SearchToolbar, type TypeFilter } from '@/components/transactions/SearchToolbar';
-import { ResultsSummary } from '@/components/transactions/ResultsSummary';
+import { ResultsSummary, FlowFigures } from '@/components/transactions/ResultsSummary';
 import { cents, daySeries, daysInMonth, groupByDay, monthBounds, monthFigures, summarizeMonths, balanceReader } from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
@@ -413,8 +413,6 @@ export function TransactionsClient({
           accountFilter={accountFilter}
           onAccountFilter={setAccountFilter}
           accountOptions={accountOptions}
-          lensAccount={lensAccount}
-          onExitLens={() => setAccountFilter(ALL_ACCOUNTS)}
         />
 
         {/* The key also changes when search starts or ends and when the lens
@@ -443,7 +441,7 @@ export function TransactionsClient({
                 />
               ) : (
                 <>
-                  <ResultsSummary results={results} categoryMeta={categoryMeta} />
+                  <ResultsSummary results={results} categoryMeta={categoryMeta} type={typeFilter} />
                   <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
                   <DayGroups
                     groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
@@ -464,15 +462,28 @@ export function TransactionsClient({
               categoryMeta={categoryMeta}
               onOpenDetail={openDetail}
               head={(
-                <div className="pb-txn-stmt-head">
-                  <div style={{ minWidth: 0 }}>
-                    <h3 className="pb-txn-stmt-title">{lensAccount ? t(x.lensTitle, { account: lensAccount.name }) : x.statement}</h3>
-                    <p className="pb-txn-stmt-sub">
-                      {monthLabel} · <span className="pb-tnum" style={{ whiteSpace: 'nowrap' }}>{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
-                    </p>
+                <>
+                  <div className="pb-txn-stmt-head">
+                    <div style={{ minWidth: 0 }}>
+                      <h3 className="pb-txn-stmt-title">{lensAccount ? t(x.lensTitle, { account: lensAccount.name }) : x.statement}</h3>
+                      <p className="pb-txn-stmt-sub">
+                        {monthLabel} · <span className="pb-tnum" style={{ whiteSpace: 'nowrap' }}>{statementCount === 1 ? x.countOne : t(x.countOther, { count: statementCount })}</span>
+                      </p>
+                    </div>
+                    {importButton}
                   </div>
-                  {importButton}
-                </div>
+                  {/* The month's money in, out and net - the All view, where
+                      both sides are real (it used to show only under the
+                      Expense and Income filters, where one side was always
+                      zero). The same figures as Deposits and Withdrawals:
+                      every income record, Side Cash included; transfers and
+                      corrections left out. Under the lens, that account's. */}
+                  {statementCount > 0 && (
+                    <div className="pb-txn-sum pb-txn-sum-stmt">
+                      <FlowFigures inn={totalDeposits} out={totalWithdrawals} />
+                    </div>
+                  )}
+                </>
               )}
             />
           )}

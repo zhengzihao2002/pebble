@@ -38,6 +38,8 @@ export const transactionDialogsEn = {
   firstRows: 'First rows, as read',
   firstRowsHint: 'Updates as you change the settings above.',
   rawRows: 'The file itself',
+  // If imported pane: a ticked row landed out of view.
+  previewShowAdded: 'Show added row',
   roleDate: 'Date',
   roleDesc: 'Description',
   roleAmount: 'Amount',
@@ -95,6 +97,7 @@ export const transactionDialogsZh: typeof transactionDialogsEn = {
   firstRows: '按当前设置读取的前几行',
   firstRowsHint: '修改上方设置后会立即更新。',
   rawRows: '文件原文',
+  previewShowAdded: '查看新加入的行',
   roleDate: '日期',
   roleDesc: '描述',
   roleAmount: '金额',

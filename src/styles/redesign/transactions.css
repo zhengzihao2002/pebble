@@ -274,23 +274,6 @@
   .pebble-root .pb-txn-account-select { max-width: none; }
 }
 @media (pointer: coarse) { .pebble-root .pb-txn-type .pb-seg-btn { min-height: 44px; } }
-/* The lens chip: which account's statement is showing, and the way back. */
-.pebble-root .pb-txn-lens-chip {
-  display: inline-flex; align-items: center; gap: 0.15rem; min-width: 0; max-width: 100%;
-  padding: 0.15rem 0.2rem 0.15rem 0.7rem; border-radius: 999px;
-  background-color: color-mix(in srgb, var(--pine) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 28%, transparent);
-  font-size: 0.78rem; font-weight: 600; color: var(--ink);
-}
-.pebble-root .pb-txn-lens-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-txn-lens-chip button {
-  display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%;
-  border: 0; background: transparent; color: var(--ink-soft);
-}
-.pebble-root .pb-txn-lens-chip button:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
-/* A full 44px target on touch; the negative margin keeps the chip itself
-   from growing taller. */
-@media (pointer: coarse) { .pebble-root .pb-txn-lens-chip button { width: 44px; height: 44px; margin-block: -6px; } }
 
 /* ============================================================
    Statement card: head, bookends, day groups, ledger rows.
@@ -420,10 +403,13 @@
   .pebble-root .pb-txn-srow-main .pb-txn-srow-subcat { display: none; }
   .pebble-root .pb-txn-srow-main .pb-txn-srow-sub-catonly { display: none; }
 }
-/* Column headings keep the heading type, not the cells' 0.8rem. */
+/* Column headings keep the heading type, not the cells' 0.8rem. "Balance
+   after" was missing here, so it took the figure cells' 0.82rem and sat
+   larger and lower than the other headings. */
 .pebble-root .pb-txn-srow-headrow .pb-txn-srow-acct,
 .pebble-root .pb-txn-srow-headrow .pb-txn-srow-cat,
-.pebble-root .pb-txn-srow-headrow .pb-txn-srow-lensbal { font-size: inherit !important; color: inherit !important; }
+.pebble-root .pb-txn-srow-headrow .pb-txn-srow-lensbal,
+.pebble-root .pb-txn-srow-headrow .pb-txn-srow-balcell { font-size: inherit !important; color: inherit !important; line-height: inherit; }
 
 /* Search matches, marked inside the title and subtitle. */
 .pebble-root mark.pb-txn-hit {
@@ -436,13 +422,80 @@
 .pebble-root .pb-txn-sum {
   display: flex; flex-direction: column; gap: 0.75rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--line);
 }
+/* Restated after the base rule: the shared 480px inset above came earlier
+   in the file, so this padding used to win and the figures sat 0.4rem left
+   of the heading over them. */
+@container pb-txn-stmt (min-width: 480px) { .pebble-root .pb-txn-sum { padding-inline: 1.5rem; } }
 .pebble-root .pb-txn-sum-figs { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; font-size: 0.82rem; color: var(--ink-soft); }
 .pebble-root .pb-txn-sum-figs .font-mono-tab { font-weight: 600; }
+/* A phone-width statement: the figures as three even columns, each label
+   over its amount, rather than a line that wraps one figure onto its own. */
+@container pb-txn-stmt (max-width: 479.98px) {
+  .pebble-root .pb-txn-sum-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem 0.75rem; }
+  .pebble-root .pb-txn-sum-figs > span { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; font-size: 0.74rem; }
+  .pebble-root .pb-txn-sum-figs > span .font-mono-tab { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* The month's in / out / net in the statement's own heading (All view):
+   one block with the title, not a second band under it. */
+.pebble-root .pb-txn-stmt-head:has(+ .pb-txn-sum-stmt) { border-bottom: 0; padding-bottom: 0.35rem; }
+.pebble-root .pb-txn-sum-stmt { padding-top: 0; padding-bottom: 0.85rem; }
+
+/* Spending by category (SpendingMix): an 8px bar drawn on a taller hit
+   strip of buttons, so each segment is easy to hover, tap and tab to. */
 .pebble-root .pb-txn-mix { display: grid; gap: 0.45rem; }
-.pebble-root .pb-txn-mix-track { height: 8px; }
-.pebble-root .pb-txn-mix-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; color: var(--ink); }
-.pebble-root .pb-txn-mix-legend li { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; }
+.pebble-root .pb-txn-mix-bar { position: relative; }
+.pebble-root .pb-txn-mix-strip {
+  position: relative; display: flex; gap: 2px; height: 24px;
+  animation: pb-txn-mix-wipe 1600ms cubic-bezier(0.65, 0, 0.35, 1) backwards;
+}
+@media (pointer: coarse) { .pebble-root .pb-txn-mix-strip { height: 44px; margin-block: -10px; } }
+/* backwards, not both: a clip left in place would cut the focus ring. */
+@keyframes pb-txn-mix-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+.pebble-root .pb-txn-mix-seg {
+  position: relative; flex-basis: 0; min-width: 3px; padding: 0; margin: 0; border: 0; border-radius: 4px;
+  background: transparent; cursor: pointer;
+  transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-mix-seg::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 8px; margin-top: -4px;
+  background-color: var(--pb-txn-seg);
+  transition: transform var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-mix-seg:first-child::before { border-radius: 999px 0 0 999px; }
+.pebble-root .pb-txn-mix-seg:last-child::before { border-radius: 0 999px 999px 0; }
+.pebble-root .pb-txn-mix-seg:only-child::before { border-radius: 999px; }
+/* The singled-out segment thickens a little; the rest dim, as on the
+   Dashboard's "Where it went". */
+.pebble-root .pb-txn-mix-seg.is-on::before { transform: scaleY(1.5); }
+.pebble-root .pb-txn-mix-seg.is-dim { opacity: 0.3; }
+.pebble-root .pb-txn-mix-seg:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-txn-mix-tip {
+  position: absolute; bottom: calc(100% - 4px); left: 0; z-index: 3; pointer-events: none;
+  min-width: 9.5rem; max-width: min(16rem, 100%); padding: 0.5rem 0.7rem;
+  background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem;
+  box-shadow: var(--shadow-float); color: var(--ink); font-size: 0.78rem; line-height: 1.4;
+  animation: pb-txn-tip-in var(--pb-dur-micro) var(--pb-ease-out) backwards;
+}
+@keyframes pb-txn-tip-in { from { opacity: 0; } }
+.pebble-root .pb-txn-mix-tip p { margin: 0; }
+.pebble-root .pb-txn-mix-tip-name { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; min-width: 0; }
+.pebble-root .pb-txn-mix-tip-name > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-txn-mix-tip-amount { font-size: 0.95rem; font-weight: 600; }
+.pebble-root .pb-txn-mix-tip-soft { display: flex; flex-wrap: wrap; gap: 0 0.6rem; color: var(--ink-soft); font-size: 0.72rem; }
+.pebble-root .pb-txn-mix-tip-soft > span { white-space: nowrap; }
+.pebble-root .pb-txn-mix-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.5rem; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; color: var(--ink); }
+.pebble-root .pb-txn-mix-legend li { display: inline-flex; align-items: center; min-width: 0; }
+.pebble-root .pb-txn-mix-key {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; margin: 0 -0.2rem; padding: 0.2rem 0.4rem;
+  border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer;
+  transition: opacity var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-txn-mix-key.is-on { background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
+.pebble-root .pb-txn-mix-key.is-dim { opacity: 0.45; }
+.pebble-root .pb-txn-mix-key:focus-visible { outline: 2px solid var(--pine); outline-offset: 0; }
+@media (pointer: coarse) { .pebble-root .pb-txn-mix-key { min-height: 44px; } }
 .pebble-root .pb-txn-mix-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pebble-root .pb-txn-mix-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-txn-mix-pct,
 .pebble-root .pb-txn-mix-more { color: var(--ink-soft); }
 /* The ⌘K hint only where a keyboard is likely. */

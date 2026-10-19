@@ -421,3 +421,37 @@
   /* The before -> after pair takes its own full-width line under the name. */
   .pebble-root .pb-tdlg-balance-move { flex: 1 1 100%; justify-content: flex-start; gap: 1.25rem; }
 }
+
+/* ============================================================
+   If imported pane (PC): rows grow in and collapse out as they are ticked
+   on the left, instead of the list re-drawing under the reader. The scroll
+   box keeps the reader's place by hand (useScrollPin), so the browser's own
+   scroll anchoring is off here to keep the two from both correcting.
+   Reduced motion: the global rule ends both animations at once - the new
+   row fully shown, the unticked one gone.
+   ============================================================ */
+.pebble-root .pb-tdlg-preview { position: relative; }
+.pebble-root .pb-tdlg-preview-body { overflow-anchor: none; }
+.pebble-root .pb-tdlg-prow { display: grid; grid-template-rows: 1fr; }
+.pebble-root .pb-tdlg-prow > div { min-height: 0; }
+.pebble-root .pb-tdlg-prow-enter > div,
+.pebble-root .pb-tdlg-prow-leave > div { overflow: hidden; }
+.pebble-root .pb-tdlg-prow-enter { animation: pb-tdlg-prow-in var(--pb-dur-std) var(--pb-ease-out) backwards; }
+.pebble-root .pb-tdlg-prow-leave { animation: pb-tdlg-prow-out var(--pb-dur-std) var(--pb-ease-out) forwards; pointer-events: none; }
+@keyframes pb-tdlg-prow-in { from { grid-template-rows: 0fr; opacity: 0; } }
+@keyframes pb-tdlg-prow-out { to { grid-template-rows: 0fr; opacity: 0; } }
+
+/* "Show added row": a ticked row landed above or below what is in view. */
+.pebble-root .pb-tdlg-preview-jump {
+  position: absolute; left: 50%; bottom: 1.25rem; z-index: 2;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.85rem; border: 1px solid var(--line); border-radius: 999px;
+  background-color: var(--mist); color: var(--ink); box-shadow: var(--shadow-float);
+  font: inherit; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  transform: translateX(-50%);
+  animation: pb-tdlg-jump-in var(--pb-dur-std) var(--pb-ease-out) backwards;
+}
+.pebble-root .pb-tdlg-preview-jump svg { color: var(--pine); }
+.pebble-root .pb-tdlg-preview-jump:hover { background-color: color-mix(in srgb, var(--pine) 8%, var(--mist)); }
+.pebble-root .pb-tdlg-preview-jump:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@keyframes pb-tdlg-jump-in { from { opacity: 0; transform: translate(-50%, 0.5rem); } }

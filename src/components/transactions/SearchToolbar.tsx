@@ -2,7 +2,6 @@
 
 import { forwardRef } from 'react';
 import { Search, X } from 'lucide-react';
-import type { Account } from '@/lib/data/mappers';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
@@ -17,9 +16,6 @@ interface SearchToolbarProps {
   accountFilter: string;
   onAccountFilter: (id: string) => void;
   accountOptions: SelectFieldOption[];
-  /** The account lens in effect (account chosen, no text, type All), if any. */
-  lensAccount: Account | null;
-  onExitLens: () => void;
 }
 
 /**
@@ -32,11 +28,17 @@ interface SearchToolbarProps {
  * own All option). New: Escape inside the field clears the text too. That
  * cannot fight a dialog: ModalFrame only handles Escape while one is open,
  * and then this field is not focusable.
+ *
+ * The account lens used to add a "{account} statement" chip with an X beside
+ * the Account select. Only one account (or all) can be chosen and the select
+ * already names it, so the chip said it twice; the way back is the select's
+ * own "All accounts" (or pressing the account again in the Today card), and
+ * the statement card below keeps the account in its title.
  */
 export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(function SearchToolbar({
-  query, onQuery, typeFilter, onTypeFilter, accountFilter, onAccountFilter, accountOptions, lensAccount, onExitLens,
+  query, onQuery, typeFilter, onTypeFilter, accountFilter, onAccountFilter, accountOptions,
 }, ref) {
-  const { d, t } = useTranslation();
+  const { d } = useTranslation();
 
   // The X clears the typed text only, and shows only when there is text to
   // clear. Type and Account each have their own All option. Focus returns
@@ -101,15 +103,6 @@ export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(func
             ariaLabel={d.txnSearch.accountLabel}
           />
         </div>
-        {lensAccount && (
-          <span className="pb-txn-lens-chip">
-            {/* Account names are USER DATA. */}
-            <span className="pb-txn-lens-chip-text">{t(d.ux.transactions.lensTitle, { account: lensAccount.name })}</span>
-            <button type="button" onClick={onExitLens} aria-label={d.ux.transactions.backToAll} title={d.ux.transactions.backToAll}>
-              <X size={13} />
-            </button>
-          </span>
-        )}
       </div>
     </div>
   );

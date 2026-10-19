@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Upload } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
@@ -25,6 +25,8 @@ import { ImportStepper } from '@/components/importCsv/ImportStepper';
 import { DropZone } from '@/components/importCsv/DropZone';
 import { ColumnPreview, type ColumnRole, type ReadRow } from '@/components/importCsv/ColumnPreview';
 import { BalanceDelta, ReviewFilterBar, StatusChip, type ReviewFilter, type RowStatus } from '@/components/importCsv/ReviewParts';
+import { useLeavingRows } from '@/components/importCsv/useLeavingRows';
+import { useScrollPin } from '@/components/importCsv/useScrollPin';
 
 const MAX_ROWS = 500;
 const MAX_SKIP = 100;
@@ -251,6 +253,9 @@ interface PendingImport {
 // The theme's own light-yellow background, defined for every palette.
 const PENDING_TINT = 'var(--gold-soft)';
 
+// How long a preview row takes to grow in or collapse out (--pb-dur-std).
+const PREVIEW_ROW_MS = 220;
+
 // A ticked row with no account chosen yet still belongs in the preview. It is
 // counted in this stand-in account so the TOTAL balance includes it;
 // StatementRow lists only real accounts, so the stand-in never shows by name.
@@ -277,6 +282,7 @@ function pendingRecord(p: PendingImport, id: string): ExpenseTransaction | Incom
 // read-only: a row opens nothing.
 function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; pending: PendingImport[] }) {
   const { d, t } = useTranslation();
+  const x = d.ux.transactionDialogs;
   // The device's local date, the same basis the Transactions navigator uses.
   const windowStart = useMemo(() => {
     const n = new Date();
@@ -323,26 +329,72 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
     return { entries: list, pendingById: pend };
   }, [ledger, idByIdx, placed, preview.transactions, preview.adjustments, windowStart]);
 
-  // Ticking ONE row scrolls to it. The first opening and Set all (several rows
-  // at once) do not jump. Instant under reduced motion.
+  // Ticking or unticking a row must never move what the reader is looking
+  // at: rows keep stable keys (the pending row's file index, not its ledger
+  // id, which is renumbered as rows come and go), so nothing is re-created;
+  // a new row grows in and an unticked one collapses out; and the scroll
+  // position is pinned to the first row in view while they do (useScrollPin).
+  //
+  // It used to scroll the pane to a newly ticked row instead, which pulled a
+  // reader who had scrolled down back to the top for a recent row. Now, when
+  // ONE row is ticked and it lands out of view, a small button offers to go
+  // to it; it goes away once that row is in view or the list changes again.
+  // Set all (several rows at once) offers nothing, as before.
   const bodyRef = useRef<HTMLDivElement>(null);
+  const rows = useMemo(() => entries.map((e) => {
+    const p = pendingById.get(e.transId);
+    return { key: p ? `p${p.idx}` : e.transId, value: { e, p } };
+  }), [entries, pendingById]);
+  const shown = useLeavingRows(rows, (v) => !!v.p, PREVIEW_ROW_MS);
+  const shownKey = shown.map((r) => (r.leaving ? `-${r.key}` : r.key)).join(',');
+  useScrollPin(bodyRef, shownKey, PREVIEW_ROW_MS + 80);
+  // Rows on screen when the pane opened do not grow in; any row ticked (or
+  // ticked again) after that does.
+  const [initialKeys, setInitialKeys] = useState(() => new Set(rows.map((r) => r.key)));
+  const departed = shown.filter((r) => r.leaving && initialKeys.has(r.key));
+  if (departed.length > 0) {
+    setInitialKeys((s) => {
+      const next = new Set(s);
+      departed.forEach((r) => next.delete(r.key));
+      return next;
+    });
+  }
+  const [jump, setJump] = useState<{ idx: number; up: boolean } | null>(null);
+  const placedSig = placed.map((p) => p.idx).join(',');
   const seenIdx = useRef<Set<number> | null>(null);
   useEffect(() => {
-    const now = new Set(placed.map((p) => p.idx));
+    const now = new Set(placedSig === '' ? [] : placedSig.split(',').map(Number));
     const before = seenIdx.current;
     seenIdx.current = now;
-    if (!before) return;
-    const added = placed.filter((p) => !before.has(p.idx));
+    const body = bodyRef.current;
+    if (!before || !body || typeof IntersectionObserver === 'undefined') return;
+    const added = [...now].filter((i) => !before.has(i));
     if (added.length !== 1) return;
-    const el = bodyRef.current?.querySelector<HTMLElement>(`[data-pending-idx="${added[0].idx}"]`);
+    const idx = added[0];
+    const el = body.querySelector<HTMLElement>(`[data-pending-idx="${idx}"]`);
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setJump((j) => (j?.idx === idx ? null : j));
+        io.disconnect();
+      } else {
+        setJump({ idx, up: entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0) });
+      }
+    }, { root: body });
+    io.observe(el);
+    return () => { io.disconnect(); setJump(null); };
+  }, [placedSig]);
+  const goToJump = () => {
+    if (!jump) return;
+    const el = bodyRef.current?.querySelector<HTMLElement>(`[data-pending-idx="${jump.idx}"]`);
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [placed]);
+    el?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+  };
 
   const noteStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.25rem 0 0' };
 
   return (
-    <section className="card pb-import-pane" aria-labelledby="pb-import-preview-title">
+    <section className="card pb-import-pane pb-tdlg-preview" aria-labelledby="pb-import-preview-title">
       <div className="pb-modal-head">
         <div>
           <h2 id="pb-import-preview-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
@@ -350,28 +402,39 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
           {older > 0 && <p style={noteStyle}>{t(d.importCsv.previewOlder, { count: older })}</p>}
         </div>
       </div>
-      {/* Rows run edge to edge, like the statement card. */}
-      <div ref={bodyRef} className="pb-modal-body themed-scroll" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
-        {entries.length === 0 ? (
+      {/* Rows run edge to edge, like the statement card. The scroller is
+          always this one element (never swapped for the empty note), so its
+          scroll position survives every change. */}
+      <div ref={bodyRef} className="pb-modal-body themed-scroll pb-tdlg-preview-body" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
+        {shown.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.importCsv.previewEmpty}</p>
-        ) : (
-          entries.map((e) => {
-            const p = pendingById.get(e.transId);
-            const row = (
-              <StatementRow
-                txn={e.record}
-                balancesAfter={e.balancesAfter} accounts={preview.accounts} totalBalanceAfter={e.totalBalanceAfter}
-                onOpenDetail={() => {}} categoryMeta={preview.categoryMeta}
-              />
-            );
-            return p ? (
-              <div key={e.transId} data-pending-idx={p.idx} style={{ background: PENDING_TINT }}>{row}</div>
-            ) : (
-              <div key={e.transId}>{row}</div>
-            );
-          })
         )}
+        {shown.map(({ key, value: { e, p }, leaving }) => {
+          const motion = leaving ? ' pb-tdlg-prow-leave' : p && !initialKeys.has(key) ? ' pb-tdlg-prow-enter' : '';
+          return (
+            <div
+              key={key} data-row-key={key} data-leaving={leaving ? 'true' : undefined}
+              data-pending-idx={p && !leaving ? p.idx : undefined}
+              className={`pb-tdlg-prow${motion}`}
+              aria-hidden={leaving || undefined} inert={leaving || undefined}
+            >
+              <div style={p ? { background: PENDING_TINT } : undefined}>
+                <StatementRow
+                  txn={e.record}
+                  balancesAfter={e.balancesAfter} accounts={preview.accounts} totalBalanceAfter={e.totalBalanceAfter}
+                  onOpenDetail={() => {}} categoryMeta={preview.categoryMeta}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
+      {jump && (
+        <button type="button" className="pb-tdlg-preview-jump" onClick={goToJump}>
+          {jump.up ? <ArrowUp size={14} aria-hidden="true" /> : <ArrowDown size={14} aria-hidden="true" />}
+          {x.previewShowAdded}
+        </button>
+      )}
     </section>
   );
 }
