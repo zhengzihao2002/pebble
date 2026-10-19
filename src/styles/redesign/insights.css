@@ -1,1 +1,661 @@
-/* Redesign: insights. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: insights. Loaded after globals.css and kit.css (src/app/layout.tsx).
+
+   Everything is scoped under .pebble-root and uses pb-ins-* classes; the
+   shared classes the page reuses (.card, .pill, .icon-btn, .link-btn,
+   .pb-trend-*, .goal-step, .pb-wk-name) are only modified here through
+   .pb-ins-* wrappers, so the Dashboard and every other page are untouched.
+   (.dash-two-col is no longer used on this page.) Theme tokens only, so all
+   five palettes in light and dark follow, and nothing swaps a colour between
+   a light and a dark selector. Responsive rules are container queries on
+   `content` (the main column) or on a container a card declares itself.
+   Motion is opacity / transform; the global reduced-motion rule stops it. */
+
+/* ---------- Page: jump bar + one grid ----------
+   DOM order is the phone order (hero, attention, pace, calendar, week,
+   movers, places, good news); wider screens place the same cards by area. */
+.pebble-root .pb-ins { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.pebble-root .pb-ins-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
+.pebble-root .pb-ins-area {
+  display: flex; flex-direction: column; min-width: 0;
+  scroll-margin-top: calc(var(--pb-header-h) + var(--pb-ins-bar-h, 3.25rem) + 0.75rem);
+}
+.pebble-root .pb-ins-area:empty { display: none; }
+.pebble-root .pb-ins-area > .card { flex: 1 1 auto; }
+
+/* Two columns from 560px content width, as before the redesign. */
+@container content (min-width: 560px) {
+  .pebble-root .pb-ins-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "hero hero"
+      "rail rail"
+      "cal cal"
+      "pace week"
+      "trends places"
+      "good good";
+  }
+  .pebble-root .pb-ins-area-hero { grid-area: hero; }
+  .pebble-root .pb-ins-area-rail { grid-area: rail; }
+  .pebble-root .pb-ins-area-cal { grid-area: cal; }
+  .pebble-root .pb-ins-area-pace { grid-area: pace; }
+  .pebble-root .pb-ins-area-week { grid-area: week; }
+  .pebble-root .pb-ins-area-trends { grid-area: trends; }
+  .pebble-root .pb-ins-area-places { grid-area: places; }
+  .pebble-root .pb-ins-area-good { grid-area: good; }
+}
+/* A wide Mac: a 12-column bento. The attention list becomes a rail beside
+   the hero and the calendar, sticky under the header and jump bar, and its
+   list scrolls inside it. */
+@container content (min-width: 1100px) {
+  .pebble-root .pb-ins-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "hero hero hero hero hero hero hero hero rail rail rail rail"
+      "cal cal cal cal cal cal cal cal rail rail rail rail"
+      "pace pace pace pace pace pace pace week week week week week"
+      "trends trends trends trends trends trends trends places places places places places"
+      "good good good good good good good good good good good good";
+  }
+  .pebble-root .pb-ins-area-rail {
+    /* Fills its rows (no gap beside the calendar) up to one screen tall. */
+    position: sticky; align-self: stretch;
+    top: calc(var(--pb-header-h) + var(--pb-ins-bar-h, 3.25rem) + 0.75rem);
+    max-height: calc(100dvh - var(--pb-header-h) - var(--pb-ins-bar-h, 3.25rem) - 1.75rem);
+  }
+  .pebble-root .pb-ins-area-rail > .pb-ins-wk { min-height: 0; }
+  .pebble-root .pb-ins-wk .pb-ins-wk-scroll {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    margin: 0 -0.5rem; padding: 0 0.5rem; scrollbar-width: thin;
+  }
+  .pebble-root .pb-ins-wk .pb-ins-wk-extra { display: flex; }
+  .pebble-root .pb-ins-wk .pb-ins-wk-toggle { display: none; }
+}
+
+/* Jump chips: sticky under the glass header, scrolling sideways when they
+   do not fit. */
+.pebble-root .pb-ins-bar {
+  position: sticky; top: var(--pb-header-h); z-index: 5; isolation: isolate;
+  min-width: 0; padding: 0.4rem; border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.pebble-root .pb-ins-bar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background-color: color-mix(in srgb, var(--mist) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px); backdrop-filter: saturate(1.5) blur(14px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pebble-root .pb-ins-bar::before { background-color: var(--mist); }
+}
+.pebble-root .pb-ins-bar-track {
+  display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.pebble-root .pb-ins-bar-track::-webkit-scrollbar { display: none; }
+.pebble-root .pb-ins-chip {
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.36rem 0.85rem; border: 0; border-radius: 999px; background: transparent;
+  color: var(--ink-soft); font: inherit; font-size: 0.78rem; font-weight: 500; white-space: nowrap;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-ins-chip:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-ins-chip[aria-current="true"] { color: var(--ink); font-weight: 600; background-color: color-mix(in srgb, var(--pine) 13%, transparent); }
+.pebble-root .pb-ins-chip:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-ins-chip-count {
+  display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.3rem;
+  border-radius: 999px; font-size: 0.68rem; font-weight: 700;
+  color: var(--paper); background-color: var(--wine);
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-ins-chip { min-height: 44px; padding-inline: 0.95rem; }
+  .pebble-root .pb-ins-bar { padding: 0.15rem; }
+}
+
+/* ---------- Card chrome (matches the Dashboard cards) ---------- */
+.pebble-root .pb-ins-card {
+  display: flex; flex-direction: column; gap: 0.9rem; min-width: 0;
+  padding: 1.25rem 1.5rem; box-sizing: border-box;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-ins-card { padding: 1.1rem; }
+}
+.pebble-root .pb-ins-card .pb-sec-head-sub { margin-top: 0.25rem; }
+.pebble-root .pb-ins-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.pebble-root .pb-ins-sep { margin: 0 0.4rem; opacity: 0.55; }
+.pebble-root .pb-ins-quiet { margin: 0; font-size: 0.82rem; color: var(--ink-soft); line-height: 1.5; }
+.pebble-root .pb-ins-mini-head {
+  margin: 0; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+}
+.pebble-root .pb-ins-fill-empty { flex: 1 1 auto; display: grid; place-items: center; }
+.pebble-root .pb-ins-note-chip {
+  display: inline-flex; align-items: center; padding: 0.18rem 0.6rem; border-radius: 999px;
+  font-size: 0.7rem; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.pebble-root .pb-ins-more {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 0.25rem;
+  min-height: 2rem; padding: 0; font-size: 0.8rem; font-weight: 600; text-decoration: none;
+}
+.pebble-root .pb-ins-more svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .pb-ins-more svg.is-up { transform: rotate(180deg); }
+.pebble-root .pb-ins-more:focus-visible,
+.pebble-root .pb-ins-undo:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 4px; }
+.pebble-root .pb-ins-cta { display: inline-flex; }
+@media (pointer: coarse) {
+  .pebble-root .pb-ins-more { min-height: 44px; }
+}
+
+/* Category tile: the category's colour at ~13% behind its icon. */
+.pebble-root .pb-ins-tile {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 0.7rem;
+  color: var(--pb-ins-cat, var(--ink-soft));
+  background-color: color-mix(in srgb, var(--pb-ins-cat, var(--ink-soft)) 13%, transparent);
+}
+.pebble-root .pb-ins-tile.is-sm { width: 28px; height: 28px; border-radius: 0.55rem; }
+.pebble-root .pb-ins-tile.is-disc { width: 28px; height: 28px; border-radius: 50%; }
+
+/* One transaction row (day panel, a place's charges). */
+.pebble-root .pb-ins-charges { list-style: none; margin: 0; padding: 0; }
+.pebble-root .pb-ins-charges > li { position: relative; }
+.pebble-root .pb-ins-charges > li + li::before {
+  content: ''; position: absolute; top: 0; left: 3.35rem; right: 0.4rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-ins-charge {
+  width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.4rem;
+  border: 0; border-radius: 0.75rem; background: none; color: var(--ink); text-align: left; font: inherit;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root button.pb-ins-charge:hover { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
+.pebble-root .pb-ins-charge:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-ins-charge-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pebble-root .pb-ins-charge-title { font-size: 0.86rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-ins-charge-sub { font-size: 0.72rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-ins-charge-amt { flex: none; font-size: 0.86rem; font-weight: 600; }
+.pebble-root .pb-ins-charge-amt.is-out { color: var(--wine); }
+.pebble-root .pb-ins-charge-amt.is-in { color: var(--pine); }
+@media (pointer: coarse) {
+  .pebble-root .pb-ins-charge { min-height: 48px; }
+}
+
+/* Tooltips and legend keys. */
+.pebble-root .pb-ins-tip {
+  position: absolute; z-index: 6; pointer-events: none; white-space: nowrap;
+  background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: var(--shadow);
+  padding: 0.4rem 0.6rem; font-size: 0.76rem; color: var(--ink);
+}
+.pebble-root .pb-ins-tip-soft { color: var(--ink-soft); }
+.pebble-root .pb-ins-tip-head { font-weight: 600; margin-bottom: 3px; }
+.pebble-root .pb-ins-tip-row { display: flex; justify-content: space-between; gap: 1.25rem; }
+.pebble-root .pb-ins-tip-row > span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.pebble-root .pb-ins-tip-row .font-mono-tab { font-weight: 600; }
+.pebble-root .pb-ins-key { display: inline-block; width: 8px; height: 8px; border-radius: 99px; flex: none; }
+.pebble-root .pb-ins-key.is-in { box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
+.pebble-root .pb-ins-key.is-out { background-color: var(--wine); }
+.pebble-root .pb-ins-key.is-kept { background-color: var(--pine); }
+.pebble-root .pb-ins-key.is-over { background: repeating-linear-gradient(135deg, var(--wine) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--wine); }
+.pebble-root .pb-ins-key.is-usual { background-color: var(--ink-faint); }
+.pebble-root .pb-ins-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.pebble-root .pb-ins-key-line { display: inline-block; width: 14px; height: 2px; border-radius: 2px; flex: none; }
+.pebble-root .pb-ins-key-line.is-cur { background-color: var(--wine); }
+.pebble-root .pb-ins-key-line.is-dashed { color: var(--ink-faint); background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px); }
+.pebble-root .pb-ins-key-line.is-dotted { height: 3px; color: var(--wine); background: radial-gradient(circle, currentColor 1.2px, transparent 1.4px) 0 0 / 5px 3px; }
+
+/* Skeletons in the shape of what is coming. */
+.pebble-root .pb-ins-skel-rows { display: flex; flex-direction: column; gap: 1rem; padding-top: 0.25rem; }
+.pebble-root .pb-ins-skel-row { display: flex; align-items: center; gap: 0.75rem; }
+.pebble-root .pb-ins-skel-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; max-width: 30rem; width: 100%; margin: 0 auto; }
+.pebble-root .pb-ins-skel-bars { flex: 1 1 auto; min-height: 170px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.pebble-root .pb-ins-hero-skel { display: flex; align-items: center; gap: 1.25rem; }
+
+/* ---------- Savings hero ----------
+   The area wrapper is the query container, so the wide layout below can
+   style the hero itself (a container query never styles its own container). */
+.pebble-root .pb-ins-area-hero { container: pb-ins-hero / inline-size; }
+.pebble-root .pb-ins-hero {
+  display: grid; gap: 0.75rem 1.1rem; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "ring head" "sent sent" "split split" "trend trend";
+  padding: 1.4rem 1.5rem;
+  background-image:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--pb-tone, var(--pine)) 12%, transparent), transparent 60%),
+    linear-gradient(color-mix(in srgb, var(--pb-tone, var(--pine)) 5%, transparent), color-mix(in srgb, var(--pb-tone, var(--pine)) 5%, transparent));
+}
+.pebble-root .pb-ins-hero[aria-busy="true"] { display: block; }
+.pebble-root .pb-ins-hero-ring { grid-area: ring; align-self: center; }
+.pebble-root .pb-ins-hero-ring .pb-ring-track { stroke: color-mix(in srgb, var(--pb-ring-color) 16%, transparent); }
+.pebble-root .pb-ins-hero-head { grid-area: head; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.pebble-root .pb-ins-hero-label { margin: 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-hero-figure {
+  font-size: clamp(2.2rem, 6cqi, 3rem); line-height: 1.05; font-weight: 600; color: var(--pb-tone, var(--pine));
+  align-self: flex-start;
+}
+.pebble-root .pb-ins-hero-sentence { grid-area: sent; margin: 0; font-size: 0.95rem; line-height: 1.5; max-width: 40rem; }
+.pebble-root .pb-ins-hero-split { grid-area: split; min-width: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.pebble-root .pb-ins-split-bar {
+  position: relative; display: flex; height: 10px; border-radius: 99px; overflow: hidden;
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-ins-split-spent { display: block; height: 100%; background-color: color-mix(in srgb, var(--wine) 78%, var(--mist)); }
+.pebble-root .pb-ins-split-rest { display: block; height: 100%; background-color: var(--pine); border-left: 2px solid var(--mist); }
+.pebble-root .pb-ins-split-rest.is-over {
+  border-left: 0;
+  background: repeating-linear-gradient(135deg, var(--wine) 0 4px, color-mix(in srgb, var(--wine) 35%, transparent) 4px 7px);
+}
+.pebble-root .pb-ins-split-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 2px; background-color: var(--ink); }
+.pebble-root .pb-ins-split-bar:has(.pb-ins-split-mark) { overflow: visible; }
+.pebble-root .pb-ins-split-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; margin: 0; }
+.pebble-root .pb-ins-split-legend > div { display: flex; align-items: baseline; gap: 0.45rem; }
+.pebble-root .pb-ins-split-legend dt { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-split-legend dd { margin: 0; font-size: 0.88rem; font-weight: 600; }
+.pebble-root .pb-ins-hero-trend { grid-area: trend; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.pebble-root .pb-ins-hero-trend-label { margin: 0; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-ins-hero-trend-axis { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--ink-soft); }
+@container pb-ins-hero (min-width: 700px) {
+  .pebble-root .pb-ins-hero {
+    grid-template-columns: auto minmax(0, 1.5fr) minmax(12rem, 1fr);
+    grid-template-areas: "ring head trend" "ring sent trend" "ring split trend";
+    column-gap: 1.6rem; row-gap: 0.6rem;
+  }
+  .pebble-root .pb-ins-hero-ring { padding-right: 0.25rem; }
+  .pebble-root .pb-ins-hero-trend { align-self: stretch; justify-content: center; padding-left: 1.5rem; border-left: 1px solid var(--line); }
+}
+
+/* ---------- Worth knowing: attention list and good news ---------- */
+.pebble-root .pb-ins-wk-badge {
+  display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+  color: var(--wine); background-color: color-mix(in srgb, var(--wine) 11%, transparent);
+}
+.pebble-root .pb-ins-wk-badge.is-clear { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent); }
+.pebble-root .pb-ins-wk-scroll { display: flex; flex-direction: column; gap: 0.6rem; }
+.pebble-root .pb-ins-wk-group { display: flex; flex-direction: column; }
+.pebble-root .pb-ins-wk-grouphead {
+  display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.15rem;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+}
+.pebble-root .pb-ins-wk-group[data-group="urgent"] .pb-ins-wk-grouphead { color: var(--wine); }
+.pebble-root .pb-ins-wk-count {
+  display: inline-grid; place-items: center; min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem; border-radius: 999px;
+  font-size: 0.66rem; letter-spacing: 0; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-ins-wk-group[data-group="urgent"] .pb-ins-wk-count { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-ins-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-ins-note {
+  position: relative; display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.75rem 0; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-ins-notes > .pb-ins-note:first-child { border-top: 0; }
+.pebble-root .pb-ins-wk-extra { display: none; }
+.pebble-root .pb-ins-note-icon {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 0.6rem;
+  color: var(--pb-tone); background-color: color-mix(in srgb, var(--pb-tone) 14%, transparent);
+}
+.pebble-root .pb-ins-note-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pebble-root .pb-ins-note-title { font-size: 0.78rem; font-weight: 600; color: var(--pb-tone); }
+.pebble-root .pb-ins-note-body { font-size: 0.86rem; line-height: 1.45; }
+.pebble-root .pb-ins-note-action { display: inline-flex; margin-top: 0.4rem; }
+.pebble-root .pb-ins-note-action .pill {
+  display: inline-flex; align-items: center; padding: 0.32rem 0.8rem; font-size: 0.78rem; text-decoration: none; white-space: nowrap;
+}
+.pebble-root .pb-ins-note-action .pill:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+/* Urgent: a tone bar down the left, a larger tile, a firmer sentence. */
+.pebble-root .pb-ins-note.is-urgent { padding-left: 0.85rem; }
+.pebble-root .pb-ins-note.is-urgent::before {
+  content: ''; position: absolute; left: 0; top: 0.8rem; bottom: 0.8rem; width: 3px; border-radius: 3px;
+  background-color: var(--pb-tone);
+}
+.pebble-root .pb-ins-note.is-urgent .pb-ins-note-icon { width: 36px; height: 36px; border-radius: 0.7rem; }
+.pebble-root .pb-ins-note.is-urgent .pb-ins-note-body { font-weight: 500; }
+/* "Not useful": 30px to the eye, a 44px target. */
+.pebble-root .pb-ins-note-x {
+  position: relative; flex: none; width: 30px; height: 30px; border: 0; border-radius: 50%; margin: -3px -4px 0 0;
+}
+.pebble-root .pb-ins-note-x::before { content: ''; position: absolute; inset: -7px; }
+.pebble-root .pb-ins-note-x:hover { background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-ins-note-x:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-ins-note-hidden {
+  align-items: center; justify-content: space-between; padding: 0.6rem 0.75rem; margin: 0.35rem 0;
+  border: 1px dashed var(--line); border-radius: 0.75rem; font-size: 0.8rem; color: var(--ink-soft);
+  animation: pb-rise 280ms var(--pb-ease-out) both;
+}
+.pebble-root .pb-ins-notes > .pb-ins-note-hidden + .pb-ins-note { border-top: 0; }
+.pebble-root .pb-ins-note-hidden-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-ins-undo { flex: none; font-weight: 600; font-size: 0.8rem; text-decoration: none; }
+@media (pointer: coarse) {
+  .pebble-root .pb-ins-undo { min-height: 44px; padding: 0 0.5rem; }
+  .pebble-root .pb-ins-note-action .pill { min-height: 44px; }
+  /* Kit segmented options (Month | Year, This month | Last 3 months). */
+  .pebble-root .pb-ins [role="radio"] { min-height: 44px; }
+}
+
+/* Good news: small tinted cards - a sideways scroller on a phone, a grid on
+   wider screens. */
+.pebble-root .pb-ins-good-list {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(15rem, 86%); gap: 0.75rem;
+  overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  margin: 0 -1.1rem; padding: 0.1rem 1.1rem 0.4rem; scroll-padding-inline: 1.1rem; scrollbar-width: none;
+}
+.pebble-root .pb-ins-good-list::-webkit-scrollbar { display: none; }
+.pebble-root .pb-ins-good .pb-ins-note,
+.pebble-root .pb-ins-good .pb-ins-notes > .pb-ins-note:first-child {
+  border: 1px solid color-mix(in srgb, var(--pb-tone, var(--line)) 18%, var(--line));
+  padding: 0.9rem 0.85rem 0.9rem 0.95rem; border-radius: 1rem; scroll-snap-align: start;
+  background-color: color-mix(in srgb, var(--pb-tone, var(--ink)) 6%, transparent);
+}
+.pebble-root .pb-ins-good .pb-ins-note-hidden { margin: 0; border-style: dashed; background: none; }
+/* In a small card the sentence takes the full width under the title row. */
+.pebble-root .pb-ins-good .pb-ins-note:not(.pb-ins-note-hidden) {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.35rem 0.6rem;
+  align-content: start;
+}
+.pebble-root .pb-ins-good .pb-ins-note-main { display: contents; }
+.pebble-root .pb-ins-good .pb-ins-note-icon { grid-column: 1; grid-row: 1; }
+.pebble-root .pb-ins-good .pb-ins-note-title { grid-column: 2; grid-row: 1; }
+.pebble-root .pb-ins-good .pb-ins-note-x { grid-column: 3; grid-row: 1; margin: 0 -4px 0 0; }
+.pebble-root .pb-ins-good .pb-ins-note-body { grid-column: 1 / -1; grid-row: 2; }
+.pebble-root .pb-ins-good .pb-ins-note-action { grid-column: 1 / -1; grid-row: 3; margin-top: 0.15rem; }
+@container content (min-width: 640px) {
+  .pebble-root .pb-ins-good-list {
+    grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    overflow: visible; margin: 0; padding: 0;
+  }
+}
+
+/* ---------- Month pace ---------- */
+.pebble-root .pb-ins-pace-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem 0.75rem; }
+.pebble-root .pb-ins-pace-spent { margin: 0; font-size: 0.95rem; }
+.pebble-root .pb-ins-pace-spent strong { font-weight: 700; }
+.pebble-root .pb-ins-pace-chart { position: relative; height: 200px; min-width: 0; touch-action: pan-y; }
+.pebble-root .pb-ins-pace-chart svg { display: block; overflow: visible; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-ins-pace-chart { height: 150px; }
+}
+.pebble-root .pb-ins-gridline { stroke: var(--line); stroke-width: 1; }
+.pebble-root .pb-ins-axis { fill: var(--ink-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pebble-root .pb-ins-axis.is-strong { font-weight: 600; }
+.pebble-root .pb-ins-pace-usual { fill: none; stroke: var(--ink-faint); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.pebble-root .pb-ins-pace-area { fill: var(--wine); opacity: 0.1; }
+.pebble-root .pb-ins-pace-cur { fill: none; stroke: var(--wine); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pebble-root .pb-ins-pace-proj { fill: none; stroke: var(--wine); stroke-width: 2; stroke-dasharray: 0.1 5; stroke-linecap: round; opacity: 0.85; }
+.pebble-root .pb-ins-pace-today { stroke: var(--ink-faint); stroke-width: 1; }
+.pebble-root .pb-ins-pace-dot { fill: var(--wine); stroke: var(--mist); stroke-width: 2; }
+.pebble-root .pb-ins-pace-end { fill: var(--mist); stroke: var(--wine); stroke-width: 1.5; }
+.pebble-root .pb-ins-pace-hover line { stroke: var(--ink-faint); stroke-width: 1; }
+.pebble-root .pb-ins-pace-hover .is-usual { fill: var(--ink-faint); stroke: var(--mist); stroke-width: 1.5; }
+.pebble-root .pb-ins-pace-hover .is-cur { fill: var(--wine); stroke: var(--mist); stroke-width: 2; }
+.pebble-root .pb-ins-pace-tip { top: -0.4rem; transform: translate(-50%, -100%); min-width: 11rem; }
+.pebble-root .pb-ins-pace-forecast { margin: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; }
+.pebble-root .pb-ins-pace-forecast strong { font-weight: 700; }
+.pebble-root .pb-ins-pace-note { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-pace-due { display: flex; flex-direction: column; gap: 0.4rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-ins-due-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.pebble-root .pb-ins-due { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
+.pebble-root .pb-ins-due-date {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 2.5rem; height: 2.5rem; border-radius: 0.65rem; border: 1px solid var(--line); line-height: 1.05;
+}
+.pebble-root .pb-ins-due-date > span { font-size: 0.6rem; text-transform: uppercase; color: var(--ink-soft); letter-spacing: 0.04em; }
+.pebble-root .pb-ins-due-date > strong { font-size: 0.92rem; font-weight: 700; }
+.pebble-root .pb-ins-due-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-ins-due-name { font-size: 0.84rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-ins-due-sub { font-size: 0.7rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-due-amt { flex: none; font-size: 0.84rem; font-weight: 600; color: var(--wine); }
+
+/* ---------- Day by day ---------- */
+.pebble-root .pb-ins-day { container: pb-ins-day / inline-size; }
+.pebble-root .pb-ins-day-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem 1.5rem; }
+.pebble-root .pb-ins-cal { container: pb-ins-cal / inline-size; min-width: 0; width: 100%; max-width: 32rem; margin: 0 auto; display: flex; flex-direction: column; gap: 0.6rem; }
+.pebble-root .pb-ins-cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pebble-root .pb-ins-nav-btn { flex: none; width: 40px; height: 40px; border-radius: 10px; }
+.pebble-root .pb-ins-nav-btn:disabled { opacity: 0.35; cursor: default; }
+.pebble-root .pb-ins-nav-btn:disabled:hover { border-color: var(--line); color: var(--ink-soft); }
+.pebble-root .pb-ins-nav-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-ins-cal-title { min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1px; }
+.pebble-root .pb-ins-cal-month { font-weight: 600; font-size: 0.95rem; }
+.pebble-root .pb-ins-cal-totals { font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-cal-grid {
+  display: flex; flex-direction: column; gap: 5px; touch-action: pan-y;
+  animation: pb-ins-fade 260ms var(--pb-ease-out) both;
+}
+@keyframes pb-ins-fade { from { opacity: 0; } }
+.pebble-root .pb-ins-cal-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; align-items: center; }
+.pebble-root .pb-ins-cal-row.is-head > span { text-align: center; font-size: 0.68rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-cal-wk { display: none; }
+@container pb-ins-cal (min-width: 400px) {
+  .pebble-root .pb-ins-cal-row { grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(3.4rem, auto); }
+  .pebble-root .pb-ins-cal-wk {
+    display: block; text-align: right; padding-left: 0.4rem; font-size: 0.72rem; color: var(--ink-soft);
+    border-left: 1px solid var(--line); align-self: stretch; display: flex; align-items: center; justify-content: flex-end;
+  }
+  .pebble-root .pb-ins-cal-row.is-head > .pb-ins-cal-wk { border-left-color: transparent; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; }
+}
+.pebble-root .pb-ins-day-cell {
+  --pb-shade: 0%;
+  position: relative; aspect-ratio: 1 / 1; min-width: 0; padding: 4px 5px;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: 0.72rem; color: var(--ink-soft);
+  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), transparent);
+  transition: transform var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-ins [data-level="1"] { --pb-shade: 16%; }
+.pebble-root .pb-ins [data-level="2"] { --pb-shade: 34%; }
+.pebble-root .pb-ins [data-level="3"] { --pb-shade: 54%; }
+.pebble-root .pb-ins [data-level="4"] { --pb-shade: 76%; }
+.pebble-root .pb-ins [data-level="5"] { --pb-shade: 100%; }
+.pebble-root .pb-ins-day-cell[data-level="2"],
+.pebble-root .pb-ins-day-cell[data-level="3"] { color: var(--ink); }
+.pebble-root .pb-ins-day-cell[data-level="4"],
+.pebble-root .pb-ins-day-cell[data-level="5"] { color: var(--paper); }
+.pebble-root .pb-ins-day-cell.is-empty { border: 1px dashed var(--line); }
+.pebble-root .pb-ins-day-cell.is-future { opacity: 0.35; cursor: default; }
+.pebble-root .pb-ins-day-cell:not(:disabled):hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--pine) 45%, transparent); }
+.pebble-root .pb-ins-day-cell.is-today { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pine) 60%, transparent); font-weight: 700; color: var(--ink); }
+.pebble-root .pb-ins-day-cell.is-today[data-level="4"],
+.pebble-root .pb-ins-day-cell.is-today[data-level="5"] { color: var(--paper); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--paper) 70%, transparent); }
+/* Hovering today keeps its ring and adds the hover ring outside it. */
+.pebble-root .pb-ins-day-cell.is-today:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pine) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--pine) 45%, transparent);
+}
+.pebble-root .pb-ins-day-cell.is-today[data-level="4"]:not(:disabled):hover,
+.pebble-root .pb-ins-day-cell.is-today[data-level="5"]:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--paper) 70%, transparent), 0 0 0 1px color-mix(in srgb, var(--pine) 45%, transparent);
+}
+.pebble-root .pb-ins-day-dot {
+  position: absolute; left: 50%; bottom: 14%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%;
+  background-color: var(--pine);
+}
+.pebble-root .pb-ins-day-cell[data-level="4"] .pb-ins-day-dot,
+.pebble-root .pb-ins-day-cell[data-level="5"] .pb-ins-day-dot { background-color: var(--paper); }
+.pebble-root .pb-ins-day-cell.is-picked { outline: 2px solid var(--gold); outline-offset: 1px; }
+.pebble-root .pb-ins-day-cell:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; z-index: 1; }
+.pebble-root .pb-ins-day-cell.is-picked:focus-visible { outline-color: var(--gold); box-shadow: 0 0 0 5px color-mix(in srgb, var(--pine) 35%, transparent); }
+
+.pebble-root .pb-ins-cal-legend {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 0.75rem;
+  margin-top: 0.35rem; font-size: 0.76rem; color: var(--ink-soft);
+}
+.pebble-root .pb-ins-cal-legend-scale { display: inline-flex; align-items: center; gap: 5px; }
+.pebble-root .pb-ins-swatch {
+  --pb-shade: 0%;
+  display: inline-block; width: 14px; height: 14px; border-radius: 4px;
+  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), transparent);
+}
+.pebble-root .pb-ins-swatch.is-empty { border: 1px dashed var(--line); }
+
+/* The day panel: under the calendar on a narrow card, beside it on a wide
+   one (where a month summary holds the place until a day is picked). */
+.pebble-root .pb-ins-day-panel { min-width: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.pebble-root .pb-ins-day-panel.is-day { padding-top: 0.9rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-ins-day-panel.is-summary { display: none; }
+.pebble-root .pb-ins-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.pebble-root .pb-ins-panel-date { margin: 0; font-size: 0.92rem; font-weight: 600; }
+.pebble-root .pb-ins-panel-sub { margin: 2px 0 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-panel-close { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; position: relative; }
+.pebble-root .pb-ins-panel-close::before { content: ''; position: absolute; inset: -6px; }
+.pebble-root .pb-ins-panel-close:hover { background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-ins-panel-close:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-ins-panel-total { margin: -0.2rem 0 0; font-size: 1.6rem; font-weight: 600; letter-spacing: -0.01em; }
+.pebble-root .pb-ins-facts { margin: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-ins-facts > div { display: flex; flex-direction: column; gap: 2px; padding: 0.55rem 0; border-top: 1px solid var(--line); }
+.pebble-root .pb-ins-facts dt { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-facts dd { margin: 0; font-size: 0.86rem; font-weight: 600; min-width: 0; display: flex; align-items: center; }
+.pebble-root .pb-ins-fact-cat { gap: 0.5rem; }
+.pebble-root .pb-ins-fact-cat-name { flex: 0 1 auto; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@container pb-ins-day (min-width: 640px) {
+  .pebble-root .pb-ins-day-body { grid-template-columns: minmax(0, 34rem) minmax(14rem, 1fr); align-items: start; }
+  .pebble-root .pb-ins-cal { margin: 0; max-width: none; }
+  .pebble-root .pb-ins-day-panel,
+  .pebble-root .pb-ins-day-panel.is-summary {
+    display: flex; align-self: stretch; padding: 1rem 1.1rem; border: 0; border-radius: 1rem;
+    background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+  }
+  .pebble-root .pb-ins-day-panel.is-day { max-height: 32rem; overflow-y: auto; }
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-ins-nav-btn { width: 44px; height: 44px; }
+}
+
+/* Year view: one square a day, a column per week. Scrolls sideways on a
+   phone (opened at today). */
+.pebble-root .pb-ins-year-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 2px 2px 6px; }
+.pebble-root .pb-ins-year-inner { min-width: calc(var(--pb-cols) * 13px); display: flex; flex-direction: column; gap: 4px; }
+.pebble-root .pb-ins-year-months,
+.pebble-root .pb-ins-year-grid { display: grid; grid-template-columns: repeat(var(--pb-cols), minmax(0, 1fr)); column-gap: 3px; }
+.pebble-root .pb-ins-year-grid { row-gap: 3px; }
+.pebble-root .pb-ins-year-months > span { font-size: 0.66rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-ins-yday {
+  --pb-shade: 0%;
+  aspect-ratio: 1 / 1; min-width: 0; padding: 0; border: 0; border-radius: 3px;
+  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), color-mix(in srgb, var(--ink) 4%, transparent));
+}
+.pebble-root .pb-ins-yday.is-empty { background-color: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.pebble-root .pb-ins-yday.is-before { background-color: transparent; box-shadow: none; opacity: 0.4; cursor: default; }
+.pebble-root .pb-ins-yday.is-today { box-shadow: 0 0 0 1.5px var(--ink); }
+.pebble-root .pb-ins-yday:not(:disabled):hover { box-shadow: 0 0 0 1.5px var(--gold); }
+.pebble-root .pb-ins-yday:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; position: relative; z-index: 1; }
+
+/* ---------- Your week ---------- */
+.pebble-root .pb-ins-week { container: pb-ins-week / inline-size; }
+.pebble-root .pb-ins-week-sentence { margin: 0; font-size: 0.88rem; line-height: 1.5; }
+.pebble-root .pb-ins-week-chart { flex: 1 1 auto; min-height: 180px; max-height: 300px; display: flex; flex-direction: column; gap: 6px; }
+.pebble-root .pb-ins-week-amts,
+.pebble-root .pb-ins-week-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; text-align: center; }
+.pebble-root .pb-ins-week-amts > span { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-ins-week-amts > .is-top { color: var(--ink); font-weight: 700; }
+.pebble-root .pb-ins-week-plot { position: relative; flex: 1 1 auto; min-height: 120px; padding-top: 1.6rem; }
+.pebble-root .pb-ins-week-area { position: relative; height: 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.pebble-root .pb-ins-week-col {
+  position: relative; height: 100%; justify-self: center; width: 100%; max-width: 30px;
+  border-radius: 7px 7px 3px 3px; background-color: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.pebble-root .pb-ins-week-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; border-radius: 7px 7px 3px 3px;
+  background-color: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.pebble-root .pb-ins-week-col.is-top .pb-ins-week-bar { background-color: var(--pine); }
+.pebble-root .pb-ins-week-chip {
+  position: absolute; left: 50%; bottom: calc(100% + 5px); transform: translateX(-50%);
+  padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.66rem; font-weight: 700; white-space: nowrap;
+  color: var(--paper); background-color: var(--pine);
+}
+.pebble-root .pb-ins-week-typical {
+  position: absolute; left: -2px; right: -2px; height: 0; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  pointer-events: none;
+}
+.pebble-root .pb-ins-week-key { justify-content: flex-end; margin-top: 2px; font-size: 0.72rem; }
+.pebble-root .pb-ins-key-line.is-ink { color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.pebble-root .pb-ins-week-days > span { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-week-days > .is-top { color: var(--ink); font-weight: 700; }
+.pebble-root .pb-ins-wd-narrow { display: none; }
+@container pb-ins-week (max-width: 359px) {
+  .pebble-root .pb-ins-wd-short { display: none; }
+  .pebble-root .pb-ins-wd-narrow { display: inline; }
+}
+@container pb-ins-week (max-width: 319px) {
+  .pebble-root .pb-ins-week-amts { visibility: hidden; height: 0; }
+}
+.pebble-root .pb-ins-week-split { margin: 0; padding-top: 0.8rem; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.45rem; }
+.pebble-root .pb-ins-week-split-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
+.pebble-root .pb-ins-week-split-row dt { font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-ins-week-split-track { margin: 0; height: 6px; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 6%, transparent); overflow: hidden; }
+.pebble-root .pb-ins-week-split-track > span { display: block; height: 100%; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 28%, transparent); }
+.pebble-root .pb-ins-week-split-track > span.is-top { background-color: var(--pine); }
+.pebble-root .pb-ins-week-split-amt { margin: 0; font-size: 0.82rem; font-weight: 600; text-align: right; }
+
+/* ---------- Category movers (the shared .pb-trend-* grid, extended) ---------- */
+.pebble-root .pb-ins-trend-list { list-style: none; margin: 0; padding: 0; grid-template-columns: fit-content(48%) minmax(96px, 1fr) auto; }
+.pebble-root .pb-ins-trend-group {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 0.45rem; padding: 0.85rem 0 0.25rem;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+}
+.pebble-root .pb-ins-trend-group:first-child { padding-top: 0; }
+.pebble-root .pb-ins-trend-group > span:last-child {
+  display: inline-grid; place-items: center; min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem; border-radius: 999px;
+  letter-spacing: 0; font-size: 0.66rem; background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-ins-trend-list .pb-trend-name { gap: 0.6rem; }
+.pebble-root .pb-ins-trend-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pebble-root .pb-ins-trend-name { font-size: 0.86rem; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.pebble-root .pb-ins-trend-vs { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-ins-trend-list .is-new-row > .pb-trend-cell { animation: pb-rise 380ms var(--pb-ease-out) both; }
+.pebble-root .pb-ins-new-chip {
+  display: inline-flex; align-items: center; padding: 0.08rem 0.5rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; color: var(--gold); background-color: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+@container pb-trends (max-width: 420px) {
+  .pebble-root .pb-ins-trend-list { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+/* Row-sized bars (SparkBars). */
+.pebble-root .pb-ins-spark { position: relative; height: 34px; width: 100%; border-radius: 6px; }
+.pebble-root .pb-ins-spark:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+.pebble-root .pb-ins-spark-bars { position: relative; height: 100%; display: flex; align-items: stretch; gap: 3px; }
+.pebble-root .pb-ins-spark-col { flex: 1 1 0; display: flex; align-items: flex-end; justify-content: center; border-radius: 4px; }
+.pebble-root .pb-ins-spark-col.is-active { background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-ins-spark-bar {
+  width: 100%; max-width: 18px; border-radius: 3px 3px 1px 1px;
+  background-color: var(--pb-ins-cat); opacity: 0.4;
+}
+.pebble-root .pb-ins-spark-col.is-last .pb-ins-spark-bar,
+.pebble-root .pb-ins-spark-col.is-active .pb-ins-spark-bar { opacity: 1; }
+.pebble-root .pb-ins-spark-ref {
+  position: absolute; left: 0; right: 0; height: 0; pointer-events: none;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.pebble-root .pb-ins-spark-tip { bottom: calc(100% + 6px); transform: translateX(-50%); }
+
+/* ---------- Top places ---------- */
+.pebble-root .pb-ins-places-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pebble-root .pb-ins-place { border-radius: 0.9rem; }
+.pebble-root .pb-ins-place.is-first { background-color: color-mix(in srgb, var(--pb-ins-cat) 7%, transparent); }
+.pebble-root .pb-ins-place.is-open { background-color: color-mix(in srgb, var(--ink) 3.5%, transparent); }
+.pebble-root .pb-ins-place-btn {
+  width: 100%; display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0.6rem;
+  border: 0; border-radius: 0.9rem; background: none; color: var(--ink); font: inherit; text-align: left;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-ins-place-btn:hover { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
+.pebble-root .pb-ins-place-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-ins-place-rank { flex: none; width: 0.9rem; font-size: 0.74rem; color: var(--ink-soft); text-align: center; }
+.pebble-root .pb-ins-avatar {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  font-size: 0.86rem; font-weight: 700; color: color-mix(in srgb, var(--pb-ins-cat) 70%, var(--ink));
+  background-color: color-mix(in srgb, var(--pb-ins-cat) 16%, transparent);
+}
+.pebble-root .pb-ins-place.is-first .pb-ins-avatar { width: 40px; height: 40px; font-size: 1rem; }
+.pebble-root .pb-ins-place-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pebble-root .pb-ins-place-name { font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-ins-place-meta { display: flex; flex-direction: column; font-size: 0.72rem; color: var(--ink-soft); line-height: 1.45; }
+.pebble-root .pb-ins-meta-bit { white-space: nowrap; }
+.pebble-root .pb-ins-place-track { display: block; height: 4px; margin-top: 5px; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 6%, transparent); overflow: hidden; }
+.pebble-root .pb-ins-place-track > span { display: block; height: 100%; border-radius: 99px; background-color: var(--pb-ins-cat); }
+.pebble-root .pb-ins-place-total { flex: none; min-width: 5.5rem; text-align: right; font-size: 0.9rem; font-weight: 600; align-self: center; }
+.pebble-root .pb-ins-place-chev { flex: none; color: var(--ink-soft); transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .pb-ins-place.is-open .pb-ins-place-chev { transform: rotate(180deg); }
+.pebble-root .pb-ins-place-panel { padding: 0 0.6rem 0.6rem 2.2rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.pebble-root .pb-ins-charge.is-static { padding: 0.45rem 0.4rem; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-ins-place-btn { padding: 0.6rem 0.4rem; gap: 0.6rem; }
+  .pebble-root .pb-ins-place-panel { padding-left: 0.4rem; }
+}

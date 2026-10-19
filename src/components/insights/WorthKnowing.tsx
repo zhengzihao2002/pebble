@@ -1,389 +1,205 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CalendarCheck, CalendarClock, Coins, Copy, CreditCard, Moon, Repeat, Target, TrendingDown, TrendingUp, X } from 'lucide-react';
-import { cardStatuses, reminderLevel } from '@/lib/creditCards';
-import { PayOffDialog } from '@/components/accounts/PayOffDialog';
-import type { LucideIcon } from 'lucide-react';
-import type { Goal, RecurringRule, Transaction } from '@/types';
-import type { Account } from '@/lib/data/mappers';
-import { formatCurrency, formatDate } from '@/lib/format';
-import { descriptionTitle } from '@/lib/transactionDescription';
-import { categoryLabel } from '@/lib/i18n/enumLabels';
+import { CheckCircle2, ChevronDown, Lightbulb, Sparkles, X } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { Skeleton } from '@/components/kit/Skeleton';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { usePebbleStore } from '@/store/usePebbleStore';
-import { placeKey } from './TopPlaces';
-import { renderTemplate } from '@/lib/i18n/RichText';
+import type { Insight } from './insightRules';
 
-/** Starting values for a new schedule from a possible subscription. */
-export interface SchedulePrefill {
-  description: string;
-  category: string;
-  accountId: string;
-  amount: number;
-  startDate: string;
+// The rules and their types live in insightRules.tsx; re-exported so the
+// existing `import { SchedulePrefill } from './WorthKnowing'` keeps working.
+export type { SchedulePrefill, Insight, InsightGroup } from './insightRules';
+
+/** Rows shown before "Show n more" while the list is not the desktop rail. */
+const FIRST = 3;
+
+interface NoteProps {
+  item: Insight;
+  /** Beyond the first few: hidden until "Show n more" (except in the rail). */
+  extra?: boolean;
+  pending: boolean;
+  onHide: (id: string) => void;
+  onUndo: (id: string) => void;
 }
-
-interface Insight {
-  id: string;
-  icon: LucideIcon;
-  tone: string;
-  title: string;
-  body: React.ReactNode;
-  action?: { label: string; onClick?: () => void; href?: string };
-}
-
-const pad = (n: number) => String(n).padStart(2, '0');
-const DAY_MS = 86_400_000;
-const dayNum = (ymd: string) => Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10)) / DAY_MS;
-const ymdOf = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
-const median = (a: number[]) => {
-  const s = [...a].sort((x, y) => x - y);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
-const amt = (x: Transaction) => Math.abs(x.amount);
-const byDate = (a: Transaction, b: Transaction) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-/** Every gap between consecutive charges is roughly a month. */
-const monthly = (xs: Transaction[]) => xs.slice(1).every((x, i) => {
-  const g = dayNum(x.date) - dayNum(xs[i].date);
-  return g >= 25 && g <= 35;
-});
-
-/** How many times a year each schedule frequency repeats. */
-const PER_YEAR: Record<string, number> = { once: 0, weekly: 52, biweekly: 26, monthly: 12, yearly: 1 };
 
 /**
- * Fixed, explainable rules over data already on the page - never a guess.
- * Each insight has one action and can be dismissed (per user). Sentences
- * carry amounts, so they blur in privacy mode.
+ * One note: tone-coloured tile and title, the sentence (names framed as
+ * .pb-wk-name chips; the line blurs in privacy mode since it carries
+ * amounts), its one action, and "Not useful". Hiding swaps the row for a
+ * short "Hidden · Undo" line; the store is only told once that window ends
+ * (useDismissQueue), so a mis-tap is recoverable.
  */
-export function WorthKnowing({ transactions, rules, goals, accounts, today, onOpen, onCreateSchedule }: {
-  transactions: Transaction[];
-  rules: RecurringRule[];
-  goals: Goal[];
-  accounts: Account[];
-  today: string | null;
-  onOpen: (txn: Transaction) => void;
-  onCreateSchedule: (prefill: SchedulePrefill) => void;
-}) {
-  const { d, t, locale } = useTranslation();
-  const dismissed = usePebbleStore((s) => s.insightsDismissed);
-  const dismiss = usePebbleStore((s) => s.dismissInsight);
-  // The card being paid off from a reminder.
-  const [payOff, setPayOff] = useState<Account | null>(null);
-  if (!today) return <section className="card" style={{ padding: '1.25rem 1.5rem', minHeight: 160 }} aria-busy="true" />;
+export function Note({ item: i, extra = false, pending, onHide, onUndo }: NoteProps) {
+  const { d, t } = useTranslation();
+  const ux = d.ux.insights;
+  const undoRef = useRef<HTMLButtonElement>(null);
+  const xRef = useRef<HTMLButtonElement>(null);
+  const liRef = useRef<HTMLLIElement>(null);
+  const wasPending = useRef(false);
+  const cardRef = useRef<HTMLElement | null>(null);
+  // Focus follows the dismissal to Undo, so a keyboard user is not dropped
+  // at the top of the page when the X button disappears; after Undo it goes
+  // back to this row's X (only if focus was lost with the Undo button).
+  useEffect(() => {
+    cardRef.current = liRef.current?.closest('section') ?? cardRef.current;
+    if (pending) {
+      wasPending.current = true;
+      undoRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (!wasPending.current) return;
+    wasPending.current = false;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (lost) xRef.current?.focus({ preventScroll: true });
+  }, [pending]);
+  // When the dismissal commits the row leaves the list; if that dropped
+  // focus, move it to the next note's X, or the list heading if none is left.
+  useEffect(() => () => {
+    if (!wasPending.current) return;
+    const card = cardRef.current;
+    requestAnimationFrame(() => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (!lost || !card || !card.isConnected) return;
+      const next = card.querySelector<HTMLElement>('.pb-ins-note-x');
+      if (next) { next.focus({ preventScroll: true }); return; }
+      const head = card.querySelector<HTMLElement>('#pb-worth-title');
+      if (head) { head.tabIndex = -1; head.focus({ preventScroll: true }); }
+    });
+  }, []);
 
-  const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
-  const todayN = dayNum(today);
-  const thisMonth = today.slice(0, 7);
-  const expenses = transactions.filter((x) => x.type === 'expense' && x.amount < 0);
-  const nameOf = (x: Transaction) => descriptionTitle(x.description) || categoryLabel(d, x.category);
-  // Names are USER DATA: framed so they read as a title, not part of the sentence.
-  const chip = (s: string) => <span className="pb-wk-name">{s}</span>;
-  const items: Insight[] = [];
-
-  // Subscriptions and price changes: charges grouped by place over ~7 months.
-  const groups = new Map<string, Transaction[]>();
-  for (const x of expenses) {
-    if (dayNum(x.date) < todayN - 210) continue;
-    const k = placeKey(descriptionTitle(x.description));
-    if (!k) continue;
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(x);
+  if (pending) {
+    return (
+      <li ref={liRef} className={`pb-ins-note pb-ins-note-hidden${extra ? ' pb-ins-wk-extra' : ''}`} role="status">
+        <span className="pb-ins-note-hidden-text">{t(ux.hiddenNote, { title: i.title })}</span>
+        <button ref={undoRef} type="button" className="link-btn pb-ins-undo" onClick={() => onUndo(i.id)}>{ux.undo}</button>
+      </li>
+    );
   }
-  const scheduled = new Set(
-    rules.filter((r) => r.status === 'active' && r.kind === 'expense').map((r) => placeKey(descriptionTitle(r.description))),
+  const Icon = i.icon;
+  return (
+    <li ref={liRef} className={`pb-ins-note goal-step${i.group === 'urgent' ? ' is-urgent' : ''}${extra ? ' pb-ins-wk-extra' : ''}`} style={{ ['--pb-tone' as string]: i.tone }}>
+      <span className="pb-ins-note-icon" aria-hidden="true"><Icon size={i.group === 'urgent' ? 18 : 16} /></span>
+      <span className="pb-ins-note-main">
+        <span className="pb-ins-note-title">{i.title}</span>
+        {/* Names are USER DATA. Amounts are inside, so the line blurs in privacy mode. */}
+        <span className="pb-money pb-ins-note-body">{i.body}</span>
+        {i.action && (
+          <span className="pb-ins-note-action">
+            {i.action.href ? (
+              <Link href={i.action.href} prefetch={false} className="pill">{i.action.label}</Link>
+            ) : (
+              <button type="button" className="pill" onClick={i.action.onClick}>{i.action.label}</button>
+            )}
+          </span>
+        )}
+      </span>
+      {/* 30px to the eye, a 44px target (insights.css) - it was 30x30. */}
+      <button
+        ref={xRef} type="button" className="icon-btn pb-ins-note-x" onClick={() => onHide(i.id)}
+        aria-label={d.insights.dismiss} title={d.insights.dismiss}
+      >
+        <X size={15} />
+      </button>
+    </li>
   );
-  groups.forEach((list, k) => {
-    const xs = [...list].sort(byDate);
-    if (xs.length < 3) return;
-    const last = xs[xs.length - 1];
-    if (todayN - dayNum(last.date) > 45) return;
+}
 
-    const tail3 = xs.slice(-3);
-    const a3 = tail3.map(amt);
-    if (monthly(tail3) && Math.max(...a3) <= Math.min(...a3) * 1.05 && !scheduled.has(k)) {
-      // The next expected charge after today, on the same day of the month.
-      let y = +last.date.slice(0, 4);
-      let m = +last.date.slice(5, 7) - 1;
-      const day = +last.date.slice(8, 10);
-      let next = last.date;
-      while (next <= today) {
-        m += 1;
-        next = ymdOf(new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate())));
-      }
-      y = 0;
-      items.push({
-        id: `sub:${k}`, icon: Repeat, tone: 'var(--pine)', title: d.insights.subTitle,
-        body: renderTemplate(d.insights.subBody, { name: chip(nameOf(last)), amount: formatCurrency(amt(last)) }),
-        action: {
-          label: d.insights.subAction,
-          onClick: () => onCreateSchedule({ description: descriptionTitle(last.description), category: last.category, accountId: last.accountId, amount: amt(last), startDate: next }),
-        },
-      });
-    }
+interface ListProps {
+  /** The page's notes, already without dismissed ones; null while today resolves. */
+  items: Insight[] | null;
+  pending: string[];
+  onHide: (id: string) => void;
+  onUndo: (id: string) => void;
+}
 
-    if (xs.length >= 4) {
-      const tail4 = xs.slice(-4);
-      const prev = tail4.slice(0, 3).map(amt);
-      const from = prev[2];
-      const to = amt(last);
-      if (monthly(tail4) && Math.max(...prev) <= Math.min(...prev) * 1.01 && Math.abs(to - from) >= 1 && Math.abs(to - from) / from >= 0.03) {
-        items.push({
-          id: `price:${k}:${last.id}`, icon: TrendingUp, tone: 'var(--gold)', title: d.insights.priceTitle,
-          body: renderTemplate(d.insights.priceBody, {
-            name: chip(nameOf(last)), from: formatCurrency(from), to: formatCurrency(to),
-            month: new Date(+last.date.slice(0, 4), +last.date.slice(5, 7) - 1, 1).toLocaleDateString(tag, { month: 'long' }),
-          }),
-          action: { label: d.insights.open, onClick: () => onOpen(last) },
-        });
-      }
-    }
-  });
+/**
+ * "Worth knowing", attention first. The notes that want action are split
+ * into "Needs attention" (card overdue or due within a day, possible
+ * duplicates) and "Worth a look" (everything else that may need a decision),
+ * each with a count; the positive notes go to the Good news strip. Order
+ * inside each group is the rules' own order - card reminders still lead.
+ *
+ * Under the headline on a phone, collapsed to the first few with "Show n
+ * more"; a sticky rail beside the hero and calendar on a wide Mac, where
+ * the whole list scrolls inside the rail instead.
+ */
+export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
+  const { d, t } = useTranslation();
+  const ux = d.ux.insights;
+  const [expanded, setExpanded] = useState(false);
 
-  // Unusual charges: at least 3x the category's usual purchase, and $50+.
-  const byCat = new Map<string, number[]>();
-  for (const x of expenses) {
-    if (dayNum(x.date) < todayN - 365) continue;
-    if (!byCat.has(x.category)) byCat.set(x.category, []);
-    byCat.get(x.category)!.push(amt(x));
-  }
-  expenses
-    .filter((x) => todayN - dayNum(x.date) <= 30)
-    .map((x) => {
-      const arr = byCat.get(x.category) ?? [];
-      if (arr.length < 5) return null;
-      const med = median(arr);
-      return med > 0 && amt(x) >= 3 * med && amt(x) >= 50 ? { x, ratio: amt(x) / med } : null;
-    })
-    .filter((v): v is { x: Transaction; ratio: number } => v !== null)
-    .sort((a, b) => b.ratio - a.ratio)
-    .slice(0, 3)
-    .forEach(({ x, ratio }) => items.push({
-      id: `unusual:${x.id}`, icon: AlertTriangle, tone: 'var(--wine)', title: d.insights.unusualTitle,
-      body: renderTemplate(d.insights.unusualBody, { amount: formatCurrency(amt(x)), name: chip(nameOf(x)), times: Math.round(ratio), category: categoryLabel(d, x.category) }),
-      action: { label: d.insights.open, onClick: () => onOpen(x) },
-    }));
-
-  // Possible duplicates: same date, amount, place and account, last 30 days.
-  const dups = new Map<string, Transaction[]>();
-  for (const x of expenses) {
-    if (todayN - dayNum(x.date) > 30) continue;
-    const k = placeKey(descriptionTitle(x.description));
-    if (!k) continue;
-    const key = `${x.date}|${Math.round(amt(x) * 100)}|${k}|${x.accountId}`;
-    if (!dups.has(key)) dups.set(key, []);
-    dups.get(key)!.push(x);
-  }
-  dups.forEach((list) => {
-    if (list.length < 2) return;
-    const first = list[0];
-    items.push({
-      id: `dup:${list.map((x) => x.id).sort().join(',')}`, icon: Copy, tone: 'var(--wine)', title: d.insights.dupTitle,
-      body: renderTemplate(d.insights.dupBody, { count: list.length, amount: formatCurrency(amt(first)), name: chip(nameOf(first)), date: formatDate(first.date, locale) }),
-      action: { label: d.insights.open, onClick: () => onOpen(first) },
-    });
-  });
-
-  // Small things add up: the same place 8+ times this month, each $20 or less.
-  const small = new Map<string, Transaction[]>();
-  for (const x of expenses) {
-    if (!x.date.startsWith(thisMonth)) continue;
-    const k = placeKey(descriptionTitle(x.description));
-    if (!k) continue;
-    if (!small.has(k)) small.set(k, []);
-    small.get(k)!.push(x);
-  }
-  [...small.entries()]
-    .filter(([, l]) => l.length >= 8 && l.every((x) => amt(x) <= 20))
-    .map(([k, l]) => ({ k, l, total: l.reduce((s, x) => s + amt(x), 0) }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 2)
-    .forEach(({ k, l, total }) => items.push({
-      id: `small:${k}:${thisMonth}`, icon: Coins, tone: 'var(--gold)', title: d.insights.smallTitle,
-      body: renderTemplate(d.insights.smallBody, { name: chip(nameOf(l[l.length - 1])), count: l.length, amount: formatCurrency(total) }),
-    }));
-
-  // Goal pace: what an unreached goal needs per month to hit its date.
-  for (const g of goals) {
-    if (!g.date || g.current >= g.target || g.date <= today) continue;
-    const monthsLeft = Math.max(1, Math.round((dayNum(g.date) - todayN) / 30.44));
-    items.push({
-      id: `goal:${g.id}:${thisMonth}`, icon: Target, tone: 'var(--pine)', title: d.insights.goalTitle,
-      body: renderTemplate(d.insights.goalBody, { name: chip(g.name), amount: formatCurrency((g.target - g.current) / monthsLeft), date: formatDate(g.date, locale) }),
-      action: { label: d.insights.goalAction, href: '/goals' },
-    });
+  if (!items) {
+    return (
+      <section className="card pb-ins-card pb-ins-wk" aria-labelledby="pb-worth-title" aria-busy="true">
+        <SectionHeader id="pb-worth-title" icon={Lightbulb} title={d.insights.wkTitle} subtitle={d.insights.wkHint} />
+        <div className="pb-ins-skel-rows" aria-hidden="true">
+          {[0, 1, 2].map((n) => (
+            <div key={n} className="pb-ins-skel-row">
+              <Skeleton width={34} height={34} radius="0.65rem" />
+              <div style={{ flex: 1, display: 'grid', gap: 6 }}>
+                <Skeleton width="38%" height="0.7rem" />
+                <Skeleton width={`${86 - n * 10}%`} height="0.85rem" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
   }
 
-  // Quiet accounts: active, no transactions for 8+ months.
-  const lastByAccount = new Map<string, string>();
-  for (const x of transactions) {
-    const prev = lastByAccount.get(x.accountId);
-    if (!prev || x.date > prev) lastByAccount.set(x.accountId, x.date);
-  }
-  for (const a of accounts) {
-    if (a.status !== 'active') continue;
-    const last = lastByAccount.get(a.id);
-    if (!last || todayN - dayNum(last) < 240) continue;
-    items.push({
-      id: `dormant:${a.id}:${last}`, icon: Moon, tone: 'var(--ink-soft)', title: d.insights.dormantTitle,
-      body: renderTemplate(d.insights.dormantBody, { name: chip(a.name), date: formatDate(last, locale) }),
-      action: { label: d.insights.dormantAction, href: '/settings' },
-    });
-  }
+  const urgent = items.filter((i) => i.group === 'urgent');
+  const review = items.filter((i) => i.group === 'review');
+  const live = (list: Insight[]) => list.filter((i) => !pending.includes(i.id)).length;
+  const count = live(urgent) + live(review);
+  const total = urgent.length + review.length;
+  const extra = Math.max(0, total - FIRST);
 
-  // --- Positive and neutral notes. They come after the warnings above. ---
-  const ty = +today.slice(0, 4);
-  const tm = +today.slice(5, 7) - 1;
-  const td = +today.slice(8, 10);
-  // Day-to-day spending: scheduled payments land in lumps and would mislead.
-  const dayToDay = expenses.filter((x) => !x.recurringRuleId);
-
-  // No-spend days this month, up to yesterday.
-  const spentOn = new Set(dayToDay.filter((x) => x.date.startsWith(thisMonth) && x.date < today).map((x) => x.date));
-  const elapsed = td - 1;
-  const noSpend = elapsed - spentOn.size;
-  // Only while logging is active: some day-to-day spending in the last 30 days.
-  const logging = dayToDay.some((x) => x.date < today && todayN - dayNum(x.date) <= 30);
-  if (noSpend >= 3 && logging) {
-    let run = 0;
-    let longest = 0;
-    for (let day = 1; day <= elapsed; day += 1) {
-      if (spentOn.has(`${thisMonth}-${pad(day)}`)) run = 0;
-      else { run += 1; longest = Math.max(longest, run); }
-    }
-    items.push({
-      id: `nospend:${thisMonth}`, icon: CalendarCheck, tone: 'var(--pine)', title: d.insights.noSpendTitle,
-      body: t(d.insights.noSpendBody, { count: noSpend }) + (longest >= 2 ? t(d.insights.noSpendStreak, { streak: longest }) : ''),
-    });
-  }
-
-  // Below usual: a category 25%+ under its pace from the last 3 complete
-  // months. Needs a week into the month and 3 full months of history.
-  const monthsBack = [1, 2, 3].map((n) => ymdOf(new Date(ty, tm - n, 1)).slice(0, 7));
-  const earliestDate = transactions.reduce<string | null>((acc, x) => (acc === null || x.date < acc ? x.date : acc), null);
-  if (td >= 7 && earliestDate !== null && earliestDate <= `${monthsBack[2]}-01`) {
-    const frac = td / new Date(ty, tm + 1, 0).getDate();
-    const totals = new Map<string, { now: number; past: number }>();
-    for (const x of dayToDay) {
-      const mk = x.date.slice(0, 7);
-      const isNow = mk === thisMonth && x.date <= today;
-      if (!isNow && !monthsBack.includes(mk)) continue;
-      const e = totals.get(x.category) ?? { now: 0, past: 0 };
-      if (isNow) e.now += amt(x);
-      else e.past += amt(x);
-      totals.set(x.category, e);
-    }
-    let low: { cat: string; now: number; expected: number } | null = null;
-    for (const [cat, v] of [...totals.entries()]) {
-      const usual = v.past / 3;
-      if (usual < 50) continue;
-      const expected = usual * frac;
-      if (v.now > expected * 0.75) continue;
-      if (!low || expected - v.now > low.expected - low.now) low = { cat, now: v.now, expected };
-    }
-    if (low) {
-      items.push({
-        id: `below:${low.cat}:${thisMonth}`, icon: TrendingDown, tone: 'var(--pine)', title: d.insights.belowTitle,
-        body: t(d.insights.belowBody, {
-          category: categoryLabel(d, low.cat), pct: `${Math.round((1 - low.now / low.expected) * 100)}%`,
-          amount: formatCurrency(low.now), expected: formatCurrency(low.expected),
-        }),
-      });
-    }
-  }
-
-  // Scheduled payments per year: active spending schedules that have not ended.
-  let perYearTotal = 0;
-  let counted = 0;
-  for (const r of rules) {
-    if (r.status !== 'active' || r.kind !== 'expense' || (r.endDate && r.endDate < today)) continue;
-    const n = PER_YEAR[r.frequency as string];
-    if (!n) continue;
-    perYearTotal += Math.abs(r.amount) * n;
-    counted += 1;
-  }
-  if (counted >= 2) {
-    items.push({
-      id: `yearly:${today.slice(0, 4)}`, icon: CalendarClock, tone: 'var(--ink-soft)', title: d.insights.yearlyTitle,
-      body: t(d.insights.yearlyBody, { count: counted, amount: formatCurrency(perYearTotal) }),
-      action: { label: d.insights.yearlyAction, href: '/scheduled' },
-    });
-  }
-
-  // Credit card payments: pinned ABOVE every other note. One id per card, due
-  // date and level, so dismissing the 7-day reminder leaves the later ones.
-  const cardNotes: Insight[] = [];
-  for (const s of cardStatuses(accounts, transactions, today)) {
-    const lvl = reminderLevel(s);
-    if (!lvl) continue;
-    const name = chip(s.card.last4 ? `${s.card.name} ····${s.card.last4}` : s.card.name);
-    const overdue = lvl === 'overdue';
-    cardNotes.push({
-      id: `card:${s.card.id}:${overdue ? s.previous : s.next}:${lvl}`,
-      icon: CreditCard,
-      tone: overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)',
-      title: overdue ? d.insights.cardOverdueTitle : d.insights.cardDueTitle,
-      body: overdue
-        ? renderTemplate(d.insights.cardOverdueBody, { name, amount: formatCurrency(s.overdue), date: formatDate(s.previous, locale) })
-        : renderTemplate(d.insights.cardDueBody, { name, amount: formatCurrency(s.dueNow), date: formatDate(s.next, locale) }),
-      action: { label: d.accounts.payOffAction, onClick: () => setPayOff(s.card) },
-    });
-  }
-  items.unshift(...cardNotes);
-
-  const shown = items.filter((i) => !(dismissed ?? []).includes(i.id));
-  const actionStyle: React.CSSProperties = { padding: '0.35rem 0.8rem', fontSize: '0.78rem', textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' };
+  // Index across both groups, so "first three" means the three most urgent.
+  let n = 0;
+  const group = (list: Insight[], label: string, key: string) => list.length === 0 ? null : (
+    <div className="pb-ins-wk-group" data-group={key}>
+      <p className="pb-ins-wk-grouphead">
+        <span>{label}</span>
+        <span className="pb-ins-wk-count pb-tnum">{live(list)}</span>
+      </p>
+      <ul className="pb-ins-notes">
+        {list.map((i) => {
+          const isExtra = n++ >= FIRST && !expanded;
+          return <Note key={i.id} item={i} extra={isExtra} pending={pending.includes(i.id)} onHide={onHide} onUndo={onUndo} />;
+        })}
+      </ul>
+    </div>
+  );
 
   return (
-    <section className="card" style={{ padding: '1.25rem 1.5rem' }} aria-labelledby="pb-worth-title">
-      <h3 id="pb-worth-title" style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{d.insights.wkTitle}</h3>
-      <p style={{ margin: '0.2rem 0 0.9rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>{d.insights.wkHint}</p>
-      {shown.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--ink-soft)' }}>{d.insights.wkEmpty}</p>
+    <section className="card pb-ins-card pb-ins-wk" aria-labelledby="pb-worth-title">
+      <SectionHeader
+        id="pb-worth-title" icon={Lightbulb} title={d.insights.wkTitle} subtitle={d.insights.wkHint}
+        actions={
+          <span className={`pb-ins-wk-badge pb-tnum${count === 0 ? ' is-clear' : ''}`}>
+            {count === 0 ? <><Sparkles size={12} aria-hidden="true" />{ux.allClear}</> : t(ux.attentionCount, { count })}
+          </span>
+        }
+      />
+      {total === 0 ? (
+        <EmptyState compact icon={CheckCircle2} title={d.insights.wkEmpty} />
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {shown.map((i, n) => {
-            const Icon = i.icon;
-            return (
-              <li key={i.id} className="goal-step" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.75rem 0', borderTop: n === 0 ? 'none' : '1px solid var(--line)' }}>
-                <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '0.6rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: i.tone, backgroundColor: `color-mix(in srgb, ${i.tone} 14%, transparent)` }}>
-                  <Icon size={16} />
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: i.tone }}>{i.title}</span>
-                  {/* Names are USER DATA. Amounts are inside, so the line blurs in privacy mode. */}
-                  <span className="pb-money" style={{ display: 'block', fontSize: '0.86rem', lineHeight: 1.45, marginTop: 2 }}>{i.body}</span>
-                  {i.action && (
-                    <span style={{ display: 'inline-block', marginTop: '0.45rem' }}>
-                      {i.action.href ? (
-                        <Link href={i.action.href} prefetch={false} className="pill" style={actionStyle}>{i.action.label}</Link>
-                      ) : (
-                        <button type="button" className="pill" onClick={i.action.onClick} style={actionStyle}>{i.action.label}</button>
-                      )}
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button" className="icon-btn" onClick={() => dismiss(i.id)}
-                  aria-label={d.insights.dismiss} title={d.insights.dismiss}
-                  style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <X size={15} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="pb-ins-wk-scroll">
+          {group(urgent, ux.needsAttention, 'urgent')}
+          {group(review, ux.toReview, 'review')}
+        </div>
       )}
-      {payOff && (
-        <PayOffDialog
-          card={payOff} allAccounts={accounts}
-          charges={transactions.filter((x): x is Extract<Transaction, { type: 'expense' }> => x.type === 'expense' && x.accountId === payOff.id)}
-          onClose={() => setPayOff(null)}
-        />
+      {extra > 0 && (
+        <button
+          type="button" className="link-btn pb-ins-more pb-ins-wk-toggle"
+          aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? ux.showFewer : t(ux.showMoreCount, { count: extra })}
+          <ChevronDown size={14} aria-hidden="true" className={expanded ? 'is-up' : undefined} />
+        </button>
       )}
     </section>
   );

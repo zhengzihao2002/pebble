@@ -1,9 +1,30 @@
 'use client';
 
+import { PiggyBank, TrendingDown } from 'lucide-react';
 import type { Transaction } from '@/types';
 import { isSideCash } from '@/lib/stats';
 import { formatCurrency, formatMonthYear } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { ProgressRing } from '@/components/kit/ProgressRing';
+import { Sparkline } from '@/components/kit/Sparkline';
+import { Skeleton } from '@/components/kit/Skeleton';
+
+/** The hero's shape while today resolves, so nothing below moves when it lands. */
+function HeroSkeleton() {
+  return (
+    <section className="card pb-ins-card pb-ins-hero" aria-busy="true">
+      <div className="pb-ins-hero-skel" aria-hidden="true">
+        <Skeleton width={88} height={88} radius="50%" />
+        <div style={{ flex: 1, display: 'grid', gap: 10 }}>
+          <Skeleton width="42%" height="0.75rem" />
+          <Skeleton width="30%" height="2.2rem" />
+          <Skeleton width="80%" height="0.9rem" />
+          <Skeleton width="100%" height="0.6rem" radius="99px" />
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const MAX_MONTHS = 12;
 const wholeDollars = (v: number) => formatCurrency(Math.round(v)).replace(/\.00$/, '');
@@ -18,10 +39,20 @@ const monthIndex = (ymd: string) => Number(ymd.slice(0, 4)) * 12 + Number(ymd.sl
  * cash, spending is every negative amount; transfers never reach this list.
  * The first month counts only if the history starts on the 1st. Hidden with
  * no complete month or no income. Figure and sentence blur in privacy mode.
+ *
+ * Redesigned as the page's hero: a ring filled to the share kept (a full
+ * wine ring when spending ran over), the income split into spent and kept
+ * with the three totals, and what was kept in each of those months. All
+ * from the same loop over the same months; the ring, bar and line wear
+ * pb-chart-fade and the totals font-mono-tab, so privacy blurs everything.
+ * While today resolves it holds its place with a skeleton (it used to
+ * render nothing, and every card below jumped down when it appeared).
  */
 export function SavingsHeadline({ transactions, today }: { transactions: Transaction[]; today: string | null }) {
   const { d, t, locale } = useTranslation();
-  if (!today || transactions.length === 0) return null;
+  const ux = d.ux.insights;
+  if (!today) return <HeroSkeleton />;
+  if (transactions.length === 0) return null;
 
   const earliest = transactions.reduce((m, x) => (x.date < m ? x.date : m), transactions[0].date);
   const firstComplete = monthIndex(earliest) + (earliest.endsWith('-01') ? 0 : 1);
@@ -32,11 +63,14 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
 
   let income = 0;
   let spending = 0;
+  // The same sums, per month, for the kept-each-month line.
+  const monthIn = Array<number>(months).fill(0);
+  const monthOut = Array<number>(months).fill(0);
   for (const x of transactions) {
     const k = monthIndex(x.date);
     if (k < first || k > last) continue;
-    if (x.amount < 0) spending += -x.amount;
-    else if (x.type === 'income' && !isSideCash(x)) income += x.amount;
+    if (x.amount < 0) { spending += -x.amount; monthOut[k - first] += -x.amount; }
+    else if (x.type === 'income' && !isSideCash(x)) { income += x.amount; monthIn[k - first] += x.amount; }
   }
   if (income <= 0) return null;
 
@@ -52,15 +86,50 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
   const label = months === 1 ? d.insights.savedLabelOne : t(d.insights.savedLabelMany, { months: String(months) });
   const figure = good ? `${Math.round((kept / income) * 100)}%` : wholeDollars(kept);
   const tone = good ? 'var(--pine)' : 'var(--wine)';
-  const tint = `color-mix(in srgb, ${tone} 8%, transparent)`;
+
+  // Spent | Kept as shares of what was earned. Overspent: the bar is the
+  // spending, with a marker where income ran out and the rest hatched.
+  const whole = Math.max(income, spending);
+  const spentPct = (Math.min(spending, income) / whole) * 100;
+  const restPct = 100 - spentPct;
+  const incomePct = (income / whole) * 100;
+  const keptSeries = monthIn.map((v, i) => v - monthOut[i]);
+  const short = (k: number) => new Date(Math.floor(k / 12), k % 12, 1).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short' });
+  const RingIcon = good ? PiggyBank : TrendingDown;
 
   return (
-    <section className="card" style={{ padding: '1.25rem 1.5rem', backgroundImage: `linear-gradient(${tint}, ${tint})` }}>
-      <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--ink-soft)' }}>{label} · {range}</p>
-      <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.4rem 1.25rem', marginTop: '0.35rem' }}>
-        <span className="font-display pb-money" style={{ fontSize: 'clamp(2rem, 5vw, 2.6rem)', lineHeight: 1.05, fontWeight: 600, color: tone }}>{figure}</span>
-        <p className="pb-money" style={{ margin: 0, flex: '1 1 18rem', fontSize: '0.95rem', lineHeight: 1.5 }}>{sentence}</p>
+    <section className="card pb-ins-card pb-ins-hero" data-tone={good ? 'good' : 'over'} style={{ ['--pb-tone' as string]: tone }} aria-labelledby="pb-ins-hero-label">
+      <div className="pb-ins-hero-ring pb-chart-fade">
+        <ProgressRing value={good ? kept / income : 1} size={88} stroke={8} color={tone}>
+          <RingIcon size={26} strokeWidth={1.8} aria-hidden="true" style={{ color: tone }} />
+        </ProgressRing>
       </div>
+      <div className="pb-ins-hero-head">
+        <p id="pb-ins-hero-label" className="pb-ins-hero-label">{label} · <span className="pb-tnum">{range}</span></p>
+        <span className="font-display pb-money pb-ins-hero-figure">{figure}</span>
+      </div>
+      <p className="pb-money pb-ins-hero-sentence">{sentence}</p>
+      <div className="pb-ins-hero-split">
+        <div className="pb-ins-split-bar pb-chart-fade" role="img" aria-label={ux.splitLabel}>
+          <span className="pb-ins-split-spent" style={{ width: `${spentPct}%` }} />
+          <span className={`pb-ins-split-rest${good ? '' : ' is-over'}`} style={{ width: `${restPct}%` }} />
+          {!good && <span className="pb-ins-split-mark" style={{ left: `${incomePct}%` }} />}
+        </div>
+        <dl className="pb-ins-split-legend">
+          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab">{wholeDollars(income)}</dd></div>
+          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab">{wholeDollars(spending)}</dd></div>
+          <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab">{wholeDollars(Math.abs(kept))}</dd></div>
+        </dl>
+      </div>
+      {months >= 2 && (
+        <div className="pb-ins-hero-trend">
+          <p className="pb-ins-hero-trend-label">{ux.keptByMonth}</p>
+          <Sparkline values={keptSeries} height={56} color={tone} baseline={0} />
+          <div className="pb-ins-hero-trend-axis pb-tnum" aria-hidden="true">
+            <span>{short(first)}</span><span>{short(last)}</span>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
