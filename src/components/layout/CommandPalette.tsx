@@ -331,7 +331,9 @@ export function CommandPalette({
                           const tag = x.type === 'expense' && x.tag ? x.tag : '';
                           // Matched by amount alone: say so, since nothing in
                           // the words is highlighted to explain the hit.
-                          const textHit = title.toLowerCase().includes(q) || catText.toLowerCase().includes(q)
+                          // The whole description, as the filter tests it: a hit on
+                          // a later line is still a text match, not an amount one.
+                          const textHit = x.description.toLowerCase().includes(q) || catText.toLowerCase().includes(q)
                             || x.category.toLowerCase().includes(q) || tag.toLowerCase().includes(q);
                           const amountHit = !textHit && amountQuery && Math.abs(x.amount).toFixed(2).includes(qAmount);
                           body = (
@@ -411,7 +413,7 @@ export function CommandPalette({
                     const x = activeRow.txn;
                     const m = meta[x.category];
                     // A category with no meta (deleted, or not loaded) still gets a tile.
-                          const Icon = m?.icon ?? Receipt;
+                    const Icon = m?.icon ?? Receipt;
                     const title = x.description.split('\n')[0] || categoryLabel(d, x.category);
                     return (
                       <>

@@ -41,9 +41,10 @@ export const shellEn = {
 };
 
 export const shellZh: typeof shellEn = {
-  groupOverview: '概览',
-  groupUnderstand: '分析',
-  groupPlan: '计划',
+  // Not 概览 / 分析: those are the names of pages inside the groups.
+  groupOverview: '账目',
+  groupUnderstand: '复盘',
+  groupPlan: '规划',
   searchShortcut: '搜索',
   shortcutHint: '快捷键',
   subtitleTransactions: '所有账户，一本账',

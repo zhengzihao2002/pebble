@@ -56,7 +56,7 @@ export function Sidebar() {
       {/* Settings is pinned above the account block, apart from the pages -
           still a link inside a <nav>, so it keeps the panel look. */}
       {settings && (
-        <nav className="pb-shell-side-pinned" style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
+        <nav className="pb-shell-side-pinned" aria-label={d.nav[settings.labelKey]} style={{ display: 'flex', flexDirection: 'column', flex: 'none' }}>
           <NavButton href={settings.href} icon={settings.icon} label={d.nav[settings.labelKey]} />
         </nav>
       )}
