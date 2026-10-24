@@ -34,7 +34,7 @@ function addDays(dt: Date, n: number): Date {
 }
 
 /** Same day-of-month n months away, clamped to that month's last day. */
-function addMonthsClamped(dt: Date, n: number): Date {
+export function addMonthsClamped(dt: Date, n: number): Date {
   const first = new Date(dt.getFullYear(), dt.getMonth() + n, 1);
   const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
   return new Date(first.getFullYear(), first.getMonth(), Math.min(dt.getDate(), last));

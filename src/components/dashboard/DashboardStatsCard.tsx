@@ -54,8 +54,11 @@ function shortPeriodLabel(p: PeriodOption, locale: string, format: (year: string
   return p.label;
 }
 
-/** A change chip's text, tone direction and hover label. Labels carry no amounts. */
-function useDelta() {
+/**
+ * A change chip's text, tone direction and hover label. Labels carry no amounts.
+ * Exported so the Same time last year card words its chips exactly as these do.
+ */
+export function useDelta() {
   const { d, t } = useTranslation();
   const ux = d.ux.dashboard;
   return (metric: Metric, cur: RangeStats, prev: RangeStats, range: string) => {

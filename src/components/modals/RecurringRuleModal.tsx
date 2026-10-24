@@ -40,12 +40,30 @@ import type {
   RecurringRule,
 } from '@/types';
 
+/**
+ * Starting values for a NEW schedule. `amount` is a positive magnitude (the
+ * form works in magnitude and the action re-applies the sign). The optional
+ * fields are the Dashboard's "Looks recurring" additions; Insights' possible
+ * subscription passes none and gets the expense/monthly defaults it always had.
+ */
+export interface RecurringRulePrefill {
+  description: string;
+  category: string;
+  accountId: string;
+  amount: number;
+  startDate: string;
+  kind?: RecurringKind;
+  frequency?: RecurringFrequency;
+  /** Income only: pre-fills Gross (the form requires one); defaults to the net amount. */
+  grossAmount?: number;
+}
+
 interface RecurringRuleModalProps {
   onClose: () => void;
   /** Absent means "add"; present means "edit that rule". One form, as GoalModal does. */
   rule?: RecurringRule;
-  /** Starting values for a NEW schedule (Insights' possible subscription). Ignored when editing. */
-  prefill?: { description: string; category: string; accountId: string; amount: number; startDate: string };
+  /** Starting values for a NEW schedule (a possible subscription or repeating payment). Ignored when editing. */
+  prefill?: RecurringRulePrefill;
 }
 
 type Mode = 'form' | 'confirmDelete';
@@ -77,7 +95,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? 'expense');
+  const [kind, setKind] = useState<RecurringKind>(rule?.kind ?? prefill?.kind ?? 'expense');
   // The rule's stored description, split once for the two fields. An edit
   // that leaves both untouched sends this exact string back.
   const initialParts = parseDescription(rule?.description ?? prefill?.description ?? '');
@@ -94,8 +112,11 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   // Stored negative for expenses; the form works in positive magnitude and
   // the action re-applies the sign.
   const [amount, setAmount] = useState(rule ? String(Math.abs(rule.amount)) : prefill ? String(prefill.amount) : '');
-  const [grossAmount, setGrossAmount] = useState(rule?.grossAmount != null ? String(rule.grossAmount) : '');
-  const [frequency, setFrequency] = useState<RecurringFrequency>(rule?.frequency ?? 'monthly');
+  const [grossAmount, setGrossAmount] = useState(
+    rule?.grossAmount != null ? String(rule.grossAmount)
+      : prefill?.kind === 'income' ? String(prefill.grossAmount ?? prefill.amount) : '',
+  );
+  const [frequency, setFrequency] = useState<RecurringFrequency>(rule?.frequency ?? prefill?.frequency ?? 'monthly');
   const [startDate, setStartDate] = useState(rule?.startDate ?? prefill?.startDate ?? today);
   const [endMode, setEndMode] = useState<RecurringEndMode>(rule?.endMode ?? 'never');
   const [endCount, setEndCount] = useState(rule?.endCount != null ? String(rule.endCount) : '');

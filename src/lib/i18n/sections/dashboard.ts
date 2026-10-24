@@ -113,6 +113,40 @@ export const dashboardEn = {
   showMoreRecent: 'Show more',
   noTxnTitle: 'No transactions yet',
   noTxnBody: 'Add your first one and it will show up here.',
+
+  // Same time last year
+  yoyTitle: 'Same time last year',
+  yoySub: 'Against {range}',
+  yoyLastYear: 'Last year',
+  yoyMoversTitle: 'Biggest changes in spending',
+  yoyLastYearAmount: 'Last year {amount}',
+  // Hover and screen-reader wording for a mover's chip: no amounts.
+  yoyMoverUp: 'Spent more than last year',
+  yoyMoverDown: 'Spent less than last year',
+
+  // Budget alerts
+  budgetAlertsLabel: 'Budget alerts',
+  budgetAlertNear: '{name} has used {pct} of its yearly budget — {amount} left.',
+  budgetAlertOver: '{name} is over its yearly budget by {amount}.',
+  budgetAlertFull: '{name} has used all of its yearly budget.',
+  budgetAlertView: 'View budget',
+  budgetAlertViewAria: 'View budget: {name}',
+  budgetAlertDismiss: 'Dismiss',
+  budgetAlertDismissAria: 'Dismiss the budget alert for {name}',
+
+  // Looks recurring
+  recTitle: 'Looks recurring',
+  recSub: 'Repeats in your history, but is not scheduled yet',
+  recWeekly: 'about {amount} every week',
+  recBiweekly: 'about {amount} every 2 weeks',
+  recMonthly: 'about {amount} every month',
+  recYearly: 'about {amount} every year',
+  recSeen: 'seen {count} times',
+  recNext: 'next ~{date}',
+  recSchedule: 'Schedule it',
+  recScheduleAria: 'Schedule it: {name}',
+  recNot: 'Not recurring',
+  recNotAria: 'Not recurring: {name}',
 };
 
 export const dashboardZh: typeof dashboardEn = {
@@ -207,4 +241,34 @@ export const dashboardZh: typeof dashboardEn = {
   showMoreRecent: '显示更多',
   noTxnTitle: '还没有交易',
   noTxnBody: '添加第一笔交易后，它会显示在这里。',
+
+  yoyTitle: '与去年同期对比',
+  yoySub: '对比{range}',
+  yoyLastYear: '去年同期',
+  yoyMoversTitle: '支出变化最大的类别',
+  yoyLastYearAmount: '去年 {amount}',
+  yoyMoverUp: '比去年同期花得多',
+  yoyMoverDown: '比去年同期花得少',
+
+  budgetAlertsLabel: '预算提醒',
+  budgetAlertNear: '{name}已用掉年度预算的 {pct}，还剩 {amount}。',
+  budgetAlertOver: '{name}已超出年度预算 {amount}。',
+  budgetAlertFull: '{name}的年度预算已经用完。',
+  budgetAlertView: '查看预算',
+  budgetAlertViewAria: '查看预算：{name}',
+  budgetAlertDismiss: '忽略',
+  budgetAlertDismissAria: '忽略{name}的预算提醒',
+
+  recTitle: '看起来是定期收支',
+  recSub: '历史记录里反复出现，但还没设为定期',
+  recWeekly: '每周约 {amount}',
+  recBiweekly: '每两周约 {amount}',
+  recMonthly: '每月约 {amount}',
+  recYearly: '每年约 {amount}',
+  recSeen: '出现过 {count} 次',
+  recNext: '下次约 {date}',
+  recSchedule: '设为定期',
+  recScheduleAria: '设为定期：{name}',
+  recNot: '不是定期的',
+  recNotAria: '{name}不是定期的',
 };

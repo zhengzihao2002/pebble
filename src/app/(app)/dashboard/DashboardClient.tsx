@@ -15,9 +15,15 @@ import { DashboardStatsCard } from '@/components/dashboard/DashboardStatsCard';
 import { UpcomingCard } from '@/components/dashboard/UpcomingCard';
 import { SpendingPaceCard } from '@/components/dashboard/SpendingPaceCard';
 import { GoalsGlance } from '@/components/dashboard/GoalsGlance';
+import { YearOverYearCard } from '@/components/dashboard/YearOverYearCard';
+import { BudgetAlertsNotice } from '@/components/dashboard/BudgetAlertsNotice';
+import { LooksRecurringNotice } from '@/components/dashboard/LooksRecurringNotice';
+import { RecurringRuleModal, type RecurringRulePrefill } from '@/components/modals/RecurringRuleModal';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
 import { buildBalanceHistory } from '@/lib/balanceHistory';
 import { comparePeriods, describeRange, ymdOf } from '@/lib/periodCompare';
+import { compareYearOverYear } from '@/lib/yearOverYear';
+import type { RecurringCandidate } from '@/lib/recurring/detect';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { parseLocalDate } from '@/lib/format';
 import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
@@ -162,6 +168,28 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   );
   const compareLabel = compare && today ? describeRange(compare.previousRange, locale, today) : '';
 
+  // The period set against the same window a year back. Null (so no card, and
+  // no grid row - see .pb-dash:has() in dashboard.css) until today resolves
+  // and whenever a year back holds nothing to compare.
+  const yearOverYear = useMemo(
+    () => (today && statsRestored ? compareYearOverYear(transactions, statsMode, statsPeriod, today) : null),
+    [today, statsRestored, transactions, statsMode, statsPeriod],
+  );
+
+  // "Looks recurring" -> Schedule it: the schedule dialog with the details filled in.
+  const [schedulePrefill, setSchedulePrefill] = useState<RecurringRulePrefill | null>(null);
+  const scheduleCandidate = (c: RecurringCandidate) => setSchedulePrefill({
+    description: c.title,
+    category: c.category,
+    accountId: c.accountId,
+    // The dialog works in positive magnitudes; the action re-applies the sign.
+    amount: Math.abs(c.amount),
+    startDate: c.nextDate,
+    kind: c.kind,
+    frequency: c.frequency,
+    ...(c.grossAmount !== null ? { grossAmount: c.grossAmount } : null),
+  });
+
   // The hero's 90-day line, walked back from the server's total (see
   // src/lib/balanceHistory.ts), so it always ends at the figure above it.
   const balanceTrend = useMemo(() => {
@@ -200,18 +228,24 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // area (dashboard.css). The DOM order below IS the phone order - and the
   // reading and Tab order - so it is the priority order: notices, balance,
   // the period and its figures, spending pace, what is coming, where it
-  // went, cash flow, budgets, goals, recent activity. Wider screens arrange
+  // went, cash flow, same time last year (only with a year of history),
+  // budgets, goals, recent activity. Wider screens arrange
   // the same cards into a bento grid without reordering the DOM. No width
   // cap here: the shell already caps .pebble-main.
   return (
+    <>
     <div className="pb-dash">
       {/* The notices sit inside the top area, so when they render nothing
           (the common case) they leave no empty grid row and no stray gap. */}
       <section className="pb-dash-area-top">
-        {/* Both render nothing in the common case. */}
+        {/* All of these render nothing in the common case. */}
         <CatchUpNotice {...catchUp} />
         <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
         <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
+        {/* Under the hero, not above it: on a phone up to six rows of notices would
+            push the balance off the first screen. */}
+        <BudgetAlertsNotice transactions={transactions} categoryMeta={categoryMeta} today={today} />
+        <LooksRecurringNotice transactions={transactions} rules={rules} today={today} onSchedule={scheduleCandidate} />
         <DashboardStatsCard
           modes={STATS_MODES.map((m) => ({ value: m.value, label: modeLabel(m.value, m.label) }))}
           statsMode={statsMode}
@@ -248,6 +282,13 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
       <div className="pb-dash-area-flow">
         <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
       </div>
+      {/* Only when a year back has data: no wrapper at all otherwise, and the
+          grid drops its row (dashboard.css), so there is no hole. */}
+      {yearOverYear && today && (
+        <div className="pb-dash-area-yoy">
+          <YearOverYearCard data={yearOverYear} categoryMeta={categoryMeta} today={today} inProgress={statsWindow.inProgress} />
+        </div>
+      )}
       <div className="pb-dash-area-attention">
         <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
       </div>
@@ -258,5 +299,8 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
       </div>
     </div>
+    {/* Outside the grid: the dialog is a fixed overlay, not a grid item. */}
+    {schedulePrefill && <RecurringRuleModal prefill={schedulePrefill} onClose={() => setSchedulePrefill(null)} />}
+    </>
   );
 }

@@ -44,5 +44,5 @@ export const SECTION_IDS = {
   good: 'pb-ins-good',
 } as const;
 
-/** Same place, however the bank wrote it: case, spacing and a trailing store number ignored. */
-export const placeKey = (title: string) => title.toLowerCase().replace(/\s*#?\d{2,}\s*$/, '').replace(/\s+/g, ' ').trim();
+/** Same place, however the bank wrote it. Defined in lib/recurring so the Dashboard's detector shares it; re-exported unchanged. */
+export { placeKey } from '@/lib/recurring/placeKey';

@@ -54,7 +54,35 @@
      down the card opened big gaps between rows, and with two goals a hole in
      the middle); any spare height stays below the last row. */
 }
+/* Same time last year: a full-width row between the cash-flow row and the
+   bottom row, at both grid widths. The row exists ONLY while the card does
+   (it renders nothing without a year of history): an empty named row would
+   still add a gap, so these templates apply when the area is in the DOM and
+   the ones above are the card-less layouts. */
 @container content (min-width: 640px) {
+  .pebble-root .pb-dash:has(> .pb-dash-area-yoy) {
+    grid-template-areas:
+      "top top"
+      "pace pace"
+      "upcoming where"
+      "flow flow"
+      "yoy yoy"
+      "attention recent"
+      "goals goals";
+  }
+}
+@container content (min-width: 1180px) {
+  .pebble-root .pb-dash:has(> .pb-dash-area-yoy) {
+    grid-template-areas:
+      "top top top top top top top top top top top top"
+      "pace pace pace pace pace pace pace where where where where where"
+      "flow flow flow flow flow flow flow upcoming upcoming upcoming upcoming upcoming"
+      "yoy yoy yoy yoy yoy yoy yoy yoy yoy yoy yoy yoy"
+      "attention attention attention attention goals goals goals goals recent recent recent recent";
+  }
+}
+@container content (min-width: 640px) {
+  .pebble-root .pb-dash-area-yoy { grid-area: yoy; }
   .pebble-root .pb-dash-area-top { grid-area: top; }
   .pebble-root .pb-dash-area-pace { grid-area: pace; }
   .pebble-root .pb-dash-area-upcoming { grid-area: upcoming; }
@@ -675,3 +703,96 @@
 }
 /* The group fallback's delay: a warm navigation never flashes a skeleton. */
 .pebble-root .pb-dash-loading { animation: pb-chart-in 0.2s ease 0.18s both; }
+
+/* ---------- Notices: Budget alerts and Looks recurring ----------
+   Compact cards for the top area, in the weight of the catch-up and goal
+   notices (a 3px accent edge, no header chrome). Rows are divided by
+   hairlines, never nested cards. The accent is only an echo: every row says
+   what it is in words. */
+.pebble-root .pb-dash-notice {
+  display: flex; flex-direction: column; gap: 0.35rem; min-width: 0;
+  padding: 0.9rem 1.1rem; box-sizing: border-box; border-left: 3px solid var(--gold);
+  animation: pb-dash-notice-in var(--pb-dur-emph) var(--pb-ease-out) both;
+}
+.pebble-root .pb-dash-notice.is-over { border-left-color: var(--wine); }
+.pebble-root .pb-dash-recurring { border-left-color: var(--pine); }
+/* A notice appears once today resolves; it fades in rather than popping. */
+@keyframes pb-dash-notice-in { from { opacity: 0; } to { opacity: 1; } }
+.pebble-root .pb-dash-notice-head { display: flex; flex-direction: column; gap: 0.1rem; }
+.pebble-root .pb-dash-notice-title { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.88rem; font-weight: 600; }
+.pebble-root .pb-dash-notice-title > svg { flex: none; color: var(--ink-soft); }
+.pebble-root .pb-dash-notice-sub { margin: 0; padding-left: calc(15px + 0.45rem); font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-notice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; min-width: 0; }
+.pebble-root .pb-dash-notice-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem;
+  padding: 0.6rem 0; min-width: 0;
+}
+.pebble-root .pb-dash-notice-row + .pb-dash-notice-row { border-top: 1px solid var(--line); }
+.pebble-root .pb-dash-notice-main { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.pebble-root .pb-dash-notice-text { margin: 0; font-size: 0.85rem; line-height: 1.45; overflow-wrap: anywhere; }
+.pebble-root .pb-dash-name { font-weight: 600; }
+.pebble-root .pb-dash-notice-actions { display: flex; align-items: center; gap: 0.35rem; flex: none; }
+.pebble-root .pb-dash-notice-actions .link-btn { white-space: nowrap; }
+.pebble-root .pb-dash-quiet-btn {
+  min-height: 2rem; padding: 0.25rem 0.6rem; border: 0; border-radius: 0.5rem; background: none; cursor: pointer;
+  font: inherit; font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-dash-quiet-btn:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
+.pebble-root .pb-dash-quiet-btn:focus-visible,
+.pebble-root .pb-dash-rec-go:focus-visible,
+.pebble-root .pb-dash-notice-actions .link-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+
+/* Budget alerts: a thin meter under the sentence. */
+.pebble-root .pb-dash-alert-meter { display: flex; align-items: center; gap: 0.6rem; max-width: 24rem; }
+.pebble-root .pb-dash-alert-track { flex: 1; height: 6px; border-radius: 99px; background-color: var(--line); overflow: hidden; }
+.pebble-root .pb-dash-alert-track > span { display: block; height: 100%; border-radius: 99px; }
+.pebble-root .pb-dash-alert-pct { flex: none; width: 2.8rem; text-align: right; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
+
+/* Looks recurring. */
+.pebble-root .pb-dash-rec-title { margin: 0; font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-dash-rec-sub { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pebble-root .pb-dash-rec-go { padding: 0.4rem 0.9rem; min-height: 2.1rem; font-size: 0.8rem; border-radius: 0.6rem; white-space: nowrap; cursor: pointer; }
+@media (pointer: coarse) {
+  .pebble-root .pb-dash-quiet-btn { min-height: 44px; min-width: 44px; }
+  .pebble-root .pb-dash-rec-go { min-height: 44px; }
+  .pebble-root .pb-dash-notice-actions .link-btn { min-height: 44px; }
+}
+/* Phone: the actions drop under the text, level with it. */
+@container content (max-width: 639px) {
+  .pebble-root .pb-dash-notice { padding: 0.85rem 0.95rem; }
+  .pebble-root .pb-dash-notice-row { grid-template-columns: auto minmax(0, 1fr); row-gap: 0.15rem; align-items: start; }
+  .pebble-root .pb-dash-notice-actions { grid-column: 2; flex-wrap: wrap; margin-left: -0.6rem; }
+  .pebble-root .pb-dash-notice-actions .link-btn { margin-left: 0.6rem; }
+  .pebble-root .pb-dash-rec-go { margin-left: 0.6rem; }
+}
+
+/* ---------- Same time last year ---------- */
+.pebble-root .pb-dash-yoy { container: pb-yoy / inline-size; }
+.pebble-root .pb-dash-yoy-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem 2rem; min-width: 0; }
+.pebble-root .pb-dash-yoy-figs { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem 1rem; align-content: start; }
+.pebble-root .pb-dash-yoy-fig { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.pebble-root .pb-dash-yoy-fig dd { margin: 0; }
+.pebble-root .pb-dash-yoy-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-dash-yoy-now { display: flex; flex-direction: column; font-size: 1.3rem; font-weight: 600; line-height: 1.25; white-space: nowrap; }
+.pebble-root .pb-dash-yoy-period { font-family: inherit; font-size: 0.7rem; font-weight: 500; line-height: 1.4; color: var(--ink-soft); white-space: normal; }
+.pebble-root .pb-dash-yoy-was { display: flex; flex-direction: column; font-size: 0.88rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-dash-yoy-chip { display: flex; margin-top: 0.15rem !important; min-height: 1.4rem; }
+.pebble-root .pb-dash-yoy-movers { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.pebble-root .pb-dash-yoy-movers-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-dash-yoy-list { --pb-inset: 48px; }
+.pebble-root .pb-dash-yoy-mover { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem; padding: 0.6rem 0; min-width: 0; }
+.pebble-root .pb-dash-yoy-mover-main { display: flex; flex-direction: column; min-width: 0; }
+.pebble-root .pb-dash-yoy-mover-fig { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.pebble-root .pb-dash-yoy-bars { display: grid; gap: 3px; margin-top: 5px; }
+.pebble-root .pb-dash-yoy-bars > i { display: block; height: 4px; border-radius: 2px; }
+.pebble-root .pb-dash-yoy-bars > i.is-was { background-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+/* Wide card: the four figures side by side, the movers beside them. */
+@container pb-yoy (min-width: 560px) {
+  .pebble-root .pb-dash-yoy-figs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .pebble-root .pb-dash-yoy-fig + .pb-dash-yoy-fig { padding-left: 1rem; margin-left: 1rem; border-left: 1px solid var(--line); }
+}
+@container pb-yoy (min-width: 900px) {
+  .pebble-root .pb-dash-yoy-body { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+  .pebble-root .pb-dash-yoy-movers { padding-left: 2rem; border-left: 1px solid var(--line); }
+}
