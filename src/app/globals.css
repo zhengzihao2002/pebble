@@ -220,6 +220,31 @@ html.no-theme-transition * {
   transition: none !important;
 }
 
+/* A light/dark or palette change is a view transition (see
+   src/lib/themeTransition.ts): the browser fades a picture of the old page
+   into the live new one on the compositor, so the page is restyled once, not
+   once per frame. The class exists only while that transition runs. It is
+   shorter and snappier (200ms, ease-out) than the 300ms token fade used where
+   view transitions are missing, because it is cheap: most of the change shows
+   in the first frames, so the switch feels immediate. Keep the duration in
+   step with THEME_FADE_MS. Reduced motion never starts one. */
+html.pb-theme-vt::view-transition-group(root) {
+  animation-duration: 200ms;
+}
+/* The old picture stays put underneath and the new one fades in over it, with
+   plain blending. The default (both fade, blended with plus-lighter) needs an
+   extra full-screen render pass per frame and costs more on phones for the
+   same look. */
+html.pb-theme-vt::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html.pb-theme-vt::view-transition-new(root) {
+  animation: pb-theme-fade-in 200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  mix-blend-mode: normal;
+}
+@keyframes pb-theme-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 .pebble-root {
   /* Palette tokens are generated: see the generated-themes block below. */
   /* CJK fallback for all three type stacks.

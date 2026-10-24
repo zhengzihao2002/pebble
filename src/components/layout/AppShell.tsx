@@ -10,6 +10,7 @@ import { authClient } from '@/lib/auth/client';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
+import { runThemeChange } from '@/lib/themeTransition';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -218,13 +219,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.documentElement.style.fontSize = `${(textSize / 100) * 16}px`;
   }, [textSize]);
 
-  // Mirrors darkMode onto <html> so the class the pre-paint script set stays
-  // truthful after a toggle. .pebble-root also carries it (see globals.css) -
-  // this keeps the two in step rather than replacing either.
-  useEffect(() => {
-    document.documentElement.classList.toggle('pebble-dark', darkMode);
-  }, [darkMode]);
-
+  // Mirrors darkMode onto <html> (so the class the pre-paint script set stays
+  // truthful after a toggle) and onto the .pebble-root div. Both change in ONE
+  // step, inside runThemeChange, so the switch is a single cross-fade rather
+  // than a restyle of the whole tree on every frame (see themeTransition.ts).
+  //
   // .dark on the root div is set HERE, not in its className: the resolved
   // mode can differ between the server render (which cannot see the device)
   // and the first client render, and React does not patch attribute
@@ -232,7 +231,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   // renders a fixed className, so it never strips this one. Until this runs,
   // html.pebble-dark from the pre-paint script covers the palette.
   useEffect(() => {
-    rootRef.current?.classList.toggle('dark', darkMode);
+    const html = document.documentElement;
+    const apply = () => {
+      html.classList.toggle('pebble-dark', darkMode);
+      rootRef.current?.classList.toggle('dark', darkMode);
+    };
+    // Already in step (first mount, or the pre-paint script got there first):
+    // nothing to animate.
+    if (html.classList.contains('pebble-dark') === darkMode && rootRef.current?.classList.contains('dark') === darkMode) return;
+    runThemeChange(apply);
   }, [darkMode]);
 
   // Mirrors the font choice onto <html>, as darkMode is above: the pre-paint
@@ -254,8 +261,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Same for the colour theme. Unknown stored values fall back to Original.
   useEffect(() => {
     const root = document.documentElement;
-    if (isThemeChoice(themeChoice) && themeChoice !== 'original') root.setAttribute(THEME_ATTRIBUTE, themeChoice);
-    else root.removeAttribute(THEME_ATTRIBUTE);
+    const next = isThemeChoice(themeChoice) && themeChoice !== 'original' ? themeChoice : null;
+    if (root.getAttribute(THEME_ATTRIBUTE) === next) return;
+    // A palette change moves the same tokens as light/dark, so it takes the
+    // same single cross-fade.
+    runThemeChange(() => {
+      if (next) root.setAttribute(THEME_ATTRIBUTE, next);
+      else root.removeAttribute(THEME_ATTRIBUTE);
+    });
   }, [themeChoice]);
 
   // Removes the pre-migration store (transactions and balances from before

@@ -7,6 +7,7 @@ import { HTML_LANG } from '@/lib/i18n';
 import { useResolvedDark } from '@/lib/useResolvedDark';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE } from '@/lib/fontChoice';
 import { THEME_ATTRIBUTE } from '@/lib/themeChoice';
+import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
 
 /**
  * Keeps <html> in step with the resolved light/dark mode and the language.
@@ -38,8 +39,18 @@ export function HtmlPreferenceSync() {
       if (root.classList.contains('pebble-dark') !== dark) root.classList.toggle('pebble-dark', dark);
       if (root.lang !== lang) root.lang = lang;
     };
-    apply();
-    const observer = new MutationObserver(apply);
+    // A real light/dark change is one cross-fade (see themeTransition.ts);
+    // AppShell joins the same one. Putting a stripped class back (the observer
+    // below) stays immediate - that is a repair, not a change.
+    if (root.classList.contains('pebble-dark') !== dark) runThemeChange(apply);
+    else apply();
+    // The observer also sees the classes the cross-fade itself adds to <html>.
+    // While a change is waiting for the browser's "old" picture it must stay
+    // out of the way: putting pebble-dark on now would land in that picture
+    // and leave nothing to fade.
+    const observer = new MutationObserver(() => {
+      if (!themeChangePending()) apply();
+    });
     observer.observe(root, { attributes: true, attributeFilter: ['class', 'lang'] });
     return () => observer.disconnect();
   }, [dark, locale]);
