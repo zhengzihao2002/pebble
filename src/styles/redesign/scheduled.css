@@ -177,6 +177,11 @@
 .pebble-root .pb-sched-cal-legend .is-today { width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--pine); }
 @media (pointer: coarse) {
   .pebble-root .pb-sched-day { min-height: 44px; }
+  /* The fold and month arrows stay 36px to the eye, 44px to the finger. */
+  .pebble-root .pb-sched-cal-fold,
+  .pebble-root .pb-sched-cal-pager .icon-btn { position: relative; }
+  .pebble-root .pb-sched-cal-fold::after,
+  .pebble-root .pb-sched-cal-pager .icon-btn::after { content: ''; position: absolute; inset: -4px; }
 }
 
 /* ---------- Coming up ---------- */

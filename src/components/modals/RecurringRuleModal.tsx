@@ -235,7 +235,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     const nextDates = generateOccurrences(spec, { after: lowerBound, through: addDays(today, 3660), limit: 5 });
     let total: number | null = null;
     let last: string | null = null;
-    if (frequency === 'once') { total = 1; last = startDate; }
+    // A one-off has no count line: the sentence above ("One-off on …")
+    // already says it is a single payment on that date.
+    if (frequency === 'once') { /* no total */ }
     else if (endMode === 'after' && countNum <= 2000) {
       const all = generateOccurrences(spec, { after: null, through: '9999-12-31', limit: countNum });
       total = all.length; last = all[all.length - 1] ?? null;
@@ -553,11 +555,11 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                       {preview.total !== null ? (
                         <p className="pb-sched-preview-sub">
                           {amountOk
-                            ? renderTemplate(x.previewTotal, {
+                            ? renderTemplate(preview.total === 1 ? x.previewTotalOne : x.previewTotal, {
                                 count: <span className="pb-tnum">{preview.total}</span>,
                                 amount: <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(amountNum * preview.total)}</span>,
                               })
-                            : t(x.previewCount, { count: preview.total })}
+                            : preview.total === 1 ? x.previewCountOne : t(x.previewCount, { count: preview.total })}
                           {preview.last && <span className="pb-tnum"> · {t(x.previewLastOn, { date: formatDate(preview.last, locale) })}</span>}
                         </p>
                       ) : amountOk && monthlyEquivalent({ frequency, amount: amountNum }) !== null ? (

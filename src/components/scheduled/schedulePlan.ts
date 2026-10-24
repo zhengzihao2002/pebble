@@ -90,7 +90,8 @@ export function cumulativeNet(upcoming: readonly UpcomingOccurrence[], today: st
 
 /** Money as a short label for a calendar cell: "-$2.2k", "+$160". */
 export function compactMoney(n: number): string {
-  const sign = n < 0 ? '−' : '+';
+  // A day whose in and out cancel reads "$0", not "+$0".
+  const sign = n < 0 ? '−' : n > 0 ? '+' : '';
   const a = Math.abs(n);
   const body = a >= 1000 ? `${(a / 1000).toFixed(a >= 10_000 ? 0 : 1).replace(/\.0$/, '')}k` : String(Math.round(a));
   return `${sign}$${body}`;
