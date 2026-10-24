@@ -164,6 +164,9 @@ function RuleTile({ rule, today, busy, onToggle, onEdit }: {
     ? `${formatDate(next, locale)}${inN === 0 ? ` · ${d.upcomingCard.today}` : inN === 1 ? ` · ${d.upcomingCard.tomorrow}` : inN !== null && inN > 1 ? ` · ${t(x.inDays, { count: inN })}` : ''}`
     : null;
   const [approxA, approxB] = x.perMonthApprox.split('{amount}');
+  const approx = monthly !== null && rule.frequency !== 'monthly'
+    ? <>{approxA}<span className="font-mono-tab">{formatCurrency(monthly)}</span>{approxB}</>
+    : null;
 
   return (
     <li className={`pb-sched-rule${paused || finished ? ' is-dim' : ''}`}>
@@ -193,14 +196,15 @@ function RuleTile({ rule, today, busy, onToggle, onEdit }: {
           <span className="font-mono-tab pb-sched-rule-amt" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
             {formatCurrency(rule.amount)}
           </span>
-          {monthly !== null && rule.frequency !== 'monthly' && (
-            <span className="pb-sched-rule-approx">{approxA}<span className="font-mono-tab">{formatCurrency(monthly)}</span>{approxB}</span>
-          )}
+          {approx && <span className="pb-sched-rule-approx">{approx}</span>}
         </div>
       </div>
 
       <div className="pb-sched-rule-foot">
         <div className="pb-sched-rule-life">
+          {/* The same monthly figure, moved down here on a narrow list so
+              the title keeps the width beside the amount (scheduled.css). */}
+          {approx && <span className="pb-sched-life pb-sched-rule-approx-foot"><span>{approx}</span></span>}
           {progress && (
             <span className="pb-sched-life">
               <ProgressRing

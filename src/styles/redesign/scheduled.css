@@ -26,6 +26,8 @@
 .pebble-root .pb-sched-cols.is-empty .pb-sched-rules { order: -1; }
 @container content (min-width: 1000px) {
   .pebble-root .pb-sched-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); }
+  /* No schedules: the empty state leads, so it takes the wider track. */
+  .pebble-root .pb-sched-cols.is-empty { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
 }
 
 /* Shared row pieces. */
@@ -344,4 +346,28 @@
 .pebble-root .pb-sched-ends .pb-seg-btn { padding-left: 0.5rem; padding-right: 0.5rem; }
 @media (pointer: coarse) {
   .pebble-root .pb-sched-ends .pb-seg-btn { min-height: 40px; }
+}
+
+/* A narrow list: the monthly equivalent moves from under the amount to the
+   card's foot, so the title is not squeezed to a few letters on a phone. */
+.pebble-root .pb-sched-rule-approx-foot { display: none; }
+@container pb-sched-rules (max-width: 520px) {
+  .pebble-root .pb-sched-rule-money .pb-sched-rule-approx { display: none; }
+  .pebble-root .pb-sched-rule-approx-foot { display: inline-flex; }
+  /* Four filters with counts in a phone-width row: tighter sides so
+     "Finished 2" is never cut. */
+  .pebble-root .pb-sched-filter .pb-seg-btn { padding-left: 0.3rem; padding-right: 0.3rem; }
+}
+
+/* Next up on a phone: the tag and when on the first line, the title and
+   amount beneath, instead of a lone date wrapping under everything. */
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-hero-next {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "tag when when" "title title amt"; gap: 0.45rem 0.6rem;
+  }
+  .pebble-root .pb-sched-hero-next-tag { grid-area: tag; justify-self: start; }
+  .pebble-root .pb-sched-hero-next-when { grid-area: when; order: 0; padding-left: 0; align-self: center; }
+  .pebble-root .pb-sched-hero-next-title { grid-area: title; }
+  .pebble-root .pb-sched-hero-next-amt { grid-area: amt; }
 }
