@@ -42,6 +42,7 @@ export const settingsEn = {
   filterCategories: 'Filter categories',
   noCategoryMatch: 'No categories match “{query}”.',
   categoryCount: '{count} categories',
+  categoryOne: '1 category',
   previewChip: 'Preview',
 };
 
@@ -73,5 +74,6 @@ export const settingsZh: typeof settingsEn = {
   filterCategories: '筛选分类',
   noCategoryMatch: '没有与“{query}”匹配的分类。',
   categoryCount: '{count} 个分类',
+  categoryOne: '1 个分类',
   previewChip: '预览',
 };

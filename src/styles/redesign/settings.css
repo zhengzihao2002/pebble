@@ -237,8 +237,9 @@
   .pebble-root .pb-settings-ov { padding: 1.1rem; }
   .pebble-root .pb-settings-ov-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pebble-root .pb-settings-ov-chips > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  /* Two to a line: a longer label wraps rather than hiding behind an ellipsis. */
-  .pebble-root .pb-settings-ov-label, .pebble-root .pb-settings-ov-value { white-space: normal; }
+  /* Two to a line: a longer label wraps rather than hiding behind an ellipsis.
+     (One class more specific than the base rules below, which come later.) */
+  .pebble-root .pb-settings-ov .pb-settings-ov-label, .pebble-root .pb-settings-ov .pb-settings-ov-value { white-space: normal; }
   /* A narrow card: a count chip goes under the title, lined up with it. */
   .pebble-root .pb-settings .pb-sec-head { flex-wrap: wrap; }
   .pebble-root .pb-settings .pb-sec-head-actions { margin-left: 2.5rem; }
@@ -287,7 +288,7 @@
 }
 .pebble-root .pb-settings-jump-list > li { flex: 1 1 auto; display: flex; min-width: 0; }
 .pebble-root .pb-settings-jump-btn {
-  flex: 1; min-width: 0; min-height: 36px; padding: 0.35rem 0.6rem; border: 0; border-radius: 999px;
+  flex: 1; min-width: 0; min-height: 36px; padding: 0.35rem 0.5rem; border: 0; border-radius: 999px;
   background-color: transparent; color: var(--ink-soft); font: inherit; font-size: 0.8rem; font-weight: 500; white-space: nowrap;
   transition: background-color var(--pb-dur-std, 220ms) var(--pb-ease-out), color var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
@@ -475,4 +476,12 @@
   .pebble-root .pb-settings-jump-btn { min-height: 44px; }
   .pebble-root .pb-settings-iconbtn { width: 44px; height: 44px; }
   .pebble-root .pb-settings-ov-chip { min-height: 48px; }
+  .pebble-root .pb-settings-cat-main,
+  .pebble-root .pb-settings-filter,
+  .pebble-root .pb-settings .text-size-input,
+  .pebble-root .pb-settings-card .pill,
+  .pebble-root .pb-settings-card .btn-primary,
+  .pebble-root .pb-settings-group .btn-primary,
+  .pebble-root .pb-settings-select { min-height: 44px; }
+  .pebble-root .pb-settings-privacy { display: inline-flex; align-items: center; min-height: 44px; }
 }

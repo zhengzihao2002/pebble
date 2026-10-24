@@ -279,7 +279,7 @@ export function CategoryManagerCard() {
       <SectionHeader
         icon={Shapes} title={d.categoryManager.title} subtitle={d.categoryManager.blurb}
         actions={!loading && categories.length > 0
-          ? <span className="pb-settings-count pb-tnum">{t(d.ux.settings.categoryCount, { count: categories.length })}</span>
+          ? <span className="pb-settings-count pb-tnum">{(categories.length === 1 ? d.ux.settings.categoryOne : t(d.ux.settings.categoryCount, { count: categories.length }))}</span>
           : undefined}
       />
 
