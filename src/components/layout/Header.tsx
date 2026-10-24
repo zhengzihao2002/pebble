@@ -9,6 +9,8 @@ import { getGreetingKey } from '@/lib/format';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { currentNavItem } from './navItems';
+import { useShortcutLabel } from './useShortcutLabel';
 
 interface HeaderProps {
   onAddTransactionClick: () => void;
@@ -132,7 +134,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   // cannot drift apart.
   const pageMeta: Record<string, PageMeta> = {
     '/dashboard': { title: d.nav.dashboard, subtitle: greeting, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
-    '/transactions': { title: d.nav.transactions, subtitle: d.header.subtitles.transactions, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
+    '/transactions': { title: d.nav.transactions, subtitle: d.ux.shell.subtitleTransactions, action: { label: d.header.addTransaction, kind: 'addTransaction' }, secondaryAction: { label: d.transfer.title, kind: 'transfer' } },
     '/accounts': { title: d.nav.accounts, subtitle: d.accountsPage.subtitle },
     '/reports': { title: d.nav.reports, subtitle: d.header.subtitles.reports },
     '/analysis': { title: d.nav.analysis, subtitle: d.header.subtitles.analysis },
@@ -147,7 +149,16 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
     '/settings': { title: d.nav.settings, subtitle: d.header.subtitles.settings },
   };
 
-  const current = pageMeta[pathname] ?? pageMeta['/dashboard'];
+  // /account/* (Profile, Security) is reached from Settings and the nav
+  // lights Settings there, so the header names the Pebble account rather
+  // than falling back to Dashboard - whose greeting and Add transaction
+  // button made those pages look like the wrong place.
+  const accountMeta: PageMeta = { title: d.account.title, subtitle: d.ux.shell.subtitleAccount };
+  const current = pageMeta[pathname] ?? (pathname.startsWith('/account/') ? accountMeta : pageMeta['/dashboard']);
+  // The page's own nav icon beside its title, so the header and the nav read
+  // as one system. Settings' icon on /account/*, matching the lit nav item.
+  const PageIcon = currentNavItem(pathname)?.icon;
+  const shortcut = useShortcutLabel();
   const handleActionClick = current.action?.kind === 'addTransaction' ? onAddTransactionClick
     : current.action?.kind === 'addGoal' ? onAddGoalClick
     : current.action?.kind === 'addSchedule' ? onAddScheduleClick
@@ -158,16 +169,23 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
     // frosted layer that lets the page scroll softly underneath.
     <header ref={headerRef} className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-        <div style={{ minWidth: 0 }}>
+        <div className="pb-shell-title" style={{ minWidth: 0 }}>
+          {PageIcon && (
+            <span className="pb-shell-title-chip" aria-hidden="true"><PageIcon size={16} strokeWidth={2.1} /></span>
+          )}
+          <div style={{ minWidth: 0 }}>
           <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.title}</h1>
           <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.subtitle}</p>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
           {/* The 万能bar: a field on wide headers, an icon on narrow ones. Both open
               the command palette. Outside .header-actions so phones show it. */}
           <button type="button" onClick={onSearchClick} className="pb-search-field" aria-label={d.palette.title}>
             <Search size={15} aria-hidden="true" />
-            <span>{d.palette.headerHint}</span>
+            <span className="pb-shell-search-hint">{d.palette.headerHint}</span>
+            {/* Display only - AppShell owns the shortcut itself. */}
+            {shortcut && <kbd className="pb-shell-kbd" aria-hidden="true">{shortcut}</kbd>}
           </button>
           <button
             type="button" onClick={onSearchClick} className="icon-btn pb-search-icon" aria-label={d.palette.title} title={d.palette.title}

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { RefreshCw, DatabaseZap } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { RefreshCw, DatabaseZap, LayoutDashboard } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
@@ -33,6 +34,7 @@ export default function AppGroupError({
   reset: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   // Safe inside an error boundary: getDictionary() falls back to English on
   // any unrecognised value and cannot itself throw, so a bad stored locale
   // can never turn a page failure into a blank screen.
@@ -55,34 +57,28 @@ export default function AppGroupError({
     reset();
   };
 
+  // The kit EmptyState's shape (icon disc, title, one line, actions) with a
+  // wine-tinted disc: this is a failure, not an empty page. A way out sits
+  // beside Try again - a plain link, so it works even if this route keeps
+  // failing.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 420, padding: '2rem 1rem' }}>
-      <div className="card" style={{ padding: '2rem', maxWidth: 460, width: '100%', textAlign: 'center' }}>
-        <div
-          style={{
-            width: 56, height: 56, borderRadius: '1rem', backgroundColor: 'var(--wine-soft, rgba(150,60,70,0.12))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.1rem',
-          }}
-        >
-          <DatabaseZap size={26} style={{ color: 'var(--wine)' }} />
+    <div className="pb-shell-error">
+      <div className="card pb-shell-error-card">
+        <span className="pb-shell-error-icon" aria-hidden="true"><DatabaseZap size={24} /></span>
+        <h2 className="font-display pb-shell-error-title">{d.error.title}</h2>
+        <p className="pb-shell-error-body">{d.error.body}</p>
+
+        <div className="pb-shell-error-actions">
+          <button type="button" onClick={retry} className="btn-primary" style={{ padding: '0.7rem 1.3rem', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <RefreshCw size={15} aria-hidden="true" />{d.error.retry}
+          </button>
+          {pathname !== '/dashboard' && <Link href="/dashboard" prefetch={false} className="pill" style={{ padding: '0.7rem 1.1rem', display: 'inline-flex', alignItems: 'center', gap: 7, textDecoration: 'none' }}>
+            <LayoutDashboard size={15} aria-hidden="true" />{d.ux.shell.goDashboard}
+          </Link>}
         </div>
 
-        <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-          {d.error.title}
-        </h2>
-        <p style={{ fontSize: '0.87rem', color: 'var(--ink-soft)', lineHeight: 1.55, marginBottom: '1.4rem' }}>
-          {d.error.body}
-        </p>
-
-        <button
-          type="button" onClick={retry} className="btn-primary"
-          style={{ padding: '0.7rem 1.3rem', display: 'inline-flex', alignItems: 'center', gap: 7 }}
-        >
-          <RefreshCw size={15} />{d.error.retry}
-        </button>
-
         {error.digest && (
-          <p style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginTop: '1.2rem', opacity: 0.75 }}>
+          <p className="pb-shell-error-ref">
             {d.error.reference} <span className="font-code">{error.digest}</span>
           </p>
         )}

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowRightLeft, MoreHorizontal, Plus, X } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, MoreHorizontal, Plus, Receipt, Target, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { primaryNavItems, secondaryNavItems, isNavItemActive, type NavItem } from './navItems';
 import { pageAction, type PageActionKind } from './pageActions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -70,6 +71,12 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
     addSchedule: onAddScheduleClick,
     transfer: onTransferClick,
   };
+  const actionIcon: Record<PageActionKind | 'transfer', LucideIcon> = {
+    addTransaction: Receipt,
+    addGoal: Target,
+    addSchedule: CalendarClock,
+    transfer: ArrowRightLeft,
+  };
   const actions: { kind: PageActionKind | 'transfer'; label: string }[] = [
     ...(own && own !== 'addTransaction' ? [{ kind: own, label: actionLabel[own] }] : []),
     { kind: 'addTransaction', label: d.header.addTransaction },
@@ -117,20 +124,33 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
           {/* Clipped at the bar's top edge; the panel slides up from beneath it
               and back down behind it (.pebble-add-menu in globals.css). */}
-          <div className={`pebble-add-menu ${addOpen ? 'open' : ''}`}>
-            <div className="pebble-bottom-nav-stack-panel" style={{ marginBottom: '1.9rem', minWidth: 200 }}>
-              {actions.map((a, i) => (
-                <button
-                  key={a.kind} type="button"
-                  onClick={() => { setAddOpen(false); run[a.kind](); }}
-                  // Not keyboard-reachable while collapsed, like the More items.
-                  tabIndex={addOpen ? 0 : -1}
-                  className={i === 0 ? 'btn-primary' : 'pill'}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, padding: '0.6rem 0.85rem', whiteSpace: 'nowrap' }}
-                >
-                  {a.kind === 'transfer' ? <ArrowRightLeft size={15} /> : <Plus size={16} />} {a.label}
-                </button>
-              ))}
+          {/* An action sheet of icon tiles: the page's own action first (pine,
+              the one this page is for), then Add transaction and Transfer.
+              Same clip window and slide as before; only the panel's contents
+              changed. */}
+          <div className={`pebble-add-menu pb-shell-sheet-clip ${addOpen ? 'open' : ''}`}>
+            <div className="pebble-bottom-nav-stack-panel pb-shell-sheet" style={{ marginBottom: '1.9rem' }}>
+              <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.addTitle}</p>
+              <div className="pb-shell-sheet-grid" data-count={actions.length}>
+                {actions.map((a, i) => {
+                  const Icon = actionIcon[a.kind];
+                  return (
+                    <button
+                      key={a.kind} type="button"
+                      onClick={() => { setAddOpen(false); run[a.kind](); }}
+                      // Not keyboard-reachable while collapsed, like the More items.
+                      tabIndex={addOpen ? 0 : -1}
+                      className={`pb-shell-tile${i === 0 ? ' pb-shell-tile-primary' : ''}`}
+                    >
+                      <span className="pb-shell-tile-icon" aria-hidden="true">
+                        <Icon size={20} strokeWidth={2} />
+                        {a.kind !== 'transfer' && <Plus size={11} strokeWidth={3} className="pb-shell-tile-plus" />}
+                      </span>
+                      <span className="pb-shell-tile-label">{a.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -151,26 +171,40 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             rather than the whole bar - that is what puts the column directly
             above More. */}
         <div style={{ position: 'relative', display: 'flex' }}>
-          <div className={`pebble-bottom-nav-stack ${open ? 'open' : ''}`} style={{ left: 0, right: 0 }}>
+          {/* A two-column grid of icon tiles rather than one tall column:
+              every page behind More is visible at once, in a sheet the width
+              of the bar, anchored to its right edge. Still the same clip
+              window sliding up from beneath the bar, still no horizontal
+              scrolling, still not focusable while closed.
+
+              While it is open More is the ONE lit tab. The current page's
+              tile is marked quietly (a dot and aria-current) instead of with
+              the bar's highlight tile, so two things never look selected. */}
+          <div className={`pebble-bottom-nav-stack pb-shell-sheet-clip pb-shell-more-clip ${open ? 'open' : ''}`}>
             <div className="pebble-bottom-nav-stack-inner">
-              <div className="pebble-bottom-nav-stack-panel">
-                {secondaryNavItems.map((item) => {
-                  const active = isNavItemActive(pathname, item.href);
-                  return (
-                    <Link
-                      key={item.href} href={item.href} prefetch={false}
-                      className={`bottom-nav-btn ${active ? 'active' : ''}`}
-                      // Not keyboard-reachable while collapsed: the element
-                      // stays mounted so it can animate, but it is not a
-                      // control until it is visible.
-                      tabIndex={open ? 0 : -1}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <item.icon size={20} className={`bottom-nav-icon ${active ? 'active' : ''}`} />
-                      <span className="bottom-nav-label">{d.nav[item.labelKey]}</span>
-                    </Link>
-                  );
-                })}
+              <div className="pebble-bottom-nav-stack-panel pb-shell-sheet">
+                <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.moreTitle}</p>
+                <div className="pb-shell-sheet-grid pb-shell-more-grid">
+                  {secondaryNavItems.map((item) => {
+                    const here = isNavItemActive(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href} href={item.href} prefetch={false}
+                        className={`pb-shell-tile pb-shell-tile-row${here ? ' pb-shell-tile-here' : ''}`}
+                        aria-current={here ? 'page' : undefined}
+                        // Not keyboard-reachable while collapsed: the element
+                        // stays mounted so it can animate, but it is not a
+                        // control until it is visible.
+                        tabIndex={open ? 0 : -1}
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <span className="pb-shell-tile-icon" aria-hidden="true"><item.icon size={19} strokeWidth={2} /></span>
+                        <span className="pb-shell-tile-label">{d.nav[item.labelKey]}</span>
+                        {here && <span className="pb-shell-tile-dot" aria-hidden="true" />}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

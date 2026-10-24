@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRightLeft, CalendarClock, Eye, EyeOff, Plus, Search, Settings as SettingsIcon, Target } from 'lucide-react';
+import { ArrowRightLeft, CalendarClock, CornerDownLeft, Receipt, Eye, EyeOff, Plus, Search, SearchX, Settings as SettingsIcon, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { navItems } from './navItems';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -13,7 +14,7 @@ import { getSearchTransactionsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { formatCurrency, formatDate } from '@/lib/format';
+import { formatCurrency, formatDate, formatFullDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import type { CategoryMeta, LedgerRecord, Transaction } from '@/types';
 
@@ -36,7 +37,11 @@ function scrollNearestWithin(el: Element | null | undefined) {
   if (!box) return;
   const b = box.getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  if (r.top < b.top) box.scrollTop -= b.top - r.top;
+  // Group captions stick to the top of the list, so an option is only in
+  // view once it clears its own group's caption.
+  const cap = el.closest('[role="group"]')?.querySelector<HTMLElement>('.pb-shell-pal-cap');
+  const top = b.top + (cap ? cap.offsetHeight : 0);
+  if (r.top < top) box.scrollTop -= top - r.top;
   else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
 }
 
@@ -55,6 +60,8 @@ interface Command {
   icon: LucideIcon;
   group: 'actions' | 'pages' | 'settings';
   run: () => void;
+  /** The single-key shortcut AppShell already binds, shown as a hint. */
+  key?: string;
 }
 
 type Row =
@@ -64,6 +71,23 @@ type Row =
 type SearchState = 'idle' | 'loading' | 'ready' | 'error';
 
 const MAX_TXN_RESULTS = 20;
+
+/**
+ * The query's first occurrence in `text` wrapped in <mark>, case-insensitively.
+ * Display only: matching itself is the plain substring test below.
+ */
+function highlight(text: string, q: string): React.ReactNode {
+  if (!q) return text;
+  const i = text.toLowerCase().indexOf(q);
+  if (i === -1) return text;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="pb-shell-mark">{text.slice(i, i + q.length)}</mark>
+      {text.slice(i + q.length)}
+    </>
+  );
+}
 
 const hidden: React.CSSProperties = {
   position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
@@ -142,8 +166,8 @@ export function CommandPalette({
   };
 
   const commands: Command[] = [
-    { id: 'add', label: d.header.addTransaction, icon: Plus, group: 'actions', run: onAddTransaction },
-    { id: 'transfer', label: d.transfer.title, icon: ArrowRightLeft, group: 'actions', run: onTransfer },
+    { id: 'add', label: d.header.addTransaction, icon: Plus, group: 'actions', run: onAddTransaction, key: 'N' },
+    { id: 'transfer', label: d.transfer.title, icon: ArrowRightLeft, group: 'actions', run: onTransfer, key: 'T' },
     { id: 'goal', label: d.common.addGoal, icon: Target, group: 'actions', run: onAddGoal },
     { id: 'schedule', label: d.header.addSchedule, icon: CalendarClock, group: 'actions', run: onAddSchedule },
     {
@@ -194,6 +218,16 @@ export function CommandPalette({
     scrollNearestWithin(document.getElementById(`pb-palette-opt-${index}`));
   }, [index, q, rows.length]);
 
+  // Consecutive rows of one group, for the sticky captions. The row order
+  // (and so every option's index) is unchanged.
+  const groups: { group: Row['group']; items: { row: Row; i: number }[] }[] = [];
+  rows.forEach((row, i) => {
+    const last = groups[groups.length - 1];
+    if (last && last.group === row.group) last.items.push({ row, i });
+    else groups.push({ group: row.group, items: [{ row, i }] });
+  });
+  const activeRow: Row | undefined = rows[index];
+
   const groupLabel = (g: Row['group']) =>
     g === 'actions' ? d.palette.actions : g === 'pages' ? d.palette.pages : g === 'settings' ? d.palette.settings : d.palette.transactions;
 
@@ -201,7 +235,10 @@ export function CommandPalette({
     <ModalFrame
       onClose={() => { onClose(); const run = pending.current; pending.current = null; run?.(); }}
       labelledBy="pb-palette-title"
-      maxWidth={560}
+      // Wide enough on a desktop for the results and a preview of the active
+      // one side by side (the split appears from a 720px card, shell.css).
+      // Phones are a full-width sheet either way.
+      maxWidth={780}
       // Nothing pinned at the bottom, so the keyboard simply covers the lower
       // part of the sheet instead of shrinking it and leaving a gap.
       keyboardResize={false}
@@ -255,72 +292,89 @@ export function CommandPalette({
               </div>
             </div>
 
-            <div className="pb-modal-body themed-scroll">
+            <div className="pb-modal-body themed-scroll pb-shell-pal-body">
+              <div className={`pb-shell-pal-split${rows.length > 0 ? ' pb-shell-pal-has-rows' : ''}`}>
+              <div className="pb-shell-pal-results">
               {rows.length > 0 && (
-                <ul id="pb-palette-list" role="listbox" aria-label={d.palette.title} style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {rows.map((row, i) => {
-                    const on = i === index;
-                    const firstOfGroup = i === 0 || rows[i - 1].group !== row.group;
-                    const optionStyle: React.CSSProperties = {
-                      display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0.75rem',
-                      borderRadius: '0.6rem', cursor: 'pointer', fontSize: '0.9rem',
-                      backgroundColor: on ? 'var(--pine-soft)' : 'transparent',
-                      color: on ? 'var(--pine)' : 'var(--ink)',
-                    };
-                    let body: React.ReactNode;
-                    if ('cmd' in row) {
-                      const Icon = row.cmd.icon;
-                      body = (
-                        <>
-                          <Icon size={16} aria-hidden="true" style={{ flex: 'none' }} />
-                          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.cmd.label}</span>
-                        </>
-                      );
-                    } else {
-                      const x = row.txn;
-                      const m = meta[x.category];
-                      const Icon = m?.icon;
-                      // Description and category are USER DATA and render as stored;
-                      // only the two income literals get a translated label.
-                      const title = x.description.split('\n')[0] || categoryLabel(d, x.category);
-                      body = (
-                        <>
-                          <span aria-hidden="true" style={{ width: 16, flex: 'none', display: 'inline-flex', color: m ? m.color : 'var(--ink-soft)' }}>
-                            {Icon && <Icon size={16} />}
-                          </span>
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-                            <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--ink-soft)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {formatDate(x.date, locale)} · {categoryLabel(d, x.category)}
-                            </span>
-                          </span>
-                          <span className="font-mono-tab" style={{ flex: 'none', fontWeight: 600, color: x.amount > 0 ? 'var(--pine)' : 'var(--ink)' }}>
-                            {x.amount > 0 ? '+' : ''}{formatCurrency(x.amount)}
-                          </span>
-                        </>
-                      );
-                    }
-                    return (
-                      <li key={row.key} role="presentation">
-                        {firstOfGroup && (
-                          <p aria-hidden="true" style={{ fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ink-soft)', margin: i === 0 ? '0 0 0.3rem' : '0.7rem 0 0.3rem' }}>
-                            {groupLabel(row.group)}
-                          </p>
-                        )}
-                        <div
-                          id={`pb-palette-opt-${i}`}
-                          role="option"
-                          aria-selected={on}
-                          onMouseMove={() => { if (!on) setActive(i); }}
-                          onClick={() => pick(row)}
-                          style={optionStyle}
-                        >
-                          {body}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                // Options are grouped (role=group, labelled by the caption) so
+                // each caption can stick to the top of the list while its rows
+                // scroll under it. Option ids keep one running index across
+                // groups for aria-activedescendant.
+                <div id="pb-palette-list" role="listbox" aria-label={d.palette.title} className="pb-shell-pal-list">
+                  {groups.map((g) => (
+                    <div key={g.group} role="group" aria-labelledby={`pb-palette-cap-${g.group}`} className="pb-shell-pal-group">
+                      <p id={`pb-palette-cap-${g.group}`} aria-hidden="true" className="pb-shell-pal-cap">{groupLabel(g.group)}</p>
+                      {g.items.map(({ row, i }) => {
+                        const on = i === index;
+                        let body: React.ReactNode;
+                        if ('cmd' in row) {
+                          const Icon = row.cmd.icon;
+                          body = (
+                            <>
+                              <span className="pb-shell-pal-icon" aria-hidden="true"><Icon size={16} /></span>
+                              <span className="pb-shell-pal-text">
+                                <span className="pb-shell-pal-title">{highlight(row.cmd.label, q)}</span>
+                              </span>
+                              {/* Display only: AppShell binds N and T itself. */}
+                              {row.cmd.key && <kbd className="pb-shell-kbd" aria-hidden="true">{row.cmd.key}</kbd>}
+                            </>
+                          );
+                        } else {
+                          const x = row.txn;
+                          const m = meta[x.category];
+                          // A category with no meta (deleted, or not loaded) still gets a tile.
+                          const Icon = m?.icon ?? Receipt;
+                          // Description and category are USER DATA and render as stored;
+                          // only the two income literals get a translated label.
+                          const title = x.description.split('\n')[0] || categoryLabel(d, x.category);
+                          const catText = categoryLabel(d, x.category);
+                          const tag = x.type === 'expense' && x.tag ? x.tag : '';
+                          // Matched by amount alone: say so, since nothing in
+                          // the words is highlighted to explain the hit.
+                          const textHit = title.toLowerCase().includes(q) || catText.toLowerCase().includes(q)
+                            || x.category.toLowerCase().includes(q) || tag.toLowerCase().includes(q);
+                          const amountHit = !textHit && amountQuery && Math.abs(x.amount).toFixed(2).includes(qAmount);
+                          body = (
+                            <>
+                              <span
+                                className="pb-shell-pal-icon" aria-hidden="true"
+                                style={m ? { color: m.color, backgroundColor: `color-mix(in srgb, ${m.color} 13%, transparent)` } : undefined}
+                              >
+                                <Icon size={16} />
+                              </span>
+                              <span className="pb-shell-pal-text">
+                                <span className="pb-shell-pal-title">{highlight(title, q)}</span>
+                                <span className="pb-shell-pal-sub">
+                                  <span className="pb-tnum">{formatDate(x.date, locale)}</span> · {highlight(catText, q)}
+                                  {tag && <> · {highlight(tag, q)}</>}
+                                </span>
+                              </span>
+                              <span className="pb-shell-pal-end">
+                                <span className={`font-mono-tab pb-shell-pal-amt${x.amount > 0 ? ' pb-shell-pal-in' : ''}`}>
+                                  {x.amount > 0 ? '+' : ''}{formatCurrency(x.amount)}
+                                </span>
+                                {amountHit && <span className="pb-shell-pal-badge">{d.ux.shell.matchedAmount}</span>}
+                              </span>
+                            </>
+                          );
+                        }
+                        return (
+                          <div
+                            key={row.key}
+                            id={`pb-palette-opt-${i}`}
+                            role="option"
+                            aria-selected={on}
+                            onMouseMove={() => { if (!on) setActive(i); }}
+                            onClick={() => pick(row)}
+                            className={`pb-shell-pal-opt${on ? ' pb-shell-pal-on' : ''}`}
+                          >
+                            {body}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               )}
 
               {q && searchState === 'loading' && (
@@ -330,8 +384,68 @@ export function CommandPalette({
                 <p role="status" style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: '0.7rem 0 0', textAlign: 'center' }}>{searchError}</p>
               )}
               {rows.length === 0 && searchState !== 'loading' && searchState !== 'error' && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.palette.empty}</p>
+                <EmptyState compact icon={SearchX} title={d.palette.empty} body={d.ux.shell.emptyHint} />
               )}
+              </div>
+
+              {/* Desktop only (hidden below a 720px card): what Enter will
+                  open. Decorative for assistive tech - the active option is
+                  already announced through aria-activedescendant. */}
+              {activeRow && (
+                <aside className="pb-shell-pal-preview" aria-hidden="true">
+                  {'cmd' in activeRow ? (() => {
+                    const Icon = activeRow.cmd.icon;
+                    return (
+                      <>
+                        <span className="pb-shell-pal-prev-tile"><Icon size={22} /></span>
+                        <p className="pb-shell-pal-prev-kind">
+                          {activeRow.group === 'actions' ? d.ux.shell.previewAction : activeRow.group === 'pages' ? d.ux.shell.previewPage : d.ux.shell.previewSetting}
+                        </p>
+                        <p className="pb-shell-pal-prev-title">{activeRow.cmd.label}</p>
+                        {activeRow.cmd.key && (
+                          <p className="pb-shell-pal-prev-line">{d.ux.shell.shortcutHint} <kbd className="pb-shell-kbd">{activeRow.cmd.key}</kbd></p>
+                        )}
+                      </>
+                    );
+                  })() : (() => {
+                    const x = activeRow.txn;
+                    const m = meta[x.category];
+                    // A category with no meta (deleted, or not loaded) still gets a tile.
+                          const Icon = m?.icon ?? Receipt;
+                    const title = x.description.split('\n')[0] || categoryLabel(d, x.category);
+                    return (
+                      <>
+                        <span
+                          className="pb-shell-pal-prev-tile"
+                          style={m ? { color: m.color, backgroundColor: `color-mix(in srgb, ${m.color} 13%, transparent)` } : undefined}
+                        >
+                          <Icon size={22} />
+                        </span>
+                        <p className="pb-shell-pal-prev-kind">{d.enums.kind[x.type]}</p>
+                        <p className="pb-shell-pal-prev-title">{title}</p>
+                        <p className={`font-mono-tab pb-shell-pal-prev-amt${x.amount > 0 ? ' pb-shell-pal-in' : ''}`}>
+                          {x.amount > 0 ? '+' : ''}{formatCurrency(x.amount)}
+                        </p>
+                        <dl className="pb-shell-pal-prev-rows">
+                          <div><dt>{d.addTxn.date}</dt><dd className="pb-tnum">{formatFullDate(x.date, locale)}</dd></div>
+                          <div><dt>{d.addTxn.category}</dt><dd>{categoryLabel(d, x.category)}</dd></div>
+                          {x.type === 'expense' && x.tag && <div><dt>{d.addTxn.tag}</dt><dd>{x.tag}</dd></div>}
+                        </dl>
+                      </>
+                    );
+                  })()}
+                  <p className="pb-shell-pal-prev-hint"><CornerDownLeft size={13} /> {d.ux.shell.previewOpen}</p>
+                </aside>
+              )}
+              </div>
+            </div>
+
+            {/* Keyboard legend: desktop only (shell.css hides it on phones,
+                which have no arrow keys or Escape). */}
+            <div className="pb-shell-pal-legend" aria-hidden="true">
+              <span><kbd className="pb-shell-kbd">↑</kbd><kbd className="pb-shell-kbd">↓</kbd> {d.ux.shell.legendMove}</span>
+              <span><kbd className="pb-shell-kbd"><CornerDownLeft size={11} strokeWidth={2.4} /></kbd> {d.ux.shell.legendOpen}</span>
+              <span><kbd className="pb-shell-kbd">esc</kbd> {d.ux.shell.legendClose}</span>
             </div>
           </>
         );

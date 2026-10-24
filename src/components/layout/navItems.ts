@@ -70,3 +70,28 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   }
   return pathname === href;
 }
+
+/**
+ * How the desktop sidebar groups the pages. Display only: navItems keeps its
+ * order (the palette's Pages group and the phone's More sheet derive from
+ * it), and every href here must exist there. Settings is in no group - the
+ * sidebar pins it above the account block, where preferences usually live.
+ *
+ * `labelKey` names a caption in d.ux.shell, resolved by the sidebar.
+ */
+export interface NavGroup {
+  id: 'overview' | 'understand' | 'plan';
+  labelKey: 'groupOverview' | 'groupUnderstand' | 'groupPlan';
+  hrefs: readonly string[];
+}
+
+export const NAV_GROUPS: readonly NavGroup[] = [
+  { id: 'overview', labelKey: 'groupOverview', hrefs: ['/dashboard', '/accounts', '/transactions'] },
+  { id: 'understand', labelKey: 'groupUnderstand', hrefs: ['/reports', '/analysis', '/insights'] },
+  { id: 'plan', labelKey: 'groupPlan', hrefs: ['/budgets', '/goals', '/scheduled'] },
+];
+
+/** The nav entry whose page is showing (Settings on /account/*), if any. */
+export function currentNavItem(pathname: string): NavItem | undefined {
+  return navItems.find((i) => isNavItemActive(pathname, i.href));
+}

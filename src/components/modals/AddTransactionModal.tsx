@@ -19,6 +19,7 @@ import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFiel
 import { composeDescription } from '@/lib/transactionDescription';
 import { playEventSound } from '@/lib/sound/useSound';
 import { formatCurrency, todayDateString } from '@/lib/format';
+import { addDays } from '@/lib/recurring/occurrences';
 import { deductionPct } from '@/lib/stats';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
@@ -292,8 +293,22 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   const showForm = !success && pendingShortfall === null;
 
+  // Quick picks. Both are shortcuts onto the same state the full controls
+  // set - the native date input and the category SelectField stay, so the
+  // Plain dropdown preference and any date are still one tap away. Today is
+  // the same browser-local reading the date field starts from.
+  const today = todayDateString();
+  const yesterday = addDays(today, -1);
+  // The first few categories in the user's own order (sortOrder; a stable
+  // sort keeps the server's order on ties). Six fits two rows of three on a
+  // phone and one row on a wide card.
+  const quickCategories = useMemo(
+    () => [...categories].sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 6),
+    [categories],
+  );
+
   return (
-    <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640}>
+    <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}
@@ -460,6 +475,30 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             />
           </div>
 
+          {type === 'expense' && quickCategories.length > 1 && (
+            <div className="pb-span-2 pb-shell-quick" role="group" aria-labelledby="add-txn-quick">
+              <span id="add-txn-quick" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
+              <div className="pb-shell-quick-grid">
+                {quickCategories.map((c) => {
+                  const Icon = resolveCategoryIcon(c.iconKey);
+                  const on = category === c.name;
+                  return (
+                    <button
+                      key={c.name} type="button" aria-pressed={on}
+                      onClick={() => setCategory(c.name)}
+                      className={`pb-shell-quick-tile${on ? ' active' : ''}`}
+                      style={{ ['--pb-cat' as string]: c.color }}
+                    >
+                      <span className="pb-shell-quick-icon" aria-hidden="true"><Icon size={16} /></span>
+                      {/* User data: the name as stored, never translated. */}
+                      <span className="pb-shell-quick-name">{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {type === 'expense' && (
             <>
               {/* A div, not a label: <label> forwards clicks to its control, and
@@ -498,7 +537,23 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             {/* type="date" - the browser localizes its own picker from
                 <html lang>, and the value stays 'YYYY-MM-DD' regardless.
                 That is exactly what must reach the database. */}
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
+            <span className="pb-shell-date-row">
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={{ ...inputStyle, flex: '1 1 9.5rem', minWidth: 0 }} />
+              {/* Buttons inside a label do not forward their clicks to the
+                  input (they are interactive content), so these only set the
+                  value. Same 'YYYY-MM-DD' the picker writes. */}
+              <span className="pb-shell-date-chips">
+                {([[today, d.ux.shell.today], [yesterday, d.ux.shell.yesterday]] as const).map(([value, label]) => (
+                  <button
+                    key={value} type="button" aria-pressed={date === value}
+                    onClick={() => setDate(value)}
+                    className={`pb-shell-date-chip${date === value ? ' active' : ''}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </span>
+            </span>
           </label>
 
           <label style={labelStyle}>
