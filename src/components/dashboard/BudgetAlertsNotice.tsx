@@ -65,7 +65,8 @@ export function BudgetAlertsNotice({ transactions, categoryMeta, today }: Budget
     // Category names are USER DATA: set apart as a title, not part of the sentence.
     const name = <strong className="pb-dash-name">{a.category}</strong>;
     const money = (n: number) => <span className="pb-money">{formatCurrency(Math.abs(n))}</span>;
-    if (a.spent > a.budget) return renderTemplate(ux.budgetAlertOver, { name, amount: money(a.spent - a.budget) });
+    // `left` is already in whole cents, so float dust (0.1 + 0.2 against 0.3) never reads "over by $0.00".
+    if (a.left < 0) return renderTemplate(ux.budgetAlertOver, { name, amount: money(-a.left) });
     if (a.level === 100) return renderTemplate(ux.budgetAlertFull, { name });
     return renderTemplate(ux.budgetAlertNear, { name, pct: <span className="pb-tnum">{a.pct}%</span>, amount: money(a.left) });
   };

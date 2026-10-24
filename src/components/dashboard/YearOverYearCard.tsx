@@ -65,9 +65,9 @@ export function YearOverYearCard({ data, categoryMeta, today, inProgress }: Year
                   <span style={{ color: c.color, display: 'inline-flex' }} aria-hidden="true"><Icon size={14} /></span>
                   <span>{c.label}</span>
                 </dt>
-                <dd className={`pb-dash-yoy-now ${isRate ? 'pb-tnum' : 'font-mono-tab'}`}>
+                <dd className="pb-dash-yoy-now">
                   <span className="pb-dash-yoy-period">{inProgress ? ux.compareNow : ux.compareNowDone}</span>
-                  <span>{figure(c.metric, data.current)}</span>
+                  <span className={isRate ? 'pb-tnum' : 'font-mono-tab'}>{figure(c.metric, data.current)}</span>
                 </dd>
                 <dd className="pb-dash-yoy-was">
                   <span className="pb-dash-yoy-period">{ux.yoyLastYear}</span>

@@ -55,12 +55,32 @@ export interface YearOverYear {
   movers: CategoryMover[];
 }
 
-/** The window one year before the Dashboard's selected one (see the file comment). */
+/**
+ * The window one year before the Dashboard's selected one (see the file comment).
+ *
+ * Rolling 30/90-day windows keep their LENGTH: only the end moves back a
+ * year (month-end clamped) and the start follows, so a window ending Feb 29
+ * does not meet a day-shorter one. A month, quarter or year in progress is cut
+ * at the same calendar DATE a year back, not the same day count - day 290 of a
+ * leap year is Oct 16 but day 290 of the year before is Oct 17.
+ */
 export function yearAgoWindow(mode: string, periodKey: string | null, today: Date): DateRange {
   const unit = UNIT_MONTHS[mode];
-  if (unit) return shiftedWindow(mode, periodKey, today, 12 / unit, true);
+  if (unit) {
+    const whole = shiftedWindow(mode, periodKey, today, 12 / unit, false);
+    const base = windowBounds(mode, periodKey, today);
+    const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (now < base.start || now > base.end) return whole;
+    const cut = addMonthsClamped(now, -12);
+    return { start: whole.start, end: cut < whole.end ? cut : whole.end };
+  }
   const base = windowBounds(mode, periodKey, today);
-  return { start: addMonthsClamped(base.start, -12), end: addMonthsClamped(base.end, -12) };
+  const end = addMonthsClamped(base.end, -12);
+  if (mode === '30d' || mode === '90d') {
+    const days = mode === '30d' ? 30 : 90;
+    return { start: new Date(end.getFullYear(), end.getMonth(), end.getDate() - days + 1), end };
+  }
+  return { start: addMonthsClamped(base.start, -12), end };
 }
 
 export function compareYearOverYear(
