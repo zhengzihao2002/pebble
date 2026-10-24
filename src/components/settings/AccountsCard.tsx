@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlarmClock, BedDouble, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star } from 'lucide-react';
+import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { dueDates } from '@/lib/creditCards';
+import { useSettingsToday } from './useSettingsToday';
 import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction, updateCreditCardAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -36,6 +39,28 @@ const srOnly: React.CSSProperties = {
 
 const SAVED_HOLD_MS = 2400;
 
+// Whole days from a to b, both 'YYYY-MM-DD' (UTC arithmetic, so no DST drift).
+const daysBetween = (a: string, b: string) => Math.round(
+  (Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 86_400_000,
+);
+
+// Utilisation bands for the card bar: calm under 30%, caution to 70%, over
+// beyond. The percentage is always written beside it, so colour is not the
+// only signal.
+const utilTone = (share: number) => (share < 0.3 ? 'is-low' : share < 0.7 ? 'is-mid' : 'is-high');
+
+/** A template with one money placeholder, split so only the money blurs in
+    privacy mode and the rest (a due day) stays readable. */
+function MoneyTemplate({ template, slot, money, values }: { template: string; slot: string; money: string; values: Record<string, string> }) {
+  return (
+    <>
+      {template.split(new RegExp(`(\\{${slot}\\})`)).map((part, i) => (part === `{${slot}}`
+        ? <span key={i} className="font-mono-tab">{money}</span>
+        : <span key={i} className="pb-tnum">{part.replace(/\{(\w+)\}/g, (m, k: string) => values[k] ?? m)}</span>))}
+    </>
+  );
+}
+
 const labelStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '0.35rem',
   fontSize: '0.8rem', color: 'var(--ink-soft)',
@@ -54,6 +79,8 @@ const labelStyle: React.CSSProperties = {
 export function AccountsCard({ accounts, balancesByAccount, hasRecords }: AccountsCardProps) {
   const deleteLocked = useSafetyLock('deleteAccounts');
   const { d, t, locale } = useTranslation();
+  // The zone-aware today; null until hydrated, and the due chip waits.
+  const today = useSettingsToday();
 
   // Hibernated accounts ARE listed: they hold real balances that still count
   // toward the total, and they must be reachable to wake.
@@ -218,22 +245,46 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(a.id);
   };
 
+  const sleepingCount = visible.filter((a) => (sleepOverride[a.id] ?? a.status) === 'hibernated').length;
+  const listTotal = visible.reduce((sum, a) => sum + (balancesByAccount[a.id] ?? 0), 0);
+
   return (
-    <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
+    <div className="card pb-settings-card" style={{ position: 'relative' }}>
       {saving && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.accounts.saved : ''}</span>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.accounts.title}</h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem', lineHeight: 1.5 }}>
-        {d.accounts.blurb}
-      </p>
+      <SectionHeader icon={Wallet} title={d.accounts.title} subtitle={d.accounts.blurb} />
 
-      <div style={{ marginBottom: '1.1rem' }}>
+      {/* What the list adds up to: hibernated balances still count, so they
+          are in the total (and counted separately). */}
+      {visible.length > 0 && (
+        <div className="pb-settings-acct-sum">
+          <span>
+            {visible.length === 1 ? d.ux.settings.acrossOne : t(d.ux.settings.acrossAccounts, { count: visible.length })}
+            {sleepingCount > 0 && (
+              <span className="pb-tnum pb-settings-acct-sum-sleep">{` · ${t(d.ux.settings.sleepingCount, { count: sleepingCount })}`}</span>
+            )}
+          </span>
+          <span className="font-mono-tab pb-settings-acct-sum-total">{formatCurrency(listTotal)}</span>
+        </div>
+      )}
+
+      {/* The container sits on this wrapper, not the card: the move and
+          delete dialogs render inside the card, and a size container is a
+          containing block for their fixed-position overlay. */}
+      <div className="pb-settings-acct-wrap">
+       <div className="pb-settings-acct-list">
         {visible.map((a) => {
           // The status the row shows: the optimistic one while saving, else the real one.
           const st = sleepOverride[a.id] ?? a.status;
           const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
           const balance = balancesByAccount[a.id] ?? 0;
+          const kindLabel = a.kind === 'bank' ? d.accounts.kindBank : a.kind === 'cash' ? d.accounts.kindCash : d.accounts.kindCredit;
+          // Credit cards: how much of the limit is used, and when it is due.
+          const owed = Math.max(0, -balance);
+          const share = a.kind === 'credit' && a.creditLimit ? owed / a.creditLimit : null;
+          const due = a.kind === 'credit' && a.dueDay !== null && today ? dueDates(a.dueDay, today).next : null;
+          const daysLeft = due && today ? daysBetween(today, due) : null;
           // A STACK, not a row. The buttons used to sit beside the name and
           // wrap only once it could no longer hold 140px - a threshold that
           // resolved differently on a real phone than in Chrome's device
@@ -241,24 +292,12 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           // name and clipped it while the emulator wrapped correctly. Giving
           // the buttons their own line guarantees the name has the full width
           // on every device, with no measurement to get wrong.
+          //
+          // Each account is now a tile. A sleeping one keeps its grey box:
+          // every tile already has the same padding, so only the background
+          // and border ease (settings.css) and the contents never move.
           return (
-            <div key={a.id} style={{
-              display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 0,
-              position: 'relative', isolation: 'isolate',
-              // Longhand border properties only, and both states set every value
-              // they change: React warns when a shorthand and its longhand are
-              // added or removed together between renders (hibernate / wake).
-              borderBottomWidth: 1, borderBottomStyle: 'solid',
-              // Padding and margin change by equal and opposite amounts with the
-              // same timing, so the contents stay still while the box eases.
-              transition: 'background-color 360ms var(--pb-ease-out), border-bottom-color 360ms var(--pb-ease-out), border-radius 360ms var(--pb-ease-out), padding 360ms var(--pb-ease-out), margin 360ms var(--pb-ease-out)',
-              // A sleeping account sits in a light grey box.
-              ...(st === 'hibernated'
-                // The box grows outward (negative margin cancels the padding) and adds
-                // no vertical space, so the row's contents do not move.
-                ? { padding: '0.7rem 0.65rem', margin: '0 -0.65rem', borderRadius: 12, backgroundColor: 'color-mix(in srgb, var(--ink) 5%, transparent)', borderBottomColor: 'transparent' }
-                : { padding: '0.7rem 0', margin: 0, borderRadius: 0, backgroundColor: 'transparent', borderBottomColor: 'var(--line)' }),
-            }}>
+            <div key={a.id} className={`pb-settings-acct${st === 'hibernated' ? ' is-sleeping' : ''}`}>
               {/* A confirmed save: a soft cloud of the theme colour spreads from the
                   middle of the row to both ends, then fades. Decorative; the
                   status line above announces the save to screen readers. */}
@@ -273,32 +312,28 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   Chrome's device emulation - the emulator wrapped, the phone
                   crowded the name and clipped it. Splitting deterministically
                   removes the measurement entirely. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
-                <AccountIcon size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
+              <div className="pb-settings-acct-top">
+                <span className={`pb-settings-acct-chip is-${a.kind}`} aria-hidden="true">
+                  <AccountIcon size={18} />
+                  {a.isPreferred && <span className="pb-settings-acct-star"><Star size={9} fill="currentColor" strokeWidth={2.5} /></span>}
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.87rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: st === 'hibernated' ? 'var(--ink-soft)' : 'var(--ink)', transition: 'color 320ms var(--pb-ease-out)' }}>
-                    {a.name}{a.last4 ? ` ····${a.last4}` : ''}
-                  </p>
-                  {/* Hibernated balances still count toward the total, so they
-                      are shown - marked with --gold to read as dormant rather
-                      than absent. */}
-                  <p className="font-mono-tab" style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-                    {formatCurrency(balance)}
+                  {/* The name has the line to itself; the last four digits
+                      moved to the line below, beside the kind, so a long name
+                      no longer pushes them out of sight behind an ellipsis. */}
+                  <p className="pb-settings-acct-name">{a.name}</p>
+                  <p className="pb-settings-acct-kind">
+                    {kindLabel}
+                    {a.last4 && <span className="pb-tnum">{` ····${a.last4}`}</span>}
                     {a.isPreferred && (
                       <span style={{ color: 'var(--gold)', fontWeight: 500 }}>
                         {` · ${d.accounts.preferred}`}
                       </span>
                     )}
                   </p>
-                  {a.kind === 'credit' && a.creditLimit !== null && a.dueDay !== null && (
-                    <p className="font-mono-tab" style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>
-                      {t(d.accounts.cardSummary, { limit: formatCurrency(a.creditLimit), day: dayText(a.dueDay) })}
-                    </p>
-                  )}
                 </div>
 
                 {st === 'hibernated' && <SleepingBadge />}
-
 
                 {/* Only active accounts can be preferred - preselecting one
                     that rejects new transactions would be broken. Independent
@@ -307,11 +342,10 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   <button
                     type="button"
                     onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id), a.isPreferred ? 'quiet' : 'star')}
-                    className={`icon-btn${starPop === a.id ? ' pb-star-pop' : ''}`}
+                    className={`icon-btn pb-settings-iconbtn is-round${starPop === a.id ? ' pb-star-pop' : ''}`}
                     aria-pressed={a.isPreferred}
                     aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       borderColor: a.isPreferred ? 'var(--gold)' : 'var(--line)',
                       color: a.isPreferred ? 'var(--gold)' : 'var(--ink-soft)',
                     }}
@@ -326,26 +360,63 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                     Delete stays enabled by contrast - its error message IS the
                     explanation, and a greyed button explains nothing. */}
                 <button
-                  type="button" onClick={() => setMoveSource(a)} className="icon-btn"
+                  type="button" onClick={() => setMoveSource(a)} className="icon-btn pb-settings-iconbtn is-round"
                   aria-label={t(d.accounts.moveTitle, { name: a.name })}
                   disabled={!hasRecords[a.id]}
-                  style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
+                  style={{ opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
                 >
                   <ArrowRightLeft size={15} />
                 </button>
               </div>
 
+              {/* Hibernated balances still count toward the total, so they
+                  are shown - the grey box says dormant rather than absent. */}
+              <p className="font-mono-tab pb-settings-acct-bal">{formatCurrency(balance)}</p>
+
+              {a.kind === 'credit' && (share !== null || due) && (
+                <div className="pb-settings-acct-credit">
+                  {share !== null && (
+                    // A chart of money: blurred with the figures in privacy mode.
+                    <div className="pb-settings-util pb-chart-fill" aria-hidden="true">
+                      <span className={`pb-settings-util-fill ${utilTone(share)}`} style={{ transform: `scaleX(${Math.min(1, share)})` }} />
+                    </div>
+                  )}
+                  <div className="pb-settings-acct-credit-line">
+                    {share !== null && (
+                      <span className="pb-tnum">{t(d.ux.settings.utilisation, { pct: Math.round(share * 100) })}</span>
+                    )}
+                    {daysLeft !== null && (
+                      <span className={`pb-settings-due pb-tnum${daysLeft <= 3 && owed > 0.004 ? ' is-soon' : ''}`}>
+                        <CalendarClock size={12} aria-hidden="true" />
+                        {daysLeft === 0 ? d.ux.settings.dueToday
+                          : daysLeft === 1 ? d.ux.settings.dueTomorrow
+                          : t(d.ux.settings.dueInDays, { count: daysLeft })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {a.kind === 'credit' && a.creditLimit !== null && a.dueDay !== null && (
+                // The limit is money (blurred in privacy mode); the due day is
+                // a date and stays readable - it used to blur with the line.
+                <p className="pb-settings-acct-summary">
+                  <MoneyTemplate
+                    template={d.accounts.cardSummary} slot="limit"
+                    money={formatCurrency(a.creditLimit)} values={{ day: dayText(a.dueDay) }}
+                  />
+                </p>
+              )}
+
               {/* Second line, left-aligned. Absent entirely for the defaults,
                   which are neither hibernatable nor deletable - so they stay a
                   single line and gain no height. */}
               {!a.isDefault && (
-                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <div className="pb-settings-acct-actions">
                   {a.kind === 'credit' && (
                     <button
                       type="button" onClick={() => (editingCard === a.id ? setEditingCard(null) : openCardEditor(a))}
-                      className="icon-btn" aria-expanded={editingCard === a.id}
+                      className="icon-btn pb-settings-iconbtn is-round" aria-expanded={editingCard === a.id}
                       aria-label={t(d.accounts.editCard, { name: a.name })} title={t(d.accounts.editCard, { name: a.name })}
-                      style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                     >
                       <Pencil size={15} />
                     </button>
@@ -353,16 +424,15 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   <button
                     type="button"
                     onClick={() => toggleSleep(a)} disabled={sleepBusy === a.id}
-                    className="icon-btn"
+                    className="icon-btn pb-settings-iconbtn is-round"
                     aria-label={t(st === 'hibernated' ? d.accounts.wakeLabel : d.accounts.hibernateLabel, { name: a.name })}
-                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
                   >
                     {st === 'hibernated' ? <AlarmClock size={15} /> : <BedDouble size={15} />}
                   </button>
                   <button disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined}
-                    type="button" onClick={() => setConfirmDelete(a)} className="icon-btn"
+                    type="button" onClick={() => setConfirmDelete(a)} className="icon-btn pb-settings-iconbtn is-round"
                     aria-label={t(d.accounts.deleteLabel, { name: a.name })}
-                    style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
+                    style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -396,6 +466,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
             </div>
           );
         })}
+       </div>
       </div>
 
       {deleteLocked && visible.some((a) => !a.isDefault) && (

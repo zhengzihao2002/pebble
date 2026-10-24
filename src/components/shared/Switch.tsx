@@ -3,12 +3,19 @@
 interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** Optional accessible name, when no visible label names the switch. */
+  ariaLabel?: string;
+  /** Optional id of the visible text that names the switch. */
+  labelledBy?: string;
+  /** Optional extra class (Settings uses it for a sliding thumb). */
+  className?: string;
 }
 
-export function Switch({ checked, onChange }: SwitchProps) {
+export function Switch({ checked, onChange, ariaLabel, labelledBy, className }: SwitchProps) {
   return (
     <button
       type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
+      aria-label={ariaLabel} aria-labelledby={labelledBy} className={className}
       style={{
         width: 42, height: 24, borderRadius: 99, border: 'none', padding: 2, flexShrink: 0,
         backgroundColor: checked ? 'var(--pine)' : 'var(--line)',

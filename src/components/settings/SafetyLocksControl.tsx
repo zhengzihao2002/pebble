@@ -1,31 +1,48 @@
 'use client';
 
-import { Lock } from 'lucide-react';
+import { useId } from 'react';
+import { Landmark, Lock, Receipt, Tags, UserX, type LucideIcon } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { SettingsRow } from './SettingsRow';
 import { Switch } from '@/components/shared/Switch';
 import { usePebbleStore } from '@/store/usePebbleStore';
-import { SAFETY_LOCK_KEYS, isLocked } from '@/lib/safetyLocks';
+import { SAFETY_LOCK_KEYS, isLocked, type SafetyLockKey } from '@/lib/safetyLocks';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
+// What each lock guards, as a mark beside its name.
+const LOCK_ICONS: Record<SafetyLockKey, LucideIcon> = {
+  deletePebbleAccount: UserX,
+  deleteAccounts: Landmark,
+  deleteTransactions: Receipt,
+  deleteCategories: Tags,
+};
+
 export function SafetyLocksControl() {
-  const { d } = useTranslation();
+  const { d, t } = useTranslation();
   const locks = usePebbleStore((s) => s.safetyLocks);
   const setSafetyLock = usePebbleStore((s) => s.setSafetyLock);
 
+  const baseId = useId();
+  const onCount = SAFETY_LOCK_KEYS.filter((key) => isLocked(locks, key)).length;
+
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>
-        <Lock size={15} />{d.safetyLocks.title}
-      </h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1rem', lineHeight: 1.5 }}>{d.safetyLocks.blurb}</p>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {SAFETY_LOCK_KEYS.map((key, i) => (
-          <div
-            key={key}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.7rem 0', borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}
-          >
-            <span style={{ fontSize: '0.87rem' }}>{d.safetyLocks[key]}</span>
-            <Switch checked={isLocked(locks, key)} onChange={(value) => setSafetyLock(key, value)} />
-          </div>
+    <div className="card pb-settings-card">
+      <SectionHeader
+        icon={Lock} title={d.safetyLocks.title} subtitle={d.safetyLocks.blurb}
+        actions={(
+          <span className="pb-settings-count pb-tnum">
+            {t(d.ux.settings.locksOn, { count: onCount, total: SAFETY_LOCK_KEYS.length })}
+          </span>
+        )}
+      />
+      <div className="pb-settings-rows">
+        {SAFETY_LOCK_KEYS.map((key) => (
+          <SettingsRow key={key} icon={LOCK_ICONS[key]} title={d.safetyLocks[key]} titleId={`${baseId}-${key}`} layout="side">
+            <Switch
+              checked={isLocked(locks, key)} onChange={(value) => setSafetyLock(key, value)}
+              labelledBy={`${baseId}-${key}`} className="pb-settings-switch"
+            />
+          </SettingsRow>
         ))}
       </div>
     </div>

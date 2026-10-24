@@ -2,7 +2,10 @@
 
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
+import { ArrowRight, Check, Scale } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { DeltaChip } from '@/components/kit/DeltaChip';
 import type { Account } from '@/lib/data/mappers';
 import { createBalanceAdjustmentAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
@@ -131,20 +134,19 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
   };
 
   return (
-    <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
+    <div className="card pb-settings-card" style={{ position: 'relative' }}>
       {saving && <LoadingOverlay label={d.modifyBalance.saving} />}
 
       {/* inert while the confirmation shows: no focus, no clicks, hidden from
           assistive tech. It stays mounted so the card keeps its height. */}
-      <div inert={confirm !== null}>
-        <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.modifyBalance.title}</h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-          {d.modifyBalance.blurb}
-        </p>
+      <div inert={confirm !== null} className="pb-settings-adjust">
+        <SectionHeader icon={Scale} title={d.modifyBalance.title} subtitle={d.modifyBalance.blurb} />
 
-        {/* Was a button row. Same list (active only), same default (active[0]),
+        {/* The picker and the chosen account's balance read as one unit: the
+            figure sits on the same soft band, right under the name.
+            Was a button row. Same list (active only), same default (active[0]),
             so a dropdown removes no safety step - something is always selected. */}
-        <div style={{ marginBottom: '1rem' }}>
+        <div className="pb-settings-adjust-pick">
           <SelectField
             value={accountId}
             onChange={setAccountId}
@@ -152,25 +154,25 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
             disabled={accountOptions.length === 0}
             ariaLabel={d.modifyBalance.account}
           />
+          <div className="pb-settings-adjust-now">
+            {/* Chinese drops the space between the account name and the noun,
+                which is why this is a template rather than concatenation. */}
+            <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
+            <span className="font-mono-tab pb-settings-adjust-now-amt">{formatCurrency(currentBalance)}</span>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1rem' }}>
-          {/* Chinese drops the space between the account name and the noun,
-              which is why this is a template rather than concatenation. */}
-          <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
-          <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(currentBalance)}</span>
-        </div>
+        {/* The kit radiogroup in place of two pills: same two choices, same
+            stored mode, plus arrow keys and a sliding thumb. */}
+        <SegmentedControl<Mode>
+          options={[
+            { value: 'setTo', label: d.modifyBalance.setTo },
+            { value: 'changeBy', label: d.modifyBalance.changeBy },
+          ]}
+          value={mode} onChange={setMode} ariaLabel={d.modifyBalance.title} fullWidth
+        />
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <button type="button" onClick={() => setMode('setTo')} className={`pill ${mode === 'setTo' ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem', fontSize: '0.83rem' }}>
-            {d.modifyBalance.setTo}
-          </button>
-          <button type="button" onClick={() => setMode('changeBy')} className={`pill ${mode === 'changeBy' ? 'active' : ''}`} style={{ flex: 1, padding: '0.5rem', fontSize: '0.83rem' }}>
-            {d.modifyBalance.changeBy}
-          </button>
-        </div>
-
-        <label style={{ ...labelStyle, marginBottom: '1rem' }}>
+        <label style={labelStyle}>
           {mode === 'setTo' ? d.modifyBalance.newBalance : d.modifyBalance.changeByLabel}
           <div style={{ position: 'relative' }}>
             {/* Stays '$' in every locale: real US dollars. */}
@@ -184,7 +186,7 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
           </div>
         </label>
 
-        <label style={{ ...labelStyle, marginBottom: '1rem' }}>
+        <label style={labelStyle}>
           <span>{d.modifyBalance.note} <span style={{ opacity: 0.7 }}>{d.modifyBalance.optional}</span></span>
           <input
             value={description}
@@ -194,21 +196,32 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
           />
         </label>
 
+        {/* Before -> after, with the change itself as a signed chip (an arrow
+            as well as pine / wine, so colour is never the only signal). */}
         {hasValue && delta !== 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem' }}>
-            <span>{d.modifyBalance.adjustment}</span>
-            <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)', fontWeight: 600 }}>
-              {delta > 0 ? '+' : ''}{formatCurrency(delta)} → {formatCurrency(resulting)}
+          <div className="pb-settings-adjust-preview">
+            <span className="pb-settings-adjust-preview-label">{d.modifyBalance.adjustment}</span>
+            <DeltaChip
+              delta={delta} good="up" money
+              text={`${delta > 0 ? '+' : '\u2212'}${formatCurrency(Math.abs(delta))}`}
+            />
+            <span className="pb-settings-adjust-flow">
+              <span className="font-mono-tab pb-settings-adjust-before">{formatCurrency(currentBalance)}</span>
+              <ArrowRight size={14} aria-hidden="true" />
+              <span className="pb-settings-adjust-after">
+                <span className="pb-settings-adjust-after-label">{d.ux.settings.balanceAfter}</span>
+                <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(resulting)}</span>
+              </span>
             </span>
           </div>
         )}
 
-        <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginBottom: '0.8rem' }} />
+        <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} />
 
         <button
           onClick={handleSave} disabled={saving || !hasValue || delta === 0}
           className="btn-primary"
-          style={{ padding: '0.65rem 1.1rem', opacity: saving || !hasValue || delta === 0 ? 0.6 : 1 }}
+          style={{ alignSelf: 'flex-start', padding: '0.65rem 1.1rem', opacity: saving || !hasValue || delta === 0 ? 0.6 : 1 }}
         >
           {saving ? d.common.saving : d.modifyBalance.record}
         </button>

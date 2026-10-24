@@ -1,12 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Volume2 } from 'lucide-react';
+import { BadgeDollarSign, CircleAlert, MousePointerClick, Receipt, Trophy, Volume2, type LucideIcon } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { SettingsRow } from './SettingsRow';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { SOUND_EVENTS, emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { SOUND_FILES } from '@/lib/sound/manifest';
 import { playSound } from '@/lib/sound/play';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+
+// One mark per event, so the list scans by shape as well as by name.
+const EVENT_ICONS: Record<SoundEvent, LucideIcon> = {
+  expenseSaved: Receipt,
+  incomeSaved: BadgeDollarSign,
+  saveFailed: CircleAlert,
+  click: MousePointerClick,
+  goalReached: Trophy,
+};
 
 export function SoundSettingsCard() {
   const { d, t } = useTranslation();
@@ -22,22 +33,14 @@ export function SoundSettingsCard() {
 
   const hasFiles = SOUND_FILES.length > 0;
 
-  const selectStyle: React.CSSProperties = {
-    padding: '0.5rem 0.6rem', borderRadius: '0.6rem', border: '1px solid var(--line)',
-    fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)',
-    boxSizing: 'border-box', flex: 1, minWidth: 0,
-    opacity: hasFiles ? 1 : 0.6,
-  };
-
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h2 className="font-display" style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.35rem' }}>{d.sounds.title}</h2>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem' }}>
-        {d.sounds.blurb}
-      </p>
+    <div className="card pb-settings-card">
+      {/* An h3 like every other card title: the section above is the h2.
+          It used to be a second h2 in display type. */}
+      <SectionHeader icon={Volume2} title={d.sounds.title} subtitle={d.sounds.blurb} />
 
       {!hasFiles && (
-        <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '1.1rem', padding: '0.7rem 0.8rem', backgroundColor: 'var(--mist)', borderRadius: '0.6rem' }}>
+        <p className="pb-settings-note">
           {/* The path and the command are rendered as elements and are
               never translated, so the sentence is split on its placeholders
               and each language positions them itself. */}
@@ -53,24 +56,24 @@ export function SoundSettingsCard() {
         </p>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="pb-settings-rows">
         {SOUND_EVENTS.map((event) => {
           const current = prefs[event.key as SoundEvent] ?? '';
           return (
-            <div key={event.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label htmlFor={`sound-${event.key}`} style={{ fontSize: '0.82rem', fontWeight: 500 }}>
-                {d.sounds.events[event.key]}
-              </label>
-              <p style={{ fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
-                {d.sounds.hints[event.key]}
-              </p>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: '0.15rem' }}>
+            <SettingsRow
+              key={event.key}
+              icon={EVENT_ICONS[event.key as SoundEvent] ?? Volume2}
+              title={d.sounds.events[event.key]}
+              hint={d.sounds.hints[event.key]}
+              labelFor={`sound-${event.key}`}
+            >
+              <div className="pb-settings-sound">
                 <select
                   id={`sound-${event.key}`}
                   value={current}
                   disabled={!hasFiles}
                   onChange={(e) => setSoundPref(event.key as SoundEvent, e.target.value || null)}
-                  style={selectStyle}
+                  className="pb-settings-select"
                 >
                   {/* value="" is the stored "silent" state - null in the
                       store. Only the text is translated. */}
@@ -85,21 +88,17 @@ export function SoundSettingsCard() {
                     also the user gesture that satisfies autoplay policy. */}
                 <button
                   type="button"
-                  className="icon-btn"
                   disabled={!current}
                   onClick={() => playSound(current)}
                   aria-label={t(d.sounds.preview, { event: d.sounds.events[event.key] })}
                   data-no-click-sound
-                  style={{
-                    width: 34, height: 34, borderRadius: '0.6rem', flexShrink: 0,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    opacity: current ? 1 : 0.35, cursor: current ? 'pointer' : 'not-allowed',
-                  }}
+                  className="icon-btn pb-settings-iconbtn"
+                  style={{ opacity: current ? 1 : 0.35, cursor: current ? 'pointer' : 'not-allowed' }}
                 >
                   <Volume2 size={15} />
                 </button>
               </div>
-            </div>
+            </SettingsRow>
           );
         })}
       </div>

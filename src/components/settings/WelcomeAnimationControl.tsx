@@ -1,6 +1,8 @@
 'use client';
 
-import { Play } from 'lucide-react';
+import { useId } from 'react';
+import { Play, Sparkles } from 'lucide-react';
+import { SettingsRow } from './SettingsRow';
 import { Switch } from '@/components/shared/Switch';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { WELCOME_PREVIEW_EVENT } from '@/components/layout/WelcomeOverlay';
@@ -11,22 +13,19 @@ export function WelcomeAnimationControl() {
   const enabled = usePebbleStore((s) => s.showWelcome);
   const setShowWelcome = usePebbleStore((s) => s.setShowWelcome);
 
+  const titleId = useId();
+
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-        <div>
-          <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.25rem' }}>{d.welcome.settingTitle}</h3>
-          <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', lineHeight: 1.5 }}>{d.welcome.settingHint}</p>
-        </div>
-        <Switch checked={enabled !== false} onChange={setShowWelcome} />
+    <SettingsRow icon={Sparkles} title={d.welcome.settingTitle} hint={d.welcome.settingHint} titleId={titleId}>
+      <div className="pb-settings-inline">
+        <button
+          type="button" className="pill pb-settings-pill"
+          onClick={() => window.dispatchEvent(new Event(WELCOME_PREVIEW_EVENT))}
+        >
+          <Play size={13} aria-hidden="true" />{d.welcome.preview}
+        </button>
+        <Switch checked={enabled !== false} onChange={setShowWelcome} labelledBy={titleId} className="pb-settings-switch" />
       </div>
-      <button
-        type="button" className="pill"
-        onClick={() => window.dispatchEvent(new Event(WELCOME_PREVIEW_EVENT))}
-        style={{ marginTop: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
-      >
-        <Play size={13} />{d.welcome.preview}
-      </button>
-    </div>
+    </SettingsRow>
   );
 }

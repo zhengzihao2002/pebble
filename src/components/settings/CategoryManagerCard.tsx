@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Plus, Search, Shapes, Trash2, X } from 'lucide-react';
+import { SectionHeader } from '@/components/kit/SectionHeader';
 import {
   createCategoryAction,
   getCategoriesAction,
@@ -33,6 +34,13 @@ const srOnly: React.CSSProperties = {
 
 // How long the saved row's check stays (the Add to goal hold).
 const SAVED_HOLD_MS = 1600;
+
+// Above this many categories a filter field appears.
+const FILTER_FROM = 12;
+// Above this many, a wide card caps the grid's height and scrolls it. Phones
+// never nest a scroller: the page already scrolls, and a scroller inside a
+// scroller traps the thumb.
+const LONG_LIST_FROM = 24;
 
 interface DraftState {
   name: string;
@@ -131,6 +139,7 @@ export function CategoryManagerCard() {
   // The row whose save the server just confirmed. Set ONLY below the failure
   // return in submit(); shows a small check on that row for a moment.
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   // Wrapped: previously a rejected call left `loading` true forever, since
   // setLoading(false) only ran on the resolved paths. The card would sit under
@@ -207,103 +216,139 @@ export function CategoryManagerCard() {
 
   const editingSystem = !adding && categories.find((c) => c.id === editingId)?.isSystem;
 
+  // The filter only exists for a long list; once the list is short again a
+  // leftover query must not keep hiding rows behind a field that is gone.
+  const showFilter = categories.length > FILTER_FROM;
+  const q = showFilter ? query.trim().toLowerCase() : '';
+  // The row being edited always stays, whatever the filter says.
+  const shown = q ? categories.filter((c) => c.id === editingId || c.name.toLowerCase().includes(q)) : categories;
+
+  // The editor, shared by edit and add. Opens with a live preview of the
+  // chip as it will look - draft icon, colour and name.
+  const editor = (mode: 'edit' | 'add') => {
+    const PreviewIcon = resolveCategoryIcon(draft.iconKey);
+    return (
+      <div className="pb-settings-cat-editor goal-step">
+        <div className="pb-settings-cat-preview" aria-hidden="true">
+          <span className="pb-settings-cat-tile" style={{ backgroundColor: `${draft.color}20` }}>
+            <PreviewIcon size={16} style={{ color: draft.color }} />
+          </span>
+          <span className={`pb-settings-cat-name${draft.name.trim() ? '' : ' is-empty'}`}>
+            {draft.name.trim() || (mode === 'add' ? d.categoryManager.newCategory : d.categoryManager.namePlaceholder)}
+          </span>
+          <span className="pb-settings-cat-preview-tag">{d.ux.settings.previewChip}</span>
+        </div>
+        <input
+          value={draft.name} disabled={mode === 'edit' && !!editingSystem} autoFocus={mode === 'add'}
+          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+          placeholder={mode === 'add' ? d.categoryManager.newNamePlaceholder : d.categoryManager.namePlaceholder} style={inputStyle}
+        />
+        {mode === 'edit' && editingSystem && (
+          <span style={{ fontSize: '0.73rem', color: 'var(--ink-soft)' }}>
+            {d.categoryManager.systemHint}
+          </span>
+        )}
+        <IconPicker value={draft.iconKey} color={draft.color} onChange={(iconKey) => setDraft((d) => ({ ...d, iconKey }))} />
+        <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
+        {mode === 'edit' ? (
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <Check size={14} />{busy ? d.common.saving : d.categoryManager.save}
+            </button>
+            <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem' }}>{d.categoryManager.cancel}</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1 }}>
+              {busy ? d.categoryManager.adding : d.categoryManager.addCategory}
+            </button>
+            <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <X size={14} />{d.categoryManager.cancel}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
+    <div className="card pb-settings-card" style={{ position: 'relative' }}>
       {busy && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.categoryManager.saved : ''}</span>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.categoryManager.title}</h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-        {d.categoryManager.blurb}
-      </p>
+      <SectionHeader
+        icon={Shapes} title={d.categoryManager.title} subtitle={d.categoryManager.blurb}
+        actions={!loading && categories.length > 0
+          ? <span className="pb-settings-count pb-tnum">{t(d.ux.settings.categoryCount, { count: categories.length })}</span>
+          : undefined}
+      />
 
       {loading && <LoadingBlock label={d.categoryManager.loading} />}
 
       {!loading && (
         <>
-          <div className="themed-scroll" style={{ maxHeight: '42vh', overflowY: 'auto', paddingRight: '0.25rem', marginBottom: '1rem' }}>
-            {categories.map((c) => {
-              const Icon = resolveCategoryIcon(c.iconKey);
-              const isEditing = editingId === c.id;
-
-              if (isEditing) {
-                return (
-                  <div key={c.id} style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-                    <input
-                      value={draft.name} disabled={!!editingSystem}
-                      onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                      placeholder={d.categoryManager.namePlaceholder} style={inputStyle}
-                    />
-                    {editingSystem && (
-                      <span style={{ fontSize: '0.73rem', color: 'var(--ink-soft)' }}>
-                        {d.categoryManager.systemHint}
-                      </span>
-                    )}
-                    <IconPicker value={draft.iconKey} color={draft.color} onChange={(iconKey) => setDraft((d) => ({ ...d, iconKey }))} />
-                    <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                        <Check size={14} />{busy ? d.common.saving : d.categoryManager.save}
-                      </button>
-                      <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem' }}>{d.categoryManager.cancel}</button>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)' }}>
-                  <span style={{ width: 32, height: 32, borderRadius: '0.55rem', backgroundColor: `${c.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={16} style={{ color: c.color }} />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.name}
-                    {c.isSystem && <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', marginLeft: 6 }}>{d.categoryManager.fallbackTag}</span>}
-                  </span>
-                  {savedId === c.id && (
-                    // Smaller than the row's icon, so the row never changes height.
-                    <span
-                      className="goal-done-badge" aria-hidden="true"
-                      style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                    >
-                      <Check size={13} strokeWidth={3} />
-                    </span>
-                  )}
-                  <button type="button" onClick={() => startEdit(c)} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0 }} aria-label={t(d.categoryManager.editAria, { name: c.name })}>
-                    <Pencil size={14} />
-                  </button>
-                  {!c.isSystem && (
-                    <button type="button" onClick={() => setDeleteTarget(c)} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="icon-btn" style={{ width: 30, height: 30, borderRadius: '0.5rem', flexShrink: 0, opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {adding && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', marginBottom: '1rem' }}>
+          {showFilter && (
+            <label className="pb-settings-filter">
+              <Search size={15} aria-hidden="true" />
               <input
-                value={draft.name} autoFocus
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                placeholder={d.categoryManager.newNamePlaceholder} style={inputStyle}
+                type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder={d.ux.settings.filterCategories} aria-label={d.ux.settings.filterCategories}
               />
-              <IconPicker value={draft.iconKey} color={draft.color} onChange={(iconKey) => setDraft((d) => ({ ...d, iconKey }))} />
-              <ColorPicker value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button type="button" onClick={submit} disabled={busy} className="btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', opacity: busy ? 0.6 : 1 }}>
-                  {busy ? d.categoryManager.adding : d.categoryManager.addCategory}
-                </button>
-                <button type="button" onClick={cancel} className="pill" style={{ padding: '0.45rem 0.9rem', fontSize: '0.83rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                  <X size={14} />{d.categoryManager.cancel}
-                </button>
-              </div>
-            </div>
+            </label>
           )}
 
+          {/* A grid of chips (one column on a phone, more as the card
+              widens - container query on this wrapper, which holds no
+              dialog). The editor takes a whole grid row in place of the
+              chip it edits. */}
+          <div className="pb-settings-cat-wrap">
+            <div className={`pb-settings-cat-grid themed-scroll${categories.length > LONG_LIST_FROM ? ' is-long' : ''}`}>
+              {shown.map((c) => {
+                const Icon = resolveCategoryIcon(c.iconKey);
+                if (editingId === c.id) return <div key={c.id} className="pb-settings-cat-span">{editor('edit')}</div>;
+
+                return (
+                  <div key={c.id} className="pb-settings-cat">
+                    {/* The whole chip opens the editor - a far bigger target
+                        than the old 30px pencil, with the same name. */}
+                    <button type="button" onClick={() => startEdit(c)} className="pb-settings-cat-main" aria-label={t(d.categoryManager.editAria, { name: c.name })}>
+                      <span className="pb-settings-cat-tile" style={{ backgroundColor: `${c.color}20` }}>
+                        <Icon size={16} style={{ color: c.color }} />
+                      </span>
+                      <span className="pb-settings-cat-name">
+                        {c.name}
+                        {c.isSystem && <span className="pb-settings-cat-tag">{d.categoryManager.fallbackTag}</span>}
+                      </span>
+                      {savedId === c.id ? (
+                        // Smaller than the chip's icon, so the chip never changes height.
+                        <span
+                          className="goal-done-badge" aria-hidden="true"
+                          style={{ width: 22, height: 22, borderRadius: '50%', backgroundColor: 'var(--pine)', color: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        >
+                          <Check size={13} strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <Pencil size={13} aria-hidden="true" className="pb-settings-cat-pen" />
+                      )}
+                    </button>
+                    {!c.isSystem && (
+                      <button type="button" onClick={() => setDeleteTarget(c)} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="icon-btn pb-settings-iconbtn" style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {q && shown.length === 0 && (
+              <p className="pb-settings-quiet">{t(d.ux.settings.noCategoryMatch, { query: query.trim() })}</p>
+            )}
+          </div>
+
+          {adding && editor('add')}
+
           {deleteLocked && categories.some((c) => !c.isSystem) && (
-            <p data-lock-hint style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: '0 0 0.8rem' }}>
+            <p data-lock-hint style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 }}>
               {d.safetyLocks.lockedHint}
             </p>
           )}
@@ -312,11 +357,10 @@ export function CategoryManagerCard() {
             message={error} kind={errorKind}
             onRetry={loadFailed ? () => void load() : submit}
             busy={busy || loading}
-            style={{ marginBottom: '0.8rem' }}
           />
 
           {!adding && !editingId && (
-            <button type="button" onClick={startAdd} className="pill" style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <button type="button" onClick={startAdd} className="pill pb-settings-pill" style={{ alignSelf: 'flex-start' }}>
               <Plus size={15} />{d.categoryManager.newCategory}
             </button>
           )}

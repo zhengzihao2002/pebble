@@ -22,7 +22,12 @@ import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
-import { SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
+import { SettingsJumpBar, SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
+import { SettingsOverview } from '@/components/settings/SettingsOverview';
+import { useSectionJump } from '@/components/settings/useSectionJump';
+import { SAFETY_LOCK_KEYS, isLocked } from '@/lib/safetyLocks';
+import { isThemeChoice } from '@/lib/themeChoice';
+import { isAppearance } from '@/lib/appearance';
 
 interface SettingsClientProps {
   timeZoneOverride: string | null;
@@ -36,8 +41,22 @@ interface SettingsSection {
   /** Stable DOM id the section nav scrolls to. A fixed string, never translated. */
   id: string;
   title: string;
+  /** Short name for the phone jump bar. */
+  short: string;
+  /** One quiet line under the section title. */
+  hint: string;
   cards: ReactNode;
 }
+
+// Ids of the sections the overview chips point at. Fixed strings, never
+// translated (the command palette and NoAccountsNotice link to them too).
+const SECTION_IDS = {
+  money: 'settings-money',
+  appearance: 'settings-appearance',
+  language: 'settings-language-region',
+  behavior: 'settings-behavior',
+  account: 'settings-pebble-account',
+} as const;
 
 // Mixed page: textSize, darkMode, locale and selectMode are device preferences
 // and stay in the store (localStorage). Balances and accounts are financial
@@ -65,13 +84,20 @@ export function SettingsClient({
   const setShowHealthBar = usePebbleStore((s) => s.setShowHealthBar);
   const themeChoice = usePebbleStore((s) => s.themeChoice);
   const setThemeChoice = usePebbleStore((s) => s.setThemeChoice);
+  // Read for the overview chips only; their controls read them themselves.
+  const privacyOnLaunch = usePebbleStore((s) => s.privacyOnLaunch) === true;
+  const safetyLocks = usePebbleStore((s) => s.safetyLocks);
+  const locksOn = SAFETY_LOCK_KEYS.filter((key) => isLocked(safetyLocks, key)).length;
+  const u = d.ux.settings;
 
   // ONE list, rendered below as the page content and by the section nav, so
   // the two can never disagree about what exists or in what order.
   const sections: SettingsSection[] = [
     {
-      id: 'settings-money',
+      id: SECTION_IDS.money,
       title: d.settingsSections.money,
+      short: u.jumpMoney,
+      hint: u.moneyHint,
       cards: (
         <>
           {/* Always shown. Opening balances were removed outright: every account
@@ -84,49 +110,63 @@ export function SettingsClient({
       ),
     },
     {
-      id: 'settings-appearance',
+      id: SECTION_IDS.appearance,
       title: d.settingsSections.appearance,
+      short: u.jumpAppearance,
+      hint: u.appearanceHint,
+      // The theme gallery keeps a card of its own; the rest are rows of one
+      // grouped card, in the same order as before.
       cards: (
         <>
           <ThemeControl theme={themeChoice} onChange={setThemeChoice} />
-          <TextSizeControl textSize={textSize} onChange={setTextSize} />
-          <FontControl
-            fontChoice={fontChoice} onChange={setFontChoice}
-            cjkFontChoice={cjkFontChoice} onCjkChange={setCjkFontChoice}
-          />
-          <AppearanceControl appearance={appearance} onChange={setAppearance} />
-          <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
-          <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
-          <WelcomeAnimationControl />
+          <div className="card pb-settings-group">
+            <TextSizeControl textSize={textSize} onChange={setTextSize} />
+            <FontControl
+              fontChoice={fontChoice} onChange={setFontChoice}
+              cjkFontChoice={cjkFontChoice} onCjkChange={setCjkFontChoice}
+            />
+            <AppearanceControl appearance={appearance} onChange={setAppearance} />
+            <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
+            <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
+            <WelcomeAnimationControl />
+          </div>
         </>
       ),
     },
     {
-      id: 'settings-language-region',
+      id: SECTION_IDS.language,
       title: d.settingsSections.languageRegion,
+      short: u.jumpLanguage,
+      hint: u.languageHint,
       cards: (
-        <>
+        <div className="card pb-settings-group">
           <LanguageControl locale={locale} onChange={setLocale} />
           <TimeZoneCard timeZoneOverride={timeZoneOverride} />
-        </>
+        </div>
       ),
     },
     {
-      id: 'settings-behavior',
+      id: SECTION_IDS.behavior,
       title: d.settingsSections.behavior,
+      short: u.jumpBehavior,
+      hint: u.behaviorHint,
       cards: (
         <>
-          <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
-          <PrivacyControl />
-          <TextSelectControl />
+          <div className="card pb-settings-group">
+            <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
+            <PrivacyControl />
+            <TextSelectControl />
+          </div>
           <SoundSettingsCard />
         </>
       ),
     },
     {
-      id: 'settings-pebble-account',
+      id: SECTION_IDS.account,
       // Reuses the card's own title rather than a near-duplicate key.
       title: d.account.title,
+      short: u.jumpAccount,
+      hint: u.accountHint,
       cards: (
         <>
           <SafetyLocksControl />
@@ -136,17 +176,40 @@ export function SettingsClient({
     },
   ];
 
+  // ONE set of observers and one click lock for the side nav, the phone jump
+  // bar and the overview chips, so they always agree on where you are.
+  const navItems = sections.map(({ id, title, short }) => ({ id, title, short }));
+  const { activeId, jump } = useSectionJump(navItems.map((i) => i.id));
+
   return (
-    <div className="settings-layout">
+    <div className="settings-layout pb-settings">
       {/* Rendered at every width; CSS hides it below the container breakpoint. */}
       <SettingsSectionNav
-        items={sections.map(({ id, title }) => ({ id, title }))}
+        items={navItems}
         label={d.settingsSections.navLabel}
+        activeId={activeId}
+        onSelect={jump}
       />
       <div className="settings-column">
+        <SettingsOverview
+          theme={isThemeChoice(themeChoice) ? themeChoice : 'original'}
+          appearance={isAppearance(appearance) ? appearance : 'system'}
+          locale={locale === 'zh' ? 'zh' : 'en'}
+          blurOnLaunch={privacyOnLaunch}
+          locksOn={locksOn}
+          locksTotal={SAFETY_LOCK_KEYS.length}
+          onJump={jump}
+          sectionIds={SECTION_IDS}
+        />
+        {/* The narrow-column counterpart of the side nav (CSS shows one or
+            the other). Sticky under the header. */}
+        <SettingsJumpBar items={navItems} label={u.jumpTo} activeId={activeId} onSelect={jump} />
         {sections.map((section) => (
           <section key={section.id} id={section.id} aria-labelledby={`${section.id}-title`} className="settings-section">
-            <h2 id={`${section.id}-title`} className="font-display settings-section-title">{section.title}</h2>
+            <div className="pb-settings-sec-head">
+              <h2 id={`${section.id}-title`} className="font-display settings-section-title">{section.title}</h2>
+              <p className="pb-settings-sec-hint">{section.hint}</p>
+            </div>
             <div className="settings-section-cards">{section.cards}</div>
           </section>
         ))}

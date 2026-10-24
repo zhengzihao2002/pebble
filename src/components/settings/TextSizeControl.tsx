@@ -1,6 +1,8 @@
 'use client';
 
+import { Type } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { SettingsRow } from './SettingsRow';
 import type { Dictionary } from '@/lib/i18n';
 
 interface TextSizeControlProps {
@@ -24,16 +26,13 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
   const { d } = useTranslation();
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.textSize.title}</h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem' }}>
-        {d.textSize.blurb}
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+    <SettingsRow icon={Type} title={d.textSize.title} hint={d.textSize.blurb} layout="stack">
+      <div className="pb-settings-size">
         <input
           type="range" min="80" max="150" step="5" value={textSize}
           onChange={(e) => onChange(Number(e.target.value))}
-          style={{ flex: 1, accentColor: 'var(--pine)' }}
+          aria-label={d.textSize.title}
+          className="pb-settings-range"
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <input
@@ -42,19 +41,26 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
               const v = Number(e.target.value);
               if (!Number.isNaN(v)) onChange(Math.min(150, Math.max(80, v)));
             }}
+            aria-label={d.textSize.title}
             className="font-mono-tab text-size-input"
             style={{ width: 'calc(3ch + 0.8rem + 2px)', padding: '0.35rem 0.4rem', borderRadius: '0.5rem', border: '1px solid var(--line)', fontSize: '0.85rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', textAlign: 'right', boxSizing: 'border-box' }}
           />
           <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>%</span>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      {/* Toggle buttons in a capsule, not the kit SegmentedControl: the size
+          is often between presets (the slider moves in 5% steps), and a
+          radiogroup with nothing checked leaves no option reachable by Tab. */}
+      <div role="group" aria-label={d.textSize.title} className="pb-settings-presets">
         {PRESETS.map((p) => (
-          <button key={p.labelKey} onClick={() => onChange(p.value)} className={`pill ${textSize === p.value ? 'active' : ''}`}>
+          <button
+            key={p.labelKey} type="button" onClick={() => onChange(p.value)} aria-pressed={textSize === p.value}
+            className={`pb-settings-preset${textSize === p.value ? ' is-active' : ''}`}
+          >
             {d.textSize[p.labelKey]}
           </button>
         ))}
       </div>
-    </div>
+    </SettingsRow>
   );
 }

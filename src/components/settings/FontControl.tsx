@@ -1,6 +1,8 @@
 'use client';
 
+import { CaseSensitive } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { SettingsRow } from './SettingsRow';
 import {
   CJK_FONT_CHOICES, FONT_CHOICES, isCjkFontChoice, isFontChoice,
   type CjkFontChoice, type FontChoice,
@@ -43,19 +45,16 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
   const currentCjk: CjkFontChoice = isCjkFontChoice(cjkFontChoice) ? cjkFontChoice : 'sans';
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.font.title}</h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-        {d.font.blurb}
-      </p>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+    <SettingsRow icon={CaseSensitive} title={d.font.title} hint={d.font.blurb} layout="stack">
+      <div role="group" aria-label={d.font.title} className="pb-settings-presets is-wrap">
         {/* The arrays hold VALUES; the dictionary is indexed by them. */}
         {isChinese
           ? CJK_FONT_CHOICES.map((choice) => (
               <button
                 key={choice}
                 onClick={() => onCjkChange(choice)}
-                className={`pill ${currentCjk === choice ? 'active' : ''}`}
+                type="button"
+                className={`pb-settings-preset${currentCjk === choice ? ' is-active' : ''}`}
                 aria-pressed={currentCjk === choice}
                 style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}
               >
@@ -66,7 +65,8 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
               <button
                 key={choice}
                 onClick={() => onChange(choice)}
-                className={`pill ${current === choice ? 'active' : ''}`}
+                type="button"
+                className={`pb-settings-preset${current === choice ? ' is-active' : ''}`}
                 aria-pressed={current === choice}
                 style={{ fontFamily: PREVIEW_FAMILY[choice] }}
               >
@@ -74,6 +74,6 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
               </button>
             ))}
       </div>
-    </div>
+    </SettingsRow>
   );
 }

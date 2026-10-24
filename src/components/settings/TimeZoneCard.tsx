@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, Globe2 } from 'lucide-react';
+import { SettingsRow } from './SettingsRow';
 import { setTimeZoneOverrideAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -75,34 +76,32 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
     setSaved(true);
   };
 
+  // A row in the Language & region group. The row is position: relative
+  // (settings.css), so the saving overlay covers just this setting.
   return (
-    <div className="card" style={{ padding: '1.5rem', position: 'relative' }}>
+    <SettingsRow icon={Globe2} title={d.settings.timeZone.title} hint={d.settings.timeZone.hint} layout="stack">
       {saving && <LoadingOverlay label={d.common.saving} />}
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>
-        {d.settings.timeZone.title}
-      </h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem' }}>
-        {d.settings.timeZone.hint}
-      </p>
+      <div className="pb-settings-tz">
+        <div className="pb-settings-tz-field">
+          <SelectField
+            value={selected}
+            onChange={(v) => { setSelected(v); setSaved(false); }}
+            options={options}
+            ariaLabel={d.settings.timeZone.label}
+          />
+        </div>
+        <button
+          onClick={handleSave} disabled={saving || !dirty} className="btn-primary"
+          style={{ padding: '0.6rem 1.1rem', opacity: saving || !dirty ? 0.6 : 1 }}
+        >
+          {saving ? d.common.saving : d.settings.timeZone.save}
+        </button>
+      </div>
 
-      <SelectField
-        value={selected}
-        onChange={(v) => { setSelected(v); setSaved(false); }}
-        options={options}
-        ariaLabel={d.settings.timeZone.label}
-      />
-
-      <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginTop: '0.9rem' }} />
+      <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginTop: '0.75rem' }} />
       {saved && !dirty && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--pine)', marginTop: '0.9rem' }}>{d.settings.timeZone.saved}</p>
+        <p className="pb-settings-saved" role="status">{d.settings.timeZone.saved}</p>
       )}
-
-      <button
-        onClick={handleSave} disabled={saving || !dirty} className="btn-primary"
-        style={{ padding: '0.65rem 1.1rem', opacity: saving || !dirty ? 0.6 : 1, marginTop: '1.1rem' }}
-      >
-        {saving ? d.common.saving : d.settings.timeZone.save}
-      </button>
-    </div>
+    </SettingsRow>
   );
 }

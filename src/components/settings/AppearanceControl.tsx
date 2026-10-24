@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { Check, Monitor, Moon, Sun, SunMoon } from 'lucide-react';
+import { SettingsRow } from './SettingsRow';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { APPEARANCE_CHOICES, isAppearance, type Appearance } from '@/lib/appearance';
 
@@ -21,12 +22,8 @@ export function AppearanceControl({ appearance, onChange }: AppearanceControlPro
   const current: Appearance = isAppearance(appearance) ? appearance : 'system';
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
-      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.appearance.title}</h3>
-      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-        {d.appearance.blurb}
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(118px, 1fr))', gap: '0.6rem' }}>
+    <SettingsRow icon={SunMoon} title={d.appearance.title} hint={d.appearance.blurb} layout="stack">
+      <div className="pb-settings-tiles">
         {APPEARANCE_CHOICES.map((choice) => {
           const active = current === choice;
           const Icon = ICONS[choice];
@@ -41,17 +38,13 @@ export function AppearanceControl({ appearance, onChange }: AppearanceControlPro
               type="button"
               onClick={() => onChange(choice)}
               aria-pressed={active}
-              style={{
-                display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.55rem',
-                borderRadius: '0.8rem', backgroundColor: 'var(--mist)', textAlign: 'left', cursor: 'pointer',
-                border: active ? '2px solid var(--pine)' : '1px solid var(--line)',
-              }}
+              className={`pb-settings-tile${active ? ' is-active' : ''}`}
             >
-              <span style={{ display: 'block', height: 46, borderRadius: '0.55rem', background: bg, border: '1px solid rgba(0,0,0,0.08)', position: 'relative', overflow: 'hidden' }}>
+              <span className="pb-settings-tile-face" style={{ background: bg }}>
                 <span style={{ position: 'absolute', left: 8, right: 8, top: 8, height: 12, borderRadius: 4, background: card }} />
                 <span style={{ position: 'absolute', left: 8, bottom: 8, width: 36, height: 8, borderRadius: 4, background: bar }} />
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, fontSize: '0.8rem', fontWeight: 500, color: 'var(--ink)' }}>
+              <span className="pb-settings-tile-name">
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <Icon size={14} />{d.appearance[choice]}
                 </span>
@@ -61,6 +54,6 @@ export function AppearanceControl({ appearance, onChange }: AppearanceControlPro
           );
         })}
       </div>
-    </div>
+    </SettingsRow>
   );
 }
