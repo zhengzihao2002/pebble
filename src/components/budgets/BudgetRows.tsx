@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, ChevronDown, CircleAlert, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
+import { Check, ChevronDown, CircleAlert, ListChecks, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { yearFraction } from '@/lib/budgetPace';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { InlineBudgetEditor } from './BudgetEditor';
@@ -155,7 +156,20 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
   // near or over its limit is on top. Ties fall back to the larger budget.
   const rows = entries.filter((e) => e.budget > 0)
     .sort((a, b) => (b.spent / b.budget) - (a.spent / a.budget) || b.budget - a.budget);
-  if (rows.length === 0) return null;
+  // No budgets yet: keep the card (a new account sees the same page as a full
+  // one) and say what fills it, instead of the section vanishing.
+  if (rows.length === 0) {
+    return (
+      <section className="card pb-rows pb-bud-rows">
+        <div className="pb-bud-rows-head">
+          <SectionHeader title={ux.rowsTitle} />
+        </div>
+        <div className="pb-bud-empty">
+          <EmptyState compact icon={ListChecks} title={ux.rowsEmptyTitle} body={ux.rowsEmptyBody} />
+        </div>
+      </section>
+    );
+  }
   const fraction = today ? yearFraction(today) : null;
 
   const header = (

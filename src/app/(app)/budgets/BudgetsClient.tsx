@@ -112,13 +112,14 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
     return best && best.type === 'income' ? best.netAmount : null;
   }, [transactions]);
 
-  // Which cards render (each hides itself when empty), so a wide screen only
-  // splits into the list and a side column when both have something to show.
-  const hasRows = entries.some((e) => e.budget > 0);
-  const hasSide = others.length > 0 || entries.some((e) => e.budget === 0 && e.spent > 0);
-
+  // One column on every width, as on a phone: the plan, the budget list, then
+  // spending without a budget. It used to become a side column on a wide
+  // screen, but that card is far shorter than the list, so the right half
+  // stayed blank for most of the scroll (owner report). Wide screens use their
+  // width inside the cards instead (see budgets.css). All three cards always
+  // render; a card with nothing to show says what it needs.
   return (
-    <div className="pb-bud" data-split={hasRows && hasSide ? '' : undefined}>
+    <div className="pb-bud">
       <BudgetPlanCard
         entries={entries}
         totalBudget={totalBudget}

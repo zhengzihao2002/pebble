@@ -8,6 +8,9 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { Sparkline } from '@/components/kit/Sparkline';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { SectionHeader } from '@/components/kit/SectionHeader';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { AddTransactionAction } from './AddTransactionAction';
 
 /** The hero's shape while today resolves, so nothing below moves when it lands. */
 function HeroSkeleton() {
@@ -26,6 +29,25 @@ function HeroSkeleton() {
   );
 }
 
+/**
+ * The hero's stand-in when its figure cannot be worked out: the same card
+ * slot, saying why and what to do - so a new account has the same page as a
+ * loaded one and nothing below jumps when the figure first appears.
+ */
+function HeroNeeds({ reason }: { reason: 'none' | 'month' | 'income' }) {
+  const { d } = useTranslation();
+  const ux = d.ux.insights;
+  const text = { none: [ux.heroNeedsDataTitle, ux.heroNeedsDataBody], month: [ux.heroNeedsMonthTitle, ux.heroNeedsMonthBody], income: [ux.heroNeedsIncomeTitle, ux.heroNeedsIncomeBody] }[reason];
+  return (
+    <section className="card pb-ins-card pb-ins-hero-needs" aria-labelledby="pb-ins-hero-label">
+      <SectionHeader id="pb-ins-hero-label" icon={PiggyBank} title={ux.heroNeedsHeader} subtitle={ux.heroNeedsHint} />
+      <div className="pb-ins-fill-empty">
+        <EmptyState compact icon={PiggyBank} title={text[0]} body={text[1]} action={<AddTransactionAction primary />} />
+      </div>
+    </section>
+  );
+}
+
 const MAX_MONTHS = 12;
 const wholeDollars = (v: number) => formatCurrency(Math.round(v)).replace(/\.00$/, '');
 const monthIndex = (ymd: string) => Number(ymd.slice(0, 4)) * 12 + Number(ymd.slice(5, 7)) - 1;
@@ -37,8 +59,8 @@ const monthIndex = (ymd: string) => Number(ymd.slice(0, 4)) * 12 + Number(ymd.sl
  * why it can differ from the Dashboard's "last 12 months", which includes the
  * current month. Same rules as the Dashboard otherwise: income excludes side
  * cash, spending is every negative amount; transfers never reach this list.
- * The first month counts only if the history starts on the 1st. Hidden with
- * no complete month or no income. Figure and sentence blur in privacy mode.
+ * The first month counts only if the history starts on the 1st. With no
+ * complete month or no income the card stays and says what it needs (HeroNeeds). Figure and sentence blur in privacy mode.
  *
  * Redesigned as the page's hero: a ring filled to the share kept (a full
  * wine ring when spending ran over), the income split into spent and kept
@@ -52,14 +74,14 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
   if (!today) return <HeroSkeleton />;
-  if (transactions.length === 0) return null;
+  if (transactions.length === 0) return <HeroNeeds reason="none" />;
 
   const earliest = transactions.reduce((m, x) => (x.date < m ? x.date : m), transactions[0].date);
   const firstComplete = monthIndex(earliest) + (earliest.endsWith('-01') ? 0 : 1);
   const last = monthIndex(today) - 1;
   const first = Math.max(firstComplete, last - (MAX_MONTHS - 1));
   const months = last - first + 1;
-  if (months < 1) return null;
+  if (months < 1) return <HeroNeeds reason="month" />;
 
   let income = 0;
   let spending = 0;
@@ -72,7 +94,7 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
     if (x.amount < 0) { spending += -x.amount; monthOut[k - first] += -x.amount; }
     else if (x.type === 'income' && !isSideCash(x)) { income += x.amount; monthIn[k - first] += x.amount; }
   }
-  if (income <= 0) return null;
+  if (income <= 0) return <HeroNeeds reason="income" />;
 
   const kept = income - spending;
   const good = kept >= 0;

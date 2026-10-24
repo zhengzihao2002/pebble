@@ -283,7 +283,7 @@
 .pebble-root .pb-sched-rule-amt { font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
 .pebble-root .pb-sched-rule-approx { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-sched-rule-foot {
-  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
   padding-top: 0.5rem; border-top: 1px solid var(--line);
 }
 .pebble-root .pb-sched-rule-life { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; min-width: 0; }
@@ -294,10 +294,53 @@
   /* 44px to the finger without growing the button. */
   .pebble-root .pb-sched-act::after { content: ''; position: absolute; inset: -4px; }
 }
+/* Charge now: a quiet text action beside the icon buttons - soft border, no
+   fill, so it never competes with the schedule itself. 36px tall (44px to the
+   finger via ::after on touch, like .pb-sched-act). */
+.pebble-root .pb-sched-charge-now {
+  position: relative; display: inline-flex; align-items: center; gap: 0.35rem;
+  height: 36px; padding: 0 0.8rem; border-radius: 0.6rem; white-space: nowrap;
+  border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+  font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-sched-charge-now:hover:not(:disabled) { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+.pebble-root .pb-sched-charge-now:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-sched-charge-now:disabled { opacity: 0.5; cursor: default; }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-charge-now::after { content: ''; position: absolute; inset: -4px; }
+}
+/* The brief "Charged. Next payment: ..." line under the card; nothing while empty. */
+.pebble-root .pb-sched-charged {
+  margin: 0; font-size: 0.78rem; font-weight: 500; line-height: 1.4; color: var(--pine);
+  animation: pb-sched-charged-in var(--pb-dur-std) var(--pb-ease-out);
+}
+.pebble-root .pb-sched-charged:empty { display: none; }
+@keyframes pb-sched-charged-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Charge next payment now (confirm dialog) ---------- */
+.pebble-root .pb-sched-charge-rule { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.pebble-root .pb-sched-charge-who { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.pebble-root .pb-sched-charge-who .pb-sched-row-title { font-weight: 600; font-size: 0.95rem; white-space: normal; overflow-wrap: anywhere; }
+.pebble-root .pb-sched-charge-amt { font-size: 1.05rem; font-weight: 600; }
+.pebble-root .pb-sched-charge-intro { margin: 0.9rem 0 0; font-size: 0.83rem; line-height: 1.5; color: var(--ink-soft); }
+.pebble-root .pb-sched-charge-facts {
+  display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.9rem; padding: 0.8rem 0.9rem;
+  border-radius: 0.8rem; background-color: color-mix(in srgb, var(--ink) 4%, transparent);
+  font-size: 0.83rem; line-height: 1.5; color: var(--ink-soft);
+}
+.pebble-root .pb-sched-charge-facts p { margin: 0; }
+.pebble-root .pb-sched-charge-facts .pb-sched-charge-what { display: flex; align-items: center; gap: 0.45rem; font-size: 0.92rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-sched-charge-btn { flex: 1; padding: 0.6rem; }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-charge-btn { min-height: 44px; }
+}
+
 .pebble-root .pb-sched-empty-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.1rem; }
 
 /* ---------- Rule dialog (RecurringRuleModal: Scheduled, Insights, shell) ---------- */
-.pebble-root .pb-sched-dialog-kind { display: flex; justify-content: flex-start; }
+.pebble-root .pb-sched-dialog-kind { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.pebble-root .pb-sched-dialog-kind-hint { margin: 0; max-width: 28rem; text-align: center; font-size: 0.73rem; line-height: 1.45; color: var(--ink-soft); }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button { cursor: not-allowed; }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button[aria-checked="false"] { opacity: 0.45; }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button:hover { color: inherit; }

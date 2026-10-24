@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { AddTransactionAction } from './AddTransactionAction';
 import { SparkBars } from './SparkBars';
 import { pad } from './shared';
 
@@ -115,7 +116,7 @@ export function CategoryTrends({ transactions, categoryMeta, today }: {
       <SectionHeader id="pb-trends-title" icon={TrendingUp} title={d.insights.trendsTitle} subtitle={t(d.insights.trendsHint, { last: lastName, range })} />
 
       {rows.length === 0 ? (
-        <div className="pb-ins-fill-empty"><EmptyState compact icon={TrendingUp} title={d.insights.noTrends} /></div>
+        <div className="pb-ins-fill-empty"><EmptyState compact icon={TrendingUp} title={ux.trendsNeedsTitle} body={ux.trendsNeedsBody} action={<AddTransactionAction />} /></div>
       ) : (
         <>
           <ul ref={listRef} className="pb-trend-list pb-ins-trend-list">

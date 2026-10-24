@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CalendarClock, Hourglass, Receipt, Telescope, TrendingUp, Wallet, Gauge, BarChart3, ListOrdered, Plus } from 'lucide-react';
+import { ArrowLeftRight, CalendarClock, CalendarRange, LifeBuoy, Receipt, Telescope, TrendingUp, Wallet, Gauge, BarChart3, ListOrdered, Plus } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -42,6 +42,7 @@ import { SeasonalityHeatmap } from '@/components/analysis/SeasonalityHeatmap';
 import { ProjectionPath } from '@/components/analysis/ProjectionPath';
 import { BudgetPaceList } from '@/components/analysis/BudgetPaceList';
 import { UpcomingTimeline } from '@/components/analysis/UpcomingTimeline';
+import { NeedsCard, type Need } from '@/components/analysis/NeedsCard';
 import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 import { CardHead, PeriodChip, ScopeBadge, Tile, countNote, monthsLabel, pct } from '@/components/analysis/parts';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -194,24 +195,31 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
   const pace = today ? yearProgress(today) : null;
 
   const topN = Math.min(3, spending?.categories.length ?? 0);
-  const hasComplete = analysisWindow?.hasCompleteMonth === true;
-  const noCompleteMonth = analysisWindow !== null && !analysisWindow.hasCompleteMonth;
+  // A window can hold complete calendar months with nothing recorded in any
+  // of them (a brand-new account), so 'has data' needs a recorded month, not
+  // just a finished one.
+  const hasComplete = analysisWindow?.hasCompleteMonth === true && (cashflow?.recordedMonths ?? 0) > 0;
   const range = analysisWindow?.rangeLabel ?? '';
+  // Why a card has nothing to show (see NeedsCard): the same cards appear for
+  // a brand-new account as for a full one, each saying what it is missing.
+  const needHistory: Need = transactions.length > 0 ? 'noMonth' : 'noData';
+  const incomeNeed: Need | null = !hasComplete || !incomeSummary ? needHistory : incomeSummary.monthsWithIncome === 0 ? 'noIncome' : null;
+  const spendingNeed: Need | null = !hasComplete || !spending ? needHistory : spending.expenseCount === 0 ? 'noSpending' : null;
 
   // The rail lists the sections actually on the page, in page order.
   const rail: RailItem[] = useMemo(() => {
     if (!analysisWindow) return [];
-    const items: RailItem[] = [{ id: 'pb-ana-overview', label: x.overview }];
-    if (hasComplete) {
-      items.push(
-        { id: 'pb-ana-income', label: d.analysis.income.title },
-        { id: 'pb-ana-spending', label: d.analysis.spending.title },
-        { id: 'pb-ana-cashflow', label: d.analysis.cashflow.title },
-      );
-    }
+    // Every section is always on the page (a section without data shows
+    // placeholder cards), so the rail always lists all of them.
+    const items: RailItem[] = [
+      { id: 'pb-ana-overview', label: x.overview },
+      { id: 'pb-ana-income', label: d.analysis.income.title },
+      { id: 'pb-ana-spending', label: d.analysis.spending.title },
+      { id: 'pb-ana-cashflow', label: d.analysis.cashflow.title },
+    ];
     if (today) items.push({ id: 'pb-ana-outlook', label: x.outlook });
     return items;
-  }, [analysisWindow, hasComplete, today, d, x]);
+  }, [analysisWindow, today, d, x]);
 
   // Scroll-spy: the section crossing the upper part of the screen lights its
   // rail chip. globalThis rather than window, in keeping with the rename above.
@@ -236,14 +244,6 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     setActive(id);
   };
 
-  const addTransaction = (
-    <button type="button" className="btn-primary pb-ana-action" onClick={() => requestShell('addTransaction')}>
-      <Plus size={15} aria-hidden="true" />{x.addTransaction}
-    </button>
-  );
-
-  const pairSpan = (both: boolean, wide: 'a' | 'b') => (both ? (wide === 'a' ? 'pb-ana-span-7' : 'pb-ana-span-5') : 'pb-ana-span-12');
-
   return (
     <div className="pb-ana">
       <PeriodBar
@@ -258,19 +258,14 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {analysisWindow && (
         <section id="pb-ana-overview" className="pb-ana-section" aria-label={x.overview}>
           <div className="pb-ana-grid">
-            {hasComplete && cashflow && (
+            {hasComplete && cashflow ? (
               <div className="pb-ana-span-hero"><AnalysisHero cashflow={cashflow} range={range} /></div>
+            ) : (
+              <div className="pb-ana-span-hero"><NeedsCard need={needHistory} card="glance" title={x.atAGlance} icon={<Gauge size={15} />} /></div>
             )}
             {current && (
-              // With no complete month the card stands alone, full width,
-              // ABOVE the notice - whose text refers to "the card above".
-              <div className={noCompleteMonth ? 'pb-ana-span-12' : 'pb-ana-span-now'}>
+              <div className="pb-ana-span-now">
                 <CurrentMonthCard current={current} daily={currentDaily} typical={hasComplete ? spending?.monthlyAverage ?? null : null} />
-              </div>
-            )}
-            {noCompleteMonth && (
-              <div className="card pb-ana-card pb-ana-span-12">
-                <EmptyState compact icon={Hourglass} title={x.noCompleteTitle} body={d.analysis.noCompleteMonth} />
               </div>
             )}
           </div>
@@ -278,12 +273,13 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       )}
 
       {/* ---------------- Income ---------------- */}
-      {incomeSummary && hasComplete && (
+      {analysisWindow && (
         <section id="pb-ana-income" className="pb-ana-section" aria-labelledby="pb-ana-income-title">
-          <SectionHeader as="h2" id="pb-ana-income-title" icon={Wallet} title={d.analysis.income.title} actions={<PeriodChip range={range} />} />
-          {incomeSummary.monthsWithIncome === 0 ? (
-            <div className="card pb-ana-card">
-              <EmptyState compact icon={Wallet} title={x.incomeEmptyTitle} body={d.analysis.income.empty} action={addTransaction} />
+          <SectionHeader as="h2" id="pb-ana-income-title" icon={Wallet} title={d.analysis.income.title} actions={range ? <PeriodChip range={range} /> : undefined} />
+          {incomeNeed !== null || !incomeSummary ? (
+            <div className="pb-ana-grid">
+              <NeedsCard className="pb-ana-span-5" need={incomeNeed ?? needHistory} card="incomeFigures" title={x.incomeFigures} icon={<Wallet size={15} />} />
+              <NeedsCard className="pb-ana-span-7" need={incomeNeed ?? needHistory} card="deductions" title={d.analysis.income.deductionsChartTitle} icon={<Receipt size={15} />} />
             </div>
           ) : (
             <div className="pb-ana-grid">
@@ -363,12 +359,14 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       )}
 
       {/* ---------------- Spending ---------------- */}
-      {spending && hasComplete && (
+      {analysisWindow && (
         <section id="pb-ana-spending" className="pb-ana-section" aria-labelledby="pb-ana-spending-title">
-          <SectionHeader as="h2" id="pb-ana-spending-title" icon={Receipt} title={d.analysis.spending.title} actions={<PeriodChip range={range} />} />
-          {spending.expenseCount === 0 ? (
-            <div className="card pb-ana-card">
-              <EmptyState compact icon={Receipt} title={x.spendingEmptyTitle} body={d.analysis.spending.empty} action={addTransaction} />
+          <SectionHeader as="h2" id="pb-ana-spending-title" icon={Receipt} title={d.analysis.spending.title} actions={range ? <PeriodChip range={range} /> : undefined} />
+          {spendingNeed !== null || !spending ? (
+            <div className="pb-ana-grid">
+              <NeedsCard className="pb-ana-span-12" need={spendingNeed ?? needHistory} card="spendingFigures" title={x.spendingFigures} icon={<Receipt size={15} />} />
+              <NeedsCard className="pb-ana-span-7" need={spendingNeed ?? needHistory} card="monthly" title={d.analysis.spending.monthlyChartTitle} icon={<BarChart3 size={15} />} />
+              <NeedsCard className="pb-ana-span-5" need={spendingNeed ?? needHistory} card="topCats" title={d.analysis.spending.topCategoriesTitle} icon={<ListOrdered size={15} />} />
             </div>
           ) : (
             <div className="pb-ana-grid">
@@ -438,9 +436,19 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {/* ---------------- Cash flow ---------------- */}
       {/* Savings rate and Average monthly net open the page now, in the
           At a glance hero; Runway and Months covered are the Cushion card. */}
-      {cashflow && hasComplete && (
+      {analysisWindow && (
         <section id="pb-ana-cashflow" className="pb-ana-section" aria-labelledby="pb-ana-cashflow-title">
-          <SectionHeader as="h2" id="pb-ana-cashflow-title" icon={ArrowLeftRight} title={d.analysis.cashflow.title} actions={<PeriodChip range={range} />} />
+          <SectionHeader as="h2" id="pb-ana-cashflow-title" icon={ArrowLeftRight} title={d.analysis.cashflow.title} actions={range ? <PeriodChip range={range} /> : undefined} />
+          {!hasComplete || !cashflow ? (
+            <div className="pb-ana-grid">
+              <NeedsCard className="pb-ana-span-8" need={needHistory} card="flow" title={d.analysis.cashflow.chartTitle} icon={<TrendingUp size={15} />} />
+              <div className="pb-ana-span-4 pb-ana-stack">
+                <NeedsCard need={needHistory} card="cushion" title={x.cushion} icon={<LifeBuoy size={15} />} />
+                {/* Standing figures from the scheduled rules: no history needed. */}
+                <CommitmentsCard commitments={commitments} monthlyAverage={null} />
+              </div>
+            </div>
+          ) : (
           <div className="pb-ana-grid">
             <section className="card pb-ana-card pb-ana-span-8 pb-ana-rows-2" aria-labelledby="pb-ana-flow-title">
               <CardHead
@@ -483,6 +491,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               <CommitmentsCard commitments={commitments} monthlyAverage={spending?.monthlyAverage ?? null} />
             </div>
           </div>
+          )}
         </section>
       )}
 
@@ -491,8 +500,10 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
         <section id="pb-ana-outlook" className="pb-ana-section" aria-labelledby="pb-ana-outlook-title">
           <SectionHeader as="h2" id="pb-ana-outlook-title" icon={Telescope} title={d.analysis.outlook.title} />
           <div className="pb-ana-grid">
-            {yoy.length > 0 && (
-              <section className={`card pb-ana-card ${pairSpan(allMonths.length > 0, 'a')}`} aria-labelledby="pb-ana-yoy-title">
+            {yoy.length === 0 ? (
+              <NeedsCard className="pb-ana-span-7" need="noData" card="yoy" title={d.analysis.outlook.yoyTitle} icon={<BarChart3 size={15} />} />
+            ) : (
+              <section className="card pb-ana-card pb-ana-span-7" aria-labelledby="pb-ana-yoy-title">
                 <CardHead
                   id="pb-ana-yoy-title"
                   icon={<BarChart3 size={15} />}
@@ -538,13 +549,17 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
 
             {/* Beside the year table: the month grid and the projection,
                 stacked - both about how the year runs. */}
-            {((allMonths.length > 0 && current) || projection) && (
-              <div className={`pb-ana-stack ${pairSpan(yoy.length > 0, 'b')}`}>
-                {allMonths.length > 0 && current && (
+            {(
+              <div className="pb-ana-stack pb-ana-span-5">
+                {allMonths.length > 0 && current ? (
                   <SeasonalityHeatmap months={allMonths} today={today} currentLabel={current.label} />
+                ) : (
+                  <NeedsCard need={needHistory} card="heat" title={x.heatTitle} icon={<CalendarRange size={15} />} />
                 )}
 
-                {projection && (
+                {!projection ? (
+                  <NeedsCard need={needHistory} card="projection" title={d.analysis.outlook.projectionTitle} icon={<Gauge size={15} />} />
+                ) : (
                   <section className="card pb-ana-card" aria-labelledby="pb-ana-proj-title">
                     <CardHead
                       id="pb-ana-proj-title"
@@ -575,7 +590,9 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               </div>
             )}
 
-            {variance.length > 0 && pace !== null && (
+            {variance.length === 0 || pace === null ? (
+              <NeedsCard className="pb-ana-span-12" need="noBudget" title={d.analysis.outlook.paceTitle} icon={<Gauge size={15} />} />
+            ) : (
               <section className="card pb-ana-card pb-ana-span-12" aria-labelledby="pb-ana-pace-title">
                 <CardHead
                   id="pb-ana-pace-title"

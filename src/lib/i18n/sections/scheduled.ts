@@ -69,6 +69,25 @@ export const scheduledEn = {
   quickPicks: 'Quick picks',
   quickCountAria: 'Set {count} payments',
   endModeShort: { never: 'Never', after: 'By count', on: 'By date' },
+
+  // Charge next payment now (card action + confirm dialog)
+  chargeNow: 'Charge now',
+  chargeNowAria: 'Charge now: next payment of {description}',
+  chargeTitle: 'Charge next payment now',
+  chargeIntro: 'Record the next payment today instead of waiting for its date.',
+  chargeWhat: 'Charge {date} now',
+  chargeRecordedToday: 'It is early, so it will be recorded today.',
+  chargeRecordedOn: 'It will be recorded on {date}.',
+  chargeThenNext: 'After this, the next payment is {date}.',
+  chargeLast: 'This is the last payment, so the schedule will finish.',
+  chargeConfirm: 'Charge now',
+  chargeCancel: 'Cancel',
+  chargeCharging: 'Charging…',
+  chargeOverlay: 'Charging payment…',
+  chargeStale: 'This schedule has changed, so that payment can no longer be charged. Check it and try again.',
+  chargeFailed: "Couldn't charge this payment. Check your schedules before trying again.",
+  chargedNext: 'Charged. Next payment: {date}',
+  chargedLast: 'Charged. That was the last payment, so this schedule is finished.',
 };
 
 export const scheduledZh: typeof scheduledEn = {
@@ -128,4 +147,22 @@ export const scheduledZh: typeof scheduledEn = {
   quickPicks: '快捷选择',
   quickCountAria: '设为 {count} 笔',
   endModeShort: { never: '永不', after: '按次数', on: '按日期' },
+
+  chargeNow: '立即扣款',
+  chargeNowAria: '立即扣款：{description} 的下一笔',
+  chargeTitle: '立即扣下一笔款项',
+  chargeIntro: '今天就记下下一笔款项，不必等到它的日期。',
+  chargeWhat: '立即扣 {date} 的这一笔',
+  chargeRecordedToday: '还没到日期，将记在今天。',
+  chargeRecordedOn: '将记在 {date}。',
+  chargeThenNext: '这一笔之后，下一笔是 {date}。',
+  chargeLast: '这是最后一笔，之后这个日程就结束了。',
+  chargeConfirm: '立即扣款',
+  chargeCancel: '取消',
+  chargeCharging: '正在扣款…',
+  chargeOverlay: '正在扣款…',
+  chargeStale: '这个日程已经有变化，无法再扣这一笔。请先查看日程，然后重试。',
+  chargeFailed: '没能扣下这一笔款项。请先查看日程，再决定是否重试。',
+  chargedNext: '已扣款。下一笔：{date}',
+  chargedLast: '已扣款。这是最后一笔，日程已完成。',
 };

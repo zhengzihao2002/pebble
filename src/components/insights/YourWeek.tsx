@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { AddTransactionAction } from './AddTransactionAction';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 /** 12 full weeks, so every weekday is counted the same number of times. */
@@ -114,7 +115,11 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
     <section className="card pb-ins-card pb-ins-week" aria-labelledby="pb-week-title">
       {header}
       {!enough ? (
-        <div className="pb-ins-fill-empty"><EmptyState compact icon={CalendarRange} title={d.insights.yourWeekEmpty} /></div>
+        <div className="pb-ins-fill-empty"><EmptyState
+          compact icon={CalendarRange} title={ux.weekNeedsTitle}
+          body={<>{ux.weekNeedsBody}<span className="pb-ins-needs-progress pb-tnum">{t(ux.weekNeedsProgress, { purchases: Math.min(purchases, MIN_PURCHASES), minPurchases: MIN_PURCHASES, days: earliest ? Math.min(historyDays, MIN_DAYS) : 0, minDays: MIN_DAYS })}</span></>}
+          action={<AddTransactionAction />}
+        /></div>
       ) : (
         <>
           <p className="pb-money pb-ins-week-sentence">{sentence}</p>

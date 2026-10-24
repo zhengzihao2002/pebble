@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, ShieldCheck } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { InlineBudgetEditor } from './BudgetEditor';
 import { BudgetDetails, type BudgetHistory } from './BudgetDetails';
@@ -95,14 +96,23 @@ function OtherChip({ e }: { e: BudgetEntry }) {
 export function UnbudgetedList({ entries, others, history, today = null }: { entries: BudgetEntry[]; others: BudgetEntry[]; history: BudgetHistory | null; today?: string | null }) {
   const { d, t } = useTranslation();
   const ux = d.ux.budgets;
-  const [showOthers, setShowOthers] = useState(false);
   const rows = entries.filter((e) => e.budget === 0 && e.spent > 0).sort((a, b) => b.spent - a.spent);
-  if (rows.length === 0 && others.length === 0) return null;
+  // With no budgets and no spending at all (a brand-new account) the
+  // categories are the first thing to act on, so the chips start open.
+  const [showOthers, setShowOthers] = useState(() => !entries.some((e) => e.budget > 0));
   const total = rows.reduce((s, e) => s + e.spent, 0);
   const max = rows.length > 0 ? rows[0].spent : 0;
 
   return (
     <section className="card pb-unb pb-bud-unb">
+      {/* Nothing unbudgeted is good news, but the card stays so the page has
+          the same shape for everyone. */}
+      {rows.length === 0 && (
+        <>
+          <SectionHeader title={d.budgetPlan.unbudgetedTitle} />
+          <EmptyState compact icon={ShieldCheck} title={ux.unbEmptyTitle} body={ux.unbEmptyBody} />
+        </>
+      )}
       {rows.length > 0 && (
         <>
           <SectionHeader
@@ -118,7 +128,7 @@ export function UnbudgetedList({ entries, others, history, today = null }: { ent
         </>
       )}
       {others.length > 0 && (
-        <div className="pb-bud-others" data-alone={rows.length === 0 ? '' : undefined}>
+        <div className="pb-bud-others">
           <button type="button" className="pb-bud-others-toggle" onClick={() => setShowOthers((v) => !v)} aria-expanded={showOthers}>
             {t(d.budgetDetails.otherTitle, { count: others.length })}
             <ChevronDown size={15} aria-hidden="true" style={{ transform: showOthers ? 'rotate(180deg)' : 'none', transition: 'transform var(--pb-dur-std) var(--pb-ease-out)' }} />

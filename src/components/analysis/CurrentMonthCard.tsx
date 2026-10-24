@@ -123,6 +123,10 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
         </div>
       )}
 
+      {/* No typical month to compare with yet: say when it starts, so the gap
+          between the figures and the chart is not a silent omission. */}
+      {typical === null && <p className="pb-ana-foot">{x.nowNeedsHistory}</p>}
+
       <div className="pb-chart-fade pb-ana-now-chart" role="img" aria-label={x.cumulativeLabel}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>

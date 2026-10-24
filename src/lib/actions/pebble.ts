@@ -17,7 +17,7 @@ import {
   userInNeonAuth,
 } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
-import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, hasAnyTransactions, getAccounts } from '@/lib/data/queries';
+import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getRecurringRuleById, hasAnyTransactions, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
 import { isYmd } from '@/lib/recurring/occurrences';
@@ -32,6 +32,8 @@ import type {
   RecurringKind,
 } from '@/types';
 import { addDays, todayInZone } from '@/lib/recurring/occurrences';
+import { planChargeNext } from '@/lib/recurring/chargeNext';
+import { chargeNextStatement } from '@/lib/recurring/chargeNextSql';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
@@ -1806,11 +1808,16 @@ async function setRecurringRuleStatus(
 
     // Resuming after a long pause must not backfill the gap. The mark is left
     // alone, then advanced to today so catch-up skips the paused period.
+    const resumeToday = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
     const patch =
       input.status === 'active'
         ? {
             status: 'active',
-            materializedThrough: todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE),
+            // GREATEST, never a plain overwrite: "Charge next payment now"
+            // can leave the mark AHEAD of today, and resuming must not pull
+            // it back or the early-charged occurrences would be charged
+            // again when their dates arrive. The mark only moves forward.
+            materializedThrough: sql`GREATEST(COALESCE(${recurringRule.materializedThrough}, ${resumeToday}::date), ${resumeToday}::date)`,
             updatedAt: new Date().toISOString(),
           }
         : { status: 'paused', updatedAt: new Date().toISOString() };
@@ -1824,6 +1831,129 @@ async function setRecurringRuleStatus(
     return { ok: true };
   } catch (error) {
     return handleUnexpected('setRecurringRuleStatusAction', error);
+  }
+}
+
+export interface ChargeNextRecurringInput {
+  id: string;
+  /**
+   * The occurrence the person was shown and confirmed ("Charge Nov 22's
+   * payment"). The server recomputes the next occurrence itself and refuses
+   * when it differs, so a stale dialog (another tab already charged, the rule
+   * was edited) can never charge a different payment than the one confirmed.
+   */
+  expectedOccurrence: string;
+}
+
+export type ChargeNextRecurringResult =
+  | {
+      ok: true;
+      /** The occurrence that was charged. */
+      occurrenceDate: string;
+      /** The date the transaction was recorded on (today when charged early). */
+      transactionDate: string;
+      /** The payment after it, or null when the schedule has no more. */
+      nextDate: string | null;
+      /** True when that was the schedule's last payment. */
+      finished: boolean;
+    }
+  | Extract<ActionResult, { ok: false }>;
+
+/**
+ * "Charge next payment now": materialises the rule's NEXT occurrence as a real
+ * transaction immediately and advances the rule past it. The pure rules (which
+ * occurrence, which date it is recorded on, what the rule becomes) live in
+ * lib/recurring/chargeNext.ts, shared with the confirm dialog.
+ *
+ * Dated on the occurrence's own date when due, otherwise TODAY (paying early:
+ * a future-dated row would distort the current balance and Reports). The
+ * occurrence date is still stored as occurrence_date - the (rule, occurrence)
+ * identity the UNIQUE constraint and catch-up use - so it is not charged
+ * again when its date arrives.
+ *
+ * ATOMIC AND GUARDED. One neonSql.transaction under the per-user write lock
+ * holding ONE statement: a CTE that advances materialized_through and inserts
+ * the row together, so either both happen or neither. The UPDATE is a
+ * compare-and-set: it only matches while the mark (and the schedule fields the
+ * occurrence was computed from) still equal what this call read. A double
+ * click, a second tab or a concurrent edit therefore matches zero rows and
+ * charges nothing, rather than charging twice or the wrong payment. The
+ * insert is ON CONFLICT DO NOTHING on (rule, occurrence), like catch-up's.
+ *
+ * Failures: reasons that need no new copy ('the schedule changed') are
+ * returned as plain validation failures without a code; the client words
+ * them in the person's language.
+ */
+async function chargeNextRecurring(
+  userId: string,
+  input: ChargeNextRecurringInput,
+): Promise<ChargeNextRecurringResult> {
+  try {
+    // Server actions take whatever the caller posts; TypeScript types are not
+    // a runtime guard. Refuse anything that is not a string id plus a real
+    // YYYY-MM-DD before a value of the wrong shape reaches a query (an object
+    // or array would otherwise be serialised as a parameter).
+    if (
+      typeof input !== 'object' || input === null
+      || typeof input.id !== 'string' || input.id.length === 0 || input.id.length > 64
+      || typeof input.expectedOccurrence !== 'string' || !isYmd(input.expectedOccurrence)
+    ) {
+      return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
+    }
+
+    const rule = await getRecurringRuleById(userId, input.id);
+    if (!rule || rule.status === 'deleted') {
+      return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule') as Extract<ActionResult, { ok: false }>;
+    }
+
+    const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
+    const plan = planChargeNext(rule, today);
+    if (!plan || plan.occurrenceDate !== input.expectedOccurrence) {
+      return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
+    }
+
+    const id = rule.id;
+    const txId = generateTransId();
+    const occ = plan.occurrenceDate;
+    const txDate = plan.transactionDate;
+    const expectedMark = rule.materializedThrough;
+
+    // One statement: compare-and-set the rule's mark AND insert the row (see
+    // chargeNextSql.ts for why that makes a stale or double call a no-op).
+    const statement = chargeNextStatement(neonSql, {
+      kind: rule.kind,
+      userId,
+      ruleId: id,
+      transactionId: txId,
+      occurrenceDate: occ,
+      transactionDate: txDate,
+      newMaterializedThrough: plan.newMaterializedThrough,
+      expected: {
+        materializedThrough: expectedMark,
+        frequency: rule.frequency,
+        startDate: rule.startDate,
+        endMode: rule.endMode,
+        endCount: rule.endCount,
+        endDate: rule.endDate,
+      },
+    });
+
+    const results = await neonSql.transaction([userWriteLockStatement(userId), statement], { isolationLevel: 'ReadCommitted' });
+    const rows = results[1] as { advanced: number }[];
+    if (!rows[0] || Number(rows[0].advanced) !== 1) {
+      return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
+    }
+
+    revalidateAll();
+    return {
+      ok: true,
+      occurrenceDate: occ,
+      transactionDate: txDate,
+      nextDate: plan.nextAfter,
+      finished: plan.finishesRule,
+    };
+  } catch (error) {
+    return handleUnexpected('chargeNextRecurringAction', error) as Extract<ActionResult, { ok: false }>;
   }
 }
 
@@ -2167,6 +2297,7 @@ export const createRecurringRuleAction = withSessionUser(createRecurringRule);
 export const updateRecurringRuleAction = withSessionUser(updateRecurringRule);
 export const setRecurringRuleStatusAction = withSessionUser(setRecurringRuleStatus);
 export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);
+export const chargeNextRecurringAction = withSessionUser(chargeNextRecurring);
 
 /* ------------------------------------------------------------------------
  * Accounts

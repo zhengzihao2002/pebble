@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Plus, Store } from 'lucide-react';
+import { ChevronDown, Store } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
-import { requestShell } from '@/components/layout/shellEvents';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { AddTransactionAction } from './AddTransactionAction';
 import { ChargeRow } from './ChargeRow';
 import { pad, placeKey } from './shared';
 
@@ -127,7 +127,7 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
         <div className="pb-ins-fill-empty">
           <EmptyState
             compact icon={Store} title={d.insights.noPlaces} body={range === 'quarter' ? ux.placesNoneQuarter : ux.placesNone}
-            action={<button type="button" className="btn-primary pb-ins-cta" onClick={() => requestShell('addTransaction')}><Plus size={15} aria-hidden="true" />{ux.addFirstTransaction}</button>}
+            action={<AddTransactionAction />}
           />
         </div>
       ) : (

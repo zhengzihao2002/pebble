@@ -7,14 +7,21 @@ import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useElementSize } from './hooks';
 import type { Insight } from './insightRules';
 
 // The rules and their types live in insightRules.tsx; re-exported so the
 // existing `import { SchedulePrefill } from './WorthKnowing'` keeps working.
 export type { SchedulePrefill, Insight, InsightGroup } from './insightRules';
 
-/** Rows shown before "Show n more" while the list is not the desktop rail. */
+/**
+ * Rows shown before "Show n more": three in one column, four once the card
+ * is wide enough for two columns (an even count, so no half-empty last row).
+ */
 const FIRST = 3;
+const FIRST_WIDE = 4;
+/** The card's own width from which its notes sit in two columns (insights.css). */
+const WIDE_CARD = 720;
 
 interface NoteProps {
   item: Insight;
@@ -122,14 +129,21 @@ interface ListProps {
  * each with a count; the positive notes go to the Good news strip. Order
  * inside each group is the rules' own order - card reminders still lead.
  *
- * Under the headline on a phone, collapsed to the first few with "Show n
- * more"; a sticky rail beside the hero and calendar on a wide Mac, where
- * the whole list scrolls inside the rail instead.
+ * Always collapsed to the first few with "Show n more". It used to be a
+ * sticky rail beside the hero and calendar on a wide Mac; being taller than
+ * the rows it sat beside, it slid under the cards below it as the page
+ * scrolled (owner report). It is now a normal full-width card under the
+ * hero - what needs attention, first - with its notes in two columns when
+ * the card is wide, so it never leaves a hole or overlaps anything.
  */
 export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
   const { d, t } = useTranslation();
   const ux = d.ux.insights;
   const [expanded, setExpanded] = useState(false);
+  // Width is measured, not guessed: the first frame is the one-column list
+  // (width 0), so server and client agree, and two columns follow at once.
+  const [cardRef, card] = useElementSize<HTMLElement>();
+  const first = card.width >= WIDE_CARD ? FIRST_WIDE : FIRST;
 
   if (!items) {
     return (
@@ -155,9 +169,9 @@ export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
   const live = (list: Insight[]) => list.filter((i) => !pending.includes(i.id)).length;
   const count = live(urgent) + live(review);
   const total = urgent.length + review.length;
-  const extra = Math.max(0, total - FIRST);
+  const extra = Math.max(0, total - first);
 
-  // Index across both groups, so "first three" means the three most urgent.
+  // Index across both groups, so "first few" means the most urgent ones.
   let n = 0;
   const group = (list: Insight[], label: string, key: string) => list.length === 0 ? null : (
     <div className="pb-ins-wk-group" data-group={key}>
@@ -167,7 +181,7 @@ export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
       </p>
       <ul className="pb-ins-notes">
         {list.map((i) => {
-          const isExtra = n++ >= FIRST && !expanded;
+          const isExtra = n++ >= first && !expanded;
           return <Note key={i.id} item={i} extra={isExtra} pending={pending.includes(i.id)} onHide={onHide} onUndo={onUndo} />;
         })}
       </ul>
@@ -175,7 +189,7 @@ export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
   );
 
   return (
-    <section className="card pb-ins-card pb-ins-wk" aria-labelledby="pb-worth-title">
+    <section ref={cardRef} className="card pb-ins-card pb-ins-wk" aria-labelledby="pb-worth-title">
       <SectionHeader
         id="pb-worth-title" icon={Lightbulb} title={d.insights.wkTitle} subtitle={d.insights.wkHint}
         actions={
@@ -185,7 +199,10 @@ export function WorthKnowing({ items, pending, onHide, onUndo }: ListProps) {
         }
       />
       {total === 0 ? (
-        <EmptyState compact icon={CheckCircle2} title={d.insights.wkEmpty} />
+        // The all-clear is the page's standing answer for notes that are
+        // naturally absent when nothing is wrong; its line says what would
+        // appear, so a new account knows these checks exist.
+        <EmptyState compact icon={CheckCircle2} title={d.insights.wkEmpty} body={ux.wkEmptyBody} />
       ) : (
         <div className="pb-ins-wk-scroll">
           {group(urgent, ux.needsAttention, 'urgent')}

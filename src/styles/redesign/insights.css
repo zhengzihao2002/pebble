@@ -43,32 +43,36 @@
   .pebble-root .pb-ins-area-places { grid-area: places; }
   .pebble-root .pb-ins-area-good { grid-area: good; }
 }
-/* A wide Mac: a 12-column bento. The attention list becomes a rail beside
-   the hero and the calendar, sticky under the header and jump bar, and its
-   list scrolls inside it. */
+/* A wide Mac: a 12-column grid. The hero and the attention list each take
+   a full row; below them, pairs of cards of similar height (calendar and
+   week, pace and movers), then Top places and Good news full width (a lone
+   good-news note beside the long places list would leave a hole). Nothing here is sticky: the
+   attention list used to be a sticky rail taller than the rows beside it, and
+   as the page scrolled it slid under the cards below (owner report). */
 @container content (min-width: 1100px) {
   .pebble-root .pb-ins-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     grid-template-areas:
-      "hero hero hero hero hero hero hero hero rail rail rail rail"
-      "cal cal cal cal cal cal cal cal rail rail rail rail"
-      "pace pace pace pace pace pace pace week week week week week"
-      "trends trends trends trends trends trends trends places places places places places"
+      "hero hero hero hero hero hero hero hero hero hero hero hero"
+      "rail rail rail rail rail rail rail rail rail rail rail rail"
+      "cal cal cal cal cal cal cal week week week week week"
+      "pace pace pace pace pace trends trends trends trends trends trends trends"
+      "places places places places places places places places places places places places"
       "good good good good good good good good good good good good";
   }
-  .pebble-root .pb-ins-area-rail {
-    /* Fills its rows (no gap beside the calendar) up to one screen tall. */
-    position: sticky; align-self: stretch;
-    top: calc(var(--pb-header-h) + var(--pb-ins-bar-h, 3.25rem) + 0.75rem);
-    max-height: calc(100dvh - var(--pb-header-h) - var(--pb-ins-bar-h, 3.25rem) - 1.75rem);
+}
+
+/* Worth knowing: a plain card. Its own width decides the columns, so the
+   notes sit in two columns whenever the card is wide (a container query on
+   the card, not on the page). */
+.pebble-root .pb-ins-wk { container: pb-wk / inline-size; }
+@container pb-wk (min-width: 720px) {
+  .pebble-root .pb-ins-wk .pb-ins-notes {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.5rem;
   }
-  .pebble-root .pb-ins-area-rail > .pb-ins-wk { min-height: 0; }
-  .pebble-root .pb-ins-wk .pb-ins-wk-scroll {
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-    margin: 0 -0.5rem; padding: 0 0.5rem; scrollbar-width: thin;
-  }
-  .pebble-root .pb-ins-wk .pb-ins-wk-extra { display: flex; }
-  .pebble-root .pb-ins-wk .pb-ins-wk-toggle { display: none; }
+  /* The first row has no rule above it in either column. */
+  .pebble-root .pb-ins-wk .pb-ins-notes > .pb-ins-note:nth-child(2) { border-top: 0; }
+  .pebble-root .pb-ins-wk .pb-ins-notes > .pb-ins-note-hidden:nth-child(2) { margin-top: 0.35rem; }
 }
 
 /* Jump chips: sticky under the glass header, scrolling sideways when they
@@ -140,7 +144,9 @@
 .pebble-root .pb-ins-more svg.is-up { transform: rotate(180deg); }
 .pebble-root .pb-ins-more:focus-visible,
 .pebble-root .pb-ins-undo:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 4px; }
-.pebble-root .pb-ins-cta { display: inline-flex; }
+.pebble-root .pb-ins-cta { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-ins-cta-quiet { padding: 0.4rem 0.95rem; font-size: 0.8rem; }
+@media (pointer: coarse) { .pebble-root .pb-ins-cta-quiet { min-height: 44px; } }
 @media (pointer: coarse) {
   .pebble-root .pb-ins-more { min-height: 44px; }
 }
@@ -268,7 +274,7 @@
   color: var(--wine); background-color: color-mix(in srgb, var(--wine) 11%, transparent);
 }
 .pebble-root .pb-ins-wk-badge.is-clear { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent); }
-.pebble-root .pb-ins-wk-scroll { display: flex; flex-direction: column; gap: 0.6rem; }
+.pebble-root .pb-ins-wk-scroll { display: flex; flex-direction: column; gap: 0.9rem; }
 .pebble-root .pb-ins-wk-group { display: flex; flex-direction: column; }
 .pebble-root .pb-ins-wk-grouphead {
   display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.15rem;
@@ -287,6 +293,8 @@
 }
 .pebble-root .pb-ins-notes > .pb-ins-note:first-child { border-top: 0; }
 .pebble-root .pb-ins-wk-extra { display: none; }
+/* "Not enough data yet" cards: what is missing, then what to add. */
+.pebble-root .pb-ins-needs-progress { display: block; margin-top: 0.4rem; font-size: 0.78rem; color: var(--ink-faint); }
 .pebble-root .pb-ins-note-icon {
   flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 0.6rem;
   color: var(--pb-tone); background-color: color-mix(in srgb, var(--pb-tone) 14%, transparent);
@@ -488,6 +496,8 @@
 .pebble-root .pb-ins-day-panel { min-width: 0; display: flex; flex-direction: column; gap: 0.6rem; }
 .pebble-root .pb-ins-day-panel.is-day { padding-top: 0.9rem; border-top: 1px solid var(--line); }
 .pebble-root .pb-ins-day-panel.is-summary { display: none; }
+/* The new-account placeholder shows at every width: the calendar is empty. */
+.pebble-root .pb-ins-day-panel.is-summary.is-needs { display: grid; place-items: center; padding-top: 0.5rem; border-top: 1px solid var(--line); }
 .pebble-root .pb-ins-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 .pebble-root .pb-ins-panel-date { margin: 0; font-size: 0.92rem; font-weight: 600; }
 .pebble-root .pb-ins-panel-sub { margin: 2px 0 0; font-size: 0.76rem; color: var(--ink-soft); }
@@ -627,6 +637,14 @@
 
 /* ---------- Top places ---------- */
 .pebble-root .pb-ins-places-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+/* Top places, full width, reads as two columns of three (1-3 | 4-5) rather
+   than five long thin rows. */
+@container content (min-width: 1100px) {
+  .pebble-root .pb-ins-places-list {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, auto);
+    grid-auto-flow: column; align-items: start; column-gap: 2.5rem;
+  }
+}
 .pebble-root .pb-ins-place { border-radius: 0.9rem; }
 .pebble-root .pb-ins-place.is-first { background-color: color-mix(in srgb, var(--pb-ins-cat) 7%, transparent); }
 .pebble-root .pb-ins-place.is-open { background-color: color-mix(in srgb, var(--ink) 3.5%, transparent); }

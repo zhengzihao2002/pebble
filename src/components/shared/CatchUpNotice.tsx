@@ -16,6 +16,26 @@ interface CatchUpNoticeProps {
   failed?: boolean;
 }
 
+interface CatchUpSummary {
+  expensesCreated: number;
+  incomeCreated: number;
+  truncated: boolean;
+  failed: boolean;
+}
+
+const hasContent = (s: CatchUpSummary) => s.failed || s.truncated || s.expensesCreated + s.incomeCreated > 0;
+const sameSummary = (a: CatchUpSummary, b: CatchUpSummary) =>
+  a.expensesCreated === b.expensesCreated && a.incomeCreated === b.incomeCreated
+  && a.truncated === b.truncated && a.failed === b.failed;
+const mergeSummary = (a: CatchUpSummary, b: CatchUpSummary): CatchUpSummary => ({
+  expensesCreated: a.expensesCreated + b.expensesCreated,
+  incomeCreated: a.incomeCreated + b.incomeCreated,
+  // The flags describe the LATEST run (a retry that succeeds resolves an
+  // earlier failure); only the counts accumulate.
+  truncated: b.truncated,
+  failed: b.failed,
+});
+
 /**
  * Reports what recurring catch-up did on this page load.
  *
@@ -43,11 +63,38 @@ export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, faile
   const { d, t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
-  const created = expensesCreated + incomeCreated;
-  if (dismissed) return null;
-  if (!failed && !truncated && created === 0) return null;
+  // LATCHED. The server page runs catch-up on EVERY render of the route, and
+  // the first render is the one that materialises the rows. Anything that
+  // re-renders the route on the client afterwards - AppShell's router.refresh()
+  // when the time-zone or language cookie was missing or stale (phones clear
+  // script-written cookies more readily), a server action's revalidatePath -
+  // fetches a fresh payload in which catch-up finds nothing left to do, so the
+  // props arrive as 0 / 0 / false. Rendering the props directly therefore made
+  // the notice flash and vanish by itself a moment after load (owner-reported
+  // on a phone after an overnight payment).
+  //
+  // The client component instance survives router.refresh(), so what the first
+  // non-empty payload said is kept in state and shown until the user dismisses
+  // it or leaves the page (state resets when the page unmounts). A LATER
+  // non-empty payload with different values is a different catch-up run and is
+  // added on top; an identical repeat is the same run re-delivered (React
+  // re-rendering the same props) and is not counted twice.
+  const [latched, setLatched] = useState<CatchUpSummary | null>(null);
+  const [seen, setSeen] = useState<CatchUpSummary | null>(null);
+  const incoming: CatchUpSummary = { expensesCreated, incomeCreated, truncated, failed: Boolean(failed) };
+  if (hasContent(incoming) && !(seen && sameSummary(seen, incoming))) {
+    // Setting state during render for props-derived state is the documented
+    // pattern; React re-renders immediately, before any paint or effect.
+    setSeen(incoming);
+    setLatched(latched ? mergeSummary(latched, incoming) : incoming);
+  }
 
-  const isProblem = Boolean(failed) || truncated;
+  if (dismissed || !latched) return null;
+
+  const created = latched.expensesCreated + latched.incomeCreated;
+  const truncatedNow = latched.truncated;
+  const failedNow = latched.failed;
+  const isProblem = failedNow || truncatedNow;
 
   return (
     <div
@@ -62,11 +109,11 @@ export function CatchUpNotice({ expensesCreated, incomeCreated, truncated, faile
             dictionary keys, rather than by splicing a noun into a sentence.
             Chinese maps both keys to the same string, which is correct rather
             than a shortcut - it genuinely has no plural inflection. */}
-        {failed ? (
+        {failedNow ? (
           <>
             <strong>{d.catchUp.failedTitle}</strong> {d.catchUp.failedBody}
           </>
-        ) : truncated ? (
+        ) : truncatedNow ? (
           <>
             <strong>{t(created === 1 ? d.catchUp.truncatedTitleOne : d.catchUp.truncatedTitleOther, { count: created })}</strong>{' '}
             {d.catchUp.truncatedBody}

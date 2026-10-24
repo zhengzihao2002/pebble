@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, CalendarClock, Check, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
@@ -11,6 +11,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { requestShell } from '@/components/layout/shellEvents';
+import { planChargeNext } from '@/lib/recurring/chargeNext';
 import type { RecurringRule } from '@/types';
 import { daysBetween, describeSchedule, isDone, monthlyEquivalent, nextDate, ruleProgress } from './schedulePlan';
 
@@ -22,6 +23,10 @@ interface ScheduleRulesProps {
   busyId: string | null;
   onToggle: (rule: RecurringRule) => void;
   onEdit: (rule: RecurringRule) => void;
+  /** Opens the "Charge next payment now" confirmation (ScheduledClient owns it). */
+  onCharge: (rule: RecurringRule) => void;
+  /** The brief "Charged. Next payment: ..." line for the rule just charged. */
+  chargedNote: { ruleId: string; text: string } | null;
 }
 
 /**
@@ -35,9 +40,10 @@ interface ScheduleRulesProps {
  * "How schedules work", word for word.
  *
  * Pause / Resume and Edit behave exactly as before; ScheduledClient owns
- * them (single-flight busy guard, retry, no optimistic update).
+ * them (single-flight busy guard, retry, no optimistic update). Active
+ * schedules with a payment still to come also offer a quiet "Charge now".
  */
-export function ScheduleRules({ rules, today, busyId, onToggle, onEdit }: ScheduleRulesProps) {
+export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge, chargedNote }: ScheduleRulesProps) {
   const { d, t } = useTranslation();
   const x = d.ux.scheduled;
   const [filter, setFilter] = useState<Filter>('all');
@@ -128,8 +134,9 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit }: Schedu
             <ul className="pb-sched-rule-grid">
               {s.rules.map((rule) => (
                 <RuleTile
-                  key={rule.id} rule={rule} today={today} busy={busyId === rule.id}
-                  onToggle={onToggle} onEdit={onEdit}
+                  key={rule.id} rule={rule} today={today} busy={busyId === rule.id} locked={busyId !== null}
+                  onToggle={onToggle} onEdit={onEdit} onCharge={onCharge}
+                  chargedText={chargedNote?.ruleId === rule.id ? chargedNote.text : ''}
                 />
               ))}
             </ul>
@@ -140,12 +147,16 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit }: Schedu
   );
 }
 
-function RuleTile({ rule, today, busy, onToggle, onEdit }: {
+function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, chargedText }: {
   rule: RecurringRule;
   today: string | null;
   busy: boolean;
+  /** Some schedule action is in flight: single-flight, like Pause / Resume. */
+  locked: boolean;
   onToggle: (rule: RecurringRule) => void;
   onEdit: (rule: RecurringRule) => void;
+  onCharge: (rule: RecurringRule) => void;
+  chargedText: string;
 }) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.scheduled;
@@ -159,6 +170,11 @@ function RuleTile({ rule, today, busy, onToggle, onEdit }: {
   const monthly = monthlyEquivalent(rule);
   const progress = ruleProgress(rule);
   const next = today ? nextDate(rule, today) : null;
+  // Offered only while there is a payment to charge: active, not finished, a
+  // next occurrence (planChargeNext is the same rule the server applies).
+  // Needs the zone-aware today, so it appears after mount, never in the
+  // server render.
+  const canCharge = today !== null && planChargeNext(rule, today) !== null;
   const inN = next && today ? daysBetween(today, next) : null;
   const when = next
     ? `${formatDate(next, locale)}${inN === 0 ? ` · ${d.upcomingCard.today}` : inN === 1 ? ` · ${d.upcomingCard.tomorrow}` : inN !== null && inN > 1 ? ` · ${t(x.inDays, { count: inN })}` : ''}`
@@ -219,6 +235,15 @@ function RuleTile({ rule, today, busy, onToggle, onEdit }: {
           )}
         </div>
         <div className="pb-sched-rule-actions">
+          {canCharge && (
+            <button
+              type="button" onClick={() => onCharge(rule)} disabled={locked}
+              className="pb-sched-charge-now"
+              aria-label={t(x.chargeNowAria, { description: title })}
+            >
+              <CalendarCheck size={14} aria-hidden="true" />{x.chargeNow}
+            </button>
+          )}
           <button
             type="button" onClick={() => onToggle(rule)} disabled={busy || finished}
             className="icon-btn pb-sched-act"
@@ -235,6 +260,9 @@ function RuleTile({ rule, today, busy, onToggle, onEdit }: {
           </button>
         </div>
       </div>
+      {/* Always rendered so the live region exists before its text does and
+          the confirmation is announced; hidden while empty (scheduled.css). */}
+      <p className="pb-sched-charged" role="status" aria-live="polite">{chargedText}</p>
     </li>
   );
 }

@@ -192,6 +192,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   const titleText = isEdit
     ? (isIncome ? d.recurring.titleEditIncome : d.recurring.titleEditExpense)
     : (isIncome ? d.recurring.titleNewIncome : d.recurring.titleNewExpense);
+  // Only on the form itself (not the saved confirmation or the delete confirm).
+  const showKindSwitch = !saved && mode === 'form';
   const deleteConfirmText = isIncome ? d.recurring.deleteConfirmIncome : d.recurring.deleteConfirmExpense;
 
   const showBackfillFor = (start: string) => !isEdit && start < today && frequency !== 'once';
@@ -351,6 +353,50 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
             <h2 id="rule-modal-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{titleText}</h2>
             <ModalCloseButton onClick={close} disabled={saving} />
           </div>
+          {/* The Expense / Income switch lives in the head, centred and with no
+              visible "Type" label, exactly as in Add transaction (same classes,
+              same wrapper), so both dialogs choose a kind the same way. It is
+              still a named radiogroup (aria-label), and shown only on the form
+              itself, as there. Expense history lives in `expense`, income in
+              `income`; switching would orphan every row already created, so the
+              action rejects it and the control is locked (aria-disabled, buttons
+              disabled) when editing, with the reason as a hint beneath it. */}
+          {showKindSwitch && (
+            <div className="pb-sched-dialog-kind">
+              <div
+                role="radiogroup"
+                aria-label={d.recurring.type}
+                aria-disabled={isEdit || undefined}
+                className="pb-kind-switch"
+                data-kind={kind}
+                onKeyDown={(e) => {
+                  if (isEdit || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                  e.preventDefault();
+                  const next: RecurringKind = kind === 'expense' ? 'income' : 'expense';
+                  changeKind(next);
+                  e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
+                }}
+              >
+                <span className="pb-kind-thumb" aria-hidden="true" />
+                {(['expense', 'income'] as const).map((k) => {
+                  const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
+                  return (
+                    <button
+                      key={k} type="button" role="radio" data-value={k}
+                      aria-checked={kind === k} tabIndex={kind === k ? 0 : -1}
+                      disabled={isEdit}
+                      onClick={() => changeKind(k)}
+                      style={{ textTransform: 'capitalize' }}
+                    >
+                      <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                      {d.enums.kind[k]}
+                    </button>
+                  );
+                })}
+              </div>
+              {isEdit && <p className="pb-sched-dialog-kind-hint">{d.recurring.typeLocked}</p>}
+            </div>
+          )}
         </div>
 
         {saved ? (
@@ -385,50 +431,6 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
           <>
             <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
               <form id="rule-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={labelStyle}>
-                  <span>{d.recurring.type}</span>
-                  {/* Expense history lives in `expense`, income in `income`.
-                      Switching would orphan every row already created, so the
-                      action rejects it and the control is locked when editing. */}
-                  {/* The same two-way switch as Add transaction (wine out, pine
-                      in), so both dialogs choose a kind the same way. Locked
-                      (aria-disabled, buttons disabled) when editing. */}
-                  <div className="pb-sched-dialog-kind">
-                    <div
-                      role="radiogroup"
-                      aria-label={d.recurring.type}
-                      aria-disabled={isEdit || undefined}
-                      className="pb-kind-switch"
-                      data-kind={kind}
-                      onKeyDown={(e) => {
-                        if (isEdit || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-                        e.preventDefault();
-                        const next: RecurringKind = kind === 'expense' ? 'income' : 'expense';
-                        changeKind(next);
-                        e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
-                      }}
-                    >
-                      <span className="pb-kind-thumb" aria-hidden="true" />
-                      {(['expense', 'income'] as const).map((k) => {
-                        const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
-                        return (
-                          <button
-                            key={k} type="button" role="radio" data-value={k}
-                            aria-checked={kind === k} tabIndex={kind === k ? 0 : -1}
-                            disabled={isEdit}
-                            onClick={() => changeKind(k)}
-                            style={{ textTransform: 'capitalize' }}
-                          >
-                            <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
-                            {d.enums.kind[k]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {isEdit && <p style={hintStyle}>{d.recurring.typeLocked}</p>}
-                </div>
-
                 <label style={labelStyle}>
                   {isIncome ? d.recurring.netAmount : d.recurring.amount}
                   <div style={{ position: 'relative' }}>

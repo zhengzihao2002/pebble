@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { setRecurringRuleStatusAction } from '@/lib/actions/pebble';
+import { setRecurringRuleStatusAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -13,6 +13,9 @@ import { ScheduleSummary } from '@/components/scheduled/ScheduleSummary';
 import { ScheduleCalendar } from '@/components/scheduled/ScheduleCalendar';
 import { ScheduleTimeline, cappedCount, dayGroupId } from '@/components/scheduled/ScheduleTimeline';
 import { ScheduleRules } from '@/components/scheduled/ScheduleRules';
+import { ChargeNextDialog } from '@/components/scheduled/ChargeNextDialog';
+import { planChargeNext, type ChargeNextPlan } from '@/lib/recurring/chargeNext';
+import { formatDate } from '@/lib/format';
 import { useScheduledToday } from '@/components/scheduled/useScheduledToday';
 import type { RecurringRule, UpcomingOccurrence } from '@/types';
 
@@ -36,7 +39,8 @@ interface ScheduledClientProps {
  * up and the schedules sit side by side (scheduled.css).
  */
 export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: ScheduledClientProps) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
+  const x = d.ux.scheduled;
   const today = useScheduledToday();
   const [editing, setEditing] = useState<RecurringRule | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,6 +49,11 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
   // The rule whose toggle failed, so Try again repeats that exact call rather
   // than whichever rule happens to be first.
   const [failedRule, setFailedRule] = useState<RecurringRule | null>(null);
+  // "Charge next payment now": the rule and the plan it was confirmed with
+  // (frozen at open, so the occurrence shown is the one sent to the server),
+  // and the brief confirmation shown on that rule's card afterwards.
+  const [charging, setCharging] = useState<{ rule: RecurringRule; plan: ChargeNextPlan } | null>(null);
+  const [chargedNote, setChargedNote] = useState<{ ruleId: string; text: string } | null>(null);
   // Coming up past its first dozen rows.
   const [expanded, setExpanded] = useState(false);
   // A calendar pick waiting for the timeline to render that day: the date in
@@ -75,6 +84,28 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
       setFailedRule(rule);
     }
   };
+
+  const openCharge = (rule: RecurringRule) => {
+    if (busyId || !today) return;
+    const plan = planChargeNext(rule, today);
+    if (plan) setCharging({ rule, plan });
+  };
+
+  // Same revalidation as pause/resume: the action revalidates this route, so
+  // the card's "Next ..." line moves on without a local update or a refresh.
+  const charged = (rule: RecurringRule, result: Extract<ChargeNextRecurringResult, { ok: true }>) => {
+    const text = result.nextDate && !result.finished
+      ? t(x.chargedNext, { date: formatDate(result.nextDate, locale) })
+      : x.chargedLast;
+    setChargedNote({ ruleId: rule.id, text });
+  };
+  // The note is brief: gone after a few seconds (the card already shows the
+  // new Next line by then).
+  useEffect(() => {
+    if (!chargedNote) return;
+    const id = window.setTimeout(() => setChargedNote(null), 7000);
+    return () => window.clearTimeout(id);
+  }, [chargedNote]);
 
   // Calendar -> timeline: open the capped list if the day is beyond it, then
   // scroll the day's group in under the header and pulse it once.
@@ -129,10 +160,18 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
           upcoming={upcoming} previewDays={previewDays} today={today}
           expanded={expanded} onToggle={() => setExpanded((v) => !v)}
         />
-        <ScheduleRules rules={rules} today={today} busyId={busyId} onToggle={(r) => void toggleStatus(r)} onEdit={setEditing} />
+        <ScheduleRules rules={rules} today={today} busyId={busyId} onToggle={(r) => void toggleStatus(r)} onEdit={setEditing}
+          onCharge={openCharge} chargedNote={chargedNote}
+        />
       </div>
 
       {editing && <RecurringRuleModal rule={editing} onClose={() => setEditing(null)} />}
+      {charging && (
+        <ChargeNextDialog
+          rule={charging.rule} plan={charging.plan}
+          onClose={() => setCharging(null)} onCharged={charged}
+        />
+      )}
     </div>
   );
 }

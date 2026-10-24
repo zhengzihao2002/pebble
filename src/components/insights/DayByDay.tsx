@@ -8,8 +8,10 @@ import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { ChargeRow } from './ChargeRow';
+import { AddTransactionAction } from './AddTransactionAction';
 import { DayHeatmapYear } from './DayHeatmapYear';
 import { useCoarsePointer } from './hooks';
 import { SHADES, makeLevel, pad } from './shared';
@@ -234,6 +236,8 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
     );
   }
 
+  // Any spending at all, in any month: without it the summary below is empty.
+  const hasSpending = transactions.some((x) => x.type === 'expense' && x.amount < 0);
   // The month at a glance, for the side panel before a day is picked.
   const spendDays = [...byDay.keys()].filter((k) => k <= today).length;
   const noSpend = Math.max(0, lastDay - spendDays);
@@ -334,6 +338,12 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
                 ))}
               </ul>
             )}
+          </aside>
+        ) : !hasSpending ? (
+          // A new account: "0 spending days, 23 no-spend days" would read as
+          // a result. Say what is missing instead, keeping the card's place.
+          <aside className="pb-ins-day-panel is-summary is-needs" aria-label={ux.monthSummary}>
+            <EmptyState compact icon={CalendarDays} title={ux.calNeedsTitle} body={ux.calNeedsBody} action={<AddTransactionAction />} />
           </aside>
         ) : (
           <aside className="pb-ins-day-panel is-summary" aria-label={offset === 0 ? ux.monthSummary : formatMonthYear(y, m, locale)}>

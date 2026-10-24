@@ -15,7 +15,15 @@
 .pebble-root .pb-dash > * { min-width: 0; }
 .pebble-root .pb-dash-area-top { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
 .pebble-root .pb-dash > [class*="pb-dash-area-"]:not(.pb-dash-area-top) { display: flex; flex-direction: column; }
-.pebble-root .pb-dash > [class*="pb-dash-area-"] > .card { flex: 1; }
+/* The grid areas' cards fill their cell (so a row's cards share a height).
+   NOT the top area: its cards (Budget alerts, Looks recurring, This period)
+   are stacked at their own height. With flex: 1 here they had a 0 flex basis
+   in a column whose height the grid had worked out from their content, so
+   the share-out disagreed with it - one card (Budget alerts) was handed a
+   blank band under its last row and This period (overflow: hidden) was
+   shrunk below its content, cropping its last row of tiles. */
+.pebble-root .pb-dash > [class*="pb-dash-area-"]:not(.pb-dash-area-top) > .card { flex: 1; }
+.pebble-root .pb-dash-area-top > * { flex: none; }
 
 /* Pairs are chosen by how tall each card naturally is, so a row's cards
    share a height without one of them holding a big empty area: Spending pace
@@ -223,7 +231,7 @@
   display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-top: 0.5rem;
   font-size: 0.76rem; color: var(--ink-soft);
 }
-.pebble-root .pb-dash-alloc-key { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-dash-alloc-key { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.1rem 0.35rem; max-width: 100%; min-width: 0; } /* wraps rather than running past the legend at large text */
 .pebble-root .pb-dash-alloc-key .font-mono-tab { color: var(--pb-hero-fg); font-weight: 600; }
 .pebble-root .pb-dash-alloc-dot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; background-color: color-mix(in srgb, var(--pb-hero-fg) 45%, transparent); }
 .pebble-root .pb-dash-alloc-dot.is-goals { background-color: var(--gold); }
@@ -335,9 +343,24 @@
     .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { height: 2.75rem; line-height: calc(2.75rem - 2px); }
   }
 }
+/* Large text: the one-row rule above assumes the period name still fits
+   between the arrows. Measured in rem, a content column this narrow is a
+   big text size (a 390px phone at 20px text and up), where the stepper was
+   squeezed until "Oct 2026" read "O..". The two controls take a row each
+   instead; the stepper then has the full width. A 320px screen at the default
+   size is 20rem wide and keeps its one row (the compact rule below). */
+@container content (max-width: 19.75rem) {
+  .pebble-root .pb-dash-period { flex-wrap: wrap; }
+  .pebble-root .pb-dash-select.is-mode { max-width: 100%; }
+  .pebble-root .pb-dash-stepper { flex: 1 1 100%; }
+  /* The arrows are rem-sized, so at these sizes they ate the name's room;
+     they only need to stay a 44px target. */
+  .pebble-root .pb-dash-step { width: max(44px, 2rem); }
+}
 /* A 320px screen (iPhone Display Zoom): a little less padding and type, so
-   "Oct 2026" still fits whole between the 44px arrows. */
-@container content (max-width: 340px) {
+   "Oct 2026" still fits whole between the 44px arrows. The same width in rem
+   is a 390px phone at about 19px text, which needs the same help. */
+@container content ((max-width: 340px) or (max-width: 20.5rem)) {
   .pebble-root .pb-dash-period { gap: 0.3rem; }
   .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { padding: 0 1.7rem 0 0.75rem; font-size: 0.8rem; }
   .pebble-root .pb-dash-select.is-mode > svg { right: 0.6rem; }
@@ -359,12 +382,27 @@
 }
 .pebble-root .pb-dash-tile-value { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-dash-tile-value .pb-stats-value { min-width: 0; }
+/* The shared figure never goes below 1rem, which at 28px text is wider than a
+   half-width tile: "$6,582.84" ran under the card edge. A slightly lower
+   floor keeps every figure whole at the largest sizes and changes nothing at
+   the sizes where 15cqi already decides. */
+.pebble-root .pb-dash-tile .pb-stats-value { font-size: clamp(0.85rem, 15cqi, 1.4rem); }
 .pebble-root .pb-dash-tile-delta {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.4rem; min-height: 1.4rem; margin-top: 0.45rem;
   font-size: 0.72rem; color: var(--ink-soft);
 }
 .pebble-root .pb-dash-tile-delta * { overflow-wrap: normal; }
-.pebble-root .pb-dash-tile-vs { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The chip may wrap onto a second line when a tile is narrower than its text
+   (28px text: "+12.3 pts" and "+$793.13" ran past the tile and were cropped by
+   the card). Corners ease from a full pill so a two-line chip stays tidy. */
+.pebble-root .pb-dash-tile .pb-delta { max-width: 100%; min-width: 0; white-space: normal; border-radius: 0.8rem; }
+.pebble-root .pb-dash-tile .pb-delta > svg { flex: none; }
+/* The shared cell rule breaks words anywhere ("Standar|d" at 28px text). */
+.pebble-root .pb-dash-tile .pb-stats-note { overflow-wrap: break-word; }
+/* Wraps rather than ellipsising: at large text sizes a tile is only ~100px
+   wide and "vs Sep 1 - 24" was cut to "vs Sep 1 - ..." (the range is the
+   point of the line). The tile simply grows by a line. */
+.pebble-root .pb-dash-tile-vs { min-width: 0; white-space: normal; overflow-wrap: break-word; }
 /* The comparison is a button that explains itself (CompareTip): a quiet
    hover band and a dotted underline under "vs ..." as the affordance; on
    touch an invisible 44px hit area, so the tile does not grow. */
@@ -474,6 +512,36 @@
 .pebble-root .pb-dash-row-title { display: block; font-size: 0.87rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-dash-row-sub { display: block; font-size: 0.75rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-dash-row-amount { font-size: 0.87rem; font-weight: 600; white-space: nowrap; }
+/* Large text on a phone: a row's title and subtitle had ~100px of a 390px
+   card (the icon and the amount keep theirs), so "House cleaning" read
+   "House c..." and "Overdue since Oct 22" read "Overdue si...". Measured in
+   rem, a content column this narrow is a big text size (a 390px phone at
+   18px and up; a 320px screen too), so the names wrap onto as many lines as they need
+   there. At the default size they keep their one tidy line. Recent
+   activity's rows are the shared TransactionRow, whose lines are inline
+   styles, hence !important. */
+@container content (max-width: 22rem) {
+  .pebble-root .pb-dash-row-title,
+  .pebble-root .pb-dash-row-sub,
+  .pebble-root .pb-dash-rec-title,
+  .pebble-root .pb-dash-recent .txn-row-interactive > div:nth-child(2) > div {
+    /* No line limit: at 22px text and up a name needs four lines in a ~100px
+       column, and a two-line clamp ended "Rent - Maple Court Apt 4B" in an
+       ellipsis. The row simply grows; nothing is cut. */
+    display: block !important;
+    white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: break-word;
+  }
+  /* The balance is 2.5rem, which at 28px text is 70px: "$30,607.81" ran under
+     the hero's edge. Capped by the column's width instead (12cqi; at the
+     default size 2.5rem is smaller and still wins). */
+  .pebble-root .pb-dash-hero .hero-balance { font-size: min(2.5rem, 12cqi); }
+  .pebble-root .pb-dash-fact dt { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
+  /* The hero's change sentence ("Up $11,230.95 over the last ...") and its
+     account names wrap too, instead of ending in an ellipsis. */
+  .pebble-root .pb-dash-hero-change { flex-wrap: wrap; }
+  .pebble-root .pb-dash-hero-change > span:last-child { white-space: normal; overflow: visible; }
+  .pebble-root .pb-dash .pb-hero-account-name { white-space: normal; overflow-wrap: anywhere; }
+}
 .pebble-root .pb-dash-payoff { padding: 0.3rem 0.7rem; font-size: 0.75rem; flex: none; }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-payoff { min-height: 44px; }
@@ -774,7 +842,8 @@
 .pebble-root .pb-dash-yoy-fig { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .pebble-root .pb-dash-yoy-fig dd { margin: 0; }
 .pebble-root .pb-dash-yoy-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
-.pebble-root .pb-dash-yoy-now { display: flex; flex-direction: column; font-size: 1.3rem; font-weight: 600; line-height: 1.25; white-space: nowrap; }
+.pebble-root .pb-dash-yoy-now { display: flex; flex-direction: column; font-size: clamp(0.9rem, 7.5cqi, 1.3rem); font-weight: 600; line-height: 1.25; white-space: nowrap; }
+/* (7.5cqi: at large text two half-width figures such as "$6,582.84" ran into each other and past the card edge; at the default size 1.3rem still wins.) */
 .pebble-root .pb-dash-yoy-period { font-family: inherit; font-size: 0.7rem; font-weight: 500; line-height: 1.4; color: var(--ink-soft); white-space: normal; }
 .pebble-root .pb-dash-yoy-was { display: flex; flex-direction: column; font-size: 0.88rem; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-dash-yoy-chip { display: flex; margin-top: 0.15rem !important; min-height: 1.4rem; }

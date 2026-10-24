@@ -78,6 +78,14 @@
 .pebble-root .pb-ana-foot { margin: 0; font-size: 0.76rem; line-height: 1.5; color: var(--ink-soft); }
 .pebble-root .pb-ana-more { align-self: flex-start; margin-top: 0.15rem; padding: 0.25rem 0; }
 .pebble-root .pb-ana-action { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* Placeholder cards (a card with nothing to show says what it needs): the
+   empty state fills the card's width, tinted softly like a muted band, and
+   the fix is a quiet text link. */
+.pebble-root .pb-ana-needs > .pb-empty { flex: 1; justify-content: center; padding: 1.1rem 0.75rem; border-radius: 0.95rem; background-color: color-mix(in srgb, var(--ink) 3.5%, transparent); }
+.pebble-root .pb-ana-needs .pb-empty-action { margin-top: 0.25rem; }
+.pebble-root .pb-ana-needs-tail { display: block; margin-top: 0.4rem; color: var(--ink-faint); }
+.pebble-root .pb-ana-needs-link { font-size: 0.82rem; font-weight: 600; }
+@media (pointer: coarse) { .pebble-root .pb-ana-needs-link { min-height: 44px; display: inline-flex; align-items: center; } }
 @media (pointer: coarse) {
   .pebble-root .pb-ana-more { min-height: 44px; }
   .pebble-root .pb-ana-chip { position: relative; }

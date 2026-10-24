@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cache } from 'react';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { expense, income, recurringRule } from '@/db/schema';
 import { getRulesDueForCatchUp } from '@/lib/data/queries';
@@ -183,7 +183,12 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
     ...markUpdates.map((m) =>
       db
         .update(recurringRule)
-        .set({ materializedThrough: m.through })
+        // GREATEST: the mark only moves forward. "Charge next payment now" can
+        // advance it past today between this run reading the rule and writing
+        // here; a plain overwrite would pull it back and re-offer a payment
+        // that was already charged (the UNIQUE (rule, occurrence) guard would
+        // still stop a duplicate row, but the card would lie).
+        .set({ materializedThrough: sql`GREATEST(COALESCE(${recurringRule.materializedThrough}, ${m.through}::date), ${m.through}::date)` })
         .where(eq(recurringRule.id, m.ruleId)),
     ),
   ];

@@ -53,10 +53,6 @@ interface ReportTimelineProps {
   buckets: ReportBucket[];
   granularity: Granularity;
   mode: TimelineMode;
-  /** Which bars drill down, and to what - decided by the caller. */
-  canPick: boolean;
-  onPick: (b: ReportBucket) => void;
-  hint: string | null;
   /** Spoken summary for the chart as a whole. */
   label: string;
 }
@@ -71,8 +67,12 @@ interface ReportTimelineProps {
  *
  * Fades in (pb-chart-fade) rather than growing from zero, and blurs as a unit
  * in privacy mode, axis text included (#pb-svg-blur).
+ *
+ * Read-only on purpose: bars used to drill into the month (or scroll to the
+ * day), and a stray tap silently changed the period with no obvious way
+ * back (owner-reported). Hover and tap show the tooltip; nothing else.
  */
-export function ReportTimeline({ buckets, granularity, mode, canPick, onPick, hint, label }: ReportTimelineProps) {
+export function ReportTimeline({ buckets, granularity, mode, label }: ReportTimelineProps) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.reports;
   const loc = INTL_LOCALE[locale];
@@ -107,10 +107,6 @@ export function ReportTimeline({ buckets, granularity, mode, canPick, onPick, hi
     ? (granularity === 'day' ? x.avgOutPerDay : granularity === 'week' ? x.avgOutPerWeek : x.avgOutPerMonth)
     : (granularity === 'day' ? x.avgPerDay : granularity === 'week' ? x.avgPerWeek : x.avgPerMonth);
   const avgText = t(avgKey, { amount: formatCurrency(avg) });
-  const pick = (entry: unknown) => {
-    const p = (entry as { payload?: Point })?.payload;
-    if (canPick && p && !p.future) onPick(p.bucket);
-  };
 
   return (
     <div className="pb-rep-timeline">
@@ -120,7 +116,7 @@ export function ReportTimeline({ buckets, granularity, mode, canPick, onPick, hi
         {mode === 'mixed' && granularity !== 'day' && <span><i className="pb-rep-key is-line" />{x.net}</span>}
         <span className="pb-rep-avg"><i className="pb-rep-key is-dashed" /><span className="font-mono-tab">{avgText}</span></span>
       </div>
-      <div className={`pb-rep-chart pb-chart-fade${canPick ? ' is-pickable' : ''}`} role="img" aria-label={label}>
+      <div className="pb-rep-chart pb-chart-fade" role="img" aria-label={label}>
         <div style={{ position: 'absolute', inset: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 16, right: 14, left: 0, bottom: 0 }} barCategoryGap={granularity === 'day' ? '18%' : '26%'} stackOffset="sign">
@@ -130,10 +126,10 @@ export function ReportTimeline({ buckets, granularity, mode, canPick, onPick, hi
               <Tooltip content={<Tip mode={mode} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} isAnimationActive={false} />
               {mode === 'mixed' && <ReferenceLine y={0} stroke="var(--ink-faint)" />}
               {mode !== 'expense' && (
-                <Bar dataKey="income" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--pine)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} onClick={pick} />
+                <Bar dataKey="income" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--pine)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
               )}
               {mode !== 'income' && (
-                <Bar dataKey="spending" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--wine)" radius={mode === 'mixed' ? [0, 0, 4, 4] : [4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} onClick={pick} />
+                <Bar dataKey="spending" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--wine)" radius={mode === 'mixed' ? [0, 0, 4, 4] : [4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
               )}
               {mode !== 'mixed' && (
                 <Bar dataKey="ghost" stackId="one" fill="transparent" stroke="var(--ink-faint)" strokeOpacity={0.6} strokeDasharray="3 3" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
@@ -151,7 +147,6 @@ export function ReportTimeline({ buckets, granularity, mode, canPick, onPick, hi
           </ResponsiveContainer>
         </div>
       </div>
-      {hint && <p className="pb-rep-timeline-hint">{hint}</p>}
     </div>
   );
 }

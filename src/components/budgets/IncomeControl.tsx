@@ -66,6 +66,8 @@ export function IncomeControl({
           <span className="font-mono-tab pb-bud-income-value">
             {effectiveAnnual !== null ? formatCurrency(effectiveAnnual) : '—'}
           </span>
+          {/* A dash alone reads as broken: say what the estimate needs. */}
+          {effectiveAnnual === null && !manual && <span className="pb-bud-income-needs">{ux.incomeNeeds}</span>}
         </div>
         <SegmentedControl<IncomeEstimateMode>
           size="sm"

@@ -14,7 +14,7 @@ export interface JumpItem {
  * NEW: a sticky row of chips under the glass header that jumps to each
  * section and lights the one in view - the page is long on a phone. It
  * publishes its own height as --pb-ins-bar-h on the page wrapper, so the
- * sections scroll to just below it and the desktop rail sticks under it.
+ * sections scroll to just below it (scroll-margin in insights.css).
  * Scrolls sideways when the chips do not fit (never along the bottom edge).
  */
 export function JumpBar({ items }: { items: JumpItem[] }) {
@@ -22,6 +22,10 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
   const ref = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<string | null>(null);
+  // The chip last tapped. Two cards side by side start at the same height, so
+  // scrolling to the right-hand one also crosses the left-hand one: on a tie
+  // the tapped card keeps the light instead of the first one in the list.
+  const tapped = useRef<string | null>(null);
   const key = items.map((i) => i.id).join('|');
 
   useEffect(() => {
@@ -43,14 +47,14 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) seen.set(e.target.id, e.isIntersecting);
       // Of the sections crossing the reading band, the one that starts
-      // lowest is the one just scrolled to - so the sticky desktop rail,
-      // which always crosses the band, does not keep the first chip lit.
+      // lowest is the one just scrolled to (a tall card above can still be
+      // crossing the band while the next one has begun).
       let best: string | null = null;
       let bestTop = -Infinity;
       for (const id of ids) {
         if (!seen.get(id)) continue;
         const top = document.getElementById(id)?.getBoundingClientRect().top ?? -Infinity;
-        if (top > bestTop) { bestTop = top; best = id; }
+        if (top > bestTop + 4 || (Math.abs(top - bestTop) <= 4 && id === tapped.current)) { bestTop = top; best = id; }
       }
       if (best) setActive(best);
     }, { rootMargin: '-25% 0px -60% 0px' });
@@ -70,6 +74,7 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
   const jump = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
+    tapped.current = id;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     setActive(id);

@@ -93,7 +93,12 @@ export function YearForecast({ totalBudget, totalSpent, fraction, status, unbudg
   if (totalBudget <= 0 || status === null) {
     return (
       <div className="pb-bud-forecast">
-        <p className="pb-bud-fc-cmp">{d.budgetPlan.noBudgets}</p>
+        <p className="pb-bud-fc-label">
+          <CalendarClock size={14} aria-hidden="true" />
+          {ux.forecastLabel}
+        </p>
+        {/* Placeholder, not silence: the slot says what it needs. */}
+        <p className="pb-bud-fc-cmp">{ux.forecastNeedsBudget}</p>
         {yearLine}
       </div>
     );

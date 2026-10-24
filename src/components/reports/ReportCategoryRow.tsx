@@ -25,8 +25,9 @@ interface ReportCategoryRowProps {
 const pctText = (v: number) => (v > 0 && v < 0.01 ? '<1%' : `${Math.round(v * 100)}%`);
 
 /**
- * A category group's header row: a 36px tile in the category colour (the
- * same tile as the transaction rows under it, so parent and child match),
+ * A category group's header row: a 40px tile in the category colour (larger
+ * and bolder than the transaction rows' tile under it, so the title is never
+ * mistaken for a row; reports.css also makes it sticky),
  * the name over "12 transactions · 34%", the subtotal, and a 4px share bar
  * under the text. On a wide card (container query in reports.css) the same
  * cells line up as a table: Category | Transactions | Share | Trend | Total.

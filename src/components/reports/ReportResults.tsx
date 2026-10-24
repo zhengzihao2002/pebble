@@ -22,7 +22,9 @@ import { sectionByDay } from './daySections';
 //
 // The bands run edge to edge and touch: red-red reads as one red block,
 // green-green as one green, and the switch between the two is a clean line.
-// The period title stays on the plain card.
+// The period title stays on the plain card. Under Group by: Category the two
+// sides are split (Money in, then Money out); with no grouping they are NOT -
+// income and expense rows mix in one list, each on its own band.
 
 /** More rows than this in one ungrouped period render behind "Show all". */
 const ROW_CAP = 250;
@@ -122,12 +124,16 @@ export function ReportResults({
       date: dt.toLocaleDateString(loc, { month: 'short', day: 'numeric', ...(showPeriodHeaders && periodGroups.length > 0 ? {} : { year: 'numeric' }) }),
     };
   };
-  const row = (t: Transaction, lead?: ReactNode) => (
+  // `tint` puts the row's own in/out band on it: used where income and
+  // expense rows sit in one list. Rows under a category group inherit the
+  // group's band instead.
+  const row = (t: Transaction, lead?: ReactNode, tint = false) => (
     <TransactionRow
       key={t.id} txn={t} onOpenDetail={onOpenDetail} categoryMeta={categoryMeta}
-      focusable silent lead={lead} className="pb-rep-row"
+      focusable silent lead={lead} className={tint && tinted ? `pb-rep-row pb-rep-tint-${sideOf(t)}` : 'pb-rep-row'}
     />
   );
+  const rowOf = (t: Transaction, lead?: ReactNode) => row(t, lead, true);
   const colHead = (field: SortField | null, text: string, cls: string) => {
     if (!field) return <span className={cls}>{text}</span>;
     const on = sortField === field;
@@ -191,7 +197,15 @@ export function ReportResults({
                     : Math.abs(sg.total) / (Math.abs(pg.total) || 1);
                   const panelId = `pb-rep-g-${pi}-${i}`;
                   return (
-                    <div key={sg.key} className={`pb-rep-group${tinted ? ` pb-rep-tint-${side}` : ''}`}>
+                    // data-side: the header's accent bar and the rail under it
+                    // are pine for money in and wine for money out, tinted or
+                    // not (a category's own colour could be green on an
+                    // expense). --pb-rep-cat stays the category's identity
+                    // colour for the tile and share bar.
+                    <div
+                      key={sg.key} data-side={side} className={`pb-rep-group${tinted ? ` pb-rep-tint-${side}` : ''}`}
+                      style={{ ['--pb-rep-cat' as string]: categoryMeta[sg.key]?.color ?? 'var(--pine)' }}
+                    >
                       {firstOfSide && sideLabel(side)}
                       <ReportCategoryRow
                         category={sg.key} total={sg.total} count={sg.items.length} share={share}
@@ -215,42 +229,35 @@ export function ReportResults({
             ) : (() => {
               const capped = allItems.length > ROW_CAP && !uncapped.has(pg.key);
               const items = capped ? allItems.slice(0, ROW_CAP) : allItems;
-              // Runs of one side (mixed lists lead with income, see typeRank).
-              const runs: { side: 'in' | 'out'; items: Transaction[] }[] = [];
-              for (const t of items) {
-                const s = sideOf(t);
-                const last = runs[runs.length - 1];
-                if (last && last.side === s) last.items.push(t); else runs.push({ side: s, items: [t] });
-              }
               const ranked = sortField === 'amount';
               return (
                 <>
                   {ranked && <p className="pb-rep-ranked-title">{x.topTransactions}</p>}
-                  {runs.map((run) => (
-                    <div key={run.side} className={tinted ? `pb-rep-run pb-rep-tint-${run.side}` : 'pb-rep-run'}>
-                      {tinted && sideLabel(run.side)}
-                      {ranked ? (
-                        run.items.map((t, i) => row(t, (
-                          <span className={`pb-rep-rank pb-tnum${i < 3 ? ' is-top' : ''}`} aria-label={tr(x.rankLabel, { n: i + 1 })}>{i + 1}</span>
-                        )))
-                      ) : (
-                        // Day sections: a header at every change of date in
-                        // the already-sorted list; nothing is re-ordered.
-                        sectionByDay(run.items, amt).map((day) => {
-                          const l = dayLabel(day.ymd);
-                          return (
-                            <div key={day.ymd} className="pb-rep-day" data-rep-day={day.ymd}>
-                              <div className="pb-rep-day-head">
-                                <span><b>{l.weekday}</b> <span className="pb-tnum">{l.date}</span></span>
-                                <span className={`font-mono-tab${tone(day.total)}`}>{signed(day.total)}</span>
-                              </div>
-                              {day.items.map((t) => row(t))}
+                  {/* ONE list: income and expenses mix under the chosen sort,
+                      each row on its own in/out tint (the Money in / Money out
+                      split belongs to Group by: Category only). */}
+                  <div className="pb-rep-run">
+                    {ranked ? (
+                      items.map((t, i) => rowOf(t, (
+                        <span className={`pb-rep-rank pb-tnum${i < 3 ? ' is-top' : ''}`} aria-label={tr(x.rankLabel, { n: i + 1 })}>{i + 1}</span>
+                      )))
+                    ) : (
+                      // Day sections: a header at every change of date in
+                      // the already-sorted list; nothing is re-ordered.
+                      sectionByDay(items, amt).map((day) => {
+                        const l = dayLabel(day.ymd);
+                        return (
+                          <div key={day.ymd} className="pb-rep-day">
+                            <div className="pb-rep-day-head">
+                              <span><b>{l.weekday}</b> <span className="pb-tnum">{l.date}</span></span>
+                              <span className={`font-mono-tab${tone(day.total)}`}>{signed(day.total)}</span>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  ))}
+                            {day.items.map((t) => rowOf(t))}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                   {capped && (
                     <div className="pb-rep-more">
                       <button type="button" className="pill" onClick={() => setUncapped((s) => new Set([...s, pg.key]))}>

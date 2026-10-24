@@ -2,8 +2,10 @@
 
 import { Sparkles } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Insight } from './insightRules';
+import { AddTransactionAction } from './AddTransactionAction';
 import { Note } from './WorthKnowing';
 
 /**
@@ -11,7 +13,8 @@ import { Note } from './WorthKnowing';
  * scheduled payments per year): they used to sit at the very end of the one
  * long Worth knowing list, after every warning. Same rules, ids, actions and
  * dismissal; shown as a row of small cards - a sideways scroller on a phone,
- * a grid on wider screens. Hidden when there is nothing to celebrate.
+ * a grid on wider screens. With nothing to celebrate yet the card stays, with
+ * what would fill it (a new account sees the same sections as a loaded one).
  */
 export function GoodNews({ items, pending, onHide, onUndo }: {
   items: Insight[];
@@ -21,7 +24,14 @@ export function GoodNews({ items, pending, onHide, onUndo }: {
 }) {
   const { d } = useTranslation();
   const ux = d.ux.insights;
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return (
+      <section className="card pb-ins-card pb-ins-good" aria-labelledby="pb-good-title">
+        <SectionHeader id="pb-good-title" icon={Sparkles} title={ux.goodNews} subtitle={ux.goodNewsHint} />
+        <EmptyState compact icon={Sparkles} title={ux.goodNeedsTitle} body={ux.goodNeedsBody} action={<AddTransactionAction />} />
+      </section>
+    );
+  }
   const live = items.filter((i) => !pending.includes(i.id)).length;
   return (
     <section className="card pb-ins-card pb-ins-good" aria-labelledby="pb-good-title">

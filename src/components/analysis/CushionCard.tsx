@@ -1,6 +1,7 @@
 'use client';
 
 import { Repeat, LifeBuoy } from 'lucide-react';
+import { requestShell } from '@/components/layout/shellEvents';
 import { formatCurrency } from '@/lib/format';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -115,6 +116,13 @@ export function CommitmentsCard({ commitments, monthlyAverage }: { commitments: 
           className="is-in"
         />
       </div>
+      {/* No scheduled rules: the zeros alone read as broken, so say why and how to fill them. */}
+      {total === 0 && (
+        <p className="pb-ana-foot">
+          {x.noRulesNote}{' '}
+          <button type="button" className="link-btn pb-ana-needs-link" onClick={() => requestShell('addSchedule')}>{x.addSchedule}</button>
+        </p>
+      )}
       {share !== null && <p className="pb-ana-foot pb-tnum">{t(x.fixedShare, { pct: `${share}%` })}</p>}
     </section>
   );

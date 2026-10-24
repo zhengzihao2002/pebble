@@ -14,6 +14,7 @@ import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { AddTransactionAction } from './AddTransactionAction';
 import { pad } from './shared';
 import { useElementSize } from './hooks';
 
@@ -146,7 +147,7 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
     return (
       <section className="card pb-ins-card pb-ins-pace" aria-labelledby="pb-pace-title">
         {header}
-        <div className="pb-ins-fill-empty"><EmptyState compact icon={Gauge} title={ux.paceEmpty} body={ux.paceEmptyBody} /></div>
+        <div className="pb-ins-fill-empty"><EmptyState compact icon={Gauge} title={ux.paceEmpty} body={ux.paceEmptyBody} action={<AddTransactionAction />} /></div>
       </section>
     );
   }

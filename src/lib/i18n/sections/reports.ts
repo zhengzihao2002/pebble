@@ -65,8 +65,6 @@ export const reportsEn = {
   notYet: 'Not yet',
   hideChart: 'Hide chart',
   showChart: 'Show chart',
-  drillMonth: 'Tap a bar to open that month',
-  drillDay: 'Tap a bar to jump to that day',
   chartLabel: '{type}, {granularity}, {period}',
   // Lists.
   rankLabel: 'Rank {n}',
@@ -151,8 +149,6 @@ export const reportsZh: typeof reportsEn = {
   notYet: '尚未发生',
   hideChart: '隐藏图表',
   showChart: '显示图表',
-  drillMonth: '点按柱形查看该月',
-  drillDay: '点按柱形跳到当天',
   chartLabel: '{period} · {type}，{granularity}',
   rankLabel: '第 {n} 名',
   topTransactions: '金额最高的交易',

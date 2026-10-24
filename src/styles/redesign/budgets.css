@@ -8,14 +8,13 @@
    Responsive rules are container queries: `content` (the main column) for
    the page, and containers the cards declare for their own insides. */
 
-/* ---------- Page: the plan, then the list, with a side column on a Mac ---------- */
+/* ---------- Page: the plan, the list, then spending without a budget ---------- */
+/* One column on every width. A side column for the unbudgeted card left the
+   right half blank beside the long list (owner report), so wide screens use
+   their width inside the cards: the legend and the unbudgeted rows each run
+   in two columns (below). */
 .pebble-root .pb-bud { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; align-items: start; }
 .pebble-root .pb-bud > * { min-width: 0; }
-@container content (min-width: 1320px) {
-  /* Only when both the list and the unbudgeted card have something to show. */
-  .pebble-root .pb-bud[data-split] { grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem); }
-  .pebble-root .pb-bud[data-split] > .pb-bud-plan { grid-column: 1 / -1; }
-}
 .pebble-root .pb-bud-sr {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -98,6 +97,18 @@
 .pebble-root .pb-bud-fc-note { margin-top: 0.2rem !important; font-size: 0.74rem; line-height: 1.4; color: var(--ink-soft); }
 .pebble-root .pb-bud-fc-note .font-mono-tab { color: var(--ink); font-weight: 500; }
 .pebble-root .pb-bud-forecast > .pb-skel + .pb-skel { margin-top: 0.25rem; }
+
+/* Placeholders: a card with nothing to show says what it needs, muted and
+   calm (no wine, no pine - nothing is wrong). */
+.pebble-root .pb-bud-needs {
+  display: flex; align-items: flex-start; gap: 0.6rem; margin: 0; padding: 0.85rem 1rem; border-radius: 0.95rem;
+  background-color: color-mix(in srgb, var(--ink) 4%, transparent); font-size: 0.84rem; line-height: 1.5; color: var(--ink-soft);
+}
+.pebble-root .pb-bud-needs > svg { flex: none; margin-top: 0.15rem; }
+.pebble-root .pb-bud-income-needs { max-width: 32rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-bud-empty { padding: 0 1.5rem 1.4rem; }
+@container content (max-width: 639px) { .pebble-root .pb-bud-empty { padding: 0 1.1rem 1.1rem; } }
+.pebble-root .pb-bud-empty .pb-empty { padding-top: 0.5rem; }
 
 /* Expected income: the figure, the two-way switch, the manual fields. */
 .pebble-root .pb-bud-income { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.15rem; }
@@ -325,6 +336,7 @@
 .pebble-root .pb-bud-unb { container: pb-bud-unb / inline-size; display: flex; flex-direction: column; gap: 0.8rem; padding: 1.25rem 1.5rem; }
 @container content (max-width: 639px) { .pebble-root .pb-bud-unb { padding: 1.1rem; } }
 .pebble-root .pb-bud-unb .pb-unb-list { margin: 0; }
+.pebble-root .pb-bud-unb .pb-empty { padding-top: 0.75rem; padding-bottom: 0.75rem; }
 .pebble-root .pb-bud .pb-bud-unb-row {
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "actions" "det";
   row-gap: 0.15rem; padding: 0.65rem 0;
@@ -347,6 +359,16 @@
 @container pb-bud-unb (min-width: 560px) {
   .pebble-root .pb-bud .pb-bud-unb-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main actions" "det det"; column-gap: 1.25rem; }
   .pebble-root .pb-bud-unb-actions { padding-left: 0; gap: 1rem; }
+}
+/* Wide card: the rows run in two columns (a row is a name, a figure and two
+   actions, so each half still has room at this width). A row whose details
+   are open takes the full width for its chart. Hairlines come from each
+   row's own top border, which the first row of each column drops. */
+@container pb-bud-unb (min-width: 1000px) {
+  .pebble-root .pb-bud-unb .pb-unb-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 3rem; }
+  .pebble-root .pb-bud-unb .pb-unb-list > .pb-bud-unb-row:nth-child(2) { border-top: 0; }
+  .pebble-root .pb-bud-unb .pb-unb-list > .pb-bud-unb-row:has(> .pb-bud-unb-details) { grid-column: 1 / -1; }
+  .pebble-root .pb-bud-unb .pb-bud-chips { grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); }
 }
 .pebble-root .pb-bud-set { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.34rem 0.8rem 0.34rem 0.6rem; white-space: nowrap; }
 

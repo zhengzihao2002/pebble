@@ -528,3 +528,13 @@
 .pebble-root .pb-txn-skel-card { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .pebble-root .pb-txn-skel-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.5rem; border-bottom: 1px solid var(--line); }
 .pebble-root .pb-txn-skel-chips { display: flex; gap: 0.5rem; overflow: hidden; }
+
+/* Touch: no sticky hover on statement rows. The global
+   .txn-row-interactive:hover paint stays on whatever was last under a finger
+   (a "ghost hover" on the row at the same screen position once a scroll ends),
+   so on touch it is cancelled and a brief :active press tint takes its place.
+   A mouse (hover: hover and pointer: fine) is unchanged. */
+@media (hover: none), (pointer: coarse) {
+  .pebble-root .pb-txn-stmt .txn-row-interactive:hover { background-color: transparent; }
+  .pebble-root .pb-txn-stmt .txn-row-interactive:active { background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+}

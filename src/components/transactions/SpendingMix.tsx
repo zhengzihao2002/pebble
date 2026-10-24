@@ -56,16 +56,20 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
   // The kind of pointer behind the next click: a click event's own
   // pointerType is not there in every browser (older Safari).
   const lastPointer = useRef('mouse');
+  // When a finger or pen last touched this bar (ms, performance clock). See
+  // hoverFocus: mouse "hover" arriving right after a touch is not a mouse.
+  const lastTouchAt = useRef(-Infinity);
 
-  // A tap anywhere else lets go of a pinned category.
+  // A tap anywhere else lets go of a pinned category - and of a hover, so a
+  // tooltip that a touch device left behind cannot outlive the next tap.
   useEffect(() => {
-    if (!pinned) return;
+    if (!pinned && !hover) return;
     const onDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setPinned(null);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) { setPinned(null); setHover(null); }
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
-  }, [pinned]);
+  }, [pinned, hover]);
 
   // The tooltip sits over the middle of its segment, kept inside the card.
   // Written straight to the element, after layout and before paint.
@@ -83,8 +87,21 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
   const color = (cat: string) => categoryMeta[cat]?.color ?? 'var(--ink-faint)';
   const toggle = (cat: string) => setPinned((p) => (p === cat ? null : cat));
   // Hover only from a real mouse: a phone's simulated hover would fight the tap.
+  // It is taken from pointermove, not pointerenter: after a tap changes the
+  // layout (the legend opening, "+N more" moving on), the browser replays a
+  // pointerenter with pointerType "mouse" on whatever now sits under the
+  // finger, with no pointermove and, as the finger is already up, no matching
+  // pointerleave. Read as hover, that pinned the category that took the
+  // control's place and left its tooltip stuck. A real mouse always moves
+  // over the element it enters, so pointermove ignores the replay.
+  // Belt and braces for touch-first devices (iOS Safari, hybrids with a mouse
+  // paired): a touch or pen contact clears any hover at once (onPointerDown
+  // on the root) and, for a moment after it, a "mouse" move is taken as the
+  // browser's own compatibility replay, not a hand on a mouse.
   const hoverFocus = (cat: string) => ({
-    onPointerEnter: (e: { pointerType: string }) => { if (e.pointerType === 'mouse') setHover(cat); },
+    onPointerMove: (e: { pointerType: string }) => {
+      if (e.pointerType === 'mouse' && performance.now() - lastTouchAt.current > 600) setHover(cat);
+    },
     onPointerLeave: (e: { pointerType: string }) => { if (e.pointerType === 'mouse') setHover(null); },
     // Keyboard focus shows the tooltip. Only a visible focus: a mouse click
     // focuses the button too, and that must not hold the tooltip open after
@@ -118,17 +135,24 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
     if (pick?.dataset.cat) toggle(pick.dataset.cat);
   };
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Escape' || (!pinned && !focused)) return;
+    if (e.key !== 'Escape' || (!pinned && !focused && !hover)) return;
     e.stopPropagation();
     setPinned(null);
     setFocused(null);
+    setHover(null);
+  };
+  // A touch or pen contact: no hover survives it (see hoverFocus).
+  const onRootPointerDown = (e: { pointerType: string }) => {
+    if (e.pointerType === 'mouse') return;
+    lastTouchAt.current = performance.now();
+    setHover(null);
   };
 
   const shown = active ? mix.find(([c]) => c === active) ?? null : null;
   const keys = allKeys ? mix : mix.slice(0, 3);
 
   return (
-    <div ref={rootRef} className={`pb-txn-mix${active ? ' has-focus' : ''}`} onKeyDown={onKeyDown}>
+    <div ref={rootRef} className={`pb-txn-mix${active ? ' has-focus' : ''}`} onKeyDown={onKeyDown} onPointerDownCapture={onRootPointerDown}>
       <p className="filter-label" style={{ margin: 0 }}>{x.spendingMix}</p>
       <div className="pb-txn-mix-bar">
         {/* data-pb-keep-revealed: in privacy mode, once revealed, later taps
@@ -182,7 +206,11 @@ export function SpendingMix({ mix, total, categoryMeta }: SpendingMixProps) {
         ))}
         {mix.length > 3 && (
           <li>
-            <button type="button" className="pb-txn-mix-key pb-txn-mix-more" aria-expanded={allKeys} onClick={() => setAllKeys((v) => !v)}>
+            <button type="button" className="pb-txn-mix-key pb-txn-mix-more" aria-expanded={allKeys}
+              // Only opens or closes the legend. The control moves when the
+              // list changes, so any hover is dropped with it: nothing
+              // may stay lit under (or after) the tap.
+              onClick={() => { setAllKeys((v) => !v); setHover(null); }}>
               {allKeys ? x.fewerCategories : t(x.moreCategories, { count: mix.length - 3 })}
             </button>
           </li>

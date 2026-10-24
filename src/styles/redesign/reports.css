@@ -192,22 +192,79 @@
   display: inline-flex; align-items: center; justify-content: center;
 }
 @media (pointer: coarse) { .pebble-root .pb-rep-find-clear { width: 44px; height: 44px; right: 0; } }
-/* A wide Mac: the Filters card becomes a sticky inspector on the right (the
-   app's nav already owns the left). Taller than the window, it scrolls on
-   its own; its padding gives the card's shadow room inside the scroll box.
-   filtersExpanded still opens and closes it, so the saved choice keeps its
-   meaning; closed, it is the one-line summary card. */
+/* A wide Mac: the grid is ALWAYS two columns, results | filter column, so
+   opening or closing the Filters card never moves anything to another place
+   in the page (it used to hop above the summary when closed and snap the
+   report to full width in one frame - owner-reported). Open, the right track
+   is a 20.5rem sticky inspector (the app's nav already owns the left). Closed,
+   the track narrows to a 2.75rem rail - the Filters button, with the count
+   of active filters - and the results widen into the freed space. Only that
+   one track animates; the card inside keeps its width (so its text never
+   re-wraps mid-way), fades and is clipped by the aside, and the rail fades
+   in over the same corner. filtersExpanded still opens and closes it, so the
+   saved choice keeps its meaning. Reduced motion: the global rule makes both
+   changes instant, ending on the same states.
+   Taller than the window, the open card scrolls on its own; the aside's
+   padding gives the card's shadow room inside the scroll box. */
+.pebble-root .pb-rep-rail { display: none; }
 @container content (min-width: 1040px) {
-  .pebble-root .pb-rep-grid.has-inspector {
-    display: grid; grid-template-columns: minmax(0, 1fr) 20.5rem; align-items: start; gap: 1.25rem;
+  .pebble-root .pb-rep-grid {
+    --pb-rep-side-w: 2.75rem;
+    display: grid; grid-template-columns: minmax(0, 1fr) var(--pb-rep-side-w); align-items: start; gap: 0 1.25rem;
+    transition: grid-template-columns var(--pb-dur-emph) var(--pb-ease-out);
   }
-  .pebble-root .has-inspector > .pb-rep-main { grid-column: 1; grid-row: 1; }
-  .pebble-root .has-inspector > .pb-rep-side-col {
+  .pebble-root .pb-rep-grid.has-inspector { --pb-rep-side-w: 20.5rem; }
+  .pebble-root .pb-rep-grid > .pb-rep-main { grid-column: 1; grid-row: 1; }
+  .pebble-root .pb-rep-grid > .pb-rep-side-col {
     grid-column: 2; grid-row: 1;
     position: sticky; top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) + 1rem);
     max-height: calc(100dvh - var(--pb-header-h) - var(--pb-rep-bar-h, 3.5rem) - 2rem);
-    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+    min-height: 10.5rem;
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
     margin: -0.5rem; padding: 0.5rem;
+  }
+  .pebble-root .pb-rep-side-card {
+    width: 20.5rem;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity var(--pb-dur-std) var(--pb-ease-out), visibility 0s linear var(--pb-dur-std);
+  }
+  .pebble-root .has-inspector .pb-rep-side-card {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity var(--pb-dur-std) var(--pb-ease-out), visibility 0s linear 0s;
+  }
+  .pebble-root .pb-rep-rail {
+    position: absolute; left: 0.5rem; top: 0.5rem; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+    box-sizing: border-box; width: 2.75rem; height: 9.5rem; padding: 0.75rem 0;
+    border: 1px solid var(--line); border-radius: 1.15rem; background-color: var(--mist); box-shadow: var(--shadow);
+    color: var(--ink); font: inherit; cursor: pointer;
+    opacity: 1; visibility: visible;
+    transition: opacity var(--pb-dur-std) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out), visibility 0s linear 0s;
+  }
+  .pebble-root .has-inspector .pb-rep-rail {
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity var(--pb-dur-std) var(--pb-ease-out), visibility 0s linear var(--pb-dur-std);
+  }
+  .pebble-root .pb-rep-rail svg { color: var(--ink-soft); flex: none; }
+  .pebble-root .pb-rep-rail-text {
+    /* sideways: the same quarter-turn for Latin and Chinese. With the default
+       mixed orientation upright CJK glyphs measured 1px tall in a flex column
+       (the label collapsed into a smear in zh). */
+    writing-mode: vertical-rl; text-orientation: sideways; flex: none;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .pebble-root .pb-rep-rail-count {
+    display: grid; place-items: center; flex: none; min-width: 1.4rem; height: 1.4rem; padding: 0 0.3rem; box-sizing: border-box;
+    border-radius: 999px; font-size: 0.72rem; font-weight: 700; line-height: 1;
+    background-color: color-mix(in srgb, var(--pine) 16%, transparent); color: var(--ink);
+    border: 1px solid color-mix(in srgb, var(--pine) 35%, transparent);
+  }
+  .pebble-root .pb-rep-rail:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+  /* Reduced motion: no transition at all (not a 0.01ms one), so the card's
+     visibility flips in the commit's own frame and a focus handoff (or the
+     f shortcut) never lands on a control that is still hidden. */
+  @media (prefers-reduced-motion: reduce) {
+    .pebble-root .pb-rep-grid, .pebble-root .pb-rep-grid .pb-rep-side-card, .pebble-root .pb-rep-grid .pb-rep-rail { transition: none; }
   }
   .pebble-root .has-inspector .pb-rep-filters { padding: 1.1rem 1.15rem; }
   /* The narrow column: a row's chips wrap onto a second line rather than
@@ -216,6 +273,7 @@
   .pebble-root .has-inspector .pb-rep-fs-chips > span { max-width: 100%; }
 }
 @media (hover: hover) and (pointer: fine) {
+  .pebble-root .pb-rep-rail:hover { border-color: color-mix(in srgb, var(--pine) 40%, var(--line)); }
   @container content (min-width: 1040px) {
     .pebble-root .has-inspector .pb-rep-keys {
       display: block; margin: 0.75rem 0.25rem 0; font-size: 0.7rem; line-height: 1.5; color: var(--ink-soft); text-align: center;
@@ -348,8 +406,6 @@
 .pebble-root .pb-rep-key.is-dashed { width: 14px; height: 2px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--ink-soft) 0 4px, transparent 4px 7px); }
 .pebble-root .pb-rep-chart { position: relative; height: 130px; min-width: 0; }
 @container content (min-width: 760px) { .pebble-root .pb-rep-chart { height: 180px; } }
-.pebble-root .pb-rep-chart.is-pickable .recharts-bar-rectangle { cursor: pointer; }
-.pebble-root .pb-rep-timeline-hint { margin: 0; font-size: 0.72rem; color: var(--ink-soft); }
 .pebble-root .pb-rep-tip {
   min-width: 10rem; padding: 0.55rem 0.75rem; display: flex; flex-direction: column; gap: 3px;
   background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: var(--shadow);
@@ -409,53 +465,102 @@
 .pebble-root .pb-rep-group > .pb-rep-side,
 .pebble-root .pb-rep-run > .pb-rep-side { background-color: transparent; }
 
-/* ---------- Rows: hover and focus ----------
-   OWNER-REPORTED: on a tinted row the theme hover (var(--paper), light green
-   in Original) all but vanished on green rows and turned red rows muddy.
-   A tinted row now deepens its OWN tint on hover - a stronger pine mix on
-   money in, a stronger wine mix on money out - and gains a crisp 3px accent
-   bar on its left edge in the same colour, so the hover is plain to see and
-   the in/out distinction holds while hovering, in light and dark and every
+/* ---------- Rows: hover, press and focus ----------
+   Hover is for a real mouse only (hover: hover and pointer: fine). On a phone
+   the browser keeps :hover on whatever was under the last touch point and
+   re-evaluates it when a scroll gesture ends, so a row the finger had left
+   lit up (the owner's "ghost hover on the row at the same screen position").
+   Touch gets a brief :active press tint instead, which iOS and Android drop
+   as soon as the touch becomes a scroll, and the global
+   .txn-row-interactive:hover paint is cancelled below for these rows.
+
+   OWNER-REPORTED (earlier): on a tinted row the theme hover (var(--paper),
+   light green in Original) all but vanished on green rows and turned red rows
+   muddy. A tinted row now deepens its OWN tint on hover - a stronger pine mix
+   on money in, a stronger wine mix on money out - and gains a crisp 3px
+   accent bar on its left edge in the same colour, in light and dark and every
    theme (all token mixes). Untinted rows (one type) keep the normal hover. */
-.pebble-root .pb-rep .pb-rep-tint-in .txn-row-interactive:hover,
-.pebble-root .pb-rep .pb-rep-tint-in > .pb-rep-cat:hover {
-  background-color: color-mix(in srgb, var(--pine) 12%, transparent);
-  box-shadow: inset 3px 0 0 var(--pine);
-}
-.pebble-root .pb-rep .pb-rep-tint-out .txn-row-interactive:hover,
-.pebble-root .pb-rep .pb-rep-tint-out > .pb-rep-cat:hover {
-  background-color: color-mix(in srgb, var(--wine) 12%, transparent);
-  box-shadow: inset 3px 0 0 var(--wine);
-}
 .pebble-root .pb-rep .txn-row-interactive {
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pebble-root .pb-rep .pb-rep-tint-in .txn-row-interactive:hover,
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-in:hover {
+    background-color: color-mix(in srgb, var(--pine) 13%, transparent);
+    box-shadow: inset 3px 0 0 var(--pine);
+  }
+  .pebble-root .pb-rep .pb-rep-tint-out .txn-row-interactive:hover,
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-out:hover {
+    background-color: color-mix(in srgb, var(--wine) 13%, transparent);
+    box-shadow: inset 3px 0 0 var(--wine);
+  }
+  /* Category headers are opaque (they stick), so their hover deepens an
+     opaque mix, never a see-through one. */
+  .pebble-root .pb-rep-period:not(.is-tinted) .pb-rep-cat:hover { background-color: color-mix(in srgb, var(--ink) 11%, var(--mist)); }
+  .pebble-root .pb-rep .pb-rep-tint-in > .pb-rep-cat:hover { background-color: color-mix(in srgb, var(--pine) 27%, var(--mist)); }
+  .pebble-root .pb-rep .pb-rep-tint-out > .pb-rep-cat:hover { background-color: color-mix(in srgb, var(--wine) 27%, var(--mist)); }
+}
+@media (hover: none), (pointer: coarse) {
+  /* Back to the resting paint: transparent over the group's band, or the
+     row's own band where it carries one. */
+  .pebble-root .pb-rep .txn-row-interactive:hover { background-color: transparent; }
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-in:hover { background-color: color-mix(in srgb, var(--pine) 9%, transparent); }
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-out:hover { background-color: color-mix(in srgb, var(--wine) 9%, transparent); }
+  .pebble-root .pb-rep .txn-row-interactive:active { background-color: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-in:active,
+  .pebble-root .pb-rep .pb-rep-tint-in .txn-row-interactive:active { background-color: color-mix(in srgb, var(--pine) 15%, transparent); }
+  .pebble-root .pb-rep .txn-row-interactive.pb-rep-tint-out:active,
+  .pebble-root .pb-rep .pb-rep-tint-out .txn-row-interactive:active { background-color: color-mix(in srgb, var(--wine) 15%, transparent); }
+  .pebble-root .pb-rep-period:not(.is-tinted) .pb-rep-cat:active { background-color: color-mix(in srgb, var(--ink) 11%, var(--mist)); }
+  .pebble-root .pb-rep .pb-rep-tint-in > .pb-rep-cat:active { background-color: color-mix(in srgb, var(--pine) 27%, var(--mist)); }
+  .pebble-root .pb-rep .pb-rep-tint-out > .pb-rep-cat:active { background-color: color-mix(in srgb, var(--wine) 27%, var(--mist)); }
 }
 .pebble-root .pb-rep .txn-row-interactive:focus-visible,
 .pebble-root .pb-rep .pb-rep-cat:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.6rem; }
 
-/* ---------- Category rows ---------- */
+/* ---------- Category rows ----------
+   The group header must read as a TITLE, never as one more transaction
+   (owner-reported: with many groups open the two blurred together). So it is
+   heavier in every way: a solid band (opaque, ~2.5x the rows' tint: pine
+   family for money in, wine family for money out, an ink wash on a single
+   type), a 4px accent bar on its left edge, a 40px tile and bold name; the
+   transactions beneath sit lighter, inset on a rail (see .pb-rep-nested).
+   It is also sticky: the title stays under the toolbar (and the period
+   title, when there is one) while its own rows scroll past, and the next
+   group's title pushes it away because it sticks only inside its own
+   .pb-rep-group. Money in / Money out labels are NOT sticky - they scroll
+   away with their first group - so there is exactly one extra level of
+   sticky and nothing to stack confusingly. z 2 < period title 3 < toolbar 5. */
+.pebble-root .pb-rep-group { --pb-rep-pad: 1.5rem; }
 .pebble-root .pb-rep-cat {
+  position: sticky; top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) - 1px + var(--pb-rep-ph)); z-index: 2;
   display: grid; align-items: center; column-gap: 0.85rem;
-  grid-template-columns: 36px minmax(0, 1fr) auto 16px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 16px;
   grid-template-areas: "tile text total chev";
-  min-height: 3.6rem; padding: 0.7rem 1.5rem; cursor: pointer; color: var(--ink);
+  min-height: 3.9rem; padding: 0.7rem var(--pb-rep-pad); cursor: pointer; color: var(--ink);
+  background-color: color-mix(in srgb, var(--ink) 6%, var(--mist));
+  box-shadow: inset 0 1px 0 var(--line);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
 }
-.pebble-root .pb-rep-period:not(.is-tinted) .pb-rep-cat:hover { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
-.pebble-root .pb-rep-group + .pb-rep-group > .pb-rep-cat { box-shadow: inset 0 1px 0 var(--line); }
-.pebble-root .pb-rep-period.is-tinted .pb-rep-group + .pb-rep-group > .pb-rep-cat { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--line) 60%, transparent); }
-.pebble-root .pb-rep .pb-rep-group + .pb-rep-group.pb-rep-tint-in > .pb-rep-cat:hover { box-shadow: inset 3px 0 0 var(--pine); }
-.pebble-root .pb-rep .pb-rep-group + .pb-rep-group.pb-rep-tint-out > .pb-rep-cat:hover { box-shadow: inset 3px 0 0 var(--wine); }
+.pebble-root .pb-rep-cat[aria-expanded="true"] { box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+.pebble-root .pb-rep-cat::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; pointer-events: none;
+  background-color: var(--wine);
+}
+.pebble-root .pb-rep-group[data-side="in"] > .pb-rep-cat::before { background-color: var(--pine); }
+.pebble-root .pb-rep-tint-in > .pb-rep-cat { background-color: color-mix(in srgb, var(--pine) 19%, var(--mist)); }
+.pebble-root .pb-rep-tint-out > .pb-rep-cat { background-color: color-mix(in srgb, var(--wine) 19%, var(--mist)); }
 .pebble-root .pb-rep-cat-tile {
-  grid-area: tile; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 0.65rem;
-  color: var(--pb-rep-cat); background-color: color-mix(in srgb, var(--pb-rep-cat) 13%, transparent);
+  grid-area: tile; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 0.75rem;
+  color: var(--pb-rep-cat); background-color: color-mix(in srgb, var(--pb-rep-cat) 24%, var(--mist));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pb-rep-cat) 28%, transparent);
 }
 .pebble-root .pb-rep-cat-text { grid-area: text; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pebble-root .pb-rep-cat-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-rep-cat-name { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pebble-root .pb-rep-cat-meta { font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pebble-root .pb-rep-cat-bar {
   display: block; height: 4px; border-radius: 999px; overflow: hidden; margin-top: 4px;
-  background-color: color-mix(in srgb, var(--pb-rep-cat) 13%, transparent);
+  background-color: color-mix(in srgb, var(--pb-rep-cat) 18%, transparent);
 }
 .pebble-root .pb-rep-cat-bar > i {
   display: block; height: 100%; border-radius: inherit; transform-origin: left;
@@ -463,15 +568,32 @@
   transition: transform var(--pb-dur-emph) var(--pb-ease-out);
 }
 .pebble-root .pb-rep-cat-count, .pebble-root .pb-rep-cat-share, .pebble-root .pb-rep-cat-trend { display: none; }
-.pebble-root .pb-rep-cat-total { grid-area: total; font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-rep-cat-total { grid-area: total; font-size: 0.96rem; font-weight: 700; white-space: nowrap; }
 .pebble-root .pb-rep-cat-chev {
   grid-area: chev; color: var(--ink-soft);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .pebble-root .pb-rep-cat[aria-expanded="true"] .pb-rep-cat-chev { transform: rotate(90deg); }
 @container pb-rep-card (max-width: 479.98px) {
-  .pebble-root .pb-rep-cat { padding-inline: 1.1rem; column-gap: 0.7rem; }
+  .pebble-root .pb-rep-group { --pb-rep-pad: 1.1rem; }
+  .pebble-root .pb-rep-cat { column-gap: 0.7rem; }
   .pebble-root .pb-rep-side { padding-inline: 1.1rem; }
+}
+/* Transactions under a header: lighter and inset. A rail runs down from the
+   header's tile centre, and the rows start right of it with a smaller tile,
+   so parent and children can never be mistaken for one another. */
+.pebble-root .pb-rep-nested { position: relative; }
+.pebble-root .pb-rep-nested::before {
+  content: ''; position: absolute; left: calc(var(--pb-rep-pad) + 19px); top: 0; bottom: 0.5rem; width: 2px; border-radius: 2px;
+  background-color: color-mix(in srgb, var(--wine) 38%, transparent); pointer-events: none;
+}
+.pebble-root .pb-rep-group[data-side="in"] .pb-rep-nested::before { background-color: color-mix(in srgb, var(--pine) 38%, transparent); }
+.pebble-root .pb-rep-group .pb-rep-nested .pb-rep-row {
+  padding-left: calc(var(--pb-rep-pad) + 2.6rem) !important; padding-block: 0.65rem !important;
+  scroll-margin-top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) + var(--pb-rep-ph) + 4.6rem);
+}
+.pebble-root .pb-rep-group .pb-rep-nested .pb-rep-row > div:first-child {
+  width: 30px !important; height: 30px !important; border-radius: 0.55rem !important;
 }
 
 /* Column headings (wide cards only). Category and Total sort the report:
@@ -480,7 +602,7 @@
 @container pb-rep-card (min-width: 720px) {
   .pebble-root .pb-rep-cat,
   .pebble-root .pb-rep-thead {
-    grid-template-columns: 36px minmax(8rem, 1fr) 4rem 8rem 5.5rem 7rem 16px;
+    grid-template-columns: 40px minmax(8rem, 1fr) 4rem 8rem 5.5rem 7rem 16px;
     grid-template-areas: "tile text count share trend total chev";
     column-gap: 1rem;
   }
@@ -508,20 +630,11 @@
   .pebble-root .pb-rep-cat-share > .pb-tnum { width: 2.4rem; text-align: right; flex: none; }
   .pebble-root .pb-rep-cat-trend { display: block; grid-area: trend; min-width: 0; }
   .pebble-root .pb-rep-cat-total { text-align: right; }
-  /* Rows under a category sit indented on a hairline guide, so the
-     hierarchy reads. */
-  .pebble-root .pb-rep-nested { position: relative; }
-  .pebble-root .pb-rep-nested::before {
-    content: ''; position: absolute; left: calc(1.5rem + 18px); top: 0; bottom: 0.6rem; width: 1px;
-    background-color: var(--line); pointer-events: none;
-  }
-  .pebble-root .pb-rep-nested .pb-rep-row { padding-left: 3.25rem !important; }
 }
 .pebble-root .pb-rep-nested .pb-rep-row:last-child { border-bottom: 0 !important; }
-.pebble-root .pb-rep-group > .collapsible-rows.expanded { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--line) 70%, transparent); }
 
 /* ---------- Ungrouped lists: day sections, ranked view ---------- */
-.pebble-root .pb-rep-day { position: relative; scroll-margin-top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) + var(--pb-rep-ph) + 0.5rem); }
+.pebble-root .pb-rep-day .pb-rep-row { scroll-margin-top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) + var(--pb-rep-ph) + 2.6rem); }
 .pebble-root .pb-rep-day-head {
   position: sticky; top: calc(var(--pb-header-h) + var(--pb-rep-bar-h, 3.5rem) - 1px + var(--pb-rep-ph)); z-index: 2;
   display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
@@ -533,17 +646,7 @@
 .pebble-root .pb-rep-day-head .font-mono-tab { font-weight: 600; color: var(--ink); }
 .pebble-root .pb-rep-day-head .font-mono-tab.is-in { color: var(--pine); }
 .pebble-root .pb-rep-day-head .font-mono-tab.is-out { color: var(--wine); }
-/* Over a tint band the sticky head stays opaque but carries the band. */
-.pebble-root .pb-rep-tint-in .pb-rep-day-head { background-color: color-mix(in srgb, var(--pine) 9%, var(--mist)); }
-.pebble-root .pb-rep-tint-out .pb-rep-day-head { background-color: color-mix(in srgb, var(--wine) 9%, var(--mist)); }
 @container pb-rep-card (max-width: 479.98px) { .pebble-root .pb-rep-day-head { padding-inline: 1.1rem; } }
-/* Picked from the chart: one soft wash, fading out. */
-.pebble-root .pb-rep-pulse::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-color: color-mix(in srgb, var(--gold) 16%, transparent);
-  opacity: 0; animation: pb-rep-wash 1.8s var(--pb-ease-out);
-}
-@keyframes pb-rep-wash { 0%, 25% { opacity: 1; } 100% { opacity: 0; } }
 .pebble-root .pb-rep-ranked-title {
   margin: 0; padding: 0.8rem 1.5rem 0.35rem;
   font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);

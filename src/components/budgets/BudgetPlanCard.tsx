@@ -104,7 +104,9 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       : '';
   }
   const left = totalBudget - totalSpent;
-  const overall = totalSpent > totalBudget;
+  // "Over" only means something against a budget: with none set (a new
+  // account), spending is not an overspend and Left is not a deficit.
+  const overall = totalBudget > 0 && totalSpent > totalBudget;
   // The pill's tone: wine only once spending passes the budgets AND the
   // label says Over pace, so icon, colour and word always agree.
   const overBudget = pace !== null && overall && totalBudget > 0;
@@ -127,7 +129,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       note: monthsGone !== null && monthsGone > 0 && totalSpent > 0 ? t(ux.avgMonthly, { amount: formatCurrency(totalSpent / monthsGone) }) : '',
     },
     {
-      key: 'left', label: d.budgetPlan.left, value: formatCurrency(left), color: left < 0 ? 'var(--wine)' : 'var(--ink)', icon: PiggyBank, tone: 'var(--gold)',
+      key: 'left', label: d.budgetPlan.left, value: totalBudget > 0 ? formatCurrency(left) : '—', color: left < 0 && totalBudget > 0 ? 'var(--wine)' : 'var(--ink)', icon: PiggyBank, tone: 'var(--gold)',
       note: monthsLeft !== null && monthsLeft >= 0.5 && left > 0 ? t(ux.leftPerMonth, { amount: formatCurrency(left / monthsLeft) }) : '',
     },
     { key: 'pace', label: d.budgetPlan.pace, value: paceLabel, color: 'var(--ink)', icon: Gauge, tone: 'var(--ink-soft)', note: paceNote },
@@ -172,7 +174,10 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       <div className="pb-plan-body">
         {incomeControl}
         {rows.length === 0 ? (
-          <p className="pb-plan-caption" style={{ margin: 0 }}>{d.budgetPlan.noBudgets}</p>
+          <p className="pb-bud-needs">
+            <PiggyBank size={16} aria-hidden="true" />
+            <span>{ux.ribbonNeeds}</span>
+          </p>
         ) : (
           <>
             <div className={`pb-plan-barwrap${hover ? ' has-active' : ''}`}>

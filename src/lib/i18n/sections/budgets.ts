@@ -45,6 +45,15 @@ export const budgetsEn = {
   endOf: 'End of {month}',
   aboutMonthly: 'about {amount} a month',
 
+  // Placeholders: a new account still sees every card, with what it needs.
+  forecastNeedsBudget: 'Set a budget to see where the year is heading.',
+  ribbonNeeds: 'Set at least one budget to see how your income is split between your budgets and savings.',
+  incomeNeeds: 'Needs one finished month of recorded transactions to estimate. Add your income, or switch to Manual.',
+  rowsEmptyTitle: 'No category budgets yet',
+  rowsEmptyBody: 'Give a category a yearly budget and it shows up here with its pace through the year. Pick one from the list below.',
+  unbEmptyTitle: 'Nothing is going untracked',
+  unbEmptyBody: 'Spending in a category that has no budget will be listed here, so nothing slips by.',
+
   // Spending without a budget
   unbSummaryOne: '1 category, {amount} without a budget this year',
   unbSummaryOther: '{count} categories, {amount} without a budget this year',
@@ -82,6 +91,14 @@ export const budgetsZh: typeof budgetsEn = {
   cumulativeLabel: '{name}，{year} 年累计支出',
   endOf: '{month}底',
   aboutMonthly: '约每月 {amount}',
+
+  forecastNeedsBudget: '设置预算后，这里会预测全年的走向。',
+  ribbonNeeds: '至少设置一项预算后，这里会展示收入如何分配到各项预算和储蓄。',
+  incomeNeeds: '需要至少一个已结束月份的记录才能估算。可以先记下你的收入，或切换到“手动”。',
+  rowsEmptyTitle: '还没有分类预算',
+  rowsEmptyBody: '给某个类别设一个年度预算，它就会连同全年的进度出现在这里。可以从下方的列表中选一个。',
+  unbEmptyTitle: '没有遗漏的支出',
+  unbEmptyBody: '如果某个类别有支出却没设预算，会列在这里，避免遗漏。',
 
   unbSummaryOne: '今年有 1 个类别未设预算，共支出 {amount}',
   unbSummaryOther: '今年有 {count} 个类别未设预算，共支出 {amount}',

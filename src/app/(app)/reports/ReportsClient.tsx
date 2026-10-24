@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
@@ -18,7 +19,7 @@ import { ReportSummary, type ReportDelta, type ShareSlice } from '@/components/r
 import { ReportTimeline } from '@/components/reports/ReportTimeline';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { previousWindow, resolvePeriodBounds, shiftCustomRange, stepPeriod, diffDays, type Bounds } from '@/components/reports/periodBounds';
-import { buildReportBuckets, type ReportBucket } from '@/components/reports/reportBuckets';
+import { buildReportBuckets } from '@/components/reports/reportBuckets';
 import { categoryMonthlySeries } from '@/components/reports/categorySeries';
 import { buildReportCsv, downloadCsv } from '@/components/reports/ReportExport';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
@@ -518,13 +519,14 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   //
   // The key comparison is a stable tiebreak: without it, two groups with equal
   // totals could swap places between renders.
-  // Income always comes before expenses inside each period, whatever the sort
-  // or the grouping: with category groups the income categories lead, and with
-  // no grouping the income rows lead. Only the order BETWEEN the two kinds is
-  // fixed; the chosen sort still orders everything within each kind. Periods
-  // themselves keep the chosen order, so a month never jumps ahead of another.
+  // Category groups: the income categories lead, then the expense ones (the
+  // Money in / Money out split), whatever the sort. Only the order BETWEEN
+  // the two kinds is fixed; the chosen sort still orders everything within
+  // each kind. Ungrouped (Group by: None) rows are NOT split by type: income
+  // and expenses mix in one list under the chosen sort, each row carrying its
+  // own in/out tint. Periods keep the chosen order, so a month never jumps
+  // ahead of another.
   const catRank = (cat: string) => (incomeCats.includes(cat) ? 0 : 1);
-  const typeRank = (t: Transaction) => (isExpense(t) ? 1 : 0);
   const periodGroups: ReportPeriodGroup[] = [...periodBuckets.entries()]
     .map(([key, v]) => {
       const total = v.items.reduce((s, t) => s + amt(t), 0);
@@ -544,7 +546,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             ) || a.key.localeCompare(b.key));
         return { key, label: v.label, sortKey: v.sortKey, total, subGroups };
       }
-      return { key, label: v.label, sortKey: v.sortKey, total, items: [...v.items].sort((a, b) => (typeRank(a) - typeRank(b)) || sortFn(a, b)) };
+      return { key, label: v.label, sortKey: v.sortKey, total, items: [...v.items].sort(sortFn) };
     })
     .sort((a, b) =>
       directed(
@@ -696,27 +698,6 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
   // Timeline chart over the bounds.
   const timeline = bounds && periodFiltered.length > 0 ? buildReportBuckets(periodFiltered, bounds, today) : null;
-  const hasDaySections = categoryGroup === 'none' && sortField === 'date';
-  const pickMonth = timeline?.granularity === 'month';
-  const canPick = !!timeline && (pickMonth || hasDaySections);
-  const onPickBucket = (b: ReportBucket) => {
-    if (pickMonth) {
-      // Drill down: open that month, through the same setters as the selects.
-      setPeriodGroup('month');
-      setSubPeriod(MONTH_NAMES[Number(b.startYmd.slice(5, 7)) - 1]);
-      setSubYear(b.startYmd.slice(0, 4));
-      return;
-    }
-    const days = Array.from(document.querySelectorAll<HTMLElement>('[data-rep-day]'));
-    const hit = days.find((el) => (el.dataset.repDay ?? '') >= b.startYmd && (el.dataset.repDay ?? '') <= b.endYmd);
-    if (!hit) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    hit.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
-    hit.classList.remove('pb-rep-pulse');
-    void hit.offsetWidth;
-    hit.classList.add('pb-rep-pulse');
-    window.setTimeout(() => hit.classList.remove('pb-rep-pulse'), 1900);
-  };
   const timelineMode = mixed ? 'mixed' : includeExpense ? 'expense' : 'income';
 
   // Category trends: 12 months ending with the report's end (or today).
@@ -885,10 +866,16 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       e.preventDefault();
       setFiltersExpanded(true);
       setFindExpanded(true);
-      // After the panel and section have opened (they are inert while closed).
-      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-        document.querySelector<HTMLInputElement>('.pb-rep-find-input')?.focus();
-      }));
+      // After the panel and section have opened (they are inert while closed,
+      // and the card is visibility:hidden until the swap lands), so retry per
+      // frame until the field takes focus.
+      let tries = 0;
+      const focusFind = () => {
+        const input = document.querySelector<HTMLInputElement>('.pb-rep-find-input');
+        input?.focus();
+        if (document.activeElement !== input && ++tries < 12) window.requestAnimationFrame(focusFind);
+      };
+      window.requestAnimationFrame(() => window.requestAnimationFrame(focusFind));
     } else if (k === 'e') {
       if (categoryGroup !== 'category' || allGroupKeys.length === 0) return;
       e.preventDefault();
@@ -926,6 +913,30 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     return () => ro.disconnect();
   }, [ready]);
 
+  // Open or close the Filters card. On a wide screen the card (or the rail,
+  // whichever was hidden) takes focus after the swap, so a keyboard user is
+  // not left on a control that just went invisible; elsewhere the card header
+  // stays where it was and nothing moves focus.
+  const railRef = useRef<HTMLButtonElement>(null);
+  const toggleFilters = () => {
+    const opening = !filtersExpanded;
+    setFiltersExpanded(opening);
+    const rail = railRef.current;
+    if (!rail || rail.offsetParent === null) return;
+    // The swapped-in control only becomes focusable once its visibility has
+    // flipped, which can take a few frames after the commit (even with reduced
+    // motion, where the change is instant but still lands on a later frame),
+    // so retry per frame until it takes focus.
+    const target = () => (opening ? pageRef.current?.querySelector<HTMLElement>('.pb-rep-filters > button') : rail);
+    let tries = 0;
+    const focusIt = () => {
+      const el = target();
+      el?.focus({ preventScroll: true });
+      if (el && document.activeElement !== el && ++tries < 12) window.requestAnimationFrame(focusIt);
+    };
+    window.requestAnimationFrame(focusIt);
+  };
+
   // First frame: the saved filters and the zone-aware date are not known yet.
   // The report's outline instead of the whole unfiltered history (which used
   // to paint and then snap to the real view).
@@ -959,15 +970,32 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
       <ReportFilterChips chips={chips} onClearAll={clearAllFilters} summary={filterSummary} />
 
-      {/* The Filters card comes first in the DOM: on a phone (and on a Mac
-          while it is closed) it sits above the summary as it always did. Open
-          on a wide Mac, the grid moves it into a sticky inspector column on
-          the right, beside the report instead of pushing it down. */}
+      {/* The Filters card comes first in the DOM, so on a phone (and any
+          narrow column) it sits above the summary as it always did. On a wide
+          Mac the SAME grid and the SAME aside stay in place whether the card
+          is open or not: open, the right-hand track is the sticky inspector;
+          closed, the track narrows to a slim rail (the Filters button with
+          the active count) while the report widens into the freed space. One
+          track animates and nothing remounts or moves, so collapsing no
+          longer throws the card above the summary and stretches everything
+          in a single frame (owner-reported). */}
       <div className={`pb-rep-grid${filtersExpanded ? ' has-inspector' : ''}`}>
         <aside className="pb-rep-side-col">
+          {/* Wide screens only (reports.css): the collapsed state of the card. */}
+          <button
+            type="button" ref={railRef} className="pb-rep-rail" onClick={() => toggleFilters()}
+            aria-expanded={filtersExpanded} aria-label={chips.length > 0 ? `${dict.reports.filters} (${chips.length})` : dict.reports.filters}
+          >
+            <SlidersHorizontal size={18} aria-hidden="true" />
+            {chips.length > 0 && <span className="pb-rep-rail-count pb-tnum" aria-hidden="true">{chips.length}</span>}
+            <span className="pb-rep-rail-text" aria-hidden="true">{dict.reports.filters}</span>
+          </button>
+          {/* Fixed width on a wide screen, so the card never re-wraps while the
+              track animates under it; it is just clipped and faded. */}
+          <div className="pb-rep-side-card">
           <ReportFilters
             expanded={filtersExpanded}
-            onToggleExpanded={() => setFiltersExpanded((v) => !v)}
+            onToggleExpanded={() => toggleFilters()}
             filterSummary={filterSummary}
             selectedTypes={selectedTypes}
             onToggleType={toggleType}
@@ -1027,6 +1055,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             onClearTags={() => setSelectedTags(new Set())}
           />
           <p className="pb-rep-keys" aria-hidden="true">{ux.shortcutsHint}</p>
+          </div>
         </aside>
 
         {/* Keyed on the period: a period change cross-fades the content
@@ -1061,9 +1090,6 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
                   buckets={timeline.buckets}
                   granularity={timeline.granularity}
                   mode={timelineMode}
-                  canPick={canPick}
-                  onPick={onPickBucket}
-                  hint={canPick ? (pickMonth ? ux.drillMonth : ux.drillDay) : null}
                   label={tr(ux.chartLabel, {
                     type: typePart,
                     granularity: timeline.granularity === 'day' ? ux.byDay : timeline.granularity === 'week' ? ux.byWeek : ux.byMonth,

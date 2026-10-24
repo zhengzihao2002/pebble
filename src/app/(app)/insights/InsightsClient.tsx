@@ -42,9 +42,13 @@ const rise = (i: number) => ({ ['--pb-i' as string]: i }) as CSSProperties;
  * The Insights page, attention first. One grid whose DOM order is the phone
  * order - savings hero, what needs attention, month pace, calendar, week,
  * category movers, top places, good news - placed by content width
- * (insights.css): pairs from 640px, and from 1100px a 12-column bento with
- * the attention list as a sticky rail beside the hero and calendar. A row of
- * jump chips stays under the header.
+ * (insights.css): pairs from 560px, and from 1100px a 12-column grid of
+ * balanced pairs under the full-width hero and attention cards. Nothing is
+ * sticky but the jump chips under the header.
+ *
+ * Every section always renders: with too little data a card says what it
+ * needs (a new account sees the same page as a loaded one). Only the
+ * individual notes inside Worth knowing / Good news come and go.
  *
  * The notes (Worth knowing) are computed once here and shown in two places
  * by group; their PayOff dialog moved up here with them.
@@ -87,7 +91,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
     { id: SECTION_IDS.week, label: ux.sectionWeek },
     { id: SECTION_IDS.trends, label: ux.sectionTrends },
     { id: SECTION_IDS.places, label: ux.sectionPlaces },
-    ...(good.length > 0 ? [{ id: SECTION_IDS.good, label: ux.sectionGood }] : []),
+    { id: SECTION_IDS.good, label: ux.sectionGood },
   ];
 
   return (
@@ -115,11 +119,9 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
         <div id={SECTION_IDS.places} className="pb-ins-area pb-ins-area-places pb-rise" style={rise(6)}>
           <TopPlaces transactions={transactions} today={today} categoryMeta={categoryMeta} onOpen={setSelected} />
         </div>
-        {good.length > 0 && (
-          <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
-            <GoodNews items={good} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
-          </div>
-        )}
+        <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
+          <GoodNews items={good} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
+        </div>
       </div>
       {selected && (
         <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
