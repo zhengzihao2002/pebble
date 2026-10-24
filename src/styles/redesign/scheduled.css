@@ -1,1 +1,347 @@
-/* Redesign: scheduled. Loaded after globals.css and kit.css (src/app/layout.tsx). */
+/* Redesign: scheduled. Loaded after globals.css and kit.css (src/app/layout.tsx).
+
+   Every rule is scoped under .pebble-root and a class this area owns
+   (.pb-sched-*). Shared classes reused here (.card, .icon-btn, .link-btn,
+   .btn-primary, .pb-kind-switch, the kit) only change inside those classes.
+   Theme tokens only, so all five palettes in light and dark follow, and no
+   rule swaps a look between a light and a dark selector (every token fades
+   with the theme). Page layout uses container queries on `content` (the
+   main column); the calendar months, the schedule list and the rule dialog
+   declare their own containers. */
+
+/* ---------- Page ---------- */
+.pebble-root .pb-sched { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.pebble-root .pb-sched > * { min-width: 0; }
+.pebble-root .pb-sched-card {
+  display: flex; flex-direction: column; gap: 0.9rem; min-width: 0;
+  padding: 1.25rem 1.5rem; box-sizing: border-box;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-card { padding: 1.1rem; }
+}
+.pebble-root .pb-sched .pb-sec-head-sub { margin-top: 0.25rem; line-height: 1.45; }
+
+/* Coming up and the schedules: stacked, side by side on a wide column. */
+.pebble-root .pb-sched-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; min-width: 0; }
+.pebble-root .pb-sched-cols.is-empty .pb-sched-rules { order: -1; }
+@container content (min-width: 1000px) {
+  .pebble-root .pb-sched-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); }
+}
+
+/* Shared row pieces. */
+.pebble-root .pb-sched-row-title { display: block; min-width: 0; font-size: 0.88rem; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-sched-row-sub { display: block; min-width: 0; margin-top: 0.1rem; font-size: 0.75rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-sched-row-amt { flex: none; font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-sched-quiet { margin: 0; font-size: 0.82rem; color: var(--ink-soft); }
+
+/* Kind marks: an arrow on a soft tint - pine in, wine out. Shape and
+   direction say it as well as the colour does. */
+.pebble-root .pb-sched-tile,
+.pebble-root .pb-sched-chip {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 0.65rem;
+}
+.pebble-root .pb-sched-tile.is-in, .pebble-root .pb-sched-chip.is-in { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
+.pebble-root .pb-sched-tile.is-out, .pebble-root .pb-sched-chip.is-out { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 11%, transparent); }
+
+/* ---------- Summary hero ---------- */
+.pebble-root .pb-sched-hero {
+  display: flex; flex-direction: column; gap: 1.15rem; min-width: 0;
+  padding: 1.25rem 1.5rem 1.3rem; box-sizing: border-box;
+  /* A faint pine glow from the top left - tokens only, so it fades with the theme. */
+  background:
+    radial-gradient(90% 140% at 0% 0%, color-mix(in srgb, var(--pine) 7%, transparent), transparent 60%),
+    var(--mist);
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-hero { padding: 1.1rem; gap: 1rem; }
+}
+.pebble-root .pb-sched-hero-title { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-sched-hero-top {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem 2.25rem; align-items: stretch; min-width: 0;
+}
+@container content (min-width: 700px) {
+  .pebble-root .pb-sched-hero-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+}
+.pebble-root .pb-sched-hero-main { min-width: 0; display: flex; flex-direction: column; }
+.pebble-root .pb-sched-hero-label { margin: 0 0 0.25rem; font-size: var(--pb-text-sm, 0.82rem); font-weight: 500; color: var(--ink-soft); }
+.pebble-root .pb-sched-hero-num {
+  margin: 0; font-size: 2.6rem; line-height: 1.05; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); white-space: nowrap;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-hero-num { font-size: 2.2rem; }
+}
+.pebble-root .pb-sched-hero-split {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1rem 0 0; min-width: 0;
+}
+.pebble-root .pb-sched-hero-cell { min-width: 0; padding: 0 1rem; container-type: inline-size; }
+.pebble-root .pb-sched-hero-cell:first-child { padding-left: 0; }
+.pebble-root .pb-sched-hero-cell + .pb-sched-hero-cell { border-left: 1px solid var(--line); }
+.pebble-root .pb-sched-hero-cell dt {
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: 0.78rem; color: var(--ink-soft); line-height: 1.3;
+}
+.pebble-root .pb-sched-hero-cell dd { margin: 0; font-size: min(1.2rem, 12cqi); font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-sched-kind-dot {
+  flex: none; display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%;
+}
+.pebble-root .pb-sched-kind-dot.is-in { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, transparent); }
+.pebble-root .pb-sched-kind-dot.is-out { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 13%, transparent); }
+
+/* The running net across the window, on a soft band. */
+.pebble-root .pb-sched-hero-trend {
+  display: flex; flex-direction: column; justify-content: space-between; gap: 0.5rem; min-width: 0;
+  padding: 0.85rem 1rem 0.7rem; border-radius: 0.95rem;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+.pebble-root .pb-sched-hero-trend-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+  font-size: 0.78rem; color: var(--ink-soft);
+}
+.pebble-root .pb-sched-hero-trend-head .font-mono-tab { font-size: 0.95rem; font-weight: 600; white-space: nowrap; }
+
+/* Next up: one line under a hairline. */
+.pebble-root .pb-sched-hero-next {
+  display: flex; align-items: center; gap: 0.65rem; min-width: 0;
+  padding-top: 0.95rem; border-top: 1px solid var(--line); font-size: 0.84rem;
+}
+.pebble-root .pb-sched-hero-next-tag {
+  flex: none; display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.18rem 0.55rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent);
+}
+.pebble-root .pb-sched-hero-next-title { flex: 0 1 auto; min-width: 0; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-sched-hero-next-when { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-sched-hero-next-amt { flex: none; font-weight: 600; white-space: nowrap; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-hero-next { flex-wrap: wrap; row-gap: 0.4rem; }
+  .pebble-root .pb-sched-hero-next-title { flex: 1 1 0; }
+  .pebble-root .pb-sched-hero-next-when { order: 3; flex-basis: 100%; padding-left: 0.1rem; font-size: 0.78rem; }
+}
+
+/* ---------- Calendar ---------- */
+.pebble-root .pb-sched-cal-fold { display: none; width: 36px; height: 36px; border-radius: 0.6rem; }
+.pebble-root .pb-sched-cal-fold svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
+.pebble-root .pb-sched-cal.is-closed .pb-sched-cal-fold svg { transform: rotate(-90deg); }
+.pebble-root .pb-sched-cal-body { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+.pebble-root .pb-sched-cal-pager { display: none; }
+.pebble-root .pb-sched-months {
+  display: grid; grid-template-columns: repeat(var(--pb-months, 3), minmax(0, 1fr)); gap: 1.75rem; min-width: 0;
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-sched-cal-fold { display: inline-grid; place-items: center; }
+  .pebble-root .pb-sched-cal.is-closed .pb-sched-cal-body { display: none; }
+  .pebble-root .pb-sched-cal.is-closed { gap: 0; }
+  .pebble-root .pb-sched-cal-pager {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    font-size: 0.86rem; font-weight: 600; color: var(--ink);
+  }
+  .pebble-root .pb-sched-cal-pager .icon-btn { width: 36px; height: 36px; border-radius: 0.6rem; }
+  .pebble-root .pb-sched-months { grid-template-columns: minmax(0, 1fr); }
+  .pebble-root .pb-sched-month:not(.is-page) { display: none; }
+  .pebble-root .pb-sched-month-name { display: none; }
+}
+.pebble-root .pb-sched-month { min-width: 0; container: pb-sched-month / inline-size; }
+.pebble-root .pb-sched-month-name { margin: 0 0 0.5rem; font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+.pebble-root .pb-sched-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.pebble-root .pb-sched-wd { padding-bottom: 0.25rem; text-align: center; font-size: 0.68rem; font-weight: 600; color: var(--ink-faint); }
+.pebble-root .pb-sched-day {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.2rem;
+  min-width: 0; min-height: 2.75rem; padding: 0.32rem 0 0.25rem; box-sizing: border-box;
+  border: 0; border-radius: 0.6rem; background: transparent; color: var(--ink);
+  font: inherit; font-size: 0.78rem; line-height: 1;
+}
+.pebble-root .pb-sched-day.has-items { background-color: color-mix(in srgb, var(--ink) 4.5%, transparent); }
+.pebble-root button.pb-sched-day { cursor: pointer; transition: background-color var(--pb-dur-micro) var(--pb-ease-out); }
+@media (hover: hover) {
+  .pebble-root button.pb-sched-day:hover { background-color: color-mix(in srgb, var(--ink) 9%, transparent); }
+}
+.pebble-root button.pb-sched-day:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
+.pebble-root .pb-sched-day.is-today { box-shadow: inset 0 0 0 1.5px var(--pine); }
+.pebble-root .pb-sched-day.is-today .pb-sched-day-n { color: var(--pine); font-weight: 700; }
+.pebble-root .pb-sched-day.is-out-of-range { opacity: 0.35; }
+.pebble-root .pb-sched-day-n { font-weight: 500; }
+.pebble-root .pb-sched-day-dots { display: flex; align-items: center; gap: 2px; min-height: 6px; }
+.pebble-root .pb-sched-day-dots i,
+.pebble-root .pb-sched-cal-legend i { display: block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.pebble-root .pb-sched-day-dots .is-in, .pebble-root .pb-sched-cal-legend .is-in { background-color: var(--pine); }
+.pebble-root .pb-sched-day-dots .is-out, .pebble-root .pb-sched-cal-legend .is-out { background-color: var(--wine); }
+.pebble-root .pb-sched-day-dots b { font-size: 0.56rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-sched-day-net { display: none; font-size: 0.58rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+@container pb-sched-month (min-width: 290px) {
+  .pebble-root .pb-sched-day { min-height: 3.35rem; }
+  .pebble-root .pb-sched-day-net { display: block; }
+}
+.pebble-root .pb-sched-cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-cal-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-sched-cal-legend .is-today { width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--pine); }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-day { min-height: 44px; }
+}
+
+/* ---------- Coming up ---------- */
+.pebble-root .pb-sched-hint { display: flex; gap: 0.4rem; margin: -0.2rem 0 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-sched-hint svg { flex: none; margin-top: 0.15rem; }
+.pebble-root .pb-sched-agenda { display: flex; flex-direction: column; min-width: 0; }
+.pebble-root .pb-sched-agenda-month + .pb-sched-agenda-month { margin-top: 0.9rem; }
+.pebble-root .pb-sched-month-divider {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.1rem 0 0.45rem; font-size: 0.8rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-sched-month-tot { display: inline-flex; gap: 0.7rem; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-sched-day-group { scroll-margin-top: calc(var(--pb-header-h) + 0.75rem); }
+.pebble-root .pb-sched-day-group + .pb-sched-day-group { margin-top: 0.45rem; }
+/* Day headers stick under the glass header while their rows scroll.
+   Opaque (a tint mixed INTO mist), so rows never show through. */
+.pebble-root .pb-sched-day-head {
+  position: sticky; top: var(--pb-header-h); z-index: 2;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+  padding: 0.35rem 0.6rem; border-radius: 0.55rem;
+  background-color: color-mix(in srgb, var(--ink) 5%, var(--mist));
+  font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
+}
+.pebble-root .pb-sched-day-head > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-sched-day-head > .font-mono-tab { flex: none; }
+.pebble-root .pb-sched-rows { list-style: none; margin: 0; padding: 0 0.1rem; --pb-inset: calc(36px + 0.75rem); }
+.pebble-root .pb-sched-rows > * { position: relative; }
+.pebble-root .pb-sched-rows > * + *::before {
+  content: ''; position: absolute; top: 0; left: var(--pb-inset); right: 0; border-top: 1px solid var(--line); pointer-events: none;
+}
+.pebble-root .pb-sched-up-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0; min-width: 0; }
+.pebble-root .pb-sched-up-text { flex: 1; min-width: 0; }
+.pebble-root .pb-sched-more { align-self: flex-start; margin-top: 0.6rem; text-decoration: none; }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-more { min-height: 44px; }
+}
+
+/* ---------- Your schedules ---------- */
+.pebble-root .pb-sched-rules { container: pb-sched-rules / inline-size; }
+.pebble-root .pb-sched-how { margin-top: -0.35rem; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-how > summary {
+  display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; list-style: none;
+  font-weight: 500; color: var(--ink-soft); border-radius: 0.4rem;
+}
+.pebble-root .pb-sched-how > summary::-webkit-details-marker { display: none; }
+.pebble-root .pb-sched-how > summary:hover { color: var(--ink); }
+.pebble-root .pb-sched-how > summary:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-sched-how > summary svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); transform: rotate(-90deg); }
+.pebble-root .pb-sched-how[open] > summary svg { transform: none; }
+.pebble-root .pb-sched-how > p {
+  margin: 0.5rem 0 0; padding: 0.75rem 0.9rem; border-radius: 0.8rem; line-height: 1.55;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-how > summary { min-height: 44px; }
+}
+.pebble-root .pb-sched-section { display: flex; flex-direction: column; gap: 0.55rem; min-width: 0; }
+.pebble-root .pb-sched-section-head {
+  position: sticky; top: var(--pb-header-h); z-index: 2;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
+  padding: 0.4rem 0; background-color: var(--mist); border-bottom: 1px solid var(--line);
+  font-size: 0.78rem; font-weight: 600; color: var(--ink);
+}
+.pebble-root .pb-sched-section-head > span:last-child { font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-section-count {
+  display: inline-block; margin-left: 0.25rem; padding: 0 0.4rem; border-radius: 999px;
+  font-size: 0.68rem; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.pebble-root .pb-sched-rule-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+@container pb-sched-rules (min-width: 760px) {
+  .pebble-root .pb-sched-rule-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.pebble-root .pb-sched-rule {
+  display: flex; flex-direction: column; gap: 0.65rem; min-width: 0;
+  padding: 0.85rem 0.95rem 0.6rem; border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+/* Paused or finished: the content dims as before; the buttons stay crisp
+   so Resume reads as available. */
+.pebble-root .pb-sched-rule.is-dim .pb-sched-rule-top,
+.pebble-root .pb-sched-rule.is-dim .pb-sched-rule-life { opacity: 0.55; }
+.pebble-root .pb-sched-rule-top { display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; }
+.pebble-root .pb-sched-chip { position: relative; width: 40px; height: 40px; border-radius: 0.8rem; }
+.pebble-root .pb-sched-chip-freq {
+  position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center;
+  width: 17px; height: 17px; border-radius: 50%;
+  background-color: var(--mist); color: var(--ink-soft); box-shadow: 0 0 0 1px var(--line);
+}
+.pebble-root .pb-sched-rule-text { flex: 1; min-width: 0; padding-top: 0.1rem; }
+.pebble-root .pb-sched-rule-titleline { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.pebble-root .pb-sched-rule-titleline .pb-sched-row-title { flex: 0 1 auto; font-weight: 600; }
+.pebble-root .pb-sched-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.08rem 0.45rem; border-radius: 999px; line-height: 1.4;
+  font-size: 0.68rem; font-weight: 600; text-transform: capitalize;
+  color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.pebble-root .pb-sched-rule-money { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; padding-top: 0.1rem; }
+.pebble-root .pb-sched-rule-amt { font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
+.pebble-root .pb-sched-rule-approx { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-rule-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
+  padding-top: 0.5rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-sched-rule-life { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; min-width: 0; }
+.pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-rule-actions { flex: none; display: flex; gap: 0.35rem; margin-left: auto; }
+.pebble-root .pb-sched-act { position: relative; width: 36px; height: 36px; border-radius: 0.6rem; }
+@media (pointer: coarse) {
+  /* 44px to the finger without growing the button. */
+  .pebble-root .pb-sched-act::after { content: ''; position: absolute; inset: -4px; }
+}
+.pebble-root .pb-sched-empty-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.1rem; }
+
+/* ---------- Rule dialog (RecurringRuleModal: Scheduled, Insights, shell) ---------- */
+.pebble-root .pb-sched-dialog-kind { display: flex; justify-content: flex-start; }
+.pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button { cursor: not-allowed; }
+.pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button[aria-checked="false"] { opacity: 0.45; }
+.pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button:hover { color: inherit; }
+.pebble-root .pb-sched-dialog-kind .pb-kind-switch button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+
+.pebble-root .pb-sched-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.pebble-root .pb-sched-quick-chip {
+  display: inline-flex; align-items: center; padding: 0.28rem 0.7rem; border-radius: 999px;
+  border: 1px solid var(--line); background-color: var(--mist);
+  font: inherit; font-size: 0.76rem; font-weight: 500; color: var(--ink-soft); cursor: pointer;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-sched-quick-chip:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, var(--mist)); }
+.pebble-root .pb-sched-quick-chip[aria-pressed="true"] {
+  color: var(--pine); border-color: color-mix(in srgb, var(--pine) 45%, var(--line));
+  background-color: color-mix(in srgb, var(--pine) 10%, var(--mist));
+}
+.pebble-root .pb-sched-quick-chip:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-quick-chip { min-height: 36px; padding: 0.35rem 0.8rem; position: relative; }
+  .pebble-root .pb-sched-quick-chip::after { content: ''; position: absolute; inset: -4px 0; }
+}
+
+/* What this does: a soft band summarising the schedule as typed. */
+.pebble-root .pb-sched-preview {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 0.9rem 1rem; border-radius: 0.95rem;
+  background-color: color-mix(in srgb, var(--pine) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 14%, transparent);
+}
+.pebble-root .pb-sched-preview-title {
+  display: flex; align-items: center; gap: 0.4rem; margin: 0;
+  font-size: 0.74rem; font-weight: 600; color: var(--pine); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.pebble-root .pb-sched-preview-line { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--ink); }
+.pebble-root .pb-sched-preview-sub { margin: 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-preview-dates { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pebble-root .pb-sched-preview-dates li {
+  padding: 0.2rem 0.55rem; border-radius: 0.5rem;
+  font-size: 0.75rem; font-weight: 500; color: var(--ink); background-color: var(--mist); border: 1px solid var(--line);
+}
+.pebble-root .pb-sched-preview-dates li:first-child { color: var(--pine); border-color: color-mix(in srgb, var(--pine) 40%, var(--line)); }
+
+/* A narrow list: the schedule sentence wraps rather than being cut, since
+   the amount column leaves it little room on a phone. */
+@container pb-sched-rules (max-width: 520px) {
+  .pebble-root .pb-sched-rule-text .pb-sched-row-sub { white-space: normal; overflow-wrap: anywhere; }
+}
+/* Three equal segments on a phone sheet: a little less side padding so the
+   labels are never cut. */
+.pebble-root .pb-sched-ends .pb-seg-btn { padding-left: 0.5rem; padding-right: 0.5rem; }
+@media (pointer: coarse) {
+  .pebble-root .pb-sched-ends .pb-seg-btn { min-height: 40px; }
+}

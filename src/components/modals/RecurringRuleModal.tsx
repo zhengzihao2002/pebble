@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Sparkles, Trash2 } from 'lucide-react';
 import {
   createRecurringRuleAction,
   deleteRecurringRuleAction,
@@ -23,8 +23,11 @@ import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { resolveCategoryIcon } from '@/lib/data/icons';
-import { formatCurrency } from '@/lib/format';
-import { todayInZone } from '@/lib/recurring/occurrences';
+import { formatCurrency, formatDate } from '@/lib/format';
+import { addDays, generateOccurrences, isYmd, todayInZone, type RecurrenceSpec } from '@/lib/recurring/occurrences';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { describeSchedule, monthlyEquivalent } from '@/components/scheduled/schedulePlan';
+import { renderTemplate } from '@/lib/i18n/RichText';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -53,40 +56,13 @@ type Mode = 'form' | 'confirmDelete';
 const FREQUENCY_VALUES: RecurringFrequency[] = ['once', 'weekly', 'biweekly', 'monthly', 'yearly'];
 const END_MODE_VALUES: RecurringEndMode[] = ['never', 'after', 'on'];
 
-/** A row of buttons for a small fixed choice. value stays the stored literal. */
-function Segmented<T extends string>({ options, value, onChange, disabled }: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div style={{ display: 'flex', gap: '0.4rem' }}>
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <button
-            key={o.value} type="button" aria-pressed={on} disabled={disabled} onClick={() => onChange(o.value)}
-            style={{
-              flex: 1, minWidth: 0, padding: '0.6rem 0.5rem', borderRadius: '0.6rem', fontSize: '0.85rem', fontWeight: 500,
-              border: on ? '1px solid var(--pine)' : '1px solid var(--line)',
-              backgroundColor: on ? 'var(--pine)' : 'transparent',
-              color: on ? 'var(--paper)' : 'var(--ink-soft)',
-              opacity: disabled && !on ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
-              outlineOffset: 2,
-            }}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+/** Quick lengths offered for "after a number of payments". */
+const COUNT_PICKS = [6, 12, 24, 36];
 
 export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: RecurringRuleModalProps) {
   const prefill = rule ? undefined : rawPrefill;
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
+  const x = d.ux.scheduled;
   const isEdit = rule !== undefined;
   const timeZoneOverride = useTimeZoneOverride();
   // Stored override wins; otherwise the browser's own zone.
@@ -197,8 +173,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     : (isIncome ? d.recurring.titleNewIncome : d.recurring.titleNewExpense);
   const deleteConfirmText = isIncome ? d.recurring.deleteConfirmIncome : d.recurring.deleteConfirmExpense;
 
-  const isPastStart = startDate < today;
-  const showBackfill = !isEdit && isPastStart && frequency !== 'once';
+  const showBackfillFor = (start: string) => !isEdit && start < today && frequency !== 'once';
+  const showBackfill = showBackfillFor(startDate);
 
   // Nothing changed means nothing to save. Comparisons match how each field
   // is STORED, not how the form holds it: expense amounts are negative in the
@@ -220,6 +196,67 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     (endMode === 'after' ? Number(endCount) : null) !== rule.endCount ||
     (endMode === 'on' ? endDate : null) !== rule.endDate
   );
+
+  // Kind switch: the old Segmented's onChange, unchanged.
+  const changeKind = (next: RecurringKind) => {
+    if (isEdit || next === kind) return;
+    setKind(next);
+    // A card cannot hold income: move the choice to an allowed account.
+    if (next === 'income' && accounts.find((a) => a.id === accountId)?.kind === 'credit') {
+      const usable = accounts.filter((a) => a.kind !== 'credit');
+      setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
+    }
+    setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
+  };
+
+  // ---- Live preview ("What this does") ----
+  // The schedule exactly as it would be stored, run through the same
+  // generator that materializes - so the preview cannot disagree with what
+  // will be created. Nothing is computed until the dates are complete.
+  const countNum = Number(endCount);
+  const spec: RecurrenceSpec = {
+    frequency,
+    startDate,
+    endMode,
+    endCount: endMode === 'after' ? countNum : null,
+    endDate: endMode === 'on' ? endDate : null,
+  };
+  const specReady = isYmd(startDate)
+    && (frequency === 'once' || endMode !== 'after' || (Number.isInteger(countNum) && countNum >= 1))
+    && (frequency === 'once' || endMode !== 'on' || (isYmd(endDate) && endDate >= startDate));
+  // Where creation would start: an edit keeps the rule's high-water mark;
+  // a new rule with a past start begins today unless backfill is ticked
+  // (createRecurringRuleAction's rule).
+  const lowerBound = rule
+    ? rule.materializedThrough
+    : (showBackfillFor(startDate) && backfill) || startDate >= today ? null : addDays(today, -1);
+  const preview = (() => {
+    if (!specReady) return null;
+    const nextDates = generateOccurrences(spec, { after: lowerBound, through: addDays(today, 3660), limit: 5 });
+    let total: number | null = null;
+    let last: string | null = null;
+    if (frequency === 'once') { total = 1; last = startDate; }
+    else if (endMode === 'after' && countNum <= 2000) {
+      const all = generateOccurrences(spec, { after: null, through: '9999-12-31', limit: countNum });
+      total = all.length; last = all[all.length - 1] ?? null;
+    } else if (endMode === 'on') {
+      const all = generateOccurrences(spec, { after: null, through: endDate, limit: 5000 });
+      total = all.length; last = all[all.length - 1] ?? null;
+    }
+    return { nextDates, total, last };
+  })();
+  const amountNum = Number(amount);
+  const amountOk = amount !== '' && Number.isFinite(amountNum) && amountNum > 0;
+  const nextMonthFirst = (() => {
+    const y = Number(today.slice(0, 4));
+    const m = Number(today.slice(5, 7));
+    return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  })();
+  const startPicks = [
+    { value: today, label: d.upcomingCard.today },
+    { value: addDays(today, 1), label: d.upcomingCard.tomorrow },
+    { value: nextMonthFirst, label: x.quickNextMonth },
+  ];
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -330,23 +367,42 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   {/* Expense history lives in `expense`, income in `income`.
                       Switching would orphan every row already created, so the
                       action rejects it and the control is locked when editing. */}
-                  <Segmented<RecurringKind>
-                    value={kind}
-                    disabled={isEdit}
-                    onChange={(next) => {
-                      setKind(next);
-                      // A card cannot hold income: move the choice to an allowed account.
-                      if (next === 'income' && accounts.find((a) => a.id === accountId)?.kind === 'credit') {
-                        const usable = accounts.filter((a) => a.kind !== 'credit');
-                        setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
-                      }
-                      setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
-                    }}
-                    options={[
-                      { value: 'expense', label: d.enums.kind.expense },
-                      { value: 'income', label: d.enums.kind.income },
-                    ]}
-                  />
+                  {/* The same two-way switch as Add transaction (wine out, pine
+                      in), so both dialogs choose a kind the same way. Locked
+                      (aria-disabled, buttons disabled) when editing. */}
+                  <div className="pb-sched-dialog-kind">
+                    <div
+                      role="radiogroup"
+                      aria-label={d.recurring.type}
+                      aria-disabled={isEdit || undefined}
+                      className="pb-kind-switch"
+                      data-kind={kind}
+                      onKeyDown={(e) => {
+                        if (isEdit || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                        e.preventDefault();
+                        const next: RecurringKind = kind === 'expense' ? 'income' : 'expense';
+                        changeKind(next);
+                        e.currentTarget.querySelector<HTMLElement>(`[data-value="${next}"]`)?.focus();
+                      }}
+                    >
+                      <span className="pb-kind-thumb" aria-hidden="true" />
+                      {(['expense', 'income'] as const).map((k) => {
+                        const Icon = k === 'expense' ? ArrowDownRight : ArrowUpRight;
+                        return (
+                          <button
+                            key={k} type="button" role="radio" data-value={k}
+                            aria-checked={kind === k} tabIndex={kind === k ? 0 : -1}
+                            disabled={isEdit}
+                            onClick={() => changeKind(k)}
+                            style={{ textTransform: 'capitalize' }}
+                          >
+                            <Icon size={16} strokeWidth={2.25} aria-hidden="true" />
+                            {d.enums.kind[k]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   {isEdit && <p style={hintStyle}>{d.recurring.typeLocked}</p>}
                 </div>
 
@@ -440,13 +496,23 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={rowInputStyle} />
                   {(frequency === 'monthly' || frequency === 'yearly') && <p style={hintStyle}>{d.recurring.monthEndHint}</p>}
                 </label>
+                {/* Outside the <label>: a chip there would forward its click to the date input. */}
+                <div className="pb-sched-quick" role="group" aria-label={x.quickPicks} style={{ marginTop: '-0.5rem' }}>
+                  {startPicks.map((q) => (
+                    <button key={q.label} type="button" className="pb-sched-quick-chip" aria-pressed={startDate === q.value} onClick={() => setStartDate(q.value)}>
+                      {q.label}
+                    </button>
+                  ))}
+                </div>
 
                 {frequency !== 'once' && (
                   <div style={labelStyle}>
                     <span>{d.recurring.ends}</span>
-                    <Segmented<RecurringEndMode>
-                      value={endMode} onChange={setEndMode}
-                      options={END_MODE_VALUES.map((v) => ({ value: v, label: d.recurring.endModes[v] }))}
+                    {/* Short visible labels so three fit a phone sheet; the
+                        full wording is each option's accessible name. */}
+                    <SegmentedControl<RecurringEndMode>
+                      value={endMode} onChange={setEndMode} fullWidth className="pb-sched-ends" ariaLabel={d.recurring.ends}
+                      options={END_MODE_VALUES.map((v) => ({ value: v, label: x.endModeShort[v], ariaLabel: d.recurring.endModes[v] }))}
                     />
                   </div>
                 )}
@@ -454,8 +520,20 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                 {frequency !== 'once' && endMode === 'after' && (
                   <label style={labelStyle}>
                     {d.recurring.endCount}
-                    <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder={d.recurring.endCountPlaceholder} required className="font-mono-tab" style={rowInputStyle} />
+                    <input type="number" min="1" step="1" value={endCount} onChange={(e) => setEndCount(e.target.value)} placeholder={d.recurring.endCountPlaceholder} required className="pb-tnum" style={rowInputStyle} />
                   </label>
+                )}
+                {frequency !== 'once' && endMode === 'after' && (
+                  <div className="pb-sched-quick" role="group" aria-label={x.quickPicks} style={{ marginTop: '-0.5rem' }}>
+                    {COUNT_PICKS.map((n) => (
+                      <button
+                        key={n} type="button" className="pb-sched-quick-chip pb-tnum" aria-pressed={endCount === String(n)}
+                        aria-label={t(x.quickCountAria, { count: n })} onClick={() => setEndCount(String(n))}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 )}
 
                 {frequency !== 'once' && endMode === 'on' && (
@@ -464,6 +542,44 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                     <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} required style={rowInputStyle} />
                   </label>
                 )}
+
+                <section className="pb-sched-preview" aria-live="polite" aria-labelledby="rule-preview-title">
+                  <p id="rule-preview-title" className="pb-sched-preview-title"><Sparkles size={13} aria-hidden="true" />{x.previewTitle}</p>
+                  {!preview ? (
+                    <p className="pb-sched-preview-sub">{x.previewIncomplete}</p>
+                  ) : (
+                    <>
+                      <p className="pb-sched-preview-line">{describeSchedule(spec, d, t, locale)}</p>
+                      {preview.total !== null ? (
+                        <p className="pb-sched-preview-sub">
+                          {amountOk
+                            ? renderTemplate(x.previewTotal, {
+                                count: <span className="pb-tnum">{preview.total}</span>,
+                                amount: <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(amountNum * preview.total)}</span>,
+                              })
+                            : t(x.previewCount, { count: preview.total })}
+                          {preview.last && <span className="pb-tnum"> · {t(x.previewLastOn, { date: formatDate(preview.last, locale) })}</span>}
+                        </p>
+                      ) : amountOk && monthlyEquivalent({ frequency, amount: amountNum }) !== null ? (
+                        <p className="pb-sched-preview-sub">
+                          {renderTemplate(x.previewMonthly, {
+                            amount: <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(monthlyEquivalent({ frequency, amount: amountNum }) ?? 0)}</span>,
+                          })}
+                        </p>
+                      ) : null}
+                      {preview.nextDates.length > 0 ? (
+                        <div>
+                          <p className="pb-sched-preview-sub" style={{ marginBottom: '0.35rem' }}>{x.previewNextDates}</p>
+                          <ul className="pb-sched-preview-dates">
+                            {preview.nextDates.map((dt) => <li key={dt} className="pb-tnum">{formatDate(dt, locale)}</li>)}
+                          </ul>
+                        </div>
+                      ) : (
+                        <p className="pb-sched-preview-sub">{x.previewNone}</p>
+                      )}
+                    </>
+                  )}
+                </section>
 
                 {showBackfill && (
                   <div style={{ border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.8rem' }}>
