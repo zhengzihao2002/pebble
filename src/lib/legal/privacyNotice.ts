@@ -78,6 +78,13 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
         ],
       },
       {
+        heading: 'Information you enter is your choice',
+        paragraphs: [
+          'Everything you enter into Pebble is entered voluntarily, and you decide what to enter. Nothing requires you to enter any particular information, and you are responsible for the accuracy and appropriateness of what you enter.',
+          'Pebble is provided "as is", without warranties of any kind. To the maximum extent permitted by law, Wen Wen Inc. and Pebble accept no liability at any time for any loss, damage, or consequence connected with information you enter or with your use of Pebble, including inaccurate figures, lost, delayed, or unavailable data, or decisions you make based on what Pebble shows. Pebble is not financial, tax, or legal advice.',
+        ],
+      },
+      {
         heading: 'Security',
         paragraphs: ['Your information travels over encrypted connections, passwords are hashed, and each person can reach only their own records. No system is perfectly secure, so please use a strong password that you do not use elsewhere, and sign out of devices you no longer use.'],
       },
@@ -160,6 +167,13 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
         paragraphs: [
           '这些服务商按照各自的条款和安全措施，代表 Pebble 处理信息，并可能将信息存储在美国或其他国家。',
           '如果法律要求，或为保护 Pebble 用户的权利和安全所必需，我们也可能披露相关信息。',
+        ],
+      },
+      {
+        heading: '你录入的信息由你自主决定',
+        paragraphs: [
+          '你在 Pebble 中录入的所有信息均出于你的自愿，录入哪些内容由你自己决定。没有任何要求你必须录入特定信息，你需对所录入内容的准确性和适当性负责。',
+          'Pebble 按“现状”提供，不作任何形式的保证。在法律允许的最大范围内，文文有限公司及 Pebble 对因你录入的信息或你使用 Pebble 而产生的任何损失、损害或后果，在任何时候均不承担任何责任，包括数字不准确、数据丢失、延迟或无法使用，以及你基于 Pebble 所显示内容作出的决定。Pebble 不构成财务、税务或法律建议。',
         ],
       },
       {
