@@ -294,6 +294,13 @@
   background-color: color-mix(in srgb, var(--pb-cat, var(--pine)) 13%, transparent);
 }
 .pebble-root .pb-shell-quick-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Placeholder tiles while the picks load: same grid and same height as a real
+   tile in each of its two layouts, with the kit skeleton's sheen passing left to
+   right, so nothing moves when the real tiles replace them. */
+.pebble-root .pb-shell-quick-skel { height: 4.7rem !important; border-radius: 0.85rem !important; }
+@container pb-modal (min-width: 560px) {
+  .pebble-root .pb-shell-quick-skel { height: 2.75rem !important; }
+}
 
 .pebble-root .pb-shell-date-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .pebble-root .pb-shell-date-chips { display: inline-flex; gap: 0.35rem; flex: none; }
@@ -407,3 +414,7 @@
 .pebble-root .pebble-add-menu { bottom: calc(100% + 0.4rem + 1px - 0.9rem); }
 .pebble-root .pebble-add-menu.open { pointer-events: none; }
 .pebble-root .pebble-add-menu.open .pebble-bottom-nav-stack-panel { pointer-events: auto; }
+
+/* One resting height for both pop-ups: the More list and the + menu now end at
+   the same distance above the bar (the More list used to sit 8px lower). */
+.pebble-root .pebble-bottom-nav-stack { bottom: calc(100% + 0.4rem + 1px + 0.5rem); }

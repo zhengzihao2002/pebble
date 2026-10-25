@@ -11,6 +11,7 @@ import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction, getFrequentCategoriesAction } from '@/lib/actions/pebble';
+import { Skeleton } from '@/components/kit/Skeleton';
 import { isQuickPicksStale, readQuickPicks, refreshQuickPicks, resolveQuickCategories } from '@/lib/quickPicks';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -454,6 +455,11 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     },
     [picksUserId, savedPicks, fetchedPicks, categories],
   );
+  // Still waiting for what the tiles need - the category list (fetched when the
+  // dialog opens) or the first picks answer. The block holds its place with
+  // shimmering placeholders instead of popping in a moment later.
+  const quickPending = quickCategories.length <= 1 && !categoryError
+    && (categories.length === 0 || (!!picksUserId && savedPicks.names === null && fetchedPicks === null && savedPicks.ask));
 
   return (
     <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
@@ -622,6 +628,15 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               optionalLabel={d.txnDetail.optional}
             />
           </div>
+
+          {type === 'expense' && quickPending && (
+            <div className="pb-span-2 pb-shell-quick" aria-busy="true">
+              <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
+              <div className="pb-shell-quick-grid" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="pb-shell-quick-skel" />)}
+              </div>
+            </div>
+          )}
 
           {type === 'expense' && quickCategories.length > 1 && (
             <div className="pb-span-2 pb-shell-quick" role="group" aria-labelledby="add-txn-quick">
