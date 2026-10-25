@@ -583,13 +583,17 @@
    grid on a phone. */
 .pebble-root .pb-settings-me-foot, .pebble-root .pb-settings-me-danger { display: contents; }
 .pebble-root .pb-settings-me-hint { grid-area: hint; margin: 0; }
-.pebble-root .pb-settings-me-delete { grid-area: delete; min-width: 0; white-space: normal; text-align: center; line-height: 1.25; }
+.pebble-root .pb-settings-me-delete { grid-area: delete; min-width: 0; white-space: nowrap; word-break: keep-all; text-align: center; line-height: 1.25; }
 /* Sign out fills its half; neutral. Delete is the quiet-danger one: wine text
    and outline, a faint wine wash on hover - never a filled red button. */
-.pebble-root .pb-settings-me-signout .pb-settings-pill { flex: 1; white-space: normal; }
+.pebble-root .pb-settings-me-signout .pb-settings-pill { flex: 1; white-space: nowrap; word-break: keep-all; }
 .pebble-root .pb-settings-me-delete:not(:disabled):hover { background-color: color-mix(in srgb, var(--wine) 8%, transparent); }
-/* A large text size or a very narrow card: the pair stacks, Delete last. */
-@container pb-settings-me (max-width: 18rem) {
+/* The pair stacks (Delete last) whenever half the card cannot hold the longer
+   label on ONE line - 18rem was too narrow: "删除Pebble账户" / "Delete Pebble
+   account" is about 12em with its padding, so at a large text size the label
+   broke inside a word and left a lone character ("户") on a second line. In rem,
+   so it follows the text size; the labels never wrap (nowrap + keep-all). */
+@container pb-settings-me (max-width: 28rem) {
   .pebble-root .pb-settings-me-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "id" "links" "signout" "delete" "hint" "privacy";
