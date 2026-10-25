@@ -1,7 +1,7 @@
 'use client';
 
 import { AmountInput } from '@/components/shared/AmountInput';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Briefcase, Coins } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
@@ -23,6 +23,8 @@ import { addDays } from '@/lib/recurring/occurrences';
 import { deductionPct } from '@/lib/stats';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { makeClientId } from '@/lib/offline/clientId';
 
 interface AddTransactionModalProps {
   onClose: () => void;
@@ -54,6 +56,7 @@ const FORM_ID = 'add-txn-form';
 
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const { d, t, locale } = useTranslation();
+  const offlineQueue = useOfflineQueue();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
@@ -64,7 +67,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // Set ONLY in the confirmed-success branch of performSave, below the
   // failure return. A snapshot of the saved entry's wording, so the lines in
   // the confirmation cannot shift when the page re-renders underneath.
-  const [success, setSuccess] = useState<{ title: string; summary: string } | null>(null);
+  // `queued` marks a save that is only on this device so far (offline): the
+  // confirmation then says so instead of claiming it reached the account.
+  const [success, setSuccess] = useState<{ title: string; summary: string; queued?: boolean } | null>(null);
   // Full items, not just names: the combobox shows each category's icon and
   // colour, and those live on CategoryItem. Icons are resolved here on the
   // client from iconKey - they cannot cross the RSC boundary.
@@ -82,17 +87,49 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // on purpose: re-running this effect on a language switch would refetch
   // categories for nothing. A message already on screen stays in the language
   // it was raised in until the next attempt.
+  //
+  // OFFLINE. The two lists come from the snapshot taken on the last online
+  // load (OfflineProvider) when there is no connection, so the dialog stays
+  // fully usable. Online, each successful load refreshes that snapshot - once
+  // both halves are in, since it stores them together.
+  const freshRef = useRef<{ accounts?: Account[]; categories?: CategoryItem[] }>({});
+  const remember = () => {
+    const f = freshRef.current;
+    if (f.accounts && f.categories) offlineQueue.rememberReference(f.accounts, f.categories);
+  };
   useEffect(() => {
     let active = true;
+    const applyCategories = (list: CategoryItem[]) => {
+      setCategories(list);
+      setCategoryError(null);
+      setCategory((current) => current || list[0]?.name || '');
+    };
+    const fromSnapshot = async () => {
+      const snap = await offlineQueue.readReference();
+      if (!active || !snap) return false;
+      applyCategories(snap.categories);
+      return true;
+    };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      void fromSnapshot().then((used) => {
+        if (active && !used) setCategoryError(d.ux.offline.needsConnection);
+      });
+      return () => { active = false; };
+    }
     // A failure here used to return silently, leaving an empty dropdown with
     // no explanation - and the expense form could still be submitted with an
     // empty category. Surfaced instead.
-    callAction(getCategoriesAction, d.addTxn.categoriesFailed).then((result) => {
+    callAction(getCategoriesAction, d.addTxn.categoriesFailed).then(async (result) => {
       if (!active) return;
-      if (!result.ok) { setCategoryError(translateActionError(d, locale, result)); return; }
-      setCategories(result.categories);
-      setCategoryError(null);
-      setCategory((current) => current || result.categories[0]?.name || '');
+      if (!result.ok) {
+        // A request that never got an answer: use the saved copy if there is one.
+        if (result.kind === 'network' && await fromSnapshot()) return;
+        if (active) setCategoryError(translateActionError(d, locale, result));
+        return;
+      }
+      applyCategories(result.categories);
+      freshRef.current.categories = result.categories;
+      remember();
     });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,16 +138,37 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // Same reasoning as categories above: fetched on open, not via the layout.
   useEffect(() => {
     let active = true;
-    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
-      if (!active) return;
-      if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
-      setAccounts(result.accounts);
+    const applyAccounts = (list: Account[]) => {
+      setAccounts(list);
       setAccountError(null);
       setAccountsLoaded(true);
       // Preferred account first, else whatever sorts first - the behaviour
       // before preferences existed.
-      const preferred = result.accounts.find((a) => a.isPreferred);
-      setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+      const preferred = list.find((a) => a.isPreferred);
+      setAccountId((current) => current || preferred?.id || list[0]?.id || '');
+    };
+    const fromSnapshot = async () => {
+      const snap = await offlineQueue.readReference();
+      if (!active || !snap) return false;
+      applyAccounts(snap.accounts.filter((a) => a.status === 'active'));
+      return true;
+    };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      void fromSnapshot().then((used) => {
+        if (active && !used) setAccountError(d.ux.offline.needsConnection);
+      });
+      return () => { active = false; };
+    }
+    callAction(getAccountsAction, d.addTxn.accountsFailed).then(async (result) => {
+      if (!active) return;
+      if (!result.ok) {
+        if (result.kind === 'network' && await fromSnapshot()) return;
+        if (active) setAccountError(translateActionError(d, locale, result));
+        return;
+      }
+      applyAccounts(result.accounts);
+      freshRef.current.accounts = result.accounts;
+      remember();
     });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,16 +254,54 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     setSaving(true);
     setSaveError(null);
 
-    let result;
-    if (type === 'expense') {
-      result = await callAction(() => addTransactionAction({ type, description: composeDescription(title, description), date, accountId, category, tag: tag.trim(), amount: Number(amount) }));
-    } else {
-      // Side cash is untaxed: one amount fills both gross and net.
-      const gross = isSideCashSelected
-        ? Number(netPay)
-        : (grossPay ? Number(grossPay) : Number(netPay));
+    // What the server would be sent, built once so the online attempt and the
+    // offline queue carry byte-identical values (a transaction saved offline
+    // must store exactly what an online one would).
+    const composed = composeDescription(title, description);
+    // Side cash is untaxed: one amount fills both gross and net.
+    const gross = isSideCashSelected
+      ? Number(netPay)
+      : (grossPay ? Number(grossPay) : Number(netPay));
+    const payload = type === 'expense'
+      ? { type, description: composed, date, accountId, category, tag: tag.trim(), amount: Number(amount) } as const
       // incomeCategory goes over the wire as the untranslated literal.
-      result = await callAction(() => addTransactionAction({ type, description: composeDescription(title, description), date, accountId, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) }));
+      : { type, description: composed, date, accountId, category: incomeCategory, grossAmount: gross, netAmount: Number(netPay) } as const;
+
+    // One id for this entry, used for the online attempt AND, if that cannot
+    // reach the server, for the copy kept on the device. The server inserts by
+    // it idempotently, so a request that did commit but lost its answer is
+    // recognised when the queued copy is uploaded - never saved twice.
+    // Without the offline provider (no user id) nothing is sent: unchanged.
+    const clientId = offlineQueue.userId ? makeClientId() : undefined;
+    const accountLabel = accountOptions.find((o) => o.value === accountId)?.label ?? '';
+
+    const saveOnDevice = async (): Promise<boolean> => {
+      if (!clientId) return false;
+      const meta = type === 'expense' ? categories.find((c) => c.name === category) : undefined;
+      return offlineQueue.queueTransaction({
+        clientId, kind: type, createdAt: Date.now(), payload,
+        display: { accountLabel, amount: type === 'expense' ? Number(amount) : Number(netPay), iconKey: meta?.iconKey, color: meta?.color },
+      });
+    };
+
+    let result;
+    let queued = false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      // No connection: do not even try. Straight to the device.
+      queued = await saveOnDevice();
+      result = queued
+        ? { ok: true as const }
+        : { ok: false as const, error: d.ux.offline.storageUnavailable, kind: 'network' as const };
+    } else {
+      result = await callAction(() => addTransactionAction({ ...payload, clientId }));
+      // A NETWORK-class failure - the request never got an answer - is the one
+      // case that is not an error to show: keep the entry on the device and
+      // say so. Validation, database and session failures are real answers and
+      // stay errors; they are never queued.
+      if (!result.ok && result.kind === 'network') {
+        queued = await saveOnDevice();
+        if (queued) result = { ok: true as const };
+      }
     }
 
     setSaving(false);
@@ -219,10 +315,21 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     // Below the failure return, so a failed write can never play a success
     // sound. Fire-and-forget - playback cannot delay the close.
     playEventSound(type === 'expense' ? 'expenseSaved' : 'incomeSaved');
+    if (queued) {
+      // Saved on the device only. Said plainly: it is not in the account yet,
+      // and does not count in any balance until it is uploaded.
+      setSuccess({
+        title: d.ux.offline.savedOnDevice,
+        summary: type === 'expense'
+          ? `${t(d.saveSuccess.expenseSummary, { amount: formatCurrency(Number(amount)), category, account: accountLabel })}${locale === 'zh' ? '。' : '.'} ${d.ux.offline.savedOnDeviceBody}`
+          : `${t(d.saveSuccess.incomeSummary, { amount: formatCurrency(Number(netPay)), account: accountLabel })}${locale === 'zh' ? '。' : '.'} ${d.ux.offline.savedOnDeviceBody}`,
+        queued: true,
+      });
+      return;
+    }
     // Also below the failure return: the confirmation only ever appears for a
     // write the server confirmed. The amounts are the ones just submitted,
     // formatted the same way, never a recomputed balance.
-    const accountLabel = accountOptions.find((o) => o.value === accountId)?.label ?? '';
     setSuccess(type === 'expense'
       ? {
           title: d.saveSuccess.expenseAdded,
@@ -257,7 +364,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     //
     // Fetched here rather than when the modal opened so the figures cannot go
     // stale between opening the form and submitting it.
-    if (type === 'expense') {
+    //
+    // Skipped offline: it needs the server, and it is advisory anyway (the
+    // entry is queued and uploaded later with no shortfall prompt).
+    if (type === 'expense' && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
       setSaving(true);
       setSaveError(null);
       const summary = await callAction(getAllocationSummaryAction);
@@ -362,7 +472,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
         {/* BODY: the only part that scrolls. */}
         <div className="pb-modal-body">
         {success ? (
-          <SaveSuccess title={success.title} body={success.summary} onDone={close} />
+          <SaveSuccess title={success.title} body={success.summary} onDone={close} color={success.queued ? 'var(--gold)' : undefined} />
         ) : pendingShortfall !== null ? (
           <div>
             <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.addTxn.dipsTitle}</p>
@@ -580,6 +690,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             confirmation. */}
         {!success && (
           <div className="pb-modal-foot">
+            {offlineQueue.offline && !saveError && pendingShortfall === null && (
+              <p className="pb-off-modal-note" role="status">{d.ux.offline.modalNote}</p>
+            )}
             {saveError && (
               <ActionError message={saveError} kind={saveErrorKind} onRetry={performSave} busy={saving} />
             )}

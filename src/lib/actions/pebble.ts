@@ -22,6 +22,7 @@ import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
 import { isYmd } from '@/lib/recurring/occurrences';
 import { generateId, generateTransId } from '@/lib/ids';
+import { isClientId } from '@/lib/offline/clientId';
 import { addToGoalGuarded } from '@/lib/data/goalAllocation';
 import { userWriteLockStatement } from '@/lib/data/userWriteLock';
 import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
@@ -200,6 +201,8 @@ export interface AddExpenseActionInput {
   category: string;
   tag?: string;
   amount: number;
+  /** See AddTransactionActionInput. */
+  clientId?: string;
 }
 
 export interface AddIncomeActionInput {
@@ -210,8 +213,17 @@ export interface AddIncomeActionInput {
   category: 'Standard Income' | 'Side Cash';
   grossAmount: number;
   netAmount: number;
+  /** See AddTransactionActionInput. */
+  clientId?: string;
 }
 
+/**
+ * `clientId` is OPTIONAL and only the offline queue sends it (a transaction
+ * saved on the device carries its id from the moment it was typed). When
+ * present it must match CLIENT_ID_PATTERN exactly, becomes the row's id, and
+ * makes the insert idempotent - see addTransaction. Without it nothing
+ * changes: the server generates the id as it always has.
+ */
 export type AddTransactionActionInput = AddExpenseActionInput | AddIncomeActionInput;
 
 /* ------------------------------------------------------------------------
@@ -252,6 +264,50 @@ async function loadCards(userId: string, ids: string[]): Promise<Map<string, Car
 const overLimit = (card: CardFacts, extra: number) => extra > 0.004 && card.owed + extra > card.creditLimit + 0.004;
 
 /**
+ * True when THIS user already has a row of this kind with this id. Scoped by
+ * user_id, so it can never confirm (or reveal) anyone else's row. The table
+ * is chosen by kind, which is the "same kind" check: an expense id is never
+ * satisfied by an income row.
+ */
+async function ownTransactionExists(userId: string, kind: 'expense' | 'income', id: string): Promise<boolean> {
+  const table = kind === 'expense' ? expense : income;
+  const rows = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.userId, userId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** True when a row of the OTHER kind (any user's) already uses this id. */
+async function idTakenByOtherKind(kind: 'expense' | 'income', id: string): Promise<boolean> {
+  const other = kind === 'expense' ? income : expense;
+  const rows = await db.select({ id: other.id }).from(other).where(eq(other.id, id)).limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * The one answer for every way a client id can be refused (bad format, taken
+ * by someone else's row). Deliberately a single message with no detail, so a
+ * foreign id cannot be told apart from a malformed one by its error text.
+ */
+function failNotUploaded(): ActionResult {
+  return fail('That saved transaction could not be uploaded.', 'validation');
+}
+
+/**
+ * The insert came back empty: the id was already taken (ON CONFLICT DO
+ * NOTHING). That is success only if the existing row is this user's own
+ * earlier copy - two uploads of one item racing, or a retry whose first
+ * attempt committed. A row that belongs to someone else (or anything else we
+ * cannot verify) is a failure: an upload must never report success for, or
+ * attach itself to, a row it does not own.
+ */
+async function settleConflict(userId: string, kind: 'expense' | 'income', id: string): Promise<boolean> {
+  return ownTransactionExists(userId, kind, id);
+}
+
+/**
  * Transaction ids are generated in the app, not by the database, because
  * computeRecentTransactions() relies on their timestamp ordering to break
  * ties between same-day entries.
@@ -264,6 +320,28 @@ async function addTransaction(
     if (!DATE_PATTERN.test(input.date)) {
       return fail('Date must be in YYYY-MM-DD format.', 'validation', 'validation.dateFormat');
     }
+
+    // OFFLINE UPLOADS: a client-chosen id, validated to the exact format and
+    // length before it goes anywhere near a query.
+    //
+    // Asked BEFORE the account and credit-limit checks on purpose. If this
+    // user's earlier upload of the same id committed but its response was
+    // lost, the retry must report success - not re-run checks that now see
+    // that very row (a card whose limit it just used up would reject its own
+    // transaction) or an account closed since. Only THIS user's row counts:
+    // the lookup is scoped by user_id, so another user's id is simply "not
+    // found" here and falls through to the insert, where the conflict is
+    // caught and refused.
+    const clientId = input.clientId;
+    if (clientId !== undefined) {
+      if (!isClientId(clientId)) return failNotUploaded();
+      if (await ownTransactionExists(userId, input.type, clientId)) return { ok: true };
+      // The two tables have separate keys, so nothing in the database stops
+      // one id from living in both. Keep ids unique across kinds: an id
+      // already used by the OTHER kind (anyone's) is refused.
+      if (await idTakenByOtherKind(input.type, clientId)) return failNotUploaded();
+    }
+    const newId = clientId ?? generateTransId();
 
     // Ownership check before any write: the id arrives from the client, and
     // withSessionUser guarantees WHO is asking, not WHAT they own.
@@ -296,8 +374,8 @@ async function addTransaction(
         return fail('This would take the card over its credit limit.', 'validation', 'validation.creditOverLimit');
       }
 
-      await db.insert(expense).values({
-        id: generateTransId(),
+      const inserted = await db.insert(expense).values({
+        id: newId,
         userId,
         accountId: targetAccount.id,
         description: input.description.trim(),
@@ -308,7 +386,14 @@ async function addTransaction(
         // that accounts are user-defined. Never read for logic.
         paymentMethod: targetAccount.name,
         amount: -Math.abs(input.amount),
-      });
+      }).onConflictDoNothing({ target: expense.id }).returning({ id: expense.id });
+      if (inserted.length === 0) {
+        // An id the SERVER generated colliding is the old primary-key error,
+        // exactly as before this feature (the catch below reports it). Only a
+        // client id gets the "already mine?" settlement: see settleConflict.
+        if (clientId === undefined) throw new Error('transaction id collision');
+        if (!(await settleConflict(userId, 'expense', newId))) return failNotUploaded();
+      }
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
         return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
@@ -335,8 +420,8 @@ async function addTransaction(
       const grossToStore =
         input.category === 'Side Cash' ? input.netAmount : input.grossAmount;
 
-      await db.insert(income).values({
-        id: generateTransId(),
+      const inserted = await db.insert(income).values({
+        id: newId,
         userId,
         accountId: targetAccount.id,
         description: input.description.trim(),
@@ -345,7 +430,11 @@ async function addTransaction(
         paymentMethod: targetAccount.name,
         grossAmount: grossToStore,
         netAmount: input.netAmount,
-      });
+      }).onConflictDoNothing({ target: income.id }).returning({ id: income.id });
+      if (inserted.length === 0) {
+        if (clientId === undefined) throw new Error('transaction id collision');
+        if (!(await settleConflict(userId, 'income', newId))) return failNotUploaded();
+      }
     }
 
     revalidateAll();

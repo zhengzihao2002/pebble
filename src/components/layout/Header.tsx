@@ -11,6 +11,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { currentNavItem } from './navItems';
 import { useShortcutLabel } from './useShortcutLabel';
+import { OfflineStatus } from '@/components/offline/OfflineStatus';
 
 interface HeaderProps {
   onAddTransactionClick: () => void;
@@ -278,6 +279,8 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
           )}
                   </div>
       </div>
+      {/* Only present while offline or while transactions wait to upload. */}
+      <OfflineStatus />
     </header>
   );
 }

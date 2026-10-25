@@ -6,6 +6,8 @@ import { LogOut } from 'lucide-react';
 import { signOutCompletely } from '@/lib/auth/signOut';
 import { Spinner } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { PendingSignOutDialog } from '@/components/offline/PendingSignOutDialog';
 
 interface SignOutButtonProps {
   className?: string;
@@ -18,10 +20,17 @@ type Phase = 'idle' | 'working' | 'failed';
 export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: SignOutButtonProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const { d } = useTranslation();
+  const offlineQueue = useOfflineQueue();
+  // Transactions saved offline and not yet uploaded: signing out asks first.
+  const [confirmPending, setConfirmPending] = useState(false);
+  // What the failed-overlay's Try again repeats: the same choice about them.
+  const [discard, setDiscard] = useState(false);
 
-  const run = async () => {
+  const run = async (discardPending = discard) => {
+    setConfirmPending(false);
+    setDiscard(discardPending);
     setPhase('working');
-    const ok = await signOutCompletely();
+    const ok = await signOutCompletely(discardPending ? offlineQueue.discardAll : undefined);
     // On success the page is already navigating away - the overlay stays up
     // until it goes. On failure, say so and offer a way out.
     if (!ok) setPhase('failed');
@@ -36,13 +45,22 @@ export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: S
 
   return (
     <>
-      <button onClick={run} className={className} style={style} disabled={phase !== 'idle'}>
+      <button onClick={() => (offlineQueue.items.length > 0 ? setConfirmPending(true) : void run(false))} className={className} style={style} disabled={phase !== 'idle'}>
         <LogOut size={iconSize} />
         {d.auth.signOut}
       </button>
       {root && createPortal(
-        <SigningOutOverlay phase={phase} onRetry={run} onCancel={() => setPhase('idle')} />,
+        <SigningOutOverlay phase={phase} onRetry={() => void run()} onCancel={() => setPhase('idle')} />,
         root,
+      )}
+      {confirmPending && phase === 'idle' && typeof document !== 'undefined' && document.querySelector('.pebble-root') && createPortal(
+        <PendingSignOutDialog
+          count={offlineQueue.items.length}
+          onCancel={() => setConfirmPending(false)}
+          onKeep={() => void run(false)}
+          onDiscard={() => void run(true)}
+        />,
+        document.querySelector('.pebble-root') as Element,
       )}
     </>
   );

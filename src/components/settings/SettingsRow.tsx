@@ -16,6 +16,9 @@ interface SettingsRowProps {
       side: always on the right (a lone switch). */
   layout?: 'inline' | 'stack' | 'side';
   className?: string;
+  /** Stable DOM id for the ROW, so an overview chip can scroll to exactly
+      this setting and highlight it (see useSectionJump.jumpToRow). */
+  id?: string;
   children: ReactNode;
 }
 
@@ -25,9 +28,9 @@ interface SettingsRowProps {
  * hairlines, System Settings style. Where the control goes is decided by a
  * container query on the group card (settings.css), never by measuring.
  */
-export function SettingsRow({ icon: Icon, title, hint, titleId, labelFor, layout = 'inline', className, children }: SettingsRowProps) {
+export function SettingsRow({ icon: Icon, title, hint, titleId, labelFor, layout = 'inline', className, id, children }: SettingsRowProps) {
   return (
-    <div className={`pb-settings-row is-${layout}${className ? ` ${className}` : ''}`}>
+    <div id={id} className={`pb-settings-row is-${layout}${id ? ' pb-settings-target' : ''}${className ? ` ${className}` : ''}`}>
       <span className="pb-settings-row-icon" aria-hidden="true"><Icon size={16} /></span>
       <div className="pb-settings-row-text">
         {labelFor

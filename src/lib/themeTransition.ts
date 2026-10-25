@@ -22,15 +22,23 @@
  */
 
 /**
- * Length of the cross-fade. Shorter than the 300ms token fade used where view
- * transitions are missing: the fade now costs nothing per frame, so there is no
- * reason to stretch it, and a quick ease-out reads as "crisp" (most of the
- * change lands in the first 80ms). Keep in step with globals.css
- * (html.pb-theme-vt ::view-transition-*).
+ * Length of the cross-fade. Long enough to read as a fade (a 200ms ease-out
+ * measured as a flash: most of the change was over in the first 80ms), short
+ * enough not to feel slow; it costs nothing per frame either way. Keep in step
+ * with globals.css (html.pb-theme-vt ::view-transition-*).
  */
-export const THEME_FADE_MS = 200;
+export const THEME_FADE_MS = 400;
 
 let running = false;
+// Changes asked for while a fade is already running. Applying one at once
+// would restyle the live page underneath the cross-fade: the "new" layer is the
+// live page, so it would jump (a pop, up to the whole colour difference) at
+// whatever point the fade had reached. They wait instead, and run together as
+// ONE further cross-fade the moment this one has finished - so two or three
+// quick toggles end on the last choice, with no pop and no leftover state.
+// (The apply functions mirror state that is already settled in the store, so
+// running them late is safe; they are idempotent and the last one wins.)
+let queued: Array<() => void> | null = null;
 // The no-theme-transition hold THIS module put up (as opposed to the load-time
 // freeze from the pre-paint script) and the timer that lifts it.
 let holding = false;
@@ -44,7 +52,7 @@ let pending: Array<() => void> | null = null;
 
 /** True between asking for a change and the browser applying it. */
 export function themeChangePending(): boolean {
-  return pending !== null;
+  return pending !== null || queued !== null;
 }
 
 export function runThemeChange(apply: () => void): void {
@@ -59,7 +67,13 @@ export function runThemeChange(apply: () => void): void {
   // script, released a frame after mount): a change while it is up is the
   // involuntary correction at startup, which must not animate at all.
   const loadFreeze = root.classList.contains('no-theme-transition') && !holding;
-  if (typeof doc.startViewTransition !== 'function' || reduced || running || document.hidden || loadFreeze) {
+  // Behind a running fade (even where a change would otherwise be direct, so a
+  // queued older change can never land after a newer one).
+  if (running) {
+    (queued ??= []).push(apply);
+    return;
+  }
+  if (typeof doc.startViewTransition !== 'function' || reduced || document.hidden || loadFreeze) {
     apply();
     return;
   }
@@ -103,6 +117,12 @@ export function runThemeChange(apply: () => void): void {
       holding = false;
       root.classList.remove('no-theme-transition');
     }), 100);
+    // Changes that arrived during the fade: one more cross-fade from the state
+    // the page is in now. Started after the release timer above is set, because
+    // starting a transition cancels that timer (the hold stays up through it).
+    const next = queued;
+    queued = null;
+    if (next) runThemeChange(() => { for (const run of next) run(); });
   };
   transition.finished.then(done, done);
 }

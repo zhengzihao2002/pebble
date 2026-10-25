@@ -14,7 +14,7 @@ import { getSearchTransactionsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
-import { formatCurrency, formatDate, formatFullDate } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import type { CategoryMeta, LedgerRecord, Transaction } from '@/types';
 
@@ -226,7 +226,6 @@ export function CommandPalette({
     if (last && last.group === row.group) last.items.push({ row, i });
     else groups.push({ group: row.group, items: [{ row, i }] });
   });
-  const activeRow: Row | undefined = rows[index];
 
   const groupLabel = (g: Row['group']) =>
     g === 'actions' ? d.palette.actions : g === 'pages' ? d.palette.pages : g === 'settings' ? d.palette.settings : d.palette.transactions;
@@ -235,10 +234,14 @@ export function CommandPalette({
     <ModalFrame
       onClose={() => { onClose(); const run = pending.current; pending.current = null; run?.(); }}
       labelledBy="pb-palette-title"
-      // Wide enough on a desktop for the results and a preview of the active
-      // one side by side (the split appears from a 720px card, shell.css).
-      // Phones are a full-width sheet either way.
-      maxWidth={780}
+      // One comfortable column (about 36rem). The old 780px card split into a
+      // list and a preview pane that was mostly empty for actions and pages;
+      // the rows now carry everything, so the list gets the whole width.
+      // cardStyle's rem cap wins over this px one, so the card follows the
+      // in-app text size; the px value is only the fallback. Phones are a
+      // full-width sheet either way.
+      maxWidth={576}
+      cardStyle={{ maxWidth: '36rem' }}
       // Nothing pinned at the bottom, so the keyboard simply covers the lower
       // part of the sheet instead of shrinking it and leaving a gap.
       keyboardResize={false}
@@ -293,7 +296,6 @@ export function CommandPalette({
             </div>
 
             <div className="pb-modal-body themed-scroll pb-shell-pal-body">
-              <div className={`pb-shell-pal-split${rows.length > 0 ? ' pb-shell-pal-has-rows' : ''}`}>
               <div className="pb-shell-pal-results">
               {rows.length > 0 && (
                 // Options are grouped (role=group, labelled by the caption) so
@@ -317,6 +319,7 @@ export function CommandPalette({
                               </span>
                               {/* Display only: AppShell binds N and T itself. */}
                               {row.cmd.key && <kbd className="pb-shell-kbd" aria-hidden="true">{row.cmd.key}</kbd>}
+                              <CornerDownLeft size={14} className="pb-shell-pal-enter" aria-hidden="true" />
                             </>
                           );
                         } else {
@@ -357,6 +360,7 @@ export function CommandPalette({
                                 </span>
                                 {amountHit && <span className="pb-shell-pal-badge">{d.ux.shell.matchedAmount}</span>}
                               </span>
+                              <CornerDownLeft size={14} className="pb-shell-pal-enter" aria-hidden="true" />
                             </>
                           );
                         }
@@ -379,65 +383,19 @@ export function CommandPalette({
                 </div>
               )}
 
+              {/* Status lines sit under the rows, or - with no rows to sit under -
+                  centred in the list area, so a slow search never shows a
+                  blank panel. */}
               {q && searchState === 'loading' && (
-                <p role="status" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.7rem 0 0', textAlign: 'center' }}>{d.palette.searching}</p>
+                <p role="status" className={`pb-shell-pal-status${rows.length === 0 ? ' pb-shell-pal-status-solo' : ''}`}>{d.palette.searching}</p>
               )}
               {q && searchState === 'error' && searchError && (
-                <p role="status" style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: '0.7rem 0 0', textAlign: 'center' }}>{searchError}</p>
+                <p role="status" className={`pb-shell-pal-status pb-shell-pal-status-err${rows.length === 0 ? ' pb-shell-pal-status-solo' : ''}`}>{searchError}</p>
               )}
               {rows.length === 0 && searchState !== 'loading' && searchState !== 'error' && (
-                <EmptyState compact icon={SearchX} title={d.palette.empty} body={d.ux.shell.emptyHint} />
-              )}
-              </div>
-
-              {/* Desktop only (hidden below a 720px card): what Enter will
-                  open. Decorative for assistive tech - the active option is
-                  already announced through aria-activedescendant. */}
-              {activeRow && (
-                <aside className="pb-shell-pal-preview" aria-hidden="true">
-                  {'cmd' in activeRow ? (() => {
-                    const Icon = activeRow.cmd.icon;
-                    return (
-                      <>
-                        <span className="pb-shell-pal-prev-tile"><Icon size={22} /></span>
-                        <p className="pb-shell-pal-prev-kind">
-                          {activeRow.group === 'actions' ? d.ux.shell.previewAction : activeRow.group === 'pages' ? d.ux.shell.previewPage : d.ux.shell.previewSetting}
-                        </p>
-                        <p className="pb-shell-pal-prev-title">{activeRow.cmd.label}</p>
-                        {activeRow.cmd.key && (
-                          <p className="pb-shell-pal-prev-line">{d.ux.shell.shortcutHint} <kbd className="pb-shell-kbd">{activeRow.cmd.key}</kbd></p>
-                        )}
-                      </>
-                    );
-                  })() : (() => {
-                    const x = activeRow.txn;
-                    const m = meta[x.category];
-                    // A category with no meta (deleted, or not loaded) still gets a tile.
-                    const Icon = m?.icon ?? Receipt;
-                    const title = x.description.split('\n')[0] || categoryLabel(d, x.category);
-                    return (
-                      <>
-                        <span
-                          className="pb-shell-pal-prev-tile"
-                          style={m ? { color: m.color, backgroundColor: `color-mix(in srgb, ${m.color} 13%, transparent)` } : undefined}
-                        >
-                          <Icon size={22} />
-                        </span>
-                        <p className="pb-shell-pal-prev-kind">{d.enums.kind[x.type]}</p>
-                        <p className="pb-shell-pal-prev-title">{title}</p>
-                        <p className={`font-mono-tab pb-shell-pal-prev-amt${x.amount > 0 ? ' pb-shell-pal-in' : ''}`}>
-                          {x.amount > 0 ? '+' : ''}{formatCurrency(x.amount)}
-                        </p>
-                        <dl className="pb-shell-pal-prev-rows">
-                          <div><dt>{d.addTxn.date}</dt><dd className="pb-tnum">{formatFullDate(x.date, locale)}</dd></div>
-                          <div><dt>{d.addTxn.category}</dt><dd>{categoryLabel(d, x.category)}</dd></div>
-                          {x.type === 'expense' && x.tag && <div><dt>{d.addTxn.tag}</dt><dd>{x.tag}</dd></div>}
-                        </dl>
-                      </>
-                    );
-                  })()}
-                  <p className="pb-shell-pal-prev-hint"><CornerDownLeft size={13} /> {d.ux.shell.previewOpen}</p>
-                </aside>
+                <div className="pb-shell-pal-empty">
+                  <EmptyState compact icon={SearchX} title={d.palette.empty} body={d.ux.shell.emptyHint} />
+                </div>
               )}
               </div>
             </div>

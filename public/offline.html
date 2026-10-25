@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F5A45">
+<title>Pebble — offline</title>
+<!--
+  Shown by the service worker (public/sw.js) when a page is opened without a
+  connection and has never been saved on this device. Self-contained on
+  purpose: no scripts or styles from the app, because the app's own files may
+  be exactly what is missing. Not part of the Next.js bundle, so the two
+  languages live here rather than in the dictionary (language comes from the
+  pebble-lang cookie the app sets).
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --paper: #f6f4ee; --mist: #ffffff; --ink: #1d2a24; --ink-soft: #55635b; --line: #dcd8cc;
+    --pine: #1F5A45; --pine-soft: #e3efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #121815; --mist: #1a221e; --ink: #e8ece9; --ink-soft: #9fb0a7; --line: #2c3731; --pine: #5fbf98; --pine-soft: #1d2d26; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--paper); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+    min-height: 100vh; min-height: 100dvh;
+  }
+  main {
+    width: 100%; max-width: 26rem; background: var(--mist); border: 1px solid var(--line);
+    border-radius: 1.25rem; padding: 1.75rem 1.5rem; text-align: center;
+    animation: rise 0.28s ease both;
+  }
+  .badge {
+    width: 3.25rem; height: 3.25rem; margin: 0 auto 1rem; border-radius: 50%;
+    display: grid; place-items: center; background: var(--pine-soft); color: var(--pine);
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 0.5rem; font-weight: 650; }
+  p { margin: 0 0 1rem; color: var(--ink-soft); line-height: 1.5; font-size: 0.95rem; }
+  ul { list-style: none; margin: 0 0 1.1rem; padding: 0; display: grid; gap: 0.45rem; }
+  a.page, button {
+    display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.55rem 1rem;
+    border-radius: 0.8rem; border: 1px solid var(--line); background: transparent; color: var(--ink);
+    font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; width: 100%;
+  }
+  a.page:hover, button.ghost:hover { background: var(--pine-soft); }
+  button.primary { background: var(--pine); border-color: var(--pine); color: #fff; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #0e1612; } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+  .note { font-size: 0.82rem; margin: 0.9rem 0 0; }
+  [hidden] { display: none !important; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { main { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="badge" aria-hidden="true">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M13.8 10.2A10 10 0 0 1 19 12.9"/><path d="M2 8.8a15 15 0 0 1 4.2-2.7"/><path d="M17.8 6.1A15 15 0 0 1 22 8.8"/><path d="m2 2 20 20"/></svg>
+  </div>
+  <h1 id="title">You're offline</h1>
+  <p id="lead">This page hasn't been saved on this device yet, so it can't open without a connection.</p>
+  <div id="available" hidden>
+    <p id="availableLead">These pages are saved and open offline:</p>
+    <ul id="list"></ul>
+  </div>
+  <button id="retry" class="primary" type="button">Try again</button>
+  <p id="status" class="note" role="status" aria-live="polite"></p>
+</main>
+<script>
+(function () {
+  var NAMES = {
+    en: { '/dashboard': 'Dashboard', '/accounts': 'Accounts', '/transactions': 'Transactions', '/reports': 'Reports', '/analysis': 'Analysis', '/insights': 'Insights', '/budgets': 'Budgets', '/goals': 'Goals', '/scheduled': 'Scheduled', '/settings': 'Settings' },
+    zh: { '/dashboard': '概览', '/accounts': '账户', '/transactions': '交易', '/reports': '报表', '/analysis': '分析', '/insights': '洞察', '/budgets': '预算', '/goals': '目标', '/scheduled': '定期', '/settings': '设置' }
+  };
+  var TEXT = {
+    en: {
+      title: "You're offline", lead: "This page hasn't been saved on this device yet, so it can't open without a connection.",
+      availableLead: 'These pages are saved and open offline:', retry: 'Try again', still: 'Still offline. Check your connection and try again.',
+      checking: 'Checking…', adding: 'You can still add transactions offline from a saved page; they upload when you are back online.'
+    },
+    zh: {
+      title: '当前离线', lead: '这个页面还没有保存在这台设备上，所以没有网络时无法打开。',
+      availableLead: '以下页面已保存，离线也能打开：', retry: '重试', still: '仍然离线，请检查网络后再试。',
+      checking: '正在检查…', adding: '在已保存的页面里，离线时仍可以记账；联网后再上传。'
+    }
+  };
+  var cookie = (document.cookie.match(/(?:^|; )pebble-lang=([^;]+)/) || [])[1];
+  var lang = cookie === 'zh' || (!cookie && /^zh/i.test(navigator.language || '')) ? 'zh' : 'en';
+  var t = TEXT[lang];
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('lead').textContent = t.lead;
+  document.getElementById('availableLead').textContent = t.availableLead;
+  var retry = document.getElementById('retry');
+  var status = document.getElementById('status');
+  retry.textContent = t.retry;
+
+  // Which pages are saved: the keys of the worker's page cache. Only paths,
+  // never contents.
+  if (window.caches) {
+    caches.keys().then(function (names) {
+      var name = names.filter(function (n) { return n.indexOf('pebble-pages-') === 0; })[0];
+      return name ? caches.open(name).then(function (c) { return c.keys(); }) : [];
+    }).then(function (requests) {
+      var seen = {}, list = document.getElementById('list');
+      requests.forEach(function (r) {
+        var path = new URL(r.url).pathname;
+        if (!NAMES.en[path] || seen[path]) return;
+        seen[path] = true;
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.className = 'page'; a.href = path; a.textContent = NAMES[lang][path];
+        li.appendChild(a); list.appendChild(li);
+      });
+      if (list.children.length) {
+        document.getElementById('available').hidden = false;
+        status.textContent = t.adding;
+      }
+    }).catch(function () {});
+  }
+
+  // Leaves by NAVIGATING to the address, never location.reload(): reloading an
+  // offline installed app can freeze the web view on iOS.
+  function probe() {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 4000);
+    return fetch('/ping.txt?t=' + Date.now(), { cache: 'no-store', signal: controller.signal })
+      .then(function (r) { clearTimeout(timer); return r.ok; }, function () { clearTimeout(timer); return false; });
+  }
+  function tryAgain() {
+    status.textContent = t.checking;
+    probe().then(function (ok) {
+      if (ok) { location.href = location.pathname + location.search; } else { status.textContent = t.still; }
+    });
+  }
+  retry.addEventListener('click', tryAgain);
+  window.addEventListener('online', tryAgain);
+})();
+</script>
+</body>
+</html>

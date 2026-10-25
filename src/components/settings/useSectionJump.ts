@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // Upper bound on how long a click holds the highlight while the page scrolls.
 // Normally released earlier by scrollend.
 const CLICK_LOCK_FALLBACK_MS = 1200;
+// How long the arrival pulse on a jumped-to row stays on (matches the CSS).
+const FLASH_MS = 1900;
 
 /**
  * Which Settings section is being read, and a jump to any of them. Moved out
@@ -26,6 +28,7 @@ export function useSectionJump(ids: string[]) {
   // highlight through every section passed on the way. Held until it ends.
   const lockedRef = useRef(false);
   const releaseRef = useRef<(() => void) | null>(null);
+  const flashTimerRef = useRef(0);
 
   // A string, so a new ids array with the same ids does not rebuild the
   // observers on every render.
@@ -81,17 +84,19 @@ export function useSectionJump(ids: string[]) {
       band.disconnect();
       bottom.disconnect();
       releaseRef.current?.();
+      window.clearTimeout(flashTimerRef.current);
     };
   }, [idsKey]);
 
-  const jump = useCallback((id: string) => {
-    const target = document.getElementById(id);
-    if (!target) return;
+  // Scrolls `target` to the top of the scroller (its scroll-margin-top clears
+  // the sticky chrome) and holds the section highlight on `highlightId` until
+  // the scroll ends. Shared by the section jump and the row jump.
+  const scrollToTarget = useCallback((target: HTMLElement, highlightId: string) => {
     const root = document.querySelector('.pebble-root');
 
     releaseRef.current?.();
     lockedRef.current = true;
-    setActiveId(id);
+    setActiveId(highlightId);
 
     let timer = 0;
     const release = () => {
@@ -111,5 +116,40 @@ export function useSectionJump(ids: string[]) {
     target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   }, []);
 
-  return { activeId, jump };
+  const jump = useCallback((id: string) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    scrollToTarget(target, id);
+  }, [scrollToTarget]);
+
+  // The overview chips: scroll to the EXACT row a chip summarises (not the
+  // section that happens to contain it), make it unmistakable, and move
+  // keyboard focus into it so a keyboard or screen-reader user arrives there
+  // too. The row clears the sticky header and phone jump bar through its
+  // scroll-margin-top (.pb-settings-target in settings.css).
+  const jumpToRow = useCallback((rowId: string) => {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    // The section the row lives in keeps the nav highlight.
+    scrollToTarget(row, row.closest('section')?.id ?? rowId);
+
+    // Restart the pulse even when the same chip is pressed twice in a row,
+    // and never leave an earlier row's pulse running beside this one.
+    window.clearTimeout(flashTimerRef.current);
+    document.querySelectorAll('.pb-settings-target.is-flash').forEach((el) => el.classList.remove('is-flash'));
+    void row.offsetWidth;
+    row.classList.add('is-flash');
+    flashTimerRef.current = window.setTimeout(() => row.classList.remove('is-flash'), FLASH_MS);
+
+    // Focus AFTER the scroll has started, with preventScroll, so the browser
+    // does not run a second (instant) scroll that cancels the smooth one. The
+    // first control that Tab can reach: a radiogroup keeps only its checked
+    // option in the tab order, which is the right place to land.
+    const first = row.querySelector<HTMLElement>(
+      'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]), a[href], [tabindex="0"]',
+    );
+    first?.focus({ preventScroll: true });
+  }, [scrollToTarget]);
+
+  return { activeId, jump, jumpToRow };
 }

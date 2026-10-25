@@ -25,6 +25,7 @@ import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
 import { SettingsJumpBar, SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
 import { SettingsOverview } from '@/components/settings/SettingsOverview';
 import { useSectionJump } from '@/components/settings/useSectionJump';
+import { useScrollAnchor } from '@/components/settings/useScrollAnchor';
 import { SAFETY_LOCK_KEYS, isLocked } from '@/lib/safetyLocks';
 import { isThemeChoice } from '@/lib/themeChoice';
 import { isAppearance } from '@/lib/appearance';
@@ -48,8 +49,10 @@ interface SettingsSection {
   cards: ReactNode;
 }
 
-// Ids of the sections the overview chips point at. Fixed strings, never
-// translated (the command palette and NoAccountsNotice link to them too).
+// Ids of the sections the section nav and jump bar point at. Fixed strings,
+// never translated (the command palette and NoAccountsNotice link to them
+// too). The overview chips point at single rows instead - see
+// settingsTargets.ts.
 const SECTION_IDS = {
   money: 'settings-money',
   appearance: 'settings-appearance',
@@ -67,17 +70,17 @@ export function SettingsClient({
 }: SettingsClientProps) {
   const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
-  const setTextSize = usePebbleStore((s) => s.setTextSize);
+  const storeSetTextSize = usePebbleStore((s) => s.setTextSize);
   const appearance = usePebbleStore((s) => s.appearance);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const locale = usePebbleStore((s) => s.locale);
-  const setLocale = usePebbleStore((s) => s.setLocale);
+  const storeSetLocale = usePebbleStore((s) => s.setLocale);
   const selectMode = usePebbleStore((s) => s.selectMode);
   const setSelectMode = usePebbleStore((s) => s.setSelectMode);
   const fontChoice = usePebbleStore((s) => s.fontChoice);
-  const setFontChoice = usePebbleStore((s) => s.setFontChoice);
+  const storeSetFontChoice = usePebbleStore((s) => s.setFontChoice);
   const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
-  const setCjkFontChoice = usePebbleStore((s) => s.setCjkFontChoice);
+  const storeSetCjkFontChoice = usePebbleStore((s) => s.setCjkFontChoice);
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
   const breakdownChart = usePebbleStore((s) => s.breakdownChart) === 'bar' ? 'bar' : 'donut';
   const setBreakdownChart = usePebbleStore((s) => s.setBreakdownChart);
@@ -89,6 +92,19 @@ export function SettingsClient({
   const safetyLocks = usePebbleStore((s) => s.safetyLocks);
   const locksOn = SAFETY_LOCK_KEYS.filter((key) => isLocked(safetyLocks, key)).length;
   const u = d.ux.settings;
+
+  // Text size, language and fonts reflow the whole page, which used to throw
+  // the reader off whatever they were looking at. keepPlace() records the row
+  // at the top of the screen just before each of these changes; the hook puts
+  // it back at the same spot once the new layout is in.
+  const keepPlace = useScrollAnchor(`${textSize}|${locale}|${fontChoice}|${cjkFontChoice}`, {
+    anchors: '.pb-settings-row, .pb-settings-link, .pb-settings-acct, .pb-settings-cat, .pb-settings-sec-head, .settings-column .card',
+    content: '.settings-column',
+  });
+  const setTextSize = (value: number) => { keepPlace(); storeSetTextSize(value); };
+  const setLocale: typeof storeSetLocale = (value) => { keepPlace(); storeSetLocale(value); };
+  const setFontChoice: typeof storeSetFontChoice = (value) => { keepPlace(); storeSetFontChoice(value); };
+  const setCjkFontChoice: typeof storeSetCjkFontChoice = (value) => { keepPlace(); storeSetCjkFontChoice(value); };
 
   // ONE list, rendered below as the page content and by the section nav, so
   // the two can never disagree about what exists or in what order.
@@ -179,7 +195,7 @@ export function SettingsClient({
   // ONE set of observers and one click lock for the side nav, the phone jump
   // bar and the overview chips, so they always agree on where you are.
   const navItems = sections.map(({ id, title, short }) => ({ id, title, short }));
-  const { activeId, jump } = useSectionJump(navItems.map((i) => i.id));
+  const { activeId, jump, jumpToRow } = useSectionJump(navItems.map((i) => i.id));
 
   return (
     <div className="settings-layout pb-settings">
@@ -198,8 +214,7 @@ export function SettingsClient({
           blurOnLaunch={privacyOnLaunch}
           locksOn={locksOn}
           locksTotal={SAFETY_LOCK_KEYS.length}
-          onJump={jump}
-          sectionIds={SECTION_IDS}
+          onJump={jumpToRow}
         />
         {/* The narrow-column counterpart of the side nav (CSS shows one or
             the other). Sticky under the header. */}

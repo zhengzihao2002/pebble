@@ -142,49 +142,55 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
       <div inert={confirm !== null} className="pb-settings-adjust">
         <SectionHeader icon={Scale} title={d.modifyBalance.title} subtitle={d.modifyBalance.blurb} />
 
-        {/* The picker and the chosen account's balance read as one unit: the
-            figure sits on the same soft band, right under the name.
-            Was a button row. Same list (active only), same default (active[0]),
-            so a dropdown removes no safety step - something is always selected. */}
-        <div className="pb-settings-adjust-pick">
-          <SelectField
-            value={accountId}
-            onChange={setAccountId}
-            options={accountOptions}
-            disabled={accountOptions.length === 0}
-            ariaLabel={d.modifyBalance.account}
-          />
-          <div className="pb-settings-adjust-now">
-            {/* Chinese drops the space between the account name and the noun,
-                which is why this is a template rather than concatenation. */}
-            <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
-            <span className="font-mono-tab pb-settings-adjust-now-amt">{formatCurrency(currentBalance)}</span>
+        {/* Two blocks side by side on a wide card (which account / how much),
+            one under the other on a phone: the order is the flow. */}
+        <div className="pb-settings-adjust-grid">
+          {/* The picker and the chosen account's balance read as one unit: the
+              figure sits on the same soft band, right under the name.
+              Was a button row. Same list (active only), same default (active[0]),
+              so a dropdown removes no safety step - something is always selected. */}
+          <div className="pb-settings-adjust-pick">
+            <SelectField
+              value={accountId}
+              onChange={setAccountId}
+              options={accountOptions}
+              disabled={accountOptions.length === 0}
+              ariaLabel={d.modifyBalance.account}
+            />
+            <div className="pb-settings-adjust-now">
+              {/* Chinese drops the space between the account name and the noun,
+                  which is why this is a template rather than concatenation. */}
+              <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
+              <span className="font-mono-tab pb-settings-adjust-now-amt">{formatCurrency(currentBalance)}</span>
+            </div>
+          </div>
+
+          <div className="pb-settings-adjust-amount">
+            {/* The kit radiogroup in place of two pills: same two choices, same
+                stored mode, plus arrow keys and a sliding thumb. */}
+            <SegmentedControl<Mode>
+              options={[
+                { value: 'setTo', label: d.modifyBalance.setTo },
+                { value: 'changeBy', label: d.modifyBalance.changeBy },
+              ]}
+              value={mode} onChange={setMode} ariaLabel={d.modifyBalance.title} fullWidth
+            />
+
+            <label style={labelStyle}>
+              {mode === 'setTo' ? d.modifyBalance.newBalance : d.modifyBalance.changeByLabel}
+              <div style={{ position: 'relative' }}>
+                {/* Stays '$' in every locale: real US dollars. */}
+                <span className="font-display" style={bigDollarStyle}>$</span>
+                <AmountInput allowNegative
+                  ref={amountRef}
+                  value={value}
+                  onValueChange={setValue}
+                  placeholder="0.00" className="font-mono-tab" style={bigAmountStyle}
+                />
+              </div>
+            </label>
           </div>
         </div>
-
-        {/* The kit radiogroup in place of two pills: same two choices, same
-            stored mode, plus arrow keys and a sliding thumb. */}
-        <SegmentedControl<Mode>
-          options={[
-            { value: 'setTo', label: d.modifyBalance.setTo },
-            { value: 'changeBy', label: d.modifyBalance.changeBy },
-          ]}
-          value={mode} onChange={setMode} ariaLabel={d.modifyBalance.title} fullWidth
-        />
-
-        <label style={labelStyle}>
-          {mode === 'setTo' ? d.modifyBalance.newBalance : d.modifyBalance.changeByLabel}
-          <div style={{ position: 'relative' }}>
-            {/* Stays '$' in every locale: real US dollars. */}
-            <span className="font-display" style={bigDollarStyle}>$</span>
-            <AmountInput allowNegative
-              ref={amountRef}
-              value={value}
-              onValueChange={setValue}
-              placeholder="0.00" className="font-mono-tab" style={bigAmountStyle}
-            />
-          </div>
-        </label>
 
         <label style={labelStyle}>
           <span>{d.modifyBalance.note} <span style={{ opacity: 0.7 }}>{d.modifyBalance.optional}</span></span>
@@ -196,35 +202,42 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
           />
         </label>
 
-        {/* Before -> after, with the change itself as a signed chip (an arrow
-            as well as pine / wine, so colour is never the only signal). */}
-        {hasValue && delta !== 0 && (
-          <div className="pb-settings-adjust-preview">
-            <span className="pb-settings-adjust-preview-label">{d.modifyBalance.adjustment}</span>
-            <DeltaChip
-              delta={delta} good="up" money
-              text={`${delta > 0 ? '+' : '\u2212'}${formatCurrency(Math.abs(delta))}`}
-            />
-            <span className="pb-settings-adjust-flow">
-              <span className="font-mono-tab pb-settings-adjust-before">{formatCurrency(currentBalance)}</span>
-              <ArrowRight size={14} aria-hidden="true" />
-              <span className="pb-settings-adjust-after">
-                <span className="pb-settings-adjust-after-label">{d.ux.settings.balanceAfter}</span>
-                <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(resulting)}</span>
-              </span>
-            </span>
-          </div>
-        )}
-
         <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} />
 
-        <button
-          onClick={handleSave} disabled={saving || !hasValue || delta === 0}
-          className="btn-primary"
-          style={{ alignSelf: 'flex-start', padding: '0.65rem 1.1rem', opacity: saving || !hasValue || delta === 0 ? 0.6 : 1 }}
-        >
-          {saving ? d.common.saving : d.modifyBalance.record}
-        </button>
+        {/* The action row: what will happen on the left, the primary button on
+            the right (under the preview on a phone). The preview slot keeps its
+            place with a quiet line until there is something to show, so the
+            row does not jump when the first digit is typed. */}
+        <div className="pb-settings-adjust-foot">
+          {hasValue && delta !== 0 ? (
+            /* Before -> after, with the change itself as a signed chip (an arrow
+               as well as pine / wine, so colour is never the only signal). */
+            <div className="pb-settings-adjust-preview">
+              <span className="pb-settings-adjust-preview-label">{d.modifyBalance.adjustment}</span>
+              <DeltaChip
+                delta={delta} good="up" money
+                text={`${delta > 0 ? '+' : '\u2212'}${formatCurrency(Math.abs(delta))}`}
+              />
+              <span className="pb-settings-adjust-flow">
+                <span className="font-mono-tab pb-settings-adjust-before">{formatCurrency(currentBalance)}</span>
+                <ArrowRight size={14} aria-hidden="true" />
+                <span className="pb-settings-adjust-after">
+                  <span className="pb-settings-adjust-after-label">{d.ux.settings.balanceAfter}</span>
+                  <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(resulting)}</span>
+                </span>
+              </span>
+            </div>
+          ) : (
+            <p className="pb-settings-adjust-idle">{d.ux.settings.adjustIdle}</p>
+          )}
+          <button
+            onClick={handleSave} disabled={saving || !hasValue || delta === 0}
+            className="btn-primary pb-settings-adjust-go"
+            style={{ opacity: saving || !hasValue || delta === 0 ? 0.6 : 1 }}
+          >
+            {saving ? d.common.saving : d.modifyBalance.record}
+          </button>
+        </div>
       </div>
 
       {confirm && (

@@ -16,6 +16,7 @@ import "@/styles/redesign/budgets.css";
 import "@/styles/redesign/goals.css";
 import "@/styles/redesign/scheduled.css";
 import "@/styles/redesign/settings.css";
+import "@/styles/redesign/offline.css";
 import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
 import { HtmlPreferenceSync } from "@/components/providers/HtmlPreferenceSync";
 import { APPEARANCE_FIELD, CJK_FONT_FIELD, FONT_FIELD, LAST_USER_KEY, LOCALE_FIELD, PEBBLE_UI_STORAGE_KEY, SHOW_WELCOME_FIELD, TEXT_SIZE_FIELD, THEME_FIELD, WELCOME_PENDING_KEY } from "@/store/storageKeys";

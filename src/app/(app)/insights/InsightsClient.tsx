@@ -124,7 +124,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
         </div>
       </div>
       {selected && (
-        <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
+        <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} accounts={accounts} onClose={() => setSelected(null)} />
       )}
       {prefill && <RecurringRuleModal prefill={prefill} onClose={() => setPrefill(null)} />}
       {payOff && (

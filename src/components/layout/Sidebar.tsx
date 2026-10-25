@@ -1,6 +1,6 @@
 'use client';
 
-import { Monitor, Moon, Search, Sun } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';
@@ -8,8 +8,6 @@ import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { NAV_GROUPS, navItems } from './navItems';
-import { requestShell } from './shellEvents';
-import { useShortcutLabel } from './useShortcutLabel';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function Sidebar() {
@@ -21,7 +19,6 @@ export function Sidebar() {
   const onSystem = appearance === 'system';
   const { name, email, initials } = useCurrentUser();
   const { d } = useTranslation();
-  const shortcut = useShortcutLabel();
   const byHref = new Map(navItems.map((i) => [i.href, i]));
   const settings = byHref.get('/settings');
 
@@ -31,14 +28,6 @@ export function Sidebar() {
         <PebbleMark size={34} />
         <span className="font-display pb-sidebar-wordmark">Pebble</span>
       </div>
-      {/* The palette, findable without knowing the shortcut - which it also
-          teaches. Outside <nav>: it is not a page link, and the nav panel's
-          descendant rules (globals.css) would restyle it. */}
-      <button type="button" className="pb-shell-side-search" onClick={() => requestShell('palette')}>
-        <Search size={16} aria-hidden="true" />
-        <span className="pb-shell-side-search-label">{d.ux.shell.searchShortcut}</span>
-        {shortcut && <kbd className="pb-shell-kbd" aria-hidden="true">{shortcut}</kbd>}
-      </button>
       {/* Grouped for scanning (NAV_GROUPS); the links themselves are the same
           NavButtons in the same order. Each caption labels its group, so a
           screen reader hears the grouping too. */}

@@ -59,7 +59,15 @@ export async function callAction<T extends { ok: true } | ActionFailure>(
     // the file header. Falls back to the dictionary's transportError only
     // when the caller did not supply something more specific (many call
     // sites already do, e.g. d.addTxn.categoriesFailed).
-    const message = fallbackError ?? getDictionary(usePebbleStore.getState().locale).common.transportError;
+    //
+    // OFFLINE is different: with no connection the request never left the
+    // device, so we KNOW nothing changed - and the useful thing to say is that
+    // this needs a connection, not "something went wrong" or "check before
+    // trying again". Wins over a call site's own fallback (those are written
+    // for a flaky server, not a missing connection). The kind stays 'network'.
+    const dictionary = getDictionary(usePebbleStore.getState().locale);
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const message = offline ? dictionary.ux.offline.needsConnection : (fallbackError ?? dictionary.common.transportError);
     // 'network', deliberately NOT 'database': a server-side database error
     // proves the write did not land, whereas a request that never came back
     // may well have committed first. Different kind, different retry advice.

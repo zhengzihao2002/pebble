@@ -1124,6 +1124,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
           txn={selectedTransaction}
           onClose={() => setSelectedTransaction(null)}
           categoryMeta={categoryMeta}
+          accounts={accounts}
         />
       )}
     </div>

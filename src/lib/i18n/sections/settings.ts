@@ -38,6 +38,8 @@ export const settingsEn = {
   dueToday: 'Due today',
   // Adjust a balance: the before -> after pair.
   balanceAfter: 'After',
+  // Shown in the action row until an amount gives a change to preview.
+  adjustIdle: 'Enter an amount to see the change and the new balance.',
   // Categories card.
   filterCategories: 'Filter categories',
   noCategoryMatch: 'No categories match “{query}”.',
@@ -71,6 +73,7 @@ export const settingsZh: typeof settingsEn = {
   dueTomorrow: '明天还款',
   dueToday: '今天还款',
   balanceAfter: '调整后',
+  adjustIdle: '输入金额后，这里会显示变动和调整后的余额。',
   filterCategories: '筛选分类',
   noCategoryMatch: '没有与“{query}”匹配的分类。',
   categoryCount: '{count} 个分类',

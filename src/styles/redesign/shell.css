@@ -9,8 +9,7 @@
 .pebble-root .pebble-header > div { max-width: 91rem; margin-inline: auto; }
 
 /* ------------------------------------------------------------
-   Keyboard hint chip (sidebar search, header field, palette rows and
-   legend). Display only - every shortcut lives in AppShell.
+   Keyboard hint chip (header field, palette rows and legend). Display only - every shortcut lives in AppShell.
    ------------------------------------------------------------ */
 .pebble-root .pb-shell-kbd {
   display: inline-flex; align-items: center; justify-content: center;
@@ -24,7 +23,8 @@
 }
 
 /* ------------------------------------------------------------
-   Sidebar: a search row, grouped pages, Settings pinned low.
+   Sidebar: grouped pages, Settings pinned low. (Search lives in the header
+   field only - a second search box here duplicated it.)
    ------------------------------------------------------------ */
 /* Ten links, three captions and the account block can outgrow a short
    laptop window; the sidebar scrolls itself then, instead of clipping Sign
@@ -32,18 +32,6 @@
    switch and Sign out are further down. */
 .pebble-root .pebble-sidebar { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .pebble-root .pebble-sidebar .pb-sidebar-brand { margin-bottom: 1.25rem; flex: none; }
-
-.pebble-root .pb-shell-side-search {
-  flex: none; display: flex; align-items: center; gap: 0.6rem; width: 100%;
-  margin-bottom: 0.9rem; padding: 0.55rem 0.6rem 0.55rem 0.85rem;
-  border-radius: 999px; border: 1px solid var(--line);
-  background-color: color-mix(in srgb, var(--mist) 70%, transparent);
-  color: var(--ink-soft); font: inherit; font-size: 0.86rem; text-align: left; cursor: pointer;
-  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
-}
-.pebble-root .pb-shell-side-search:hover { border-color: var(--pine); color: var(--ink); }
-.pebble-root .pb-shell-side-search:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
-.pebble-root .pb-shell-side-search-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The page panel holds three captioned groups. Hairlines between groups
    keep it one surface (no card inside a card). */
@@ -68,7 +56,6 @@
 @media (max-height: 820px) and (pointer: fine) {
   .pebble-root .pebble-sidebar { padding-top: 1.1rem; padding-bottom: 0.9rem; }
   .pebble-root .pebble-sidebar .pb-sidebar-brand { margin-bottom: 0.85rem; }
-  .pebble-root .pb-shell-side-search { margin-bottom: 0.6rem; padding-top: 0.45rem; padding-bottom: 0.45rem; }
   .pebble-root .pb-shell-side-cap { padding-top: 0.3rem; padding-bottom: 0.1rem; }
   .pebble-root .pebble-sidebar nav .nav-btn { padding-top: 0.4rem; padding-bottom: 0.4rem; }
   .pebble-root .pebble-sidebar nav.pb-shell-side-pinned { margin: 0.5rem 0 0.6rem; }
@@ -173,27 +160,28 @@
 }
 
 /* ------------------------------------------------------------
-   Command palette: grouped results with sticky captions, match
-   highlighting, a preview of the active row (wide cards) and a legend.
+   Command palette: ONE column of grouped results (sticky captions, icon
+   tile + title + muted subtitle + right-aligned hint, match highlighting)
+   over a quiet keyboard legend. There is no side preview: for actions,
+   pages and settings it repeated the row and left most of a wide card
+   blank, and a transaction row already shows its date, category and amount.
    ------------------------------------------------------------ */
-.pebble-root .pb-shell-pal-split { display: block; }
-.pebble-root .pb-shell-pal-results { min-width: 0; }
-.pebble-root .pb-shell-pal-preview { display: none; }
+.pebble-root .pb-shell-pal-results { min-width: 0; display: flex; flex-direction: column; min-height: 100%; }
 .pebble-root .pb-shell-pal-list { display: flex; flex-direction: column; gap: 0.35rem; }
 .pebble-root .pb-shell-pal-group { display: flex; flex-direction: column; gap: 2px; }
 /* Sticks to the top of the scroll area (which has 0.25rem top padding) on
    the card's own surface, so rows scroll under it. */
 .pebble-root .pb-shell-pal-cap {
   position: sticky; top: -0.25rem; z-index: 1;
-  margin: 0; padding: 0.4rem 0.75rem 0.3rem;
+  margin: 0; padding: 0.45rem 0.75rem 0.3rem;
   background-color: var(--mist);
   font-size: 0.66rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
   color: var(--ink-soft);
 }
 .pebble-root .pb-shell-pal-opt {
-  display: flex; align-items: center; gap: 0.7rem; min-width: 0;
-  padding: 0.5rem 0.65rem; border-radius: 0.75rem; cursor: pointer;
-  font-size: 0.9rem; color: var(--ink);
+  display: flex; align-items: center; gap: 0.75rem; min-width: 0;
+  min-height: 2.9rem; padding: 0.4rem 0.65rem; border-radius: 0.8rem; cursor: pointer;
+  font-size: 0.92rem; color: var(--ink);
 }
 .pebble-root .pb-shell-pal-on { background-color: var(--pine-soft); }
 .pebble-root .pb-shell-pal-on .pb-shell-pal-title { color: var(--pine); }
@@ -201,7 +189,7 @@
   .pebble-root .pb-shell-pal-opt { min-height: 44px; }
 }
 .pebble-root .pb-shell-pal-icon {
-  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 0.6rem;
+  flex: none; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 0.65rem;
   color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .pebble-root .pb-shell-pal-on .pb-shell-pal-icon { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, var(--mist)); }
@@ -217,50 +205,46 @@
   font-size: 0.62rem; font-weight: 600; white-space: nowrap;
   color: var(--gold); background-color: color-mix(in srgb, var(--gold) 13%, transparent);
 }
+/* The Enter hint on the active row. Always laid out (just transparent), so
+   moving the highlight never shifts a title; absent on touch, which has no
+   Enter key. */
+.pebble-root .pb-shell-pal-enter { flex: none; color: var(--ink-faint); opacity: 0; }
+.pebble-root .pb-shell-pal-on .pb-shell-pal-enter { opacity: 1; }
+@media (pointer: coarse) {
+  .pebble-root .pb-shell-pal-enter { display: none; }
+}
 .pebble-root .pb-shell-mark {
   background-color: color-mix(in srgb, var(--gold) 26%, transparent); color: inherit;
   border-radius: 0.2rem; padding: 0 0.05em; font-weight: 600;
 }
 
-/* Wide cards: results left, preview right. The preview sticks to the top of
-   the one scroll area, so it stays beside the list as it scrolls. */
-@container pb-modal (min-width: 720px) {
-  .pebble-root .pb-shell-pal-split.pb-shell-pal-has-rows {
-    display: grid; grid-template-columns: minmax(0, 1fr) 15.5rem; gap: 1rem; align-items: start;
-    min-height: 22rem;
+/* Status lines under the rows; alone (no rows) they centre in the list area. */
+.pebble-root .pb-shell-pal-status { margin: 0.7rem 0 0; text-align: center; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-shell-pal-status-err { color: var(--wine); }
+.pebble-root .pb-shell-pal-status-solo { margin: auto 0; padding: 1rem 0; }
+.pebble-root .pb-shell-pal-empty { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+/* Desktop: the card hangs from a fixed distance below the top edge instead of
+   being centred, so the search field stays put while the results below it
+   grow and shrink with each keystroke (a centred card moved the field up and
+   down as you typed). The list area has a floor, so a short or empty result
+   does not collapse the card, and a cap, so a long one scrolls inside it
+   (ModalFrame eases the height change between the two). Phones keep the
+   full-height sheet from globals.css. */
+@media (min-width: 561px) {
+  .pebble-root .pb-modal-card.pb-palette-card {
+    --pb-pal-top: clamp(1rem, 11vh, 6.5rem);
+    margin: var(--pb-pal-top) auto auto;
+    max-height: calc(var(--pb-vvh, 100dvh) - var(--pb-pal-top) - 1rem);
   }
-  .pebble-root .pb-shell-pal-has-rows .pb-shell-pal-preview {
-    position: sticky; top: 0;
-    display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem;
-    padding: 1.1rem; border-radius: 1rem;
-    background-color: color-mix(in srgb, var(--ink) 4%, transparent);
-    border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  }
-}
-.pebble-root .pb-shell-pal-prev-tile {
-  display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: 0.9rem; margin-bottom: 0.35rem;
-  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent);
-}
-.pebble-root .pb-shell-pal-prev-kind {
-  margin: 0; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint);
-}
-.pebble-root .pb-shell-pal-prev-title {
-  margin: 0; font-size: 1rem; font-weight: 600; color: var(--ink); line-height: 1.3;
-  overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
-.pebble-root .pb-shell-pal-prev-amt { margin: 0.2rem 0 0.1rem; font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
-.pebble-root .pb-shell-pal-prev-amt.pb-shell-pal-in { color: var(--pine); }
-.pebble-root .pb-shell-pal-prev-line { margin: 0.25rem 0 0; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--ink-soft); }
-.pebble-root .pb-shell-pal-prev-rows { margin: 0.4rem 0 0; width: 100%; font-size: 0.78rem; }
-.pebble-root .pb-shell-pal-prev-rows > div {
-  display: flex; flex-direction: column; gap: 1px; padding: 0.4rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
-}
-.pebble-root .pb-shell-pal-prev-rows dt { color: var(--ink-faint); font-size: 0.7rem; }
-.pebble-root .pb-shell-pal-prev-rows dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
-.pebble-root .pb-shell-pal-prev-hint {
-  margin: 0.6rem 0 0; display: inline-flex; align-items: center; gap: 0.35rem;
-  font-size: 0.72rem; color: var(--ink-soft);
+  /* Only a cap. A floor on the whole list area left a blank band under a
+     single result ("fid" -> one row and 200px of white); the card now simply
+     ends under its last row, and the field still does not move because the
+     card hangs from the top. The no-match and searching states keep their
+     own floor so they do not collapse to a sliver. */
+  .pebble-root .pb-palette-card .pb-shell-pal-body { max-height: 27rem; }
+  .pebble-root .pb-palette-card .pb-shell-pal-empty,
+  .pebble-root .pb-palette-card .pb-shell-pal-status-solo { min-height: min(11rem, 22dvh); }
 }
 
 .pebble-root .pb-shell-pal-legend {

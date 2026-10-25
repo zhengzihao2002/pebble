@@ -3,6 +3,7 @@
 import { Languages } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { LOCALES, type Locale } from '@/lib/i18n';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -30,7 +31,7 @@ export function LanguageControl({ locale, onChange }: LanguageControlProps) {
   };
 
   return (
-    <SettingsRow icon={Languages} title={d.settings.language.title} hint={d.settings.language.hint}>
+    <SettingsRow id={SETTING_TARGETS.language} icon={Languages} title={d.settings.language.title} hint={d.settings.language.hint}>
       <SegmentedControl
         options={LOCALES.map((code) => ({ value: code, label: labels[code] }))}
         value={locale} onChange={onChange} ariaLabel={d.settings.language.label}

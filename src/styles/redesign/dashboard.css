@@ -796,6 +796,14 @@
   padding: 0.6rem 0; min-width: 0;
 }
 .pebble-root .pb-dash-notice-row + .pb-dash-notice-row { border-top: 1px solid var(--line); }
+/* Every row's 0.6rem bottom padding is half of the gap to the NEXT row's
+   content (it pairs with that row's top padding across the hairline). The last
+   row has no next row, so its bottom padding was pure surplus on top of the
+   card's own bottom padding: the Budget alerts card ended ~14px (a phone: ~40px
+   of blank to the text) lower than its first two rows' rhythm, which read as
+   "the last one is larger, with extra space under it". Drop it, so the last
+   row's content sits exactly one card padding from the card's edge. */
+.pebble-root .pb-dash-notice-row:last-child { padding-bottom: 0; }
 .pebble-root .pb-dash-notice-main { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .pebble-root .pb-dash-notice-text { margin: 0; font-size: 0.85rem; line-height: 1.45; overflow-wrap: anywhere; }
 .pebble-root .pb-dash-name { font-weight: 600; }
@@ -833,6 +841,16 @@
   .pebble-root .pb-dash-notice-actions { grid-column: 2; flex-wrap: wrap; margin-left: -0.6rem; }
   .pebble-root .pb-dash-notice-actions .link-btn { margin-left: 0.6rem; }
   .pebble-root .pb-dash-rec-go { margin-left: 0.6rem; }
+  /* A touch screen's 44px "View budget / Dismiss" row holds ~13px of invisible
+     slack under the 15px text. On the LAST alert that slack sat between the
+     words and the card edge (padding + slack = ~29px of air, against 12px at
+     the top). Let the tap box overlap the card's bottom padding by that slack
+     (less 0.2rem so it never reaches the border); the target stays 44px tall
+     and inside the card. Alerts only: the Looks recurring row ends in a filled
+     button whose box is visible, so it keeps its full padding. */
+  @media (pointer: coarse) {
+    .pebble-root .pb-dash-alerts .pb-dash-notice-row:last-child .pb-dash-notice-actions { margin-bottom: calc((0.96rem - 44px) / 2 + 0.2rem); }
+  }
 }
 
 /* ---------- Same time last year ---------- */

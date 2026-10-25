@@ -49,6 +49,14 @@ export default function proxy(request: NextRequest) {
   return authMiddleware(request);
 }
 
+// OFFLINE SUPPORT (public/sw.js, public/offline.html, public/ping.txt,
+// public/manifest.json): none of these needs a bypass, and none is added. The
+// matcher below is an ALLOWLIST of protected pages - anything not listed
+// (these static files, /auth/*, /_next/*) never reaches the auth middleware in
+// the first place, so the worker can be fetched, and the offline page and the
+// reachability probe answered, while signed out. Every protected page stays
+// protected: the worker only ever stores a page the server returned as a 200
+// non-redirect (see sw.js), which for these routes means an authenticated one.
 export const config = {
   matcher: [
     '/dashboard/:path*',

@@ -38,6 +38,13 @@ interface TransactionDetailModalProps {
    * command palette pass nothing, and the receipt's Balance strip stays hidden.
    */
   ledgerEntry?: StatementEntry | null;
+  /**
+   * Optional: the accounts the page already holds (every status). With them the
+   * receipt's account chip - icon, ····last4 - and the Balance strip's "owed"
+   * wording are known on the FIRST frame. Without them the dialog uses the
+   * last lookup it made (see detailAccountsMemo) and then asks the server.
+   */
+  accounts?: Account[];
 }
 
 const FORM_ID = 'txn-edit-form';
@@ -57,6 +64,45 @@ const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, to
 
 type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 
+// The active accounts as last seen by ANY detail dialog (or by the idle
+// warm-up below). The receipt's account chip needs the account's kind and
+// last4, which a transaction row does not carry, so before this the chip held
+// its place invisibly until a server round trip came back, then faded in with
+// a longer label that re-wrapped the chips and pushed every row below it down
+// (the owner's "flash of some data" on opening a transaction). Reading the
+// last answer synchronously makes the first frame the final frame. It is only
+// ever used to LOOK UP an account by id for display; the edit form still waits
+// for its own fresh answer (see accounts below), so a stale list can never
+// unlock or lock a field.
+let detailAccountsMemo: Account[] | null = null;
+let detailAccountsInFlight: Promise<void> | null = null;
+
+function fetchDetailAccounts(): Promise<void> {
+  // Called bare (not through callAction) on purpose: this is a cache fill
+  // nobody asked for, so it must fail SILENTLY. callAction logs every
+  // transport failure to the console, which offline (or on a dropped
+  // connection) would put an error on every page load for something the
+  // person never did. A signed-out session answers { ok: false } and is
+  // ignored the same way.
+  detailAccountsInFlight ??= getAccountsAction().then((result) => {
+    if (result.ok) detailAccountsMemo = result.accounts;
+  }).catch(() => { /* a cache fill: nothing to report */ }).finally(() => { detailAccountsInFlight = null; });
+  return detailAccountsInFlight;
+}
+
+// Warm the memo once the page has settled, so the very first dialog of a visit
+// (from the command palette, Dashboard or Insights, which hold no account list
+// to pass in) is complete on its first frame too. Idle time, after load; the
+// result is only a cache, so a failure is simply ignored.
+if (typeof window !== 'undefined') {
+  // Not offline: the request cannot succeed, and the first dialog will ask
+  // again by itself once it is open.
+  const warm = () => { if (navigator.onLine !== false) void fetchDetailAccounts(); };
+  // Safari has no requestIdleCallback.
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 4000 });
+  else window.setTimeout(warm, 2000);
+}
+
 // The before -> after slope in the Balance strip: two points, no scale. It
 // carries no figure (both sit beside it as text), only the direction.
 // before / after are the figures AS SHOWN beside it (a card's lens is what is
@@ -69,7 +115,7 @@ function BalanceSlope({ before, after, tone }: { before: number; after: number; 
   const y0 = dir === 'up' ? 13 : dir === 'down' ? 3 : 8;
   const y1 = dir === 'up' ? 3 : dir === 'down' ? 13 : 8;
   return (
-    <span className={`pb-chart-fade pb-tdlg-slope pb-tdlg-slope-${tone}`} aria-hidden="true">
+    <span className={`pb-chart-fill pb-tdlg-slope pb-tdlg-slope-${tone}`} aria-hidden="true">
       <svg viewBox="0 0 40 16" width="40" height="16">
         <line x1="4" y1={y0} x2="36" y2={y1} />
         <circle cx="4" cy={y0} r="2.2" className="pb-tdlg-slope-from" />
@@ -89,7 +135,7 @@ function BalanceSlope({ before, after, tone }: { before: number; after: number; 
  * hook can sit after an early return. key={txn.id} remounts the content for
  * a different transaction, so one record's draft never bleeds into another.
  */
-function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta; ledgerEntry?: StatementEntry | null }) {
+function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, accounts: accountsProp }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta; ledgerEntry?: StatementEntry | null; accounts?: Account[] }) {
   const deleteLocked = useSafetyLock('deleteTransactions');
   const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
@@ -114,12 +160,16 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   // Account ID, not name. On a CLOSED account this is locked: the server
   // rejects a change, and the picker below renders read-only to match.
   const [accountId, setAccountId] = useState('');
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  // The page's own list when it passed one (active accounts only, like the
+  // lookup below), else empty until the lookup answers. The edit form's
+  // picker and the closed-account lock read THIS, never the memo.
+  const [accounts, setAccounts] = useState<Account[]>(() => (accountsProp ?? []).filter((a) => a.status === 'active'));
   const [accountError, setAccountError] = useState<string | null>(null);
-  // True once the account lookup has answered, either way. The receipt's
-  // account chip and Balance strip wait for it, so their icon, ····last4 and
-  // "owed" wording are right on first paint instead of changing under you.
-  const [accountsLoaded, setAccountsLoaded] = useState(false);
+  // True once the receipt knows its account's kind and last4: from the page's
+  // list or the last lookup (both synchronous, so the first frame is final),
+  // else when the lookup answers. Only the Balance strip waits for it when it
+  // is not (the Transactions page always passes the list).
+  const [accountsLoaded, setAccountsLoaded] = useState(() => accountsProp !== undefined || detailAccountsMemo !== null);
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
   const [grossPay, setGrossPay] = useState('');
@@ -151,6 +201,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
       if (cancelled) return;
       setAccountsLoaded(true);
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
+      detailAccountsMemo = result.accounts;
       setAccounts(result.accounts);
       setAccountError(null);
     });
@@ -266,7 +317,10 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   // absence IS the signal - no extra flag needed. Falls back to the stored
   // payment_method name for display, which carries the account's name.
   const onHibernatedAccount = accounts.length > 0 && !accounts.some((a) => a.id === accountId);
-  const accountName = accounts.find((a) => a.id === txn.accountId)?.name ?? txn.paymentMethod ?? '';
+  // For DISPLAY the last known list is enough (the receipt must not wait for
+  // the server); an empty current list falls back to it.
+  const shownAccounts = accounts.length > 0 ? accounts : (detailAccountsMemo ?? accounts);
+  const accountName = shownAccounts.find((a) => a.id === txn.accountId)?.name ?? txn.paymentMethod ?? '';
 
   // Split from handleSave so the confirm step can call it directly. The edit
   // form stays mounted behind the confirm, so this re-derives its payload from
@@ -433,7 +487,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   // The figure is formatCurrency's own output split at the decimal point, so
   // the cents can sit smaller without the amount ever being reformatted.
   const amountParts = splitCents(amountText);
-  const ownAccount = accounts.find((a) => a.id === txn.accountId);
+  const ownAccount = shownAccounts.find((a) => a.id === txn.accountId);
   const AccountIcon = !ownAccount ? Wallet : ownAccount.kind === 'credit' ? CreditCard : ownAccount.kind === 'bank' ? Landmark : Coins;
   const accountChip = accountName ? (ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName) : '';
 
@@ -452,7 +506,11 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   const owed = ownAccount?.kind === 'credit';
   const balanceAfterNum = balanceAfterOwn ?? 0;
   const slopeTone: SlopeTone = balanceAfterNum > balanceBeforeOwn ? 'up' : balanceAfterNum < balanceBeforeOwn ? 'down' : 'flat';
-  // Until the accounts answer, the chips and strip hold their place unseen.
+  // Only when the account is not known yet (no list passed, nothing cached) the
+  // Balance strip holds its place unseen until the lookup answers, so its
+  // "owed" wording is right when it appears. The chips never wait: hiding them
+  // left a large empty gap in the receipt. Normally this is already 'ready'
+  // on the first render, so nothing fades or moves.
   const waitClass = accountsLoaded ? ' pb-tdlg-ready' : ' pb-tdlg-wait';
 
   const amountBlock = (
@@ -467,7 +525,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   const receipt = (
     <div className="pb-tdlg-receipt" aria-label={x.receiptLabel} role="group">
       {amountBlock}
-      <ul className={`pb-tdlg-chips${waitClass}`}>
+      <ul className="pb-tdlg-chips">
         <li className="pb-tdlg-chip">
           {isAdjustment
             ? <SlidersHorizontal size={13} aria-hidden="true" />
@@ -487,7 +545,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
 
   const netBar = showNetBar && txn.type === 'income' && (
     <div className="pb-tdlg-net">
-      <div className="pb-chart-fade pb-tdlg-net-track" role="img" aria-label={x.grossToNet}>
+      <div className="pb-chart-fill pb-tdlg-net-track" role="img" aria-label={x.grossToNet}>
         <span className="pb-tdlg-net-seg" style={{ flexGrow: txn.netAmount }} />
         {deductionAmount > 0 && <span className="pb-tdlg-net-ded" style={{ flexGrow: deductionAmount }} />}
       </div>
@@ -803,7 +861,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry }: {
   );
 }
 
-export function TransactionDetailModal({ txn, onClose, categoryMeta, ledgerEntry }: TransactionDetailModalProps) {
+export function TransactionDetailModal({ txn, onClose, categoryMeta, ledgerEntry, accounts }: TransactionDetailModalProps) {
   if (!txn) return null;
-  return <TransactionDetailContent key={txn.id} txn={txn} onClose={onClose} categoryMeta={categoryMeta} ledgerEntry={ledgerEntry} />;
+  return <TransactionDetailContent key={txn.id} txn={txn} onClose={onClose} categoryMeta={categoryMeta} ledgerEntry={ledgerEntry} accounts={accounts} />;
 }

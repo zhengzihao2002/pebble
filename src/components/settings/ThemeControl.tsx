@@ -3,6 +3,7 @@
 import { Check, Palette } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { SETTING_TARGETS } from './settingsTargets';
 import { THEME_CHOICES, isThemeChoice, type ThemeChoice } from '@/lib/themeChoice';
 
 interface ThemeControlProps {
@@ -27,7 +28,7 @@ export function ThemeControl({ theme, onChange }: ThemeControlProps) {
   const current: ThemeChoice = isThemeChoice(theme) ? theme : 'original';
 
   return (
-    <div className="card pb-settings-card">
+    <div id={SETTING_TARGETS.theme} className="card pb-settings-card pb-settings-target">
       <SectionHeader icon={Palette} title={d.theme.title} subtitle={d.theme.blurb} />
       <div className="pb-settings-tiles">
         {/* The array holds VALUES; the dictionary is indexed by them. */}

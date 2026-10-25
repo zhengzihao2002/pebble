@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Plus, ReceiptText } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
+import type { Account } from '@/lib/data/mappers';
 import { TransactionRow } from '@/components/shared/TransactionRow';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import { requestShell } from '@/components/layout/shellEvents';
@@ -20,6 +21,8 @@ interface RecentActivityCardProps {
   categoryMeta: CategoryMeta;
   /** Zone-aware today from DashboardClient; null until resolved. */
   today?: Date | null;
+  /** Handed to the detail dialog so its account chip is right on its first frame. */
+  accounts?: Account[];
 }
 
 const FIRST = 5;
@@ -37,7 +40,7 @@ const MORE = 10;
  * the top of a "recent" list they pushed real activity down. They are still
  * on the Transactions page.
  */
-export function RecentActivityCard({ transactions, categoryMeta, today = null }: RecentActivityCardProps) {
+export function RecentActivityCard({ transactions, categoryMeta, today = null, accounts }: RecentActivityCardProps) {
   const { d, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const [selected, setSelected] = useState<Transaction | null>(null);
@@ -123,7 +126,7 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null }:
         </>
       )}
       {selected && (
-        <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} onClose={() => setSelected(null)} />
+        <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} accounts={accounts} onClose={() => setSelected(null)} />
       )}
     </section>
   );

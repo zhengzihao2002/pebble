@@ -14,6 +14,12 @@
    for fixed descendants - it would pin the dialog inside the card. */
 
 /* ---------- Page frame ---------- */
+/* Settings keeps the reader's place itself when the text size, language or
+   font reflows the page (useScrollAnchor). The browser's own scroll anchoring
+   would pick a different anchor and add its own correction, and the two
+   occasionally disagreed by a few pixels mid-drag; Safari has none at all, so
+   the manual version is the one behaviour on every device. */
+.pebble-root:has(.pb-settings) { overflow-anchor: none; }
 .pebble-root .pb-settings .settings-column { gap: 2rem; }
 .pebble-root .pb-settings .settings-section {
   /* Clears the live header height (published by Header.tsx), not a guess. */
@@ -28,6 +34,56 @@
    line length scales with the text size. */
 @container content (min-width: 1100px) {
   .pebble-root .pb-settings .settings-column { max-width: 52rem; }
+}
+
+/* ---------- Jump targets (overview chips) ----------
+   A chip lands on the exact row it summarises. scroll-margin-top clears the
+   sticky header (and, on a narrow column, the jump bar under it) with a little
+   air, so the row's top sits just below the chrome - never under it. The
+   pulse is an outline-style ring that fades out; under reduced motion the
+   ring simply shows for the same time (JS removes the class) with no
+   movement. */
+.pebble-root .pb-settings .pb-settings-target {
+  position: relative;
+  scroll-margin-top: calc(var(--pb-header-h) + 0.65rem);
+}
+@container content (max-width: 843.98px) {
+  .pebble-root .pb-settings .pb-settings-target {
+    scroll-margin-top: calc(var(--pb-header-h) + var(--pb-settings-jump-h, 3.4rem) + 0.65rem);
+  }
+}
+.pebble-root .pb-settings-target.is-flash::after {
+  content: ''; position: absolute; inset: -4px -0.55rem; pointer-events: none;
+  border-radius: 1rem; z-index: 1;
+  border: 2px solid var(--pine);
+  background-color: color-mix(in srgb, var(--pine) 8%, transparent);
+}
+/* A card is its own surface: the ring hugs it instead. */
+.pebble-root .pb-settings-target.card.is-flash::after { inset: -2px; border-radius: inherit; }
+@media (prefers-reduced-motion: no-preference) {
+  .pebble-root .pb-settings-target.is-flash::after {
+    animation: pb-settings-flash 1800ms var(--pb-ease-out, ease-out) both;
+  }
+}
+@keyframes pb-settings-flash {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  62% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* The last section is short, so the end of the page would stop the scroll
+   before a jump to its first row (Safety locks) could bring that row up under
+   the header - it stayed 40px or more lower. A minimum height of one screen
+   lets it get there, and lets the section nav's last item put its title at
+   the top as well. This is the least that still does it: measured, the row
+   keeps landing exactly under the header down to 3.4rem less than the first
+   version (one screen + the 4.5rem section head), and the page's own bottom
+   padding makes up that difference, so 2rem is taken off with a margin left.
+   The empty band under the last card is whatever the window is taller than
+   the content below that row - inherent to the row reaching the top. */
+.pebble-root .pb-settings .settings-section:last-of-type {
+  min-height: calc(100dvh - var(--pb-header-h) + 2.5rem);
 }
 
 /* Cards with their own header (kit SectionHeader). */
@@ -295,30 +351,71 @@
 .pebble-root .pb-settings-jump-btn.is-active { background-color: var(--pine); color: var(--paper); font-weight: 600; }
 .pebble-root .pb-settings-jump-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
 
-/* ---------- Adjust a balance ---------- */
-.pebble-root .pb-settings-adjust { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+/* ---------- Adjust a balance ----------
+   A stepped flow that fills the card at every width: which account | how
+   much, then a note, then an action row with the preview beside the primary
+   button. The form declares its own inline-size container (it never holds a
+   dialog: the account picker's list is portalled out, the confirmation is a
+   sibling), so the layout follows the CARD width, not the screen. */
+.pebble-root .pb-settings-adjust { display: flex; flex-direction: column; gap: 1rem; min-width: 0; container: pb-settings-adjust / inline-size; }
+.pebble-root .pb-settings-adjust-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@container pb-settings-adjust (min-width: 560px) {
+  .pebble-root .pb-settings-adjust-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 1.25rem; align-items: stretch; }
+}
 .pebble-root .pb-settings-adjust-pick {
   display: flex; flex-direction: column; gap: 0.55rem; padding: 0.55rem 0.55rem 0.65rem; border-radius: 1rem;
   background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
 }
+/* On a wide card the band is as tall as the amount block beside it; the
+   balance sits at its foot so the two blocks end on the same line. */
+@container pb-settings-adjust (min-width: 560px) {
+  .pebble-root .pb-settings-adjust-pick { justify-content: space-between; padding: 0.7rem 0.7rem 0.85rem; }
+  /* The figure gets its own line and a larger size, which is what fills the
+     band under the picker. */
+  .pebble-root .pb-settings-adjust-now { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+  .pebble-root .pb-settings-adjust-now-amt { font-size: 1.6rem; letter-spacing: -0.01em; }
+}
+.pebble-root .pb-settings-adjust-amount { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
 .pebble-root .pb-settings-adjust-now {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.1rem 1rem;
   padding: 0 0.35rem; font-size: 0.8rem; color: var(--ink-soft);
 }
-.pebble-root .pb-settings-adjust-now-amt { font-size: 0.98rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.pebble-root .pb-settings-adjust-now-amt { font-size: 1.05rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+
+/* Action row: preview left, primary button right. A soft band, like the
+   account picker, so the two ends of the form match. */
+.pebble-root .pb-settings-adjust-foot {
+  display: flex; flex-direction: column; gap: 0.85rem; min-width: 0;
+  padding: 0.75rem; border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+@container pb-settings-adjust (min-width: 560px) {
+  .pebble-root .pb-settings-adjust-foot { flex-direction: row; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 0.75rem 0.75rem 0.75rem 1rem; }
+}
+.pebble-root .pb-settings-adjust-preview, .pebble-root .pb-settings-adjust-idle { flex: 1 1 auto; min-width: 0; }
 .pebble-root .pb-settings-adjust-preview {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.65rem;
-  padding: 0.7rem 0.85rem; border-radius: 0.9rem; border: 1px solid var(--line);
 }
+.pebble-root .pb-settings-adjust-idle { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--ink-soft); }
 .pebble-root .pb-settings-adjust-preview-label { font-size: 0.8rem; color: var(--ink-soft); }
 .pebble-root .pb-settings-adjust-flow {
-  margin-left: auto; display: inline-flex; align-items: baseline; gap: 0.45rem; color: var(--ink-soft); white-space: nowrap;
+  margin-left: auto; display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 0.15rem 0.45rem; color: var(--ink-soft);
 }
+.pebble-root .pb-settings-adjust-flow > * { white-space: nowrap; }
 .pebble-root .pb-settings-adjust-flow > svg { align-self: center; }
 .pebble-root .pb-settings-adjust-before { font-size: 0.85rem; }
 .pebble-root .pb-settings-adjust-after { display: inline-flex; align-items: baseline; gap: 0.35rem; }
 .pebble-root .pb-settings-adjust-after-label { font-size: 0.72rem; }
 .pebble-root .pb-settings-adjust-after .font-mono-tab { font-size: 0.98rem; font-weight: 600; }
+/* The primary action: a proper button, 48px tall, full width on a phone and a
+   fixed generous width beside the preview on a wide card. */
+.pebble-root .pb-settings-adjust .pb-settings-adjust-go {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 100%; min-height: 3rem; padding: 0 1.5rem; font-size: 0.95rem; font-weight: 600; white-space: nowrap;
+}
+@container pb-settings-adjust (min-width: 560px) {
+  .pebble-root .pb-settings-adjust .pb-settings-adjust-go { width: auto; min-width: 13.5rem; }
+}
 
 /* ---------- Accounts: wallet tiles ---------- */
 .pebble-root .pb-settings-acct-sum {
@@ -445,24 +542,76 @@
   font-size: 0.68rem; font-weight: 600; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
-/* ---------- Pebble account ---------- */
-.pebble-root .pb-settings-me-id { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+/* ---------- Pebble account ----------
+   One grid, named areas. Phone first (the default below), then a wide card
+   rearranges the same elements. The body wrapper is the size container (a
+   container cannot query itself, hence the extra level); the delete dialog is
+   its sibling, never inside. */
+.pebble-root .pb-settings-me-body { container: pb-settings-me / inline-size; min-width: 0; }
+.pebble-root .pb-settings-me-grid {
+  min-width: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem 0.6rem;
+  grid-template-areas:
+    "id id"
+    "links links"
+    "signout delete"
+    "hint hint"
+    "privacy privacy";
+}
+.pebble-root .pb-settings-me-id { grid-area: id; display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
 .pebble-root .pb-settings-me-name { margin: 0; font-size: 0.92rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-me-email { margin: 0; font-size: 0.78rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-settings-me .pb-settings-rows { border-top: 1px solid var(--line); }
+.pebble-root .pb-settings-me-signout { grid-area: signout; display: flex; min-width: 0; }
+.pebble-root .pb-settings-me-links { grid-area: links; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-settings-link {
-  position: relative; display: flex; align-items: center; gap: 0.85rem;
-  padding: 0.85rem 0; color: var(--ink); text-decoration: none;
+  position: relative; display: flex; align-items: center; gap: 0.85rem; min-width: 0;
+  padding: 0.65rem 0.8rem; border-radius: 0.9rem; border: 1px solid var(--line);
+  color: var(--ink); text-decoration: none;
+  transition: background-color var(--pb-dur-std, 220ms) var(--pb-ease-out), border-color var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
 .pebble-root .pb-settings-link .pb-settings-row-icon { align-self: center; }
-.pebble-root .pb-settings-link:hover .pb-settings-row-title { color: var(--pine); }
-.pebble-root .pb-settings-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 0.5rem; }
-.pebble-root .pb-settings-me-foot {
-  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 0.9rem 1.25rem;
-  padding-top: 1rem; border-top: 1px solid var(--line);
+.pebble-root .pb-settings-link:hover {
+  background-color: color-mix(in srgb, var(--pine) 6%, transparent);
+  border-color: color-mix(in srgb, var(--pine) 28%, var(--line));
 }
-.pebble-root .pb-settings-me-delete { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; min-width: 0; max-width: 24rem; }
-.pebble-root .pb-settings-privacy { align-self: flex-start; font-size: 0.78rem; color: var(--pine); }
+.pebble-root .pb-settings-link:hover .pb-settings-row-title { color: var(--pine); }
+.pebble-root .pb-settings-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+/* Each link is its own bordered tile: no inset hairline between them. */
+.pebble-root .pb-settings-link + .pb-settings-link::before { content: none; }
+.pebble-root .pb-settings-privacy { grid-area: privacy; justify-self: start; font-size: 0.78rem; color: var(--pine); }
+/* The footer and the danger group: their children are separate cells of the
+   grid on a phone. */
+.pebble-root .pb-settings-me-foot, .pebble-root .pb-settings-me-danger { display: contents; }
+.pebble-root .pb-settings-me-hint { grid-area: hint; margin: 0; }
+.pebble-root .pb-settings-me-delete { grid-area: delete; min-width: 0; white-space: normal; text-align: center; line-height: 1.25; }
+/* Sign out fills its half; neutral. Delete is the quiet-danger one: wine text
+   and outline, a faint wine wash on hover - never a filled red button. */
+.pebble-root .pb-settings-me-signout .pb-settings-pill { flex: 1; white-space: normal; }
+.pebble-root .pb-settings-me-delete:not(:disabled):hover { background-color: color-mix(in srgb, var(--wine) 8%, transparent); }
+/* A large text size or a very narrow card: the pair stacks, Delete last. */
+@container pb-settings-me (max-width: 18rem) {
+  .pebble-root .pb-settings-me-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "id" "links" "signout" "delete" "hint" "privacy";
+  }
+}
+@container pb-settings-me (min-width: 34rem) {
+  .pebble-root .pb-settings-me-grid {
+    grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 1.5rem;
+    grid-template-areas:
+      "id signout"
+      "links links"
+      "foot foot";
+  }
+  .pebble-root .pb-settings-me-signout { justify-self: end; }
+  .pebble-root .pb-settings-me-foot { grid-area: foot; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1.5rem; min-width: 0; }
+  .pebble-root .pb-settings-me-links { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .pebble-root .pb-settings-me-signout .pb-settings-pill { flex: none; }
+  /* Hint and button side by side, right-aligned, on one line. */
+  .pebble-root .pb-settings-me-danger { display: flex; margin-left: auto; align-items: center; justify-content: flex-end; gap: 0.9rem; min-width: 0; }
+  .pebble-root .pb-settings-me-hint { text-align: right; max-width: 20rem; }
+  .pebble-root .pb-settings-me-delete { flex: none; white-space: nowrap; }
+}
 
 /* ---------- Phones ---------- */
 @container content (max-width: 639.98px) {

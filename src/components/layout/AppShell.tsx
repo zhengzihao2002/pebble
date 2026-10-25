@@ -10,7 +10,7 @@ import { authClient } from '@/lib/auth/client';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
-import { runThemeChange } from '@/lib/themeTransition';
+import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
 import { playEventSound } from '@/lib/sound/useSound';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
@@ -237,8 +237,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       rootRef.current?.classList.toggle('dark', darkMode);
     };
     // Already in step (first mount, or the pre-paint script got there first):
-    // nothing to animate.
-    if (html.classList.contains('pebble-dark') === darkMode && rootRef.current?.classList.contains('dark') === darkMode) return;
+    // nothing to animate. Not while an earlier change is still waiting behind a
+    // running fade: the page is in step with THIS value only because that
+    // earlier one has not landed yet, and it would land after us and win
+    // (toggle, toggle back, quickly). Joining the queue keeps the order.
+    if (!themeChangePending() && html.classList.contains('pebble-dark') === darkMode && rootRef.current?.classList.contains('dark') === darkMode) return;
     runThemeChange(apply);
   }, [darkMode]);
 
@@ -262,7 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     const next = isThemeChoice(themeChoice) && themeChoice !== 'original' ? themeChoice : null;
-    if (root.getAttribute(THEME_ATTRIBUTE) === next) return;
+    if (!themeChangePending() && root.getAttribute(THEME_ATTRIBUTE) === next) return; // see the darkMode effect: a queued change must not land after this one
     // A palette change moves the same tokens as light/dark, so it takes the
     // same single cross-fade.
     runThemeChange(() => {
@@ -294,6 +297,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   // ref so it can never loop, re-runs that render with the zone known.
   const rootRef = useRef<HTMLDivElement>(null);
   const tzRef = useRef(false);
+
+  // OFFLINE. Both effects below end in router.refresh(). With no connection
+  // that request fails, and Next answers a failed refresh with a hard
+  // navigation to the same URL - which, over and over, is a reload loop
+  // (the installed app's web view can freeze). So while navigator.onLine is
+  // false the cookie is still written but the refresh is deferred, and runs
+  // once when the connection returns. Online behaviour is unchanged.
+  const refreshOnReconnect = useRef(false);
+  const refreshSoon = useCallback(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      refreshOnReconnect.current = true;
+      return;
+    }
+    router.refresh();
+  }, [router]);
+  useEffect(() => {
+    const onOnline = () => {
+      if (!refreshOnReconnect.current) return;
+      refreshOnReconnect.current = false;
+      router.refresh();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [router]);
+
   useEffect(() => {
     if (tzRef.current) return;
     tzRef.current = true;
@@ -310,8 +338,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     // Only when the zone was previously absent or stale - a correct cookie
     // needs no refresh, so the common case costs nothing.
-    router.refresh();
-  }, [router]);
+    refreshSoon();
+  }, [refreshSoon]);
 
   // Tells the server which language to render the one server-rendered page in
   // (goals), and keeps <html lang> truthful after a toggle - the pre-paint
@@ -334,8 +362,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (existing === locale) return;
 
     document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    router.refresh();
-  }, [locale, router]);
+    refreshSoon();
+  }, [locale, refreshSoon]);
 
   // Click feedback, delegated from one listener rather than wired into every
   // button. Scoped to interactive elements: clicking blank space and hearing a

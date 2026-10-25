@@ -8,6 +8,7 @@ import type { Appearance } from '@/lib/appearance';
 import type { ThemeChoice } from '@/lib/themeChoice';
 import type { Locale } from '@/lib/i18n';
 import { THEME_PREVIEW } from './ThemeControl';
+import { SETTING_TARGETS } from './settingsTargets';
 
 interface SettingsOverviewProps {
   /** Already normalised by the caller (unknown stored values -> fallbacks). */
@@ -17,9 +18,9 @@ interface SettingsOverviewProps {
   blurOnLaunch: boolean;
   locksOn: number;
   locksTotal: number;
-  /** Scrolls to a section (the shared useSectionJump). */
-  onJump: (sectionId: string) => void;
-  sectionIds: { appearance: string; language: string; behavior: string; account: string };
+  /** Scrolls to the exact row a chip summarises, pulses it and moves focus
+      into it (the shared useSectionJump.jumpToRow). */
+  onJump: (rowId: string) => void;
 }
 
 const APPEARANCE_ICONS: Record<Appearance, LucideIcon> = { light: Sun, dark: Moon, system: Monitor };
@@ -27,11 +28,12 @@ const APPEARANCE_ICONS: Record<Appearance, LucideIcon> = { light: Sun, dark: Moo
 /**
  * The top of Settings: who is signed in, and the handful of choices that
  * change how the whole app looks and behaves, each as a chip that jumps to
- * the section holding it. Read-only - every change still happens in its
+ * the very row holding it (not the section around it, which left the reader
+ * hunting down the screen for the control). Read-only - every change still happens in its
  * section, so there is exactly one control per setting.
  */
 export function SettingsOverview({
-  theme, appearance, locale, blurOnLaunch, locksOn, locksTotal, onJump, sectionIds,
+  theme, appearance, locale, blurOnLaunch, locksOn, locksTotal, onJump,
 }: SettingsOverviewProps) {
   const { d, t } = useTranslation();
   // Pending until mounted (hydration-safe), like the Pebble account card.
@@ -43,7 +45,7 @@ export function SettingsOverview({
 
   const chips: { key: string; label: string; value: string; mark: ReactNode; target: string }[] = [
     {
-      key: 'theme', label: d.theme.title, value: d.theme[theme], target: sectionIds.appearance,
+      key: 'theme', label: d.theme.title, value: d.theme[theme], target: SETTING_TARGETS.theme,
       // The theme's own colours, like its tile in the gallery.
       mark: (
         <span className="pb-settings-ov-swatch" style={{ backgroundColor: swatch.paper }}>
@@ -52,15 +54,15 @@ export function SettingsOverview({
         </span>
       ),
     },
-    { key: 'appearance', label: d.appearance.title, value: d.appearance[appearance], target: sectionIds.appearance, mark: <AppearanceIcon size={14} /> },
-    { key: 'language', label: d.settings.language.title, value: languageName, target: sectionIds.language, mark: <Languages size={14} /> },
+    { key: 'appearance', label: d.appearance.title, value: d.appearance[appearance], target: SETTING_TARGETS.appearance, mark: <AppearanceIcon size={14} /> },
+    { key: 'language', label: d.settings.language.title, value: languageName, target: SETTING_TARGETS.language, mark: <Languages size={14} /> },
     {
-      key: 'amounts', label: d.ux.settings.overviewAmounts, target: sectionIds.behavior,
+      key: 'amounts', label: d.ux.settings.overviewAmounts, target: SETTING_TARGETS.privacy,
       value: blurOnLaunch ? d.ux.settings.amountsBlurred : d.ux.settings.amountsShown,
       mark: blurOnLaunch ? <EyeOff size={14} /> : <Eye size={14} />,
     },
     {
-      key: 'locks', label: d.safetyLocks.title, target: sectionIds.account,
+      key: 'locks', label: d.safetyLocks.title, target: SETTING_TARGETS.locks,
       value: t(d.ux.settings.locksOn, { count: locksOn, total: locksTotal }), mark: <Lock size={14} />,
     },
   ];

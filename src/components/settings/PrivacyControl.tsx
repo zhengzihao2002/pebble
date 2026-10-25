@@ -3,6 +3,7 @@
 import { EyeOff } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -21,7 +22,7 @@ export function PrivacyControl() {
   const current = privacyOnLaunch === true;
 
   return (
-    <SettingsRow icon={EyeOff} title={d.privacyMode.title} hint={d.privacyMode.hint}>
+    <SettingsRow id={SETTING_TARGETS.privacy} icon={EyeOff} title={d.privacyMode.title} hint={d.privacyMode.hint}>
       <SegmentedControl
         options={[
           { value: 'show', label: d.privacyMode.optionShow },

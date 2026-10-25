@@ -2,6 +2,7 @@
 
 import { Check, Monitor, Moon, Sun, SunMoon } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { APPEARANCE_CHOICES, isAppearance, type Appearance } from '@/lib/appearance';
 
@@ -22,7 +23,7 @@ export function AppearanceControl({ appearance, onChange }: AppearanceControlPro
   const current: Appearance = isAppearance(appearance) ? appearance : 'system';
 
   return (
-    <SettingsRow icon={SunMoon} title={d.appearance.title} hint={d.appearance.blurb} layout="stack">
+    <SettingsRow id={SETTING_TARGETS.appearance} icon={SunMoon} title={d.appearance.title} hint={d.appearance.blurb} layout="stack">
       <div className="pb-settings-tiles">
         {APPEARANCE_CHOICES.map((choice) => {
           const active = current === choice;

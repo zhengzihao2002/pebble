@@ -4,6 +4,7 @@ import { useId } from 'react';
 import { Landmark, Lock, Receipt, Tags, UserX, type LucideIcon } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { Switch } from '@/components/shared/Switch';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { SAFETY_LOCK_KEYS, isLocked, type SafetyLockKey } from '@/lib/safetyLocks';
@@ -26,7 +27,7 @@ export function SafetyLocksControl() {
   const onCount = SAFETY_LOCK_KEYS.filter((key) => isLocked(locks, key)).length;
 
   return (
-    <div className="card pb-settings-card">
+    <div id={SETTING_TARGETS.locks} className="card pb-settings-card pb-settings-target">
       <SectionHeader
         icon={Lock} title={d.safetyLocks.title} subtitle={d.safetyLocks.blurb}
         actions={(

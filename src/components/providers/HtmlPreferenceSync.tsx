@@ -42,7 +42,9 @@ export function HtmlPreferenceSync() {
     // A real light/dark change is one cross-fade (see themeTransition.ts);
     // AppShell joins the same one. Putting a stripped class back (the observer
     // below) stays immediate - that is a repair, not a change.
-    if (root.classList.contains('pebble-dark') !== dark) runThemeChange(apply);
+    // (Also while an earlier change waits behind a running fade: it would land
+    // after this one, so this one joins the queue instead of being a no-op.)
+    if (root.classList.contains('pebble-dark') !== dark || themeChangePending()) runThemeChange(apply);
     else apply();
     // The observer also sees the classes the cross-fade itself adds to <html>.
     // While a change is waiting for the browser's "old" picture it must stay

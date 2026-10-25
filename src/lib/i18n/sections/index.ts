@@ -14,6 +14,7 @@ import { budgetsEn, budgetsZh } from './budgets';
 import { goalsEn, goalsZh } from './goals';
 import { scheduledEn, scheduledZh } from './scheduled';
 import { settingsEn, settingsZh } from './settings';
+import { offlineEn, offlineZh } from './offline';
 
 export const uxEn = {
   shell: shellEn,
@@ -28,6 +29,7 @@ export const uxEn = {
   goals: goalsEn,
   scheduled: scheduledEn,
   settings: settingsEn,
+  offline: offlineEn,
 };
 
 export const uxZh: typeof uxEn = {
@@ -43,4 +45,5 @@ export const uxZh: typeof uxEn = {
   goals: goalsZh,
   scheduled: scheduledZh,
   settings: settingsZh,
+  offline: offlineZh,
 };

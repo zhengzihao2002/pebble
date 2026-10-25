@@ -296,7 +296,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         <GoalsGlance goals={goals} allocated={allocated} totalBalance={totalBalance} />
       </div>
       <div className="pb-dash-area-recent">
-        <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
+        <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} accounts={accounts} />
       </div>
     </div>
     {/* Outside the grid: the dialog is a fixed overlay, not a grid item. */}
