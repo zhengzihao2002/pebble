@@ -385,7 +385,11 @@
 .pebble-root .pebble-bottom-nav .bottom-nav-icon,
 .pebble-root .pebble-bottom-nav .bottom-nav-icon.active { width: 1.5rem; height: 1.5rem; }
 .pebble-root .pebble-bottom-nav .bottom-nav-label { font-size: 0.68rem; max-width: 100%; }
-.pebble-root .pebble-bottom-nav .bottom-nav-add { width: 3.5rem; height: 3.5rem; margin-top: -1.55rem; }
+.pebble-root .pebble-bottom-nav .bottom-nav-add { width: 3.9rem; height: 3.9rem; margin-top: -0.95rem; }
+/* Bigger, and seated lower: with the taller bar the old 56px button read as small
+   and pushed up. Now its centre sits on the icons' row and it still rises a little
+   above the bar's edge. */
+.pebble-root .pebble-bottom-nav .bottom-nav-add svg { width: 1.75rem; height: 1.75rem; }
 /* The stacked More items keep the same presence as a bar button. */
 .pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn { padding-top: 0.8rem; padding-bottom: 0.8rem; }
 /* Room for the taller bar under the last card (phone layout only; the desktop
