@@ -115,7 +115,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
     sections: [
       {
         heading: 'Pebble 由谁运营',
-        paragraphs: ['Pebble 由文文有限公司运营，该公司即 Pebble 的运营方。Pebble 不是银行、金融机构或理财顾问，不会转移资金，也不会连接你的银行账户。'],
+        paragraphs: ['Pebble 由文文有限公司运营。Pebble 不是银行、金融机构或理财顾问，不会转移资金，也不会连接你的银行账户。'],
       },
       {
         heading: '你提供的信息',
