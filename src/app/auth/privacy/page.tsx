@@ -4,8 +4,22 @@ import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { PRIVACY_NOTICE } from '@/lib/legal/privacyNotice';
 import { AuthLanguageToggle } from '../[path]/AuthLanguageToggle';
 import { PebbleMark } from '@/components/brand/PebbleMark';
+import { auth } from '@/lib/auth/server';
 
 export const metadata: Metadata = { title: 'Privacy Notice · Pebble' };
+
+/**
+ * Whether someone is signed in, for the back link only. Never throws: any
+ * failure reads as signed out, which just shows the sign-in link.
+ */
+async function isSignedIn(): Promise<boolean> {
+  try {
+    const result = await auth.getSession();
+    return !result.error && typeof result.data?.user?.id === 'string' && result.data.user.id.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The Privacy Notice. Under /auth/ on purpose: the sign-in guard (proxy.ts)
@@ -15,6 +29,7 @@ export const metadata: Metadata = { title: 'Privacy Notice · Pebble' };
  */
 export default async function PrivacyPage() {
   const locale = await resolveUserLocale();
+  const signedIn = await isSignedIn();
   const notice = PRIVACY_NOTICE[locale === 'zh' ? 'zh' : 'en'];
 
   return (
@@ -39,7 +54,10 @@ export default async function PrivacyPage() {
             {section.paragraphs?.map((p, j) => <p key={j}>{p}</p>)}
           </section>
         ))}
-        <Link href="/auth/sign-in" className="privacy-back">{notice.back}</Link>
+        {/* Signed in (the Settings link): back to the app, not the sign-in page. */}
+        {signedIn
+          ? <Link href="/settings" className="privacy-back">{notice.backSignedIn}</Link>
+          : <Link href="/auth/sign-in" className="privacy-back">{notice.back}</Link>}
       </article>
     </main>
   );

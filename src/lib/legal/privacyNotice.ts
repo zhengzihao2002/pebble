@@ -18,6 +18,8 @@ export interface PrivacyNotice {
   intro: string;
   sections: NoticeSection[];
   back: string;
+  /** The same link for someone who is already signed in. */
+  backSignedIn: string;
 }
 
 export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
@@ -96,6 +98,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       },
     ],
     back: '← Back to sign in',
+    backSignedIn: '← Back to Pebble',
   },
   zh: {
     title: '隐私声明',
@@ -172,5 +175,6 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       },
     ],
     back: '← 返回登录',
+    backSignedIn: '← 返回 Pebble',
   },
 };
