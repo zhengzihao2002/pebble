@@ -251,6 +251,22 @@ html.pb-theme-vt::view-transition-new(root) {
 }
 @keyframes pb-theme-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* The frosted bars (header, phone bottom bar) are translucent and lean on
+   backdrop-filter. Inside the two pictures the browser fades between, that blur
+   is not drawn, so a bar read as see-through - the page scrolling under it
+   showed straight through - until the fade ended. While a theme change runs
+   they are fully solid instead (the bar colour, no blur: 96% was tried and
+   showed the page's sharp text through it, because the blur that normally hides
+   that is gone); the glass comes back when the class is lifted. */
+html.pb-theme-vt .pebble-root .pebble-header::before {
+  background-color: var(--paper);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html.pb-theme-vt .pebble-root .pebble-bottom-nav::before {
+  background-color: var(--mist);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
 .pebble-root {
   /* Palette tokens are generated: see the generated-themes block below. */
   /* CJK fallback for all three type stacks.

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, ne, sql } from 'drizzle-orm';
 import { db, neonSql } from '@/db';
 import {
   account,
@@ -911,6 +911,55 @@ async function loadCategories(userId: string): Promise<CategoriesResult> {
   } catch (error) {
     console.error('[pebble action] getCategoriesAction', error);
     return { ok: false, error: "Couldn't reach the database to load your categories.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.categoriesFailed' };
+  }
+}
+
+/**
+ * The categories this user records most, for the Add transaction dialog's quick
+ * picks. READ ONLY. Expenses only: income has no user categories (its two
+ * values are fixed), so there is nothing to personalise.
+ *
+ * ONE grouped query - the rows themselves are never loaded. It INNER JOINs the
+ * user's own category table, so a name the dropdown would not offer (deleted or
+ * renamed since the old rows were written) is dropped BEFORE the limit and can
+ * never crowd real categories out of the top six. Both sides are scoped by
+ * user_id. Rows are filtered exactly as getExpenses does (user_id only: the
+ * expense table has no soft-delete column, and transfers / balance adjustments
+ * live in their own tables, never here).
+ *
+ * Window: the last QUICK_PICK_WINDOW_DAYS days INCLUDING today, where "today" is
+ * the user's own calendar day (not the server's UTC day). Ranking: most uses,
+ * then most recent use, then the user's own category order, then name, so the
+ * answer is deterministic. The client caches it for a week.
+ */
+const QUICK_PICK_WINDOW_DAYS = 180;
+const QUICK_PICK_LIMIT = 6;
+
+export type FrequentCategoriesResult =
+  | { ok: true; expense: string[] }
+  | { ok: false; error: string; kind?: FailureKind; code?: ServerErrorCode };
+
+async function loadFrequentCategories(userId: string): Promise<FrequentCategoriesResult> {
+  try {
+    const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
+    const since = addDays(today, -(QUICK_PICK_WINDOW_DAYS - 1));
+    const rows = await db
+      .select({ name: expense.category })
+      .from(expense)
+      .innerJoin(category, and(eq(category.userId, expense.userId), eq(category.name, expense.category)))
+      .where(and(eq(expense.userId, userId), gte(expense.transactionDate, since)))
+      .groupBy(expense.category, category.sortOrder)
+      .orderBy(
+        desc(sql`count(*)`),
+        desc(sql`max(${expense.transactionDate})`),
+        asc(category.sortOrder),
+        asc(expense.category),
+      )
+      .limit(QUICK_PICK_LIMIT);
+    return { ok: true, expense: rows.map((r) => r.name) };
+  } catch (error) {
+    console.error('[pebble action] getFrequentCategoriesAction', error);
+    return { ok: false, error: "Couldn't reach the database to load your frequent categories.", kind: classifyError(error) === 'database' ? 'database' : 'unknown', code: 'loader.categoriesFailed' };
   }
 }
 
@@ -2246,6 +2295,7 @@ export const addToGoalAction = withSessionUser(addToGoal);
 export const getSessionLocationsAction = withSessionUser(loadSessionLocations);
 export const getAllocationSummaryAction = withSessionUser(loadAllocationSummary);
 export const getCategoriesAction = withSessionUser(loadCategories);
+export const getFrequentCategoriesAction = withSessionUser(loadFrequentCategories);
 export const updateTransactionAction = withSessionUser(updateTransaction);
 export const deleteTransactionAction = withSessionUser(deleteTransaction);
 /**

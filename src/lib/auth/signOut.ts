@@ -1,5 +1,6 @@
 import { authClient } from './client';
 import { clearAllSnapshots } from '@/lib/offline/queueStore';
+import { clearAllQuickPicks } from '@/lib/quickPicks';
 import { clearOfflineCaches } from '@/lib/offline/serviceWorker';
 
 /**
@@ -34,6 +35,8 @@ export async function signOutCompletely(beforeLeaving?: () => Promise<void>): Pr
   // Failures here must never block leaving: the session is already gone.
   try { await clearOfflineCaches(); } catch { /* best effort */ }
   try { await clearAllSnapshots(); } catch { /* best effort */ }
+  // Quick-pick habits are per user and live in localStorage.
+  clearAllQuickPicks();
   try { await beforeLeaving?.(); } catch { /* best effort */ }
   window.location.replace('/auth/sign-in');
   return true;

@@ -10,7 +10,8 @@ import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { resolveCategoryIcon } from '@/lib/data/icons';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
-import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction } from '@/lib/actions/pebble';
+import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction, getFrequentCategoriesAction } from '@/lib/actions/pebble';
+import { isQuickPicksStale, readQuickPicks, refreshQuickPicks, resolveQuickCategories } from '@/lib/quickPicks';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -79,6 +80,11 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [accountError, setAccountError] = useState<string | null>(null);
   // Distinguishes 'none yet loaded' from 'the user has no accounts'.
   const [accountsLoaded, setAccountsLoaded] = useState(false);
+  // Declared before the effects below that set them (and read by the form).
+  // The stored value is the account ID, not its name: names are user data
+  // and can repeat across a closed and an active account.
+  const [accountId, setAccountId] = useState('');
+  const [category, setCategory] = useState('');
 
   // Loaded on open rather than via the layout: this modal lives in AppShell,
   // so a layout fetch would run on every page navigation.
@@ -135,6 +141,37 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Quick picks (see lib/quickPicks.ts). The device's saved answer is read ONCE,
+  // by a lazy state initialiser: this dialog only mounts after a click (never
+  // server-rendered) and its tiles wait for the category list anyway, so the
+  // first paint is the same as before. No effect sets state to mirror storage.
+  //   - fresh (under a week old): no server call at all;
+  //   - stale or missing and online: ask the server ONCE per session (shared
+  //     across StrictMode's double mount). With a saved answer the tiles on
+  //     screen are NOT reshuffled - the new answer is stored for the next open;
+  //     with none, the tiles wait for it (a failure means the default set);
+  //   - offline: never ask.
+  const picksUserId = offlineQueue.userId;
+  const [savedPicks] = useState(() => {
+    if (!picksUserId) return { names: null as string[] | null, ask: false };
+    const saved = readQuickPicks(picksUserId);
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return { names: saved ? saved.expense : null, ask: !offline && isQuickPicksStale(saved) };
+  });
+  const [fetchedPicks, setFetchedPicks] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!picksUserId || !savedPicks.ask) return;
+    let active = true;
+    void refreshQuickPicks(picksUserId, async () => {
+      const result = await callAction(getFrequentCategoriesAction);
+      return result.ok ? result : null;
+    }).then((fresh) => {
+      if (active && !savedPicks.names) setFetchedPicks(fresh ? fresh.expense : []);
+    });
+    return () => { active = false; };
+  }, [picksUserId, savedPicks]);
+  // null = still waiting for the first answer; [] = the default set.
+
   // Same reasoning as categories above: fetched on open, not via the layout.
   useEffect(() => {
     let active = true;
@@ -178,10 +215,6 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayDateString());
-  // The stored value is the account ID, not its name: names are user data
-  // and can repeat across a closed and an active account.
-  const [accountId, setAccountId] = useState('');
-  const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
   const [amount, setAmount] = useState('');
   const [incomeCategory, setIncomeCategory] = useState<'Standard Income' | 'Side Cash'>('Standard Income');
@@ -409,12 +442,17 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // the same browser-local reading the date field starts from.
   const today = todayDateString();
   const yesterday = addDays(today, -1);
-  // The first few categories in the user's own order (sortOrder; a stable
-  // sort keeps the server's order on ties). Six fits two rows of three on a
-  // phone and one row on a wide card.
+  // The user's MOST USED expense categories (see lib/quickPicks.ts), not the
+  // same list for everyone. The tiles wait for the picks, so the default set
+  // is never painted and then swapped for the personal one. Names are re-checked against the live list on every render, so a
+  // renamed or deleted category can never be offered.
   const quickCategories = useMemo(
-    () => [...categories].sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 6),
-    [categories],
+    () => {
+      // null = still waiting for the first answer; [] = the default set.
+      const names = !picksUserId ? [] : savedPicks.names ?? fetchedPicks ?? (savedPicks.ask ? null : []);
+      return names === null ? [] : resolveQuickCategories(names, categories);
+    },
+    [picksUserId, savedPicks, fetchedPicks, categories],
   );
 
   return (

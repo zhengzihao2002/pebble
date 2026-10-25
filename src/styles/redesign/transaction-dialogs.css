@@ -418,8 +418,18 @@
   .pebble-root .pb-tdlg-read th:last-child { width: 6.2rem; }
 }
 @container pb-modal (max-width: 480px) {
-  /* The before -> after pair takes its own full-width line under the name. */
-  .pebble-root .pb-tdlg-balance-move { flex: 1 1 100%; justify-content: flex-start; gap: 1.25rem; }
+  /* Narrow sheet: the whole Balance strip is centred under the receipt above
+     it - heading, account, the before -> after pair (equal columns either side
+     of the slope, so the slope sits on the sheet's centre line) and the total. */
+  .pebble-root .pb-tdlg-balance { text-align: center; }
+  .pebble-root .pb-tdlg-balance-row { flex-direction: column; justify-content: center; gap: 0.6rem; }
+  .pebble-root .pb-tdlg-balance-acc { flex: none; justify-content: center; max-width: 100%; }
+  .pebble-root .pb-tdlg-balance-move {
+    flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center; justify-items: center; gap: 0.9rem; width: 100%;
+  }
+  .pebble-root .pb-tdlg-balance-fig,
+  .pebble-root .pb-tdlg-balance-fig:first-child { align-items: center; text-align: center; }
 }
 
 /* ============================================================

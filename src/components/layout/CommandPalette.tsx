@@ -234,14 +234,14 @@ export function CommandPalette({
     <ModalFrame
       onClose={() => { onClose(); const run = pending.current; pending.current = null; run?.(); }}
       labelledBy="pb-palette-title"
-      // One comfortable column (about 36rem). The old 780px card split into a
+      // One roomy column (about 48rem; it was 36rem and read as too small on a Mac). The old 780px card split into a
       // list and a preview pane that was mostly empty for actions and pages;
       // the rows now carry everything, so the list gets the whole width.
       // cardStyle's rem cap wins over this px one, so the card follows the
       // in-app text size; the px value is only the fallback. Phones are a
       // full-width sheet either way.
-      maxWidth={576}
-      cardStyle={{ maxWidth: '36rem' }}
+      maxWidth={768}
+      cardStyle={{ maxWidth: '48rem' }}
       // Nothing pinned at the bottom, so the keyboard simply covers the lower
       // part of the sheet instead of shrinking it and leaving a gap.
       keyboardResize={false}

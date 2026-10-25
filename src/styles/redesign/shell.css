@@ -233,7 +233,7 @@
    full-height sheet from globals.css. */
 @media (min-width: 561px) {
   .pebble-root .pb-modal-card.pb-palette-card {
-    --pb-pal-top: clamp(1rem, 11vh, 6.5rem);
+    --pb-pal-top: clamp(1rem, 9vh, 5.5rem);
     margin: var(--pb-pal-top) auto auto;
     max-height: calc(var(--pb-vvh, 100dvh) - var(--pb-pal-top) - 1rem);
   }
@@ -242,9 +242,9 @@
      ends under its last row, and the field still does not move because the
      card hangs from the top. The no-match and searching states keep their
      own floor so they do not collapse to a sliver. */
-  .pebble-root .pb-palette-card .pb-shell-pal-body { max-height: 27rem; }
+  .pebble-root .pb-palette-card .pb-shell-pal-body { max-height: min(38rem, calc(var(--pb-vvh, 100dvh) - var(--pb-pal-top) - 8rem)); }
   .pebble-root .pb-palette-card .pb-shell-pal-empty,
-  .pebble-root .pb-palette-card .pb-shell-pal-status-solo { min-height: min(11rem, 22dvh); }
+  .pebble-root .pb-palette-card .pb-shell-pal-status-solo { min-height: min(14rem, 28dvh); }
 }
 
 .pebble-root .pb-shell-pal-legend {
@@ -373,4 +373,23 @@
    tiles (More) keep one line. */
 .pebble-root .pb-shell-tile:not(.pb-shell-tile-row) .pb-shell-tile-label {
   white-space: normal; text-wrap: balance; overflow-wrap: anywhere;
+}
+
+/* ---------- Phone bottom bar: a little taller and larger ----------
+   Owner: "raise the bottom nav bar a little, it is too small". Only the INSIDE of
+   each cell grows (padding, icon, label); the bar's own 0.4rem padding is left
+   alone because the More column and the + menu are positioned from it
+   (globals.css .pebble-bottom-nav-stack / .pebble-add-menu). Sizes are fixed per
+   state: nothing scales or changes size when a tab is chosen. */
+.pebble-root .pebble-bottom-nav .bottom-nav-btn { padding-top: 0.55rem; padding-bottom: 0.55rem; gap: 5px; }
+.pebble-root .pebble-bottom-nav .bottom-nav-icon,
+.pebble-root .pebble-bottom-nav .bottom-nav-icon.active { width: 1.5rem; height: 1.5rem; }
+.pebble-root .pebble-bottom-nav .bottom-nav-label { font-size: 0.68rem; max-width: 100%; }
+.pebble-root .pebble-bottom-nav .bottom-nav-add { width: 3.5rem; height: 3.5rem; margin-top: -1.55rem; }
+/* The stacked More items keep the same presence as a bar button. */
+.pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn { padding-top: 0.8rem; padding-bottom: 0.8rem; }
+/* Room for the taller bar under the last card (phone layout only; the desktop
+   sidebar layout has its own padding). */
+@media not ((min-width: 760px) and (min-height: 600px)) {
+  .pebble-root .pebble-main { padding-bottom: 7rem; }
 }
