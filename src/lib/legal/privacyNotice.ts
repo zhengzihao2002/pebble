@@ -26,11 +26,11 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
   en: {
     title: 'Privacy Notice',
     updated: 'Last updated: October 25, 2026',
-    intro: 'Pebble is a personal budgeting app run by Wen Wen, available by invitation only. This notice explains what information Pebble collects, why it is collected, who helps process it, and the choices you have. By creating an account, you agree to this notice.',
+    intro: 'Pebble is a personal budgeting app run by Wen Wen Inc., available by invitation only. This notice explains what information Pebble collects, why it is collected, who helps process it, and the choices you have. By creating an account, you agree to this notice.',
     sections: [
       {
         heading: 'Who runs Pebble',
-        paragraphs: ['Pebble is run by Wen Wen, the company behind it. Pebble is not a bank, a financial institution, or a financial adviser. It does not move money and does not connect to your bank accounts.'],
+        paragraphs: ['Pebble is run by Wen Wen Inc., the company behind it. Pebble is not a bank, a financial institution, or a financial adviser. It does not move money and does not connect to your bank accounts.'],
       },
       {
         heading: 'Information you give us',
@@ -89,7 +89,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
         heading: 'Your choices and rights',
         paragraphs: [
           'You can view, edit, and delete your records at any time in the app, and you can delete your whole account in Settings.',
-          'Depending on where you live, such as certain US states, the European Union, or the United Kingdom, you may also have the right to access, correct, delete, or receive a copy of your information, and to object to or restrict some uses of it. To make a request, contact Wen Wen using the details below.',
+          'Depending on where you live, such as certain US states, the European Union, or the United Kingdom, you may also have the right to access, correct, delete, or receive a copy of your information, and to object to or restrict some uses of it. To make a request, contact Wen Wen Inc. using the details below.',
         ],
       },
       {
@@ -102,7 +102,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       },
       {
         heading: 'Contact',
-        paragraphs: ['Questions or requests about your information? Contact Wen Wen. If you do not have a direct way to reach us, ask the person who invited you to Pebble to pass your message on.'],
+        paragraphs: ['Questions or requests about your information? Contact Wen Wen Inc. If you do not have a direct way to reach us, ask the person who invited you to Pebble to pass your message on.'],
       },
     ],
     back: '← Back to sign in',
@@ -111,11 +111,11 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
   zh: {
     title: '隐私声明',
     updated: '最后更新：2026年10月25日',
-    intro: 'Pebble 是由文文运营的个人记账应用，仅限受邀用户使用。本声明说明 Pebble 会收集哪些信息、为什么收集、由谁协助处理，以及你有哪些选择。创建账户即表示你同意本声明。',
+    intro: 'Pebble 是由文文有限公司运营的个人记账应用，仅限受邀用户使用。本声明说明 Pebble 会收集哪些信息、为什么收集、由谁协助处理，以及你有哪些选择。创建账户即表示你同意本声明。',
     sections: [
       {
         heading: 'Pebble 由谁运营',
-        paragraphs: ['Pebble 由文文运营，文文即 Pebble 背后的公司。Pebble 不是银行、金融机构或理财顾问，不会转移资金，也不会连接你的银行账户。'],
+        paragraphs: ['Pebble 由文文有限公司运营，该公司即 Pebble 的运营方。Pebble 不是银行、金融机构或理财顾问，不会转移资金，也不会连接你的银行账户。'],
       },
       {
         heading: '你提供的信息',
@@ -174,7 +174,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
         heading: '你的选择与权利',
         paragraphs: [
           '你可以随时在应用中查看、修改和删除自己的记录，也可以在“设置”中删除整个账户。',
-          '根据你所在的地区（例如美国部分州、欧盟或英国），你可能还享有访问、更正、删除或获取个人信息副本的权利，以及反对或限制某些使用方式的权利。如需提出请求，请通过下方联系方式联系文文。',
+          '根据你所在的地区（例如美国部分州、欧盟或英国），你可能还享有访问、更正、删除或获取个人信息副本的权利，以及反对或限制某些使用方式的权利。如需提出请求，请通过下方联系方式联系文文有限公司。',
         ],
       },
       {
@@ -187,7 +187,7 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       },
       {
         heading: '联系方式',
-        paragraphs: ['对你的信息有疑问或请求？请联系文文。如果你没有直接联系我们的方式，可以请邀请你使用 Pebble 的人代为转达。'],
+        paragraphs: ['对你的信息有疑问或请求？请联系文文有限公司。如果你没有直接联系我们的方式，可以请邀请你使用 Pebble 的人代为转达。'],
       },
     ],
     back: '← 返回登录',
