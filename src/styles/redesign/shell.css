@@ -397,3 +397,13 @@
 @media not ((min-width: 760px) and (min-height: 600px)) {
   .pebble-root .pebble-main { padding-bottom: 7rem; }
 }
+
+/* The + menu hangs from the bar's top edge (globals.css: bottom: 100% + 0.4rem + 1px),
+   a spot chosen for the old bar and its 17px-tall button. The button is now seated
+   lower, so the menu came to rest 23px above it with a visible gap. Moved down by
+   0.9rem to leave about 9px. Its clip window then overlaps the bar's top edge by
+   that much, so only the panel itself takes pointer events (the tabs underneath
+   stay tappable). */
+.pebble-root .pebble-add-menu { bottom: calc(100% + 0.4rem + 1px - 0.9rem); }
+.pebble-root .pebble-add-menu.open { pointer-events: none; }
+.pebble-root .pebble-add-menu.open .pebble-bottom-nav-stack-panel { pointer-events: auto; }
