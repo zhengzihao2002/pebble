@@ -221,9 +221,9 @@ function handleNavigation(event) {
   // saved pages go with it.
   if (url.pathname.indexOf('/auth/') === 0 || url.pathname === '/auth') {
     return fetch(request).then(function (res) {
-      // (/auth/privacy is a public page a signed-in person can open: it says
-      // nothing about the session, so it keeps what is saved.)
-      if (res.status === 200 && res.type === 'basic' && url.pathname.indexOf('/auth/privacy') !== 0) event.waitUntil(clearPrivate());
+      // (/auth/privacy and /auth/terms are public pages a signed-in person can
+      // open: they say nothing about the session, so they keep what is saved.)
+      if (res.status === 200 && res.type === 'basic' && url.pathname.indexOf('/auth/privacy') !== 0 && url.pathname.indexOf('/auth/terms') !== 0) event.waitUntil(clearPrivate());
       return res;
     }).catch(offlinePage);
   }

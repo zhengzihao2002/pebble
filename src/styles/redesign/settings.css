@@ -578,7 +578,8 @@
 .pebble-root .pb-settings-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
 /* Each link is its own bordered tile: no inset hairline between them. */
 .pebble-root .pb-settings-link + .pb-settings-link::before { content: none; }
-.pebble-root .pb-settings-privacy { grid-area: privacy; justify-self: start; font-size: 0.78rem; color: var(--pine); }
+.pebble-root .pb-settings-legal { grid-area: privacy; justify-self: start; display: flex; flex-wrap: wrap; align-items: center; gap: 0 1.25rem; min-width: 0; }
+.pebble-root .pb-settings-privacy { font-size: 0.78rem; color: var(--pine); white-space: nowrap; word-break: keep-all; }
 /* The footer and the danger group: their children are separate cells of the
    grid on a phone. */
 .pebble-root .pb-settings-me-foot, .pebble-root .pb-settings-me-danger { display: contents; }

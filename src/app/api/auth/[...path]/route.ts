@@ -85,10 +85,10 @@ export async function POST(...args: Parameters<typeof neon.POST>) {
   if (path === '/sign-up/email') {
     const body = await readJson(request);
     if (!body || !inviteMatches(body.inviteCode)) return refuse('Invalid invite code.', 'INVALID_INVITE_CODE');
-    // Agreement to the Privacy Notice (/auth/privacy) is required, and
-    // enforced HERE - the checkbox is a courtesy, this is the guarantee.
+    // Agreement to the Terms of Use (/auth/terms) and the Privacy Notice
+    // (/auth/privacy) is required through ONE flag, and enforced HERE - the checkbox is a courtesy, this is the guarantee.
     if (body.privacyAccepted !== true) {
-      return refuse('You must agree to the Privacy Notice to create an account.', 'PRIVACY_NOT_ACCEPTED');
+      return refuse('You must agree to the Terms of Use and the Privacy Notice to create an account.', 'PRIVACY_NOT_ACCEPTED');
     }
     const forwardedBody = { ...body };
     delete forwardedBody.inviteCode;

@@ -20,13 +20,15 @@ export interface PrivacyNotice {
   back: string;
   /** The same link for someone who is already signed in. */
   backSignedIn: string;
+  /** Link text to the Terms of Use. */
+  termsLink: string;
 }
 
 export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
   en: {
     title: 'Privacy Notice',
     updated: 'Last updated: October 25, 2026',
-    intro: 'Pebble is a personal budgeting app run by Wen Wen Inc., available by invitation only. This notice explains what information Pebble collects, why it is collected, who helps process it, and the choices you have. By creating an account, you agree to this notice.',
+    intro: 'Pebble is a personal budgeting app run by Wen Wen Inc., available by invitation only. This notice explains what information Pebble collects, why it is collected, who helps process it, and the choices you have. By creating an account, you agree to this notice and to our Terms of Use.',
     sections: [
       {
         heading: 'Who runs Pebble',
@@ -80,13 +82,18 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       {
         heading: 'Information you enter is your choice',
         paragraphs: [
-          'Everything you enter into Pebble is entered voluntarily, and you decide what to enter. Nothing requires you to enter any particular information, and you are responsible for the accuracy and appropriateness of what you enter.',
-          'Pebble is provided "as is", without warranties of any kind. To the maximum extent permitted by law, Wen Wen Inc. and Pebble accept no liability at any time for any loss, damage, or consequence connected with information you enter or with your use of Pebble, including inaccurate figures, lost, delayed, or unavailable data, or decisions you make based on what Pebble shows. Pebble is not financial, tax, or legal advice.',
+          'Everything you enter into Pebble is entered voluntarily, and you decide what to enter. Nothing requires you to enter any particular information, and you are solely responsible for the accuracy, legality, and appropriateness of what you enter. Please do not enter anything you would not want stored in a personal record-keeping app.',
+          'Pebble is provided "as is", without warranties of any kind. To the maximum extent permitted by law, Wen Wen Inc. and Pebble (and their owners, officers, employees, contractors, and providers) accept no liability at any time for any loss, damage, or consequence connected with information you enter or with your use of Pebble, including inaccurate figures, lost, delayed, or unavailable data, or decisions you make based on what Pebble shows. Pebble is not financial, tax, or legal advice.',
+          'Nothing here limits any right or liability that the law does not allow to be limited.',
         ],
       },
       {
+        heading: 'Terms of Use',
+        paragraphs: ['Your use of Pebble is also governed by our Terms of Use, which you agree to when you create an account, together with this notice. The Terms of Use cover your responsibilities, disclaimers, limits on our liability, and how disputes are resolved. You can read them using the link at the bottom of this page.'],
+      },
+      {
         heading: 'Security',
-        paragraphs: ['Your information travels over encrypted connections, passwords are hashed, and each person can reach only their own records. No system is perfectly secure, so please use a strong password that you do not use elsewhere, and sign out of devices you no longer use.'],
+        paragraphs: ['Your information travels over encrypted connections, passwords are hashed, and each person can reach only their own records. No system is perfectly secure, and we cannot guarantee that your information will never be accessed, lost, or disclosed without authorisation. To the maximum extent permitted by law, Wen Wen Inc. does not promise otherwise, and is not responsible for unauthorised access, loss, or disclosure beyond what the law requires of us. Please use a strong password that you do not use elsewhere, and sign out of devices you no longer use.'],
       },
       {
         heading: 'How long we keep it',
@@ -114,11 +121,12 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
     ],
     back: '← Back to sign in',
     backSignedIn: '← Back to Pebble',
+    termsLink: 'Read the Terms of Use',
   },
   zh: {
     title: '隐私声明',
     updated: '最后更新：2026年10月25日',
-    intro: 'Pebble 是由文文有限公司运营的个人记账应用，仅限受邀用户使用。本声明说明 Pebble 会收集哪些信息、为什么收集、由谁协助处理，以及你有哪些选择。创建账户即表示你同意本声明。',
+    intro: 'Pebble 是由文文有限公司运营的个人记账应用，仅限受邀用户使用。本声明说明 Pebble 会收集哪些信息、为什么收集、由谁协助处理，以及你有哪些选择。创建账户即表示你同意本声明和我们的使用条款。',
     sections: [
       {
         heading: 'Pebble 由谁运营',
@@ -172,13 +180,18 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
       {
         heading: '你录入的信息由你自主决定',
         paragraphs: [
-          '你在 Pebble 中录入的所有信息均出于你的自愿，录入哪些内容由你自己决定。没有任何要求你必须录入特定信息，你需对所录入内容的准确性和适当性负责。',
-          'Pebble 按“现状”提供，不作任何形式的保证。在法律允许的最大范围内，文文有限公司及 Pebble 对因你录入的信息或你使用 Pebble 而产生的任何损失、损害或后果，在任何时候均不承担任何责任，包括数字不准确、数据丢失、延迟或无法使用，以及你基于 Pebble 所显示内容作出的决定。Pebble 不构成财务、税务或法律建议。',
+          '你在 Pebble 中录入的所有信息均出于你的自愿，录入哪些内容由你自己决定。没有任何要求你必须录入特定信息，你须自行对所录入内容的准确性、合法性和适当性负责。请不要录入任何你不希望保存在个人记账应用中的内容。',
+          'Pebble 按“现状”提供，不作任何形式的保证。在法律允许的最大范围内，文文有限公司及 Pebble（包括其所有人、高级职员、员工、承包商和服务商）对因你录入的信息或你使用 Pebble 而产生的任何损失、损害或后果，在任何时候均不承担任何责任，包括数字不准确、数据丢失、延迟或无法使用，以及你基于 Pebble 所显示内容作出的决定。Pebble 不构成财务、税务或法律建议。',
+          '本节内容不限制任何依法不能被限制的权利或责任。',
         ],
       },
       {
+        heading: '使用条款',
+        paragraphs: ['你使用 Pebble 还受我们的使用条款约束。创建账户时，你同意使用条款和本声明。使用条款涵盖你的责任、免责声明、我们的责任限制以及争议的解决方式。你可以通过本页底部的链接阅读。'],
+      },
+      {
         heading: '安全',
-        paragraphs: ['你的信息通过加密连接传输，密码经过哈希处理，每个人只能访问自己的记录。没有任何系统是绝对安全的，请使用强度高、且不与其他服务重复的密码，并及时在不再使用的设备上退出登录。'],
+        paragraphs: ['你的信息通过加密连接传输，密码经过哈希处理，每个人只能访问自己的记录。没有任何系统是绝对安全的，我们无法保证你的信息绝不会被未经授权地访问、丢失或披露。在法律允许的最大范围内，文文有限公司不作此类保证，对超出法律要求范围的未经授权的访问、丢失或披露不承担责任。请使用强度高、且不与其他服务重复的密码，并及时在不再使用的设备上退出登录。'],
       },
       {
         heading: '保存多久',
@@ -206,5 +219,6 @@ export const PRIVACY_NOTICE: Record<'en' | 'zh', PrivacyNotice> = {
     ],
     back: '← 返回登录',
     backSignedIn: '← 返回 Pebble',
+    termsLink: '查看使用条款',
   },
 };

@@ -30,23 +30,26 @@ import { AUTH_GATE_MESSAGES_ZH, AUTH_LOCALIZATION_ZH } from '@/lib/i18n/authLoca
 // email-code SIGN-IN is refused by that same gate.
 const ADDITIONAL_FIELDS_EN = {
   inviteCode: { label: 'Invite code', placeholder: 'Enter your invite code', required: true, type: 'string' as const },
-  // Consent. Also enforced by the /api/auth gate, which refuses sign-up
+  // The label is ONE <span>: the form lays its label's children out as a flex
+  // row, which otherwise spreads the words and links apart.
+  // Consent to the Terms of Use and the Privacy Notice (one box, one flag:
+  // privacyAccepted). Also enforced by the /api/auth gate, which refuses sign-up
   // without it. The link opens in a new tab so the form keeps its input.
   privacyAccepted: {
-    label: <>I have read and agree to the <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">Privacy Notice</a></>,
+    label: <span style={{ lineHeight: 1.4 }}>I have read and agree to the <a href="/auth/terms" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">Terms of Use</a> and the <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">Privacy Notice</a></span>,
     required: true,
     // Own message: the library otherwise builds "<label> is required", and
     // this label is JSX (it holds the link), which printed [object Object].
-    errorMessage: { required: 'Please read and agree to the Privacy Notice.' },
+    errorMessage: { required: 'Please read and agree to the Terms of Use and the Privacy Notice.' },
     type: 'boolean' as const,
   },
 };
 const ADDITIONAL_FIELDS_ZH = {
   inviteCode: { label: '邀请码', placeholder: '输入你的邀请码', required: true, type: 'string' as const },
   privacyAccepted: {
-    label: <>我已阅读并同意<a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">隐私声明</a></>,
+    label: <span style={{ lineHeight: 1.4 }}>我已阅读并同意<a href="/auth/terms" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">使用条款</a>和<a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pebble-auth-link">隐私声明</a></span>,
     required: true,
-    errorMessage: { required: '请阅读并同意隐私声明。' },
+    errorMessage: { required: '请阅读并同意使用条款和隐私声明。' },
     type: 'boolean' as const,
   },
 };

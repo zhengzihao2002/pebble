@@ -70,9 +70,16 @@ export function PebbleAccountCard() {
           {/* display: contents on a phone (the privacy link and the danger
               group are cells of the grid); one flex row on a wide card. */}
           <div className="pb-settings-me-foot">
-            <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pb-settings-privacy">
-              {d.privacy.link}
-            </a>
+            {/* One grid cell / flex item holding both legal links, so the
+                grid areas stay as they were. */}
+            <span className="pb-settings-legal">
+              <a href="/auth/terms" target="_blank" rel="noopener noreferrer" className="pb-settings-privacy">
+                {d.ux.settings.termsLink}
+              </a>
+              <a href="/auth/privacy" target="_blank" rel="noopener noreferrer" className="pb-settings-privacy">
+                {d.privacy.link}
+              </a>
+            </span>
 
             {/* display: contents on a phone, so the hint and the button can take
                 their own cells of the grid; one flex group on a wide card. */}

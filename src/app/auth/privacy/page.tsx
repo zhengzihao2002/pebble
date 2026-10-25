@@ -55,9 +55,12 @@ export default async function PrivacyPage() {
           </section>
         ))}
         {/* Signed in (the Settings link): back to the app, not the sign-in page. */}
-        {signedIn
-          ? <Link href="/settings" className="privacy-back">{notice.backSignedIn}</Link>
-          : <Link href="/auth/sign-in" className="privacy-back">{notice.back}</Link>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 1.5rem' }}>
+          {signedIn
+            ? <Link href="/settings" className="privacy-back">{notice.backSignedIn}</Link>
+            : <Link href="/auth/sign-in" className="privacy-back">{notice.back}</Link>}
+          <Link href="/auth/terms" className="privacy-back">{notice.termsLink}</Link>
+        </div>
       </article>
     </main>
   );

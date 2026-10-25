@@ -46,6 +46,8 @@ export const settingsEn = {
   categoryCount: '{count} categories',
   categoryOne: '1 category',
   previewChip: 'Preview',
+  // Pebble account card footer, beside the Privacy Notice link.
+  termsLink: 'Terms of Use',
 };
 
 export const settingsZh: typeof settingsEn = {
@@ -79,4 +81,5 @@ export const settingsZh: typeof settingsEn = {
   categoryCount: '{count} 个分类',
   categoryOne: '1 个分类',
   previewChip: '预览',
+  termsLink: '使用条款',
 };
