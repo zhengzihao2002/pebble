@@ -112,6 +112,7 @@ export const TERMS_OF_USE: Record<'en' | 'zh', TermsOfUse> = {
       {
         heading: 'Limitation of liability',
         paragraphs: [
+          'PLEASE READ THIS SECTION CAREFULLY. TO THE MAXIMUM EXTENT PERMITTED BY LAW, PEBBLE IS PROVIDED “AS IS” AND “AS AVAILABLE”, AND WEN WEN INC. AND EVERYONE ASSOCIATED WITH IT ARE NOT LIABLE TO YOU FOR ANY LOSS OR DAMAGE OF ANY KIND ARISING FROM YOUR USE OF PEBBLE OR FROM INFORMATION YOU ENTER, AT ANY TIME.',
           'To the maximum extent permitted by applicable law, neither Wen Wen Inc. nor its owners, directors, officers, employees, contractors, agents, affiliates, licensors, or service providers will be liable to you or anyone claiming through you for any direct, indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of data, profits, savings, income, goodwill, or opportunity, or for any penalties, fees, late charges, overdraft charges, or interest, or for any decision you make or action you take based on Pebble. This applies whether the claim is in contract, tort (including negligence), strict liability, statute, or anything else, and even if we were told such loss was possible.',
           'If, despite the above, liability cannot be excluded under applicable law, then to the maximum extent permitted by applicable law our total liability for all claims together is limited to the amount you paid us to use Pebble in the 12 months before the claim (which is nothing, since Pebble is free) or, if the law does not allow that, to the minimum amount the law allows.',
           'These limits apply even if a remedy fails of its essential purpose. They reflect a fair allocation of risk for a free service, and we would not offer Pebble without them.',
@@ -155,15 +156,17 @@ export const TERMS_OF_USE: Record<'en' | 'zh', TermsOfUse> = {
         heading: 'Resolving disputes',
         paragraphs: [
           'Talk to us first. If you have a problem, contact Wen Wen Inc. (see Contact) and give us a chance to put it right. Most concerns can be settled informally, and both sides will try in good faith to do so for at least 30 days before starting any formal proceeding.',
-          'Governing law. These Terms are governed by the laws of the jurisdiction where Wen Wen Inc. is organized, without regard to conflict-of-law rules.',
-          'Binding individual arbitration. To the maximum extent permitted by applicable law, if a dispute is not settled informally, you and Wen Wen Inc. agree to resolve it only through final and binding arbitration on an individual basis, rather than in court, except that either side may bring an individual claim in small-claims court if it qualifies, and either side may ask a court to stop misuse of intellectual property.',
+          'Governing law. These Terms, and any dispute between you and Wen Wen Inc. about them or about Pebble, are governed by the laws of the State of New York and applicable United States federal law, without regard to conflict-of-law rules. The Federal Arbitration Act governs the arbitration clause below.',
+          'Binding individual arbitration. To the maximum extent permitted by applicable law, if a dispute is not settled informally, you and Wen Wen Inc. agree to resolve it only through final and binding arbitration on an individual basis, rather than in court. The arbitration will be administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules in effect when the arbitration is started, and will take place in New York, New York, although you may choose to take part by video, by telephone, or by written submissions. Wen Wen Inc. will pay the AAA filing, administrative, and arbitrator fees that the AAA Consumer Arbitration Rules require a business to pay, and you will not be asked to pay more than you would pay to file a case in court. The arbitrator must apply these Terms, may award only the individual relief the law allows, and may not combine claims or hear a class, collective, or representative proceeding. Judgment on the award may be entered in any court that has jurisdiction. Either side may bring an individual claim in small-claims court if it qualifies, and either side may ask a court to stop misuse of its intellectual property.',
           'No class actions or jury trials. To the maximum extent permitted by applicable law, you and Wen Wen Inc. each waive the right to a jury trial and the right to take part in a class, collective, consolidated, or representative action. Claims may be brought only in an individual capacity.',
+          'Courts. For any claim that is not sent to arbitration, and for any action to enforce an arbitration award or to ask for urgent relief, you and Wen Wen Inc. agree that the state and federal courts located in New York County, New York (Manhattan) have exclusive jurisdiction and are the proper venue. You consent to the personal jurisdiction of those courts and give up any objection that the venue is inconvenient.',
+          'Time limit to bring a claim. To the maximum extent permitted by applicable law, any claim or cause of action you have against Wen Wen Inc. that relates to Pebble or these Terms must be started within one (1) year after it first arises. A claim started later is permanently barred.',
           'If any part of this section cannot be enforced where you live, that part does not apply to you and the rest stays in effect.',
         ],
       },
       {
         heading: 'Your rights that cannot be limited',
-        paragraphs: ['Nothing in these Terms limits or excludes any right or liability that cannot be limited or excluded by law, such as liability for fraud or fraudulent misrepresentation, for death or personal injury caused by negligence where applicable, or any consumer rights that the law of your place of residence gives you and does not allow to be waived. In that case, these Terms apply only as far as the law allows.'],
+        paragraphs: ['Nothing in these Terms limits or excludes any right or liability that cannot be limited or excluded by law, such as liability for fraud or fraudulent misrepresentation, for gross negligence or intentional wrongdoing (which New York law does not allow a business to exclude), for death or personal injury caused by negligence where applicable, or any consumer rights that the law of your place of residence gives you and does not allow to be waived. In that case, these Terms apply only as far as the law allows.'],
       },
       {
         heading: 'General terms',
@@ -271,6 +274,7 @@ export const TERMS_OF_USE: Record<'en' | 'zh', TermsOfUse> = {
       {
         heading: '责任限制',
         paragraphs: [
+          '请仔细阅读本节。在法律允许的最大范围内，Pebble 按“现状”和“可用状态”提供；对于因你使用 Pebble 或因你录入的信息而产生的任何形式的损失或损害，文文有限公司及与其相关的所有人在任何时候均不对你承担责任。',
           '在适用法律允许的最大范围内，文文有限公司及其所有人、董事、高级职员、员工、承包商、代理人、关联方、许可方和服务商，均不对你或任何通过你主张权利的人承担任何直接、间接、附带、特殊、后果性、惩戒性或惩罚性赔偿责任，也不对数据、利润、储蓄、收入、商誉或机会的任何损失，任何罚款、费用、滞纳金、透支费用或利息，或你基于 Pebble 所做的任何决定或行为承担责任。无论该主张基于合同、侵权（包括过失）、严格责任、法律规定或其他任何理由，即使我们已被告知可能发生此类损失，亦同。',
           '如果尽管有上述约定，根据适用法律仍无法排除责任，则在适用法律允许的最大范围内，我们就所有索赔承担的全部责任，以你在索赔前 12 个月内为使用 Pebble 向我们支付的金额为限（由于 Pebble 免费，该金额为零）；若法律不允许这样约定，则以法律允许的最低金额为限。',
           '即使某项救济未能达到其基本目的，这些限制仍然适用。它们是对一项免费服务的风险所作的公平分配，没有这些限制，我们就不会提供 Pebble。',
@@ -314,15 +318,17 @@ export const TERMS_OF_USE: Record<'en' | 'zh', TermsOfUse> = {
         heading: '争议解决',
         paragraphs: [
           '先与我们沟通。如果你遇到问题，请联系文文有限公司（见“联系方式”），给我们一个解决问题的机会。大多数问题都可以通过友好协商解决；在启动任何正式程序之前，双方都会本着诚信原则至少协商 30 天。',
-          '适用法律。本条款适用文文有限公司注册成立地的法律，不考虑其法律冲突规则。',
-          '具有约束力的个人仲裁。在适用法律允许的最大范围内，如果争议未能通过协商解决，你与文文有限公司同意仅通过以个人名义进行的、终局且有约束力的仲裁来解决，而不是向法院起诉；但任何一方在符合条件时可以向小额法庭提起个人诉讼，任何一方也可以请求法院制止对知识产权的滥用。',
+          '适用法律。本条款，以及你与文文有限公司之间就本条款或 Pebble 产生的任何争议，均适用美国纽约州法律和适用的美国联邦法律，不考虑法律冲突规则。下文的仲裁条款适用《联邦仲裁法》（Federal Arbitration Act）。',
+          '具有约束力的个人仲裁。在适用法律允许的最大范围内，如果争议未能通过协商解决，你与文文有限公司同意仅通过以个人名义进行的、终局且有约束力的仲裁来解决，而不是向法院起诉。仲裁由美国仲裁协会（AAA）按仲裁开始时有效的《消费者仲裁规则》管理，在美国纽约州纽约市进行，但你可以选择通过视频、电话或书面材料参与。依据 AAA《消费者仲裁规则》应由企业承担的 AAA 立案费、管理费和仲裁员费用，由文文有限公司承担；你需要支付的费用不会超过你向法院起诉所需的立案费。仲裁员必须适用本条款，只能裁决法律允许的个人救济，不得合并索赔，也不得审理集体、联合或代表人程序。对裁决作出的判决可以在任何有管辖权的法院登记执行。任何一方在符合条件时可以向小额法庭提起个人诉讼，任何一方也可以请求法院制止对其知识产权的滥用。',
           '放弃集体诉讼和陪审团审判。在适用法律允许的最大范围内，你与文文有限公司各自放弃陪审团审判的权利，也放弃参与集体、联合、合并或代表人诉讼的权利。索赔只能以个人名义提出。',
+          '法院。对于不提交仲裁的任何索赔，以及为执行仲裁裁决或申请紧急救济而提起的任何诉讼，你与文文有限公司同意，位于纽约州纽约县（曼哈顿）的州法院和联邦法院享有专属管辖权，并为适当的审理地。你同意这些法院的属人管辖权，并放弃以审理地不便为由提出的任何异议。',
+          '提起索赔的期限。在适用法律允许的最大范围内，你针对文文有限公司提出的、与 Pebble 或本条款有关的任何索赔或诉讼请求，必须在其首次产生之日起一（1）年内提起。超过期限提起的索赔将永久失效。',
           '如果本节的任何部分在你所在地无法执行，则该部分对你不适用，其余部分仍然有效。',
         ],
       },
       {
         heading: '不能被限制的权利',
-        paragraphs: ['本条款不限制或排除任何依法不能被限制或排除的权利或责任，例如因欺诈或欺诈性不实陈述、因过失造成的死亡或人身伤害（在适用时）所产生的责任，或你居住地法律赋予你且不允许放弃的任何消费者权利。在这种情况下，本条款仅在法律允许的范围内适用。'],
+        paragraphs: ['本条款不限制或排除任何依法不能被限制或排除的权利或责任，例如因欺诈或欺诈性不实陈述、因重大过失或故意不当行为（纽约州法律不允许企业排除此类责任）、因过失造成的死亡或人身伤害（在适用时）所产生的责任，或你居住地法律赋予你且不允许放弃的任何消费者权利。在这种情况下，本条款仅在法律允许的范围内适用。'],
       },
       {
         heading: '一般条款',
