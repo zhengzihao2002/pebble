@@ -8,6 +8,13 @@
  * English one, so a missing translation is a compile error.
  */
 export const accountsEn = {
+  sortAccounts: 'Sort accounts',
+  sortModes: { default: 'Default order', balanceDesc: 'Balance: high to low', balanceAsc: 'Balance: low to high', name: 'Name: A–Z', manual: 'Manual order' },
+  reorderAccounts: 'Reorder accounts',
+  orderHint: 'Move accounts within each group. This order is shared by Accounts and Settings and saved for you in this browser.',
+  moveUp: 'Move {name} up',
+  moveDown: 'Move {name} down',
+
   // Hero and range
   range1m: '1M',
   rangeAll: 'All',
@@ -141,6 +148,13 @@ export const accountsEn = {
 };
 
 export const accountsZh: typeof accountsEn = {
+  sortAccounts: '账户排序',
+  sortModes: { default: '默认顺序', balanceDesc: '余额：从高到低', balanceAsc: '余额：从低到高', name: '名称排序', manual: '手动排序' },
+  reorderAccounts: '调整账户顺序',
+  orderHint: '在各组内移动账户。账户页和设置页共用此顺序，并保存在你当前使用的浏览器中。',
+  moveUp: '上移 {name}',
+  moveDown: '下移 {name}',
+
   range1m: '1个月',
   rangeAll: '全部',
   period1m: '1 个月',

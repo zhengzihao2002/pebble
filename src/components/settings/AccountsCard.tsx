@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
+import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
+import { AccountOrderControl } from '@/components/shared/AccountOrderControl';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { dueDates } from '@/lib/creditCards';
 import { useSettingsToday } from './useSettingsToday';
@@ -84,7 +86,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
   // Hibernated accounts ARE listed: they hold real balances that still count
   // toward the total, and they must be reachable to wake.
-  const visible = accounts;
+  const visible = useOrderedAccounts(accounts, balancesByAccount, 'stored');
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -254,6 +256,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.accounts.saved : ''}</span>
       <SectionHeader icon={Wallet} title={d.accounts.title} subtitle={d.accounts.blurb} />
+
+      {visible.length > 1 && <AccountOrderControl accounts={visible} />}
 
       {/* What the list adds up to: hibernated balances still count, so they
           are in the total (and counted separately). */}

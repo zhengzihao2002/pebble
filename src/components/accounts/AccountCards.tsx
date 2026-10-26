@@ -11,6 +11,8 @@ import type { ExpenseTransaction } from '@/types';
 import { SleepingBadge } from '@/components/shared/SleepingBadge';
 import { Sparkline } from '@/components/kit/Sparkline';
 import { CreditCardTile, DueLine, LimitMeter, creditFacts } from './CreditCardTile';
+import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
+import { AccountOrderControl } from '@/components/shared/AccountOrderControl';
 import { useWidth } from './useWidth';
 
 export interface DayPointLite {
@@ -23,6 +25,7 @@ type TipItem = { payload?: { date?: string; v?: number } };
 // The section's own width: narrower than this, bank and cash accounts are
 // compact rows that expand in place instead of 230px-tall tiles.
 const COMPACT = 560;
+const EMPTY_BALANCES: Record<string, number> = {};
 
 interface Item {
   a: Account;
@@ -40,7 +43,8 @@ interface Item {
  * Every field of the original cards is still here: balance, change over the
  * period, mini chart with its tooltip, share of the total, last activity;
  * for cards, owed, limit, due sentence and Pay off. Order within a group is
- * unchanged (larger balances first). Account names are USER DATA.
+ * controlled by the shared sort preference (larger balances first by default).
+ * Account names are USER DATA.
  */
 export function AccountCards({
   accounts, days, total, lastActivity, period, onPayOff, expenses = [],
@@ -73,15 +77,15 @@ export function AccountCards({
   const width = useWidth(ref);
   const compact = width > 0 && width < COMPACT;
 
+  const orderedAccounts = useOrderedAccounts(accounts, days[days.length - 1]?.byAccount ?? EMPTY_BALANCES, 'balance');
+
   const groups = useMemo(() => {
     if (days.length === 0) return null;
     const first = days[0];
     const last = days[days.length - 1];
-    const shown: Item[] = accounts
+    const shown: Item[] = orderedAccounts
       .filter((a) => a.status === 'active' || a.status === 'hibernated')
-      .map((a) => ({ a, now: Math.round((last.byAccount[a.id] ?? 0) * 100) / 100, then: Math.round((first.byAccount[a.id] ?? 0) * 100) / 100 }))
-      // Credit cards after bank and cash; within each, larger balances first.
-      .sort((p, q) => (p.a.kind === 'credit' ? 1 : 0) - (q.a.kind === 'credit' ? 1 : 0) || q.now - p.now);
+      .map((a) => ({ a, now: Math.round((last.byAccount[a.id] ?? 0) * 100) / 100, then: Math.round((first.byAccount[a.id] ?? 0) * 100) / 100 }));
     return {
       count: shown.length,
       bank: shown.filter((i) => i.a.status === 'active' && i.a.kind !== 'credit'),
@@ -90,7 +94,7 @@ export function AccountCards({
       // active ones by balance. Their money still counts in every total.
       sleeping: shown.filter((i) => i.a.status === 'hibernated'),
     };
-  }, [accounts, days]);
+  }, [orderedAccounts, days]);
 
   const dayToday = today ?? (() => {
     const n = new Date();
@@ -135,6 +139,8 @@ export function AccountCards({
         <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
         {periodChip}
       </div>
+
+      {groups.count > 1 && <AccountOrderControl accounts={orderedAccounts} />}
 
       {groups.bank.length > 0 && (
         <Group id="bank" icon={Landmark} title={x.sectionBankCash} count={countText(groups.bank.length)} subtotal={formatCurrency(bankSum)}>

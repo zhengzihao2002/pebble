@@ -684,3 +684,17 @@
   font-size: 0.8rem; line-height: 1.45; color: var(--ink);
 }
 .pebble-root .pb-accounts-transfer-need .pill { align-self: flex-start; padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; color: var(--ink); }
+
+/* Shared ordering controls also appear in Settings' account list. */
+.pebble-root .pb-account-order { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.pebble-root .pb-account-order-select { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.8rem; }
+.pebble-root .pb-account-order-select > :last-child { width: 13rem; max-width: 100%; }
+.pebble-root .pb-account-order-editor { padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: 0.85rem; background: var(--mist); }
+.pebble-root .pb-account-order-editor summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+.pebble-root .pb-account-order-hint { font-size: 0.75rem; color: var(--ink-soft); line-height: 1.5; }
+.pebble-root .pb-account-order-editor h4 { font-size: 0.78rem; margin: 0.8rem 0 0.35rem; }
+.pebble-root .pb-account-order-editor ul { list-style: none; padding: 0; margin: 0; }
+.pebble-root .pb-account-order-editor li { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0; }
+.pebble-root .pb-account-order-name { flex: 1; min-width: 0; font-size: 0.85rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pebble-root .pb-account-order-editor button { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; }
+.pebble-root .pb-account-order-editor button:disabled { opacity: 0.35; cursor: default; }

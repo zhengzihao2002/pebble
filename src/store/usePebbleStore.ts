@@ -1,3 +1,4 @@
+import type { AccountSortMode } from '@/lib/accountOrder';
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import type { ReportFilterPrefs } from '@/components/reports/types';
@@ -107,6 +108,8 @@ interface PebblePrefs {
   allowTextSelect: boolean;
   // Insights' Worth knowing: ids the user marked Not useful.
   insightsDismissed: string[];
+  accountSort: AccountSortMode;
+  manualAccountOrder: string[];
 }
 
 interface PebbleUIState extends PebblePrefs {
@@ -127,6 +130,8 @@ interface PebbleUIState extends PebblePrefs {
   setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
   setManualIncomeFrequency: (value: ManualIncomeFrequency) => void;
   setSelectMode: (value: SelectMode) => void;
+  setAccountSort: (value: AccountSortMode) => void;
+  setManualAccountOrder: (ids: string[]) => void;
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
@@ -151,6 +156,8 @@ const DEFAULT_PREFS: PebblePrefs = {
   incomeEstimateMode: 'system',
   manualIncomeFrequency: 'monthly',
   selectMode: 'searchable',
+  accountSort: 'default',
+  manualAccountOrder: [],
   fontChoice: 'default',
   cjkFontChoice: 'sans',
   showHealthBar: false,
@@ -207,6 +214,8 @@ export const usePebbleStore = create<PebbleUIState>()(
       setIncomeEstimateMode: (value) => set({ incomeEstimateMode: value }),
       setManualIncomeFrequency: (value) => set({ manualIncomeFrequency: value }),
       setSelectMode: (value) => set({ selectMode: value }),
+      setAccountSort: (value) => set({ accountSort: value }),
+      setManualAccountOrder: (ids) => set({ accountSort: 'manual', manualAccountOrder: ids }),
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
@@ -269,6 +278,8 @@ export const usePebbleStore = create<PebbleUIState>()(
         incomeEstimateMode: state.incomeEstimateMode,
         manualIncomeFrequency: state.manualIncomeFrequency,
         selectMode: state.selectMode,
+        accountSort: state.accountSort,
+        manualAccountOrder: state.manualAccountOrder,
         fontChoice: state.fontChoice,
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
