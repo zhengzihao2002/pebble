@@ -639,3 +639,8 @@
   .pebble-root .pb-settings-select { min-height: 44px; }
   .pebble-root .pb-settings-privacy { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+/* Both script families remain available in either interface language. */
+.pebble-root .pb-settings-font-controls { display: flex; flex-direction: column; gap: 1.1rem; min-width: 0; }
+.pebble-root .pb-settings-font-group { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.pebble-root .pb-settings-font-group .pb-settings-row-title { margin: 0; }

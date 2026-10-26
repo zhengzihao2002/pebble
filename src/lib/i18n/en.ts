@@ -457,14 +457,15 @@ export const en = {
 
   font: {
     title: 'Font',
-    blurb: 'Choose the typeface for text and headings. Amounts keep their fixed-width font so columns stay aligned. Chinese text has its own font setting, shown when the interface is in Chinese.',
+    blurb: 'Choose fonts for letters and numbers and for Chinese characters separately. Both choices apply in either interface language.',
+    latinTitle: 'Letters and numbers',
+    cjkTitle: 'Chinese characters',
     default: 'Default',
     system: 'System',
     rounded: 'Rounded',
     serif: 'Serif',
     legible: 'High legibility',
-    // Chinese options. Only shown in the Chinese interface, but zh.ts is
-    // typed as typeof en, so the keys must exist here too.
+    // Chinese character fonts are available in both interface languages.
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 

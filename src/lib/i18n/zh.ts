@@ -403,7 +403,9 @@ export const zh: typeof en = {
 
   font: {
     title: '字体',
-    blurb: '选择中文文字的字体。英文字体可在英文界面中设置。部分设备（如多数手机）没有楷体，届时会显示为黑体。',
+    blurb: '分别选择字母和数字字体，以及中文汉字字体。无论使用哪种界面语言，两项设置都会生效。',
+    latinTitle: '字母与数字',
+    cjkTitle: '中文汉字',
     default: '默认',
     system: '系统',
     rounded: '圆润',

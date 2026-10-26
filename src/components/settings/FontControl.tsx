@@ -35,10 +35,8 @@ const CJK_PREVIEW_FAMILY: Record<CjkFontChoice, string> = {
 };
 
 export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }: FontControlProps) {
-  const { d, locale } = useTranslation();
-  // Only the picker for the CURRENT interface language is shown. Both choices
-  // stay saved and both always apply, each to its own characters.
-  const isChinese = locale === 'zh';
+  const { d } = useTranslation();
+  // Both choices apply to mixed-language text, regardless of interface locale.
   // A stored value from another build shows as the default - which is exactly
   // what AppShell applies for it.
   const current: FontChoice = isFontChoice(fontChoice) ? fontChoice : 'default';
@@ -46,33 +44,37 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
 
   return (
     <SettingsRow icon={CaseSensitive} title={d.font.title} hint={d.font.blurb} layout="stack">
-      <div role="group" aria-label={d.font.title} className="pb-settings-presets is-wrap">
-        {/* The arrays hold VALUES; the dictionary is indexed by them. */}
-        {isChinese
-          ? CJK_FONT_CHOICES.map((choice) => (
+      <div className="pb-settings-font-controls">
+        <div role="group" aria-label={d.font.latinTitle} className="pb-settings-font-group">
+          <p className="pb-settings-row-title">{d.font.latinTitle}</p>
+          <div className="pb-settings-presets is-wrap">
+            {FONT_CHOICES.map((choice) => (
               <button
-                key={choice}
-                onClick={() => onCjkChange(choice)}
-                type="button"
-                className={`pb-settings-preset${currentCjk === choice ? ' is-active' : ''}`}
-                aria-pressed={currentCjk === choice}
-                style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}
-              >
-                {d.font.cjk[choice]}
-              </button>
-            ))
-          : FONT_CHOICES.map((choice) => (
-              <button
-                key={choice}
-                onClick={() => onChange(choice)}
-                type="button"
+                key={choice} type="button" onClick={() => onChange(choice)}
                 className={`pb-settings-preset${current === choice ? ' is-active' : ''}`}
                 aria-pressed={current === choice}
                 style={{ fontFamily: PREVIEW_FAMILY[choice] }}
               >
-                {d.font[choice]}
+                {d.font[choice]} <span aria-hidden="true">Aa 0123</span>
               </button>
             ))}
+          </div>
+        </div>
+        <div role="group" aria-label={d.font.cjkTitle} className="pb-settings-font-group">
+          <p className="pb-settings-row-title">{d.font.cjkTitle}</p>
+          <div className="pb-settings-presets is-wrap">
+            {CJK_FONT_CHOICES.map((choice) => (
+              <button
+                key={choice} type="button" onClick={() => onCjkChange(choice)}
+                className={`pb-settings-preset${currentCjk === choice ? ' is-active' : ''}`}
+                aria-pressed={currentCjk === choice}
+                style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}
+              >
+                {d.font.cjk[choice]} <span aria-hidden="true">中文</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </SettingsRow>
   );
