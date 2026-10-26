@@ -320,13 +320,43 @@
 .pebble-root .pb-rep-delta-words { min-width: 0; }
 
 .pebble-root .pb-rep-flow { display: flex; flex-direction: column; gap: 0.6rem; }
-.pebble-root .pb-rep-flow-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-.pebble-root .pb-rep-flow-fig { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
-/* Net gets the full row; very large figures can wrap instead of losing digits. */
-.pebble-root .pb-rep-flow-fig.is-net { grid-column: 1 / -1; align-items: center; text-align: center; }
-.pebble-root .pb-rep-flow-fig.is-net > .font-mono-tab { max-width: 100%; }
-.pebble-root .pb-rep-flow-fig > .font-mono-tab { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
-.pebble-root .pb-rep-flow-name { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-rep-flow-figs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line); border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--mist) 60%, transparent);
+}
+.pebble-root .pb-rep-flow-fig {
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  min-width: 0; padding: 0.85rem 0.3rem; text-align: center;
+}
+.pebble-root .pb-rep-flow-fig + .pb-rep-flow-fig { border-left: 1px solid var(--line); }
+/* Equal cells and one type size keep the three figures aligned. Full amounts
+   remain visible even when unusually large values need a second line. */
+.pebble-root .pb-rep-flow-fig > .font-mono-tab {
+  max-width: 100%; font-size: 0.85rem; font-weight: 600;
+  overflow-wrap: anywhere; word-break: break-all;
+}
+.pebble-root .pb-rep-flow-name {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
+  max-width: 100%; font-size: 0.68rem; font-weight: 500; color: var(--ink-soft);
+  min-height: 14px; line-height: 1.4;
+}
+.pebble-root .pb-rep-flow-name svg { flex-shrink: 0; }
+/* Preserve readable figures on narrow cards and with enlarged text settings. */
+@container pb-rep-hero (max-width: 17rem) {
+  .pebble-root .pb-rep-flow-figs { grid-template-columns: minmax(0, 1fr); }
+  .pebble-root .pb-rep-flow-fig {
+    flex-direction: row; justify-content: space-between; align-items: baseline;
+    gap: 0.75rem; padding: 0.65rem 0.75rem; text-align: right;
+  }
+  .pebble-root .pb-rep-flow-fig + .pb-rep-flow-fig { border-left: 0; border-top: 1px solid var(--line); }
+  .pebble-root .pb-rep-flow-name { flex-shrink: 0; }
+  .pebble-root .pb-rep-flow-fig > .font-mono-tab { min-width: 0; }
+}
+@container pb-rep-hero (max-width: 11rem) {
+  .pebble-root .pb-rep-flow-fig { flex-direction: column; align-items: center; gap: 0.3rem; text-align: center; }
+  .pebble-root .pb-rep-flow-name { flex-shrink: 1; }
+}
 .pebble-root .pb-rep-flow-fig.is-in .pb-rep-flow-name svg { color: var(--pine); }
 .pebble-root .pb-rep-flow-fig.is-out .pb-rep-flow-name svg { color: var(--wine); }
 .pebble-root .pb-rep-split { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; }
