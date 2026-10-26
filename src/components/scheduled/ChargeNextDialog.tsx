@@ -48,7 +48,7 @@ interface ChargeNextDialogProps {
 export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextDialogProps) {
   const { d, t, locale } = useTranslation();
   const router = useRouter();
-  const x = d.ux.scheduled;
+  const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);

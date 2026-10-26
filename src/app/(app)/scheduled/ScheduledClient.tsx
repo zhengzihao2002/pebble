@@ -94,9 +94,10 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
   // Same revalidation as pause/resume: the action revalidates this route, so
   // the card's "Next ..." line moves on without a local update or a refresh.
   const charged = (rule: RecurringRule, result: Extract<ChargeNextRecurringResult, { ok: true }>) => {
+    const copy = rule.kind === 'income' ? { ...x, ...x.incomeCharge } : x;
     const text = result.nextDate && !result.finished
-      ? t(x.chargedNext, { date: formatDate(result.nextDate, locale) })
-      : x.chargedLast;
+      ? t(copy.chargedNext, { date: formatDate(result.nextDate, locale) })
+      : copy.chargedLast;
     setChargedNote({ ruleId: rule.id, text });
   };
   // The note is brief: gone after a few seconds (the card already shows the

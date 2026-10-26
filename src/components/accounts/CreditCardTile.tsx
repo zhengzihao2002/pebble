@@ -13,6 +13,7 @@ import { SleepingBadge } from '@/components/shared/SleepingBadge';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { useWidth } from './useWidth';
 import { mouseOnly, useTapPopover } from './useTapPopover';
+import { creditCardAppearance } from '@/lib/creditCardAppearance';
 
 /** Everything a card's face and body show, from the shared statement rules. */
 export function creditFacts(a: Account, now: number, expenses: ExpenseTransaction[], today: string) {
@@ -243,6 +244,7 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
   const hibernated = a.status === 'hibernated';
   const f = creditFacts(a, now, expenses, today);
   const charges = useMemo(() => expenses.filter((c) => c.accountId === a.id), [expenses, a.id]);
+  const appearance = useMemo(() => creditCardAppearance(a.name, f.owed, charges), [a.name, f.owed, charges]);
   const { whole, cents } = splitCents(formatCurrency(f.owed));
 
   return (
@@ -253,7 +255,14 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
       // from the ring or the statement track, which have their own taps.
       onClick={onOpen ? (e) => { if (!(e.target as HTMLElement).closest('button, a, .pb-chart-fade, .pb-chart-fill')) onOpen(a); } : undefined}
     >
-      <div className="pb-accounts-cc-face">
+      <div
+        className={`pb-accounts-cc-face${appearance.apple ? ' is-apple' : ''}${appearance.spending ? ' has-spending' : ''}`}
+        style={appearance.spending ? {
+          ['--pb-apple-one' as string]: appearance.colors[0],
+          ['--pb-apple-two' as string]: appearance.colors[1],
+          ['--pb-apple-three' as string]: appearance.colors[2],
+        } : undefined}
+      >
         <div className="pb-accounts-cc-row">
           <CreditCard size={18} aria-hidden="true" className="pb-accounts-cc-glyph" />
           <span className="pb-accounts-cc-name">{a.name}</span>

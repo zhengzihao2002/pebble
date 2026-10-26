@@ -356,6 +356,49 @@
   --ink-soft: color-mix(in srgb, var(--pb-cc-fg) 72%, transparent);
   transition: --pb-hero-dark var(--pb-dur-theme, 300ms) ease;
 }
+/* Brushed graphite, a warm metallic edge and a quiet diagonal reflection. */
+.pebble-root .pb-accounts-cc-face {
+  isolation: isolate;
+  background: linear-gradient(125deg, #414349 0%, #22252b 32%, #101216 66%, #303137 100%);
+  box-shadow: inset 0 1px 0 #d7c6a74d, inset 0 0 0 1px #c6b99a38, 0 16px 30px -18px #000b;
+}
+.pebble-root .pb-accounts-cc-face::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(115deg, transparent 15%, #ffffff0d 36%, transparent 52%),
+    repeating-linear-gradient(0deg, #ffffff05 0 1px, transparent 1px 3px);
+}
+.pebble-root .pb-accounts-cc-face::after {
+  content: ''; position: absolute; inset: 6px; z-index: -1; pointer-events: none;
+  border: 1px solid #c6b99a24; border-radius: calc(1rem - 6px);
+}
+/* Apple Card stays porcelain white when paid off. These colors belong to the
+   card material, independent of the page theme, with dark ink in both modes. */
+.pebble-root .pb-accounts-cc-face.is-apple {
+  --pb-cc-fg: #26313b; --ink-soft: #52606b;
+  background: #fafaf9; color: var(--pb-cc-fg);
+  box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px #bdc3c966, 0 16px 30px -18px #29323b66;
+}
+.pebble-root .pb-accounts-cc-face.is-apple::before { background: none; }
+.pebble-root .pb-accounts-cc-face.is-apple::after { border-color: #aab0b51f; }
+.pebble-root .pb-accounts-cc-face.is-apple.has-spending::before {
+  inset: -25%;
+  background:
+    radial-gradient(ellipse at 20% 25%, var(--pb-apple-one) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 30%, var(--pb-apple-two) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 85%, var(--pb-apple-three) 0%, transparent 65%);
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pebble-root .pb-accounts-cc-face.is-apple.has-spending::before {
+    animation: pb-apple-wash 22s ease-in-out infinite alternate;
+  }
+}
+@keyframes pb-apple-wash {
+  from { transform: translate(-3%, -2%) rotate(-5deg) scale(1); }
+  to { transform: translate(4%, 3%) rotate(8deg) scale(1.1); }
+}
+/* The wash encodes spending, so privacy mode hides it as well as the amount. */
+.pebble-root.pb-private .pb-accounts-cc-face.is-apple.has-spending::before { opacity: 0; animation: none; }
 .pebble-root.dark .pb-accounts-cc-face,
 .pebble-dark .pebble-root .pb-accounts-cc-face { --pb-hero-dark: 1; }
 @container content (max-width: 559.98px) {

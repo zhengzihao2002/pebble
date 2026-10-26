@@ -71,6 +71,23 @@ export const scheduledEn = {
   endModeShort: { never: 'Never', after: 'By count', on: 'By date' },
 
   // Charge next payment now (card action + confirm dialog)
+  incomeCharge: {
+    chargeNow: 'Receive now',
+    chargeNowAria: 'Receive now: next income from {description}',
+    chargeTitle: 'Record next income now',
+    chargeIntro: 'Record the next income today instead of waiting for its date.',
+    chargeWhat: 'Record income scheduled for {date}',
+    chargeThenNext: 'After this, the next income is {date}.',
+    chargeLast: 'This is the last income, so the schedule will finish.',
+    chargeConfirm: 'Receive now',
+    chargeCharging: 'Recording…',
+    chargeOverlay: 'Recording income…',
+    chargeStale: 'This schedule has changed, so that income can no longer be recorded. Check it and try again.',
+    chargeFailed: 'Could not record this income. Check your schedules before trying again.',
+    chargedNext: 'Income recorded. Next income: {date}',
+    chargedLast: 'Income recorded. That was the last income, so this schedule is finished.',
+  },
+
   chargeNow: 'Charge now',
   chargeNowAria: 'Charge now: next payment of {description}',
   chargeTitle: 'Charge next payment now',
@@ -147,6 +164,23 @@ export const scheduledZh: typeof scheduledEn = {
   quickPicks: '快捷选择',
   quickCountAria: '设为 {count} 笔',
   endModeShort: { never: '永不', after: '按次数', on: '按日期' },
+
+  incomeCharge: {
+    chargeNow: '立即入账',
+    chargeNowAria: '立即入账：{description} 的下一笔收入',
+    chargeTitle: '立即记录下一笔收入',
+    chargeIntro: '今天就记录下一笔收入，不必等到预定日期。',
+    chargeWhat: '记录原定于 {date} 的收入',
+    chargeThenNext: '这一笔之后，下一笔收入是 {date}。',
+    chargeLast: '这是最后一笔收入，之后这个日程就结束了。',
+    chargeConfirm: '立即入账',
+    chargeCharging: '正在入账…',
+    chargeOverlay: '正在记录收入…',
+    chargeStale: '这个日程已经有变化，无法再记录这笔收入。请先查看日程，然后重试。',
+    chargeFailed: '未能记录这笔收入。请先查看日程，再决定是否重试。',
+    chargedNext: '收入已入账。下一笔收入：{date}',
+    chargedLast: '收入已入账。这是最后一笔收入，日程已完成。',
+  },
 
   chargeNow: '立即扣款',
   chargeNowAria: '立即扣款：{description} 的下一笔',

@@ -159,7 +159,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
   chargedText: string;
 }) {
   const { d, t, locale } = useTranslation();
-  const x = d.ux.scheduled;
+  const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
   const paused = rule.status === 'paused';
   // A rule that has made every payment it ever will - derived, never stored
   // (isDone adds fired one-offs to isExhausted). Takes precedence over paused.

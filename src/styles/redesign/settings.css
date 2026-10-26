@@ -53,13 +53,13 @@
   }
 }
 .pebble-root .pb-settings-target.is-flash::after {
-  content: ''; position: absolute; inset: -4px -0.55rem; pointer-events: none;
+  content: ''; position: absolute; inset: 0; pointer-events: none;
   border-radius: 1rem; z-index: 1;
   border: 2px solid var(--pine);
   background-color: color-mix(in srgb, var(--pine) 8%, transparent);
 }
 /* A card is its own surface: the ring hugs it instead. */
-.pebble-root .pb-settings-target.card.is-flash::after { inset: -2px; border-radius: inherit; }
+.pebble-root .pb-settings-target.card.is-flash::after { inset: 0; border-radius: inherit; }
 @media (prefers-reduced-motion: no-preference) {
   .pebble-root .pb-settings-target.is-flash::after {
     animation: pb-settings-flash 1800ms var(--pb-ease-out, ease-out) both;
