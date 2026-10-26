@@ -320,9 +320,12 @@
 .pebble-root .pb-rep-delta-words { min-width: 0; }
 
 .pebble-root .pb-rep-flow { display: flex; flex-direction: column; gap: 0.6rem; }
-.pebble-root .pb-rep-flow-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.pebble-root .pb-rep-flow-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .pebble-root .pb-rep-flow-fig { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
-.pebble-root .pb-rep-flow-fig > .font-mono-tab { font-size: 1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Net gets the full row; very large figures can wrap instead of losing digits. */
+.pebble-root .pb-rep-flow-fig.is-net { grid-column: 1 / -1; align-items: center; text-align: center; }
+.pebble-root .pb-rep-flow-fig.is-net > .font-mono-tab { max-width: 100%; }
+.pebble-root .pb-rep-flow-fig > .font-mono-tab { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
 .pebble-root .pb-rep-flow-name { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-rep-flow-fig.is-in .pb-rep-flow-name svg { color: var(--pine); }
 .pebble-root .pb-rep-flow-fig.is-out .pb-rep-flow-name svg { color: var(--wine); }

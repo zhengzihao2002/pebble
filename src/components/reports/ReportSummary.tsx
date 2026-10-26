@@ -129,7 +129,7 @@ export function ReportSummary(p: ReportSummaryProps) {
                 <span className="pb-rep-flow-name"><ArrowUpRight size={14} aria-hidden="true" />{x.moneyOut}</span>
                 <span className="font-mono-tab">{formatCurrency(p.outSum)}</span>
               </div>
-              <div className="pb-rep-flow-fig">
+              <div className="pb-rep-flow-fig is-net">
                 <span className="pb-rep-flow-name">{x.net}</span>
                 <span className="font-mono-tab" style={{ color: p.accent }}>{p.total > 0 ? '+' : ''}{formatCurrency(p.total)}</span>
               </div>

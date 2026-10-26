@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
@@ -47,6 +47,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   // with their own title keep it; amounts are skipped in privacy mode so a
   // tooltip never reveals a figure. Hidden on mouse-out, scroll and resize.
   const [truncTip, setTruncTip] = useState<{ text: string; left: number; top: number; below: boolean } | null>(null);
+  const truncTipRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = truncTipRef.current;
+    if (!truncTip || !panel) return;
+    // Clamp using the rendered width, not the 360px maximum. Reserving the
+    // maximum pushed even short amounts to the left edge on phones.
+    const width = panel.getBoundingClientRect().width;
+    const left = Math.max(8, Math.min(truncTip.left, window.innerWidth - width - 8));
+    if (left !== truncTip.left) setTruncTip({ ...truncTip, left });
+  }, [truncTip]);
   useEffect(() => {
     let timer = 0;
     let current: HTMLElement | null = null;
@@ -85,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           const below = r.top < 64;
           setTruncTip({
             text: (target.textContent ?? '').replace(/\s+/g, ' ').trim(),
-            left: Math.max(8, Math.min(r.left, window.innerWidth - 368)),
+            left: r.left,
             top: below ? r.bottom + 8 : r.top - 8,
             below,
           });
@@ -119,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         const below = r.top < 64;
         setTruncTip({
           text: (target.textContent ?? '').replace(/\s+/g, ' ').trim(),
-          left: Math.max(8, Math.min(r.left, window.innerWidth - 368)),
+          left: r.left,
           top: below ? r.bottom + 8 : r.top - 8,
           below,
         });
@@ -514,6 +524,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </svg>
       {truncTip && (
         <div
+          ref={truncTipRef}
           className="pb-tip" role="tooltip"
           style={{ left: truncTip.left, top: truncTip.top, transform: truncTip.below ? undefined : 'translateY(-100%)' }}
         >

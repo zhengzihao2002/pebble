@@ -2021,6 +2021,8 @@ html.pebble-welcoming::after {
 /* Tooltip for truncated text (AppShell): larger and clearer than the browser's. */
 .pebble-root .pb-tip {
   position: fixed; z-index: 90; pointer-events: none;
+  /* Keep measurement independent of the initial position near an edge. */
+  width: max-content;
   max-width: min(360px, calc(100vw - 16px));
   padding: 0.45rem 0.7rem; border-radius: 0.6rem;
   background-color: var(--ink); color: var(--paper); box-shadow: var(--shadow-float);
