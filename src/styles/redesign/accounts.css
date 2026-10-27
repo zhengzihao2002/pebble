@@ -698,3 +698,10 @@
 .pebble-root .pb-account-order-name { flex: 1; min-width: 0; font-size: 0.85rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pebble-root .pb-account-order-editor button { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; }
 .pebble-root .pb-account-order-editor button:disabled { opacity: 0.35; cursor: default; }
+
+.pebble-root .pb-account-order-editor li { padding: 0.35rem; border: 1px solid var(--line); border-radius: 0.65rem; margin-bottom: 0.35rem; background: var(--mist); transition: box-shadow 160ms ease, background-color 160ms ease; }
+.pebble-root .pb-account-order-editor li.is-dragging { background: var(--pine-soft); border-color: var(--pine); box-shadow: 0 5px 15px -5px var(--ink-soft); z-index: 1; position: relative; }
+.pebble-root .pb-account-order-handle { touch-action: none; cursor: grab; user-select: none; }
+.pebble-root .pb-account-order-handle:active { cursor: grabbing; }
+.pebble-root .pb-account-order-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.pebble-root .pb-account-order-actions button { display: inline-flex; width: auto; height: auto; min-height: 44px; padding: 0.55rem 0.9rem; }

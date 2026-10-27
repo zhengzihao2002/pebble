@@ -9,9 +9,13 @@
  */
 export const accountsEn = {
   sortAccounts: 'Sort accounts',
-  sortModes: { default: 'Default order', balanceDesc: 'Balance: high to low', balanceAsc: 'Balance: low to high', name: 'Name: A–Z', manual: 'Manual order' },
+  sortModes: { default: 'Creation order', balanceDesc: 'Balance: high to low', balanceAsc: 'Balance: low to high', name: 'Name: A–Z', manual: 'Manual order' },
   reorderAccounts: 'Reorder accounts',
-  orderHint: 'Move accounts within each group. This order is shared by Accounts and Settings and saved for you in this browser.',
+  orderHint: 'Drag the handles to arrange accounts within each group, then save. You can also use the arrow keys on a handle. Saved for you in this browser.',
+  saveOrder: 'Save order',
+  cancelOrder: 'Cancel',
+  dragAccount: 'Drag {name} to reorder',
+  orderPosition: '{name}: position {position} of {count}',
   moveUp: 'Move {name} up',
   moveDown: 'Move {name} down',
 
@@ -149,9 +153,13 @@ export const accountsEn = {
 
 export const accountsZh: typeof accountsEn = {
   sortAccounts: '账户排序',
-  sortModes: { default: '默认顺序', balanceDesc: '余额：从高到低', balanceAsc: '余额：从低到高', name: '名称排序', manual: '手动排序' },
+  sortModes: { default: '创建顺序', balanceDesc: '余额：从高到低', balanceAsc: '余额：从低到高', name: '名称排序', manual: '手动排序' },
   reorderAccounts: '调整账户顺序',
-  orderHint: '在各组内移动账户。账户页和设置页共用此顺序，并保存在你当前使用的浏览器中。',
+  orderHint: '拖动手柄调整各组内的账户顺序，然后保存。也可聚焦手柄后使用上下方向键。顺序保存在当前浏览器中。',
+  saveOrder: '保存顺序',
+  cancelOrder: '取消',
+  dragAccount: '拖动 {name} 调整顺序',
+  orderPosition: '{name}：第 {position} 个，共 {count} 个',
   moveUp: '上移 {name}',
   moveDown: '下移 {name}',
 

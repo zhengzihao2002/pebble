@@ -15,8 +15,8 @@ interface FontControlProps {
   onCjkChange: (value: CjkFontChoice) => void;
 }
 
-// Each option previews itself: its button text renders in the family that
-// option applies. Mirrors the rules in globals.css - keep the two in step.
+// Names stay in a fixed UI face; only the separate specimen previews a font.
+const LABEL_FAMILY = `var(--font-work-sans), "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`;
 const PREVIEW_FAMILY: Record<FontChoice, string> = {
   default: 'var(--font-work-sans), var(--cjk), sans-serif',
   system: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, var(--cjk), sans-serif",
@@ -53,9 +53,9 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 key={choice} type="button" onClick={() => onChange(choice)}
                 className={`pb-settings-preset${current === choice ? ' is-active' : ''}`}
                 aria-pressed={current === choice}
-                style={{ fontFamily: PREVIEW_FAMILY[choice] }}
+                style={{ fontFamily: LABEL_FAMILY }}
               >
-                {d.font[choice]} <span aria-hidden="true">Aa 0123</span>
+                {d.font[choice]} <span aria-hidden="true" style={{ fontFamily: PREVIEW_FAMILY[choice] }}>Aa 0123</span>
               </button>
             ))}
           </div>
@@ -68,9 +68,9 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 key={choice} type="button" onClick={() => onCjkChange(choice)}
                 className={`pb-settings-preset${currentCjk === choice ? ' is-active' : ''}`}
                 aria-pressed={currentCjk === choice}
-                style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}
+                style={{ fontFamily: LABEL_FAMILY }}
               >
-                {d.font.cjk[choice]} <span aria-hidden="true">中文</span>
+                {d.font.cjk[choice]} <span aria-hidden="true" style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}>中文</span>
               </button>
             ))}
           </div>

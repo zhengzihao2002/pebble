@@ -43,7 +43,7 @@ interface Item {
  * Every field of the original cards is still here: balance, change over the
  * period, mini chart with its tooltip, share of the total, last activity;
  * for cards, owed, limit, due sentence and Pay off. Order within a group is
- * controlled by the shared sort preference (larger balances first by default).
+ * controlled by the shared sort preference (creation order by default).
  * Account names are USER DATA.
  */
 export function AccountCards({
@@ -77,7 +77,7 @@ export function AccountCards({
   const width = useWidth(ref);
   const compact = width > 0 && width < COMPACT;
 
-  const orderedAccounts = useOrderedAccounts(accounts, days[days.length - 1]?.byAccount ?? EMPTY_BALANCES, 'balance');
+  const orderedAccounts = useOrderedAccounts(accounts, days[days.length - 1]?.byAccount ?? EMPTY_BALANCES);
 
   const groups = useMemo(() => {
     if (days.length === 0) return null;

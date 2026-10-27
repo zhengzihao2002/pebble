@@ -86,7 +86,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
   // Hibernated accounts ARE listed: they hold real balances that still count
   // toward the total, and they must be reachable to wake.
-  const visible = useOrderedAccounts(accounts, balancesByAccount, 'stored');
+  const visible = useOrderedAccounts(accounts, balancesByAccount);
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');

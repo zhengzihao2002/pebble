@@ -12,7 +12,7 @@ export function manualAccountIds(value: unknown): string[] {
 export function accountOrderGroup(a: Account): number {
   return (a.status === 'hibernated' ? 2 : 0) + (a.kind === 'credit' ? 1 : 0);
 }
-export function orderAccounts(accounts: Account[], balances: Record<string, number>, mode: AccountSortMode, manualIds: string[], defaultOrder: 'stored' | 'balance') {
+export function orderAccounts(accounts: Account[], balances: Record<string, number>, mode: AccountSortMode, manualIds: string[]) {
   const ranks = new Map(manualIds.map((id, i) => [id, i]));
   const fallback = (a: Account, b: Account) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id);
   return [...accounts].sort((a, b) => {
@@ -21,7 +21,7 @@ export function orderAccounts(accounts: Account[], balances: Record<string, numb
       || (ranks.get(a.id) ?? Infinity) - (ranks.get(b.id) ?? Infinity) || fallback(a, b);
     if (mode === 'name') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) || fallback(a, b);
     if (mode === 'balanceAsc') return -balance || fallback(a, b);
-    if (mode === 'balanceDesc' || defaultOrder === 'balance') return balance || fallback(a, b);
+    if (mode === 'balanceDesc') return balance || fallback(a, b);
     return fallback(a, b);
   });
 }

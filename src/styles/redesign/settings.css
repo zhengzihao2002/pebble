@@ -52,18 +52,14 @@
     scroll-margin-top: calc(var(--pb-header-h) + var(--pb-settings-jump-h, 3.4rem) + 0.65rem);
   }
 }
-.pebble-root .pb-settings-target.is-flash::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  border-radius: 1rem; z-index: 1;
-  border: 2px solid var(--pine);
+.pebble-root .pb-settings-flash-surface { position: relative; }
+.pebble-root .pb-settings-jump-ring {
+  position: absolute; left: 2px; right: 2px; pointer-events: none;
+  border: 2px solid var(--pine); border-radius: 1rem; z-index: 3;
   background-color: color-mix(in srgb, var(--pine) 8%, transparent);
 }
-/* A card is its own surface: the ring hugs it instead. */
-.pebble-root .pb-settings-target.card.is-flash::after { inset: 0; border-radius: inherit; }
 @media (prefers-reduced-motion: no-preference) {
-  .pebble-root .pb-settings-target.is-flash::after {
-    animation: pb-settings-flash 1800ms var(--pb-ease-out, ease-out) both;
-  }
+  .pebble-root .pb-settings-jump-ring { animation: pb-settings-flash 1800ms var(--pb-ease-out, ease-out) both; }
 }
 @keyframes pb-settings-flash {
   0% { opacity: 0; }

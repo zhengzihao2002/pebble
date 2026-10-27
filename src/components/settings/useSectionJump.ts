@@ -1,5 +1,6 @@
 'use client';
 
+import { flashSettingsTarget } from './flashSettingsTarget';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Upper bound on how long a click holds the highlight while the page scrolls.
@@ -29,6 +30,8 @@ export function useSectionJump(ids: string[]) {
   const lockedRef = useRef(false);
   const releaseRef = useRef<(() => void) | null>(null);
   const flashTimerRef = useRef(0);
+  const clearFlashRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => { clearFlashRef.current?.(); window.clearTimeout(flashTimerRef.current); }, []);
 
   // A string, so a new ids array with the same ids does not rebuild the
   // observers on every render.
@@ -130,16 +133,14 @@ export function useSectionJump(ids: string[]) {
   const jumpToRow = useCallback((rowId: string) => {
     const row = document.getElementById(rowId);
     if (!row) return;
-    // The section the row lives in keeps the nav highlight.
-    scrollToTarget(row, row.closest('section')?.id ?? rowId);
-
-    // Restart the pulse even when the same chip is pressed twice in a row,
-    // and never leave an earlier row's pulse running beside this one.
     window.clearTimeout(flashTimerRef.current);
-    document.querySelectorAll('.pb-settings-target.is-flash').forEach((el) => el.classList.remove('is-flash'));
-    void row.offsetWidth;
-    row.classList.add('is-flash');
-    flashTimerRef.current = window.setTimeout(() => row.classList.remove('is-flash'), FLASH_MS);
+    clearFlashRef.current?.();
+    clearFlashRef.current = flashSettingsTarget(row);
+    scrollToTarget(row, row.closest('section')?.id ?? rowId);
+    flashTimerRef.current = window.setTimeout(() => {
+      clearFlashRef.current?.();
+      clearFlashRef.current = null;
+    }, FLASH_MS);
 
     // Focus AFTER the scroll has started, with preventScroll, so the browser
     // does not run a second (instant) scroll that cancels the smooth one. The
