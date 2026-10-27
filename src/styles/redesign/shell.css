@@ -418,3 +418,6 @@
 /* One resting height for both pop-ups: the More list and the + menu now end at
    the same distance above the bar (the More list used to sit 8px lower). */
 .pebble-root .pebble-bottom-nav-stack { bottom: calc(100% + 0.4rem + 1px + 0.5rem); }
+
+/* Trim the text box to the capitals rather than centering font leading. */
+.pebble-root .pb-sidebar-initials { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }

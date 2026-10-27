@@ -640,3 +640,21 @@
 .pebble-root .pb-settings-font-controls { display: flex; flex-direction: column; gap: 1.1rem; min-width: 0; }
 .pebble-root .pb-settings-font-group { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-settings-font-group .pb-settings-row-title { margin: 0; }
+
+/* Desktop font controls stay compact beside a small live specimen. */
+.pebble-root .pb-settings-font-layout { display: grid; grid-template-columns: minmax(0, 1fr) 9.5rem; gap: 1.25rem; align-items: center; width: 100%; min-width: 0; }
+.pebble-root .pb-settings-font-group { align-items: flex-start; }
+.pebble-root .pb-settings-font-group .pb-settings-presets.is-wrap { width: fit-content; max-width: 100%; flex: none; }
+.pebble-root .pb-settings-font-group .pb-settings-presets.is-wrap .pb-settings-preset { flex: 0 0 auto; }
+.pebble-root .pb-settings-font-mobile { display: none; }
+.pebble-root .pb-settings-font-preview { padding: 0.85rem 1rem; border: 1px solid color-mix(in srgb, var(--pine) 16%, var(--line)); border-radius: 0.85rem; background: linear-gradient(135deg, color-mix(in srgb, var(--pine) 9%, var(--mist)), color-mix(in srgb, var(--gold) 8%, var(--mist))); min-width: 0; }
+.pebble-root .pb-settings-font-preview-label { font-size: 0.65rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-font-specimen { font-size: 0.85rem; line-height: 1.6; color: var(--ink); overflow-wrap: anywhere; }
+.pebble-root .pb-settings-font-specimen p { margin: 0.35rem 0 0; }
+.pebble-root .pb-settings-font-digits { font-variant-numeric: tabular-nums; }
+@media (max-width: 767.98px) {
+  .pebble-root .pb-settings-font-layout { display: block; }
+  .pebble-root .pb-settings-font-preview, .pebble-root .pb-settings-font-desktop { display: none; }
+  .pebble-root .pb-settings-font-mobile { display: block; width: 100%; }
+  .pebble-root .pb-settings-font-group { align-items: stretch; }
+}

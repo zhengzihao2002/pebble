@@ -402,6 +402,7 @@ export const zh: typeof en = {
   },
 
   font: {
+    preview: '预览',
     title: '字体',
     blurb: '分别选择字母和数字字体，以及中文汉字字体。无论使用哪种界面语言，两项设置都会生效。',
     latinTitle: '字母与数字',

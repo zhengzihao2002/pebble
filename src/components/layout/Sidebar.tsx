@@ -56,8 +56,8 @@ export function Sidebar() {
         </button>
         <SignOutButton />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
-          <div className="pb-sidebar-avatar" style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}>
-            {initials}
+          <div className="pb-sidebar-avatar" style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'var(--gold-soft)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0, lineHeight: 1 }}>
+            <span className="pb-sidebar-initials">{initials}</span>
           </div>
           <div style={{ fontSize: '0.85rem', minWidth: 0 }}>
             <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>

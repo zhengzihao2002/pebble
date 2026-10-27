@@ -456,6 +456,7 @@ export const en = {
   },
 
   font: {
+    preview: 'Preview',
     title: 'Font',
     blurb: 'Choose fonts for letters and numbers and for Chinese characters separately. Both choices apply in either interface language.',
     latinTitle: 'Letters and numbers',
