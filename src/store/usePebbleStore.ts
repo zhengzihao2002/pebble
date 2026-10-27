@@ -108,6 +108,7 @@ interface PebblePrefs {
   allowTextSelect: boolean;
   // Insights' Worth knowing: ids the user marked Not useful.
   insightsDismissed: string[];
+  breathingBackground: boolean;
   accountSort: AccountSortMode;
   manualAccountOrder: string[];
 }
@@ -130,6 +131,7 @@ interface PebbleUIState extends PebblePrefs {
   setIncomeEstimateMode: (value: IncomeEstimateMode) => void;
   setManualIncomeFrequency: (value: ManualIncomeFrequency) => void;
   setSelectMode: (value: SelectMode) => void;
+  setBreathingBackground: (value: boolean) => void;
   setAccountSort: (value: AccountSortMode) => void;
   setManualAccountOrder: (ids: string[]) => void;
   setFontChoice: (value: FontChoice) => void;
@@ -156,6 +158,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   incomeEstimateMode: 'system',
   manualIncomeFrequency: 'monthly',
   selectMode: 'searchable',
+  breathingBackground: false,
   accountSort: 'default',
   manualAccountOrder: [],
   fontChoice: 'default',
@@ -214,6 +217,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setIncomeEstimateMode: (value) => set({ incomeEstimateMode: value }),
       setManualIncomeFrequency: (value) => set({ manualIncomeFrequency: value }),
       setSelectMode: (value) => set({ selectMode: value }),
+      setBreathingBackground: (value) => set({ breathingBackground: value }),
       setAccountSort: (value) => set({ accountSort: value }),
       setManualAccountOrder: (ids) => set({ accountSort: 'manual', manualAccountOrder: ids }),
       setFontChoice: (value) => set({ fontChoice: value }),
@@ -278,6 +282,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         incomeEstimateMode: state.incomeEstimateMode,
         manualIncomeFrequency: state.manualIncomeFrequency,
         selectMode: state.selectMode,
+        breathingBackground: state.breathingBackground,
         accountSort: state.accountSort,
         manualAccountOrder: state.manualAccountOrder,
         fontChoice: state.fontChoice,

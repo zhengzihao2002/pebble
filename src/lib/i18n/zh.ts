@@ -401,6 +401,8 @@ export const zh: typeof en = {
     titleRequired: '标题为必填项。',
   },
 
+  breathingBackground: { title: '呼吸背景', hint: '柔和的主题色在应用背景中缓慢流动。开启减少动态效果时，背景保持静止。' },
+
   font: {
     preview: '预览',
     title: '字体',
