@@ -56,7 +56,7 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 key={choice} type="button" onClick={() => onChange(choice)}
                 className={`pb-settings-preset${current === choice ? ' is-active' : ''}`}
                 aria-pressed={current === choice}
-                style={{ fontFamily: LABEL_FAMILY }}
+                style={{ fontFamily: `${LATIN_FAMILIES[choice]}, ${CJK_SANS}` }}
               >
                 {FONT_LABELS[choice]}
               </button>
@@ -74,7 +74,7 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 key={choice} type="button" onClick={() => onCjkChange(choice)}
                 className={`pb-settings-preset${currentCjk === choice ? ' is-active' : ''}`}
                 aria-pressed={currentCjk === choice}
-                style={{ fontFamily: LABEL_FAMILY }}
+                style={{ fontFamily: CJK_FAMILIES[choice] }}
               >
                 {CJK_LABELS[choice]}
               </button>
