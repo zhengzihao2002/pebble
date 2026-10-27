@@ -206,8 +206,8 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent);
 }
 /* Match the shared segmented control's lifted selection in dark mode. */
-.pebble-root.dark .pb-settings-font-group .pb-settings-preset.is-active,
-.pebble-dark .pebble-root .pb-settings-font-group .pb-settings-preset.is-active {
+.pebble-root.dark .pb-settings-preset.is-active,
+.pebble-dark .pebble-root .pb-settings-preset.is-active {
   background-color: color-mix(in srgb, var(--ink) 12%, var(--mist));
 }
 .pebble-root .pb-settings-preset:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
