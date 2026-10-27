@@ -123,7 +123,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
 
         {/* The centre cell. Same equal width as every other cell; the button
             rises above the bar so it reads as its own thing. */}
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+        <div className="pb-nav-add-cell" style={{ display: 'flex', justifyContent: 'center' }}>
           {/* Clipped at the bar's top edge; the panel slides up from beneath it
               and back down behind it (.pebble-add-menu in globals.css). */}
           {/* An action sheet of icon tiles: the page's own action first (pine,
@@ -131,7 +131,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
               Same clip window and slide as before; only the panel's contents
               changed. */}
           <div className={`pebble-add-menu pb-shell-sheet-clip ${addOpen ? 'open' : ''}`}>
-            <div ref={addPanelRef} className="pebble-bottom-nav-stack-panel pb-shell-sheet" style={{ marginBottom: '1.9rem' }}>
+            <div ref={addPanelRef} className="pebble-bottom-nav-stack-panel pb-shell-sheet">
               <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.addTitle}</p>
               <div className="pb-shell-sheet-grid" data-count={actions.length}>
                 {actions.map((a, i) => {
@@ -169,13 +169,12 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
 
         {primaryNavItems.slice(2).map(renderLink)}
 
-        {/* Wrapper is position: relative so the stack anchors to THIS cell
-            rather than the whole bar - that is what puts the column directly
-            above More. */}
-        <div style={{ position: 'relative', display: 'flex' }}>
+        {/* The cell stays unpositioned: both sheets anchor to the bar itself,
+            giving their clipping windows the same edge. */}
+        <div className="pb-nav-more-cell" style={{ display: 'flex' }}>
           {/* A two-column grid of icon tiles rather than one tall column:
               every page behind More is visible at once, in a sheet the width
-              of the bar, anchored to its right edge. Still the same clip
+              of the bar, centered above it. Still the same clip
               window sliding up from beneath the bar, still no horizontal
               scrolling, still not focusable while closed.
 

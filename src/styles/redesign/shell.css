@@ -87,13 +87,6 @@
    panel's contents change. Both sheets are as wide as the bar (capped),
    so neither scrolls sideways.
    ------------------------------------------------------------ */
-.pebble-root .pb-shell-more-clip {
-  left: auto; right: 0;
-  width: calc(min(100vw - 1rem, 24rem) + 1.2rem);
-}
-.pebble-root .pebble-add-menu.pb-shell-sheet-clip {
-  width: calc(min(100vw - 1rem, 24rem) + 2rem);
-}
 .pebble-root .pebble-bottom-nav-stack-panel.pb-shell-sheet {
   display: flex; flex-direction: column; gap: 0.5rem;
   padding: 0.75rem; border-radius: 1.35rem;
@@ -405,19 +398,20 @@
   .pebble-root .pebble-main { padding-bottom: 7rem; }
 }
 
-/* The + menu hangs from the bar's top edge (globals.css: bottom: 100% + 0.4rem + 1px),
-   a spot chosen for the old bar and its 17px-tall button. The button is now seated
-   lower, so the menu came to rest 23px above it with a visible gap. Moved down by
-   0.9rem to leave about 9px. Its clip window then overlaps the bar's top edge by
-   that much, so only the panel itself takes pointer events (the tabs underneath
-   stay tappable). */
-.pebble-root .pebble-add-menu { bottom: calc(100% + 0.4rem + 1px - 0.9rem); }
-.pebble-root .pebble-add-menu.open { pointer-events: none; }
-.pebble-root .pebble-add-menu.open .pebble-bottom-nav-stack-panel { pointer-events: auto; }
-
-/* One resting height for both pop-ups: the More list and the + menu now end at
-   the same distance above the bar (the More list used to sit 8px lower). */
-.pebble-root .pebble-bottom-nav-stack { bottom: calc(100% + 0.4rem + 1px + 0.5rem); }
+/* One clip boundary at the bar's top edge, independent of cell height,
+   text size and the safe-area inset. Both panels slide behind the bar's
+   surface (z-index -1) and controls, never across their face. */
+.pebble-root .pebble-bottom-nav .pb-nav-add-cell,
+.pebble-root .pebble-bottom-nav .pb-nav-more-cell { position: static; }
+.pebble-root .pebble-bottom-nav .pb-shell-sheet-clip {
+  position: absolute; bottom: 100%; left: 50%; right: auto;
+  width: min(calc(100vw + 1rem), 26rem); margin: 0;
+  padding: 1rem 1rem 0; transform: translateX(-50%);
+  overflow: hidden; z-index: -2; pointer-events: none;
+}
+.pebble-root .pebble-bottom-nav .pb-shell-sheet { margin-bottom: 1.5rem; }
+.pebble-root .pebble-bottom-nav-stack-inner { display: flow-root; }
+.pebble-root .pebble-bottom-nav .pb-shell-sheet-clip.open .pb-shell-sheet { pointer-events: auto; }
 
 /* Trim the text box to the capitals rather than centering font leading. */
 .pebble-root .pb-sidebar-initials { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
