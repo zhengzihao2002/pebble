@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowRightLeft, CalendarClock, MoreHorizontal, Plus, Receipt, Target, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react';
 import { primaryNavItems, secondaryNavItems, isNavItemActive, type NavItem } from './navItems';
 import { pageAction, type PageActionKind } from './pageActions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useBottomNavPanels } from './useBottomNavPanels';
 
 interface BottomNavProps {
   onAddTransactionClick: () => void;
@@ -39,21 +40,22 @@ interface BottomNavProps {
 export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
   const pathname = usePathname();
   const { d } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const addPanelRef = useRef<HTMLDivElement>(null);
+  const morePanelRef = useRef<HTMLDivElement>(null);
+  const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
 
   // Navigating must collapse both - the destination is a Link away and
   // leaving either expanded would cover the page the user just chose.
-  useEffect(() => { setOpen(false); setAddOpen(false); }, [pathname]);
+  useEffect(() => { close(); }, [pathname, close]);
 
   useEffect(() => {
-    if (!open && !addOpen) return;
+    if (!engaged) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setOpen(false); setAddOpen(false); }
+      if (e.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, addOpen]);
+  }, [engaged, close]);
 
   // Lit when the current page lives behind More, so the user is never left
   // with no indication of where they are.
@@ -105,13 +107,13 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
           fade rather than blink out; pointerEvents follows the open state so
           it never swallows taps while invisible. */}
       <div
-        onClick={() => { setOpen(false); setAddOpen(false); }}
+        onClick={close}
         aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, zIndex: 19,
           backgroundColor: 'rgba(15,20,18,0.4)',
-          opacity: open || addOpen ? 1 : 0,
-          pointerEvents: open || addOpen ? 'auto' : 'none',
+          opacity: engaged ? 1 : 0,
+          pointerEvents: engaged ? 'auto' : 'none',
           transition: 'opacity 0.28s ease',
         }}
       />
@@ -129,7 +131,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
               Same clip window and slide as before; only the panel's contents
               changed. */}
           <div className={`pebble-add-menu pb-shell-sheet-clip ${addOpen ? 'open' : ''}`}>
-            <div className="pebble-bottom-nav-stack-panel pb-shell-sheet" style={{ marginBottom: '1.9rem' }}>
+            <div ref={addPanelRef} className="pebble-bottom-nav-stack-panel pb-shell-sheet" style={{ marginBottom: '1.9rem' }}>
               <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.addTitle}</p>
               <div className="pb-shell-sheet-grid" data-count={actions.length}>
                 {actions.map((a, i) => {
@@ -137,7 +139,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
                   return (
                     <button
                       key={a.kind} type="button"
-                      onClick={() => { setAddOpen(false); run[a.kind](); }}
+                      onClick={() => { close(); run[a.kind](); }}
                       // Not keyboard-reachable while collapsed, like the More items.
                       tabIndex={addOpen ? 0 : -1}
                       className={`pb-shell-tile${i === 0 ? ' pb-shell-tile-primary' : ''}`}
@@ -156,7 +158,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
 
           <button
             type="button"
-            onClick={() => { setOpen(false); setAddOpen((v) => !v); }}
+            onClick={() => toggle('add')}
             aria-expanded={addOpen}
             aria-label={addOpen ? d.common.close : d.header.addTransaction}
             className="bottom-nav-add"
@@ -181,7 +183,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
               tile is marked quietly (a dot and aria-current) instead of with
               the bar's highlight tile, so two things never look selected. */}
           <div className={`pebble-bottom-nav-stack pb-shell-sheet-clip pb-shell-more-clip ${open ? 'open' : ''}`}>
-            <div className="pebble-bottom-nav-stack-inner">
+            <div ref={morePanelRef} className="pebble-bottom-nav-stack-inner">
               <div className="pebble-bottom-nav-stack-panel pb-shell-sheet">
                 <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.moreTitle}</p>
                 <div className="pb-shell-sheet-grid pb-shell-more-grid">
@@ -211,7 +213,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
 
           <button
             type="button"
-            onClick={() => { setAddOpen(false); setOpen((v) => !v); }}
+            onClick={() => toggle('more')}
             aria-expanded={open}
             aria-label={open ? d.common.close : d.nav.more}
             className={`bottom-nav-btn ${open || inSecondary ? 'active' : ''}`}
