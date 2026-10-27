@@ -642,7 +642,7 @@
 .pebble-root .pb-settings-font-group .pb-settings-row-title { margin: 0; }
 
 /* Desktop font controls stay compact beside a small live specimen. */
-.pebble-root .pb-settings-font-layout { display: grid; grid-template-columns: minmax(0, 1fr) 9.5rem; gap: 1.25rem; align-items: center; width: 100%; min-width: 0; }
+.pebble-root .pb-settings-font-layout { display: grid; grid-template-columns: minmax(0, max-content) 9.5rem; justify-content: start; gap: 1.25rem; align-items: center; width: 100%; min-width: 0; }
 .pebble-root .pb-settings-font-group { align-items: flex-start; }
 .pebble-root .pb-settings-font-group .pb-settings-presets.is-wrap { width: fit-content; max-width: 100%; flex: none; }
 .pebble-root .pb-settings-font-group .pb-settings-presets.is-wrap .pb-settings-preset { flex: 0 0 auto; }
