@@ -11,9 +11,7 @@ import type { ExpenseTransaction } from '@/types';
 import { SleepingBadge } from '@/components/shared/SleepingBadge';
 import { Sparkline } from '@/components/kit/Sparkline';
 import { CreditCardTile, DueLine, LimitMeter, creditFacts } from './CreditCardTile';
-import { useAccountOrdering } from '@/lib/useAccountOrdering';
 import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
-import { AccountOrderControl } from '@/components/shared/AccountOrderControl';
 import { useWidth } from './useWidth';
 
 export interface DayPointLite {
@@ -80,13 +78,11 @@ export function AccountCards({
 
   const orderedAccounts = useOrderedAccounts(accounts, days[days.length - 1]?.byAccount ?? EMPTY_BALANCES);
 
-  const ordering = useAccountOrdering(orderedAccounts);
-  const displayAccounts = ordering.displayed;
   const groups = useMemo(() => {
     if (days.length === 0) return null;
     const first = days[0];
     const last = days[days.length - 1];
-    const shown: Item[] = displayAccounts
+    const shown: Item[] = orderedAccounts
       .filter((a) => a.status === 'active' || a.status === 'hibernated')
       .map((a) => ({ a, now: Math.round((last.byAccount[a.id] ?? 0) * 100) / 100, then: Math.round((first.byAccount[a.id] ?? 0) * 100) / 100 }));
     return {
@@ -97,7 +93,7 @@ export function AccountCards({
       // active ones by balance. Their money still counts in every total.
       sleeping: shown.filter((i) => i.a.status === 'hibernated'),
     };
-  }, [displayAccounts, days]);
+  }, [orderedAccounts, days]);
 
   const dayToday = today ?? (() => {
     const n = new Date();
@@ -109,7 +105,7 @@ export function AccountCards({
   const countText = (n: number) => (n === 1 ? x.countOne : t(x.countMany, { count: n }));
   let rise = 0;
 
-  const renderBank = (list: Item[]) => compact && !ordering.editing ? (
+  const renderBank = (list: Item[]) => compact ? (
     <ul className="card pb-accounts-rows pb-rise" style={{ ['--pb-i' as string]: rise++ }}>
       {list.map((i) => (
         <BankRow key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} />
@@ -118,14 +114,14 @@ export function AccountCards({
   ) : (
     <div className="pb-accounts-grid">
       {list.map((i) => (
-        ordering.wrap(i.a, <BankTile key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} index={rise++} />)
+        <BankTile key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} index={rise++} />
       ))}
     </div>
   );
   const renderCards = (list: Item[]) => (
     <div className="pb-accounts-cc-grid">
       {list.map((i) => (
-        ordering.wrap(i.a, <CreditCardTile key={i.a.id} a={i.a} now={i.now} expenses={expenses} today={dayToday} onPayOff={onPayOff} onOpen={onOpen} index={rise++} />)
+        <CreditCardTile key={i.a.id} a={i.a} now={i.now} expenses={expenses} today={dayToday} onPayOff={onPayOff} onOpen={onOpen} index={rise++} />
       ))}
     </div>
   );
@@ -142,8 +138,6 @@ export function AccountCards({
         <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
         {periodChip}
       </div>
-
-      {groups.count > 1 && <AccountOrderControl ordering={ordering} />}
 
       {groups.bank.length > 0 && (
         <Group id="bank" icon={Landmark} title={x.sectionBankCash} count={countText(groups.bank.length)} subtotal={formatCurrency(bankSum)}>
