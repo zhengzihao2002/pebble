@@ -1,7 +1,5 @@
 'use client';
 
-import { BreathingBackgroundControl } from '@/components/settings/BreathingBackgroundControl';
-
 import type { ReactNode } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -147,7 +145,6 @@ export function SettingsClient({
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
             <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
             <WelcomeAnimationControl />
-            <BreathingBackgroundControl />
           </div>
         </>
       ),

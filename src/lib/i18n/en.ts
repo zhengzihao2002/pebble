@@ -455,8 +455,6 @@ export const en = {
     titleRequired: 'A title is required.',
   },
 
-  breathingBackground: { title: 'Breathing background', hint: 'A soft wash of theme colors slowly shifts behind the app. Stays still when Reduced Motion is enabled.' },
-
   font: {
     preview: 'Preview',
     title: 'Font',

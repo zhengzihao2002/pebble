@@ -421,22 +421,3 @@
 
 /* Trim the text box to the capitals rather than centering font leading. */
 .pebble-root .pb-sidebar-initials { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
-
-/* A decorative, noninteractive wash beneath the app's normal surfaces. */
-.pebble-root:has(> .pb-breathing-background) { isolation: isolate; }
-.pebble-root .pb-breathing-background {
-  position: fixed; inset: -12%; z-index: -1; pointer-events: none;
-  filter: blur(36px);
-  background:
-    radial-gradient(ellipse at 50% 15%, color-mix(in srgb, var(--mist) 55%, transparent), transparent 65%),
-    radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--pine) 14%, transparent), transparent 58%),
-    radial-gradient(ellipse at 80% 70%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 60%);
-  opacity: 0.75;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .pebble-root .pb-breathing-background { animation: pb-background-breathe 24s ease-in-out infinite alternate; }
-}
-@keyframes pb-background-breathe {
-  from { transform: translate(-2%, -1%) scale(1); opacity: 0.5; }
-  to { transform: translate(3%, 2%) scale(1.06); opacity: 0.85; }
-}

@@ -30,7 +30,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   // Resolved: Light, Dark, or the device's setting when on System.
   const darkMode = useResolvedDark();
-  const breathingBackground = usePebbleStore((s) => s.breathingBackground);
   const textSize = usePebbleStore((s) => s.textSize);
   const locale = usePebbleStore((s) => s.locale);
   const fontChoice = usePebbleStore((s) => s.fontChoice);
@@ -516,7 +515,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
-      {breathingBackground === true && <div className="pb-breathing-background" aria-hidden="true" />}
       {/* Blur used by privacy mode on chart axis text: CSS blur() does not
           apply inside SVG, a url() filter does. */}
       <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
