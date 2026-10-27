@@ -15,24 +15,9 @@ interface FontControlProps {
   onCjkChange: (value: CjkFontChoice) => void;
 }
 
-// Names stay in a fixed UI face; only the separate specimen previews a font.
 const LABEL_FAMILY = `var(--font-work-sans), "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`;
-const PREVIEW_FAMILY: Record<FontChoice, string> = {
-  default: 'var(--font-work-sans), var(--cjk), sans-serif',
-  system: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, var(--cjk), sans-serif",
-  rounded: 'var(--font-nunito), var(--cjk), sans-serif',
-  serif: 'var(--font-source-serif), var(--cjk), serif',
-  legible: 'var(--font-atkinson), var(--cjk), sans-serif',
-};
-
-// Explicit stacks, NOT var(--cjk): --cjk is the CURRENT choice, so using it
-// would preview every option in whichever face is already selected.
-const CJK_SANS = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC"';
-const CJK_PREVIEW_FAMILY: Record<CjkFontChoice, string> = {
-  sans: `${CJK_SANS}, sans-serif`,
-  serif: `"Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", var(--font-noto-serif-sc), ${CJK_SANS}, serif`,
-  kai: `"Kaiti SC", "STKaiti", "KaiTi", ${CJK_SANS}, sans-serif`,
-};
+const FONT_LABELS: Record<FontChoice, string> = { default: 'Default', system: 'System', rounded: 'Rounded', serif: 'Serif', legible: 'High legibility' };
+const CJK_LABELS: Record<CjkFontChoice, string> = { sans: '黑体', serif: '宋体', kai: '楷体' };
 
 export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }: FontControlProps) {
   const { d } = useTranslation();
@@ -55,7 +40,7 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 aria-pressed={current === choice}
                 style={{ fontFamily: LABEL_FAMILY }}
               >
-                {d.font[choice]} <span aria-hidden="true" style={{ fontFamily: PREVIEW_FAMILY[choice] }}>Aa 0123</span>
+                {FONT_LABELS[choice]}
               </button>
             ))}
           </div>
@@ -70,7 +55,7 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
                 aria-pressed={currentCjk === choice}
                 style={{ fontFamily: LABEL_FAMILY }}
               >
-                {d.font.cjk[choice]} <span aria-hidden="true" style={{ fontFamily: CJK_PREVIEW_FAMILY[choice] }}>中文</span>
+                {CJK_LABELS[choice]}
               </button>
             ))}
           </div>

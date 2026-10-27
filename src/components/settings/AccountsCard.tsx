@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
+import { useAccountOrdering } from '@/lib/useAccountOrdering';
 import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
 import { AccountOrderControl } from '@/components/shared/AccountOrderControl';
 import { SectionHeader } from '@/components/kit/SectionHeader';
@@ -86,7 +87,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
   // Hibernated accounts ARE listed: they hold real balances that still count
   // toward the total, and they must be reachable to wake.
-  const visible = useOrderedAccounts(accounts, balancesByAccount);
+  const orderedAccounts = useOrderedAccounts(accounts, balancesByAccount);
+  const ordering = useAccountOrdering(orderedAccounts);
+  const visible = ordering.displayed;
 
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -257,7 +260,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
       <span role="status" style={srOnly}>{savedId ? d.accounts.saved : ''}</span>
       <SectionHeader icon={Wallet} title={d.accounts.title} subtitle={d.accounts.blurb} />
 
-      {visible.length > 1 && <AccountOrderControl accounts={visible} />}
+      {visible.length > 1 && <AccountOrderControl ordering={ordering} />}
 
       {/* What the list adds up to: hibernated balances still count, so they
           are in the total (and counted separately). */}
@@ -300,7 +303,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           // Each account is now a tile. A sleeping one keeps its grey box:
           // every tile already has the same padding, so only the background
           // and border ease (settings.css) and the contents never move.
-          return (
+          return ordering.wrap(a, (
             <div key={a.id} className={`pb-settings-acct${st === 'hibernated' ? ' is-sleeping' : ''}`}>
               {/* A confirmed save: a soft cloud of the theme colour spreads from the
                   middle of the row to both ends, then fades. Decorative; the
@@ -468,7 +471,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 </div>
               )}
             </div>
-          );
+          ));
         })}
        </div>
       </div>
