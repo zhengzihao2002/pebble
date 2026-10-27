@@ -16,9 +16,11 @@ export function orderAccounts(accounts: Account[], balances: Record<string, numb
   const ranks = new Map(manualIds.map((id, i) => [id, i]));
   const fallback = (a: Account, b: Account) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id);
   return [...accounts].sort((a, b) => {
+    // Account state and kind always take priority over the chosen sort.
+    const group = accountOrderGroup(a) - accountOrderGroup(b);
+    if (group) return group;
     const balance = (balances[b.id] ?? 0) - (balances[a.id] ?? 0);
-    if (mode === 'manual') return accountOrderGroup(a) - accountOrderGroup(b)
-      || (ranks.get(a.id) ?? Infinity) - (ranks.get(b.id) ?? Infinity) || fallback(a, b);
+    if (mode === 'manual') return (ranks.get(a.id) ?? Infinity) - (ranks.get(b.id) ?? Infinity) || fallback(a, b);
     if (mode === 'name') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) || fallback(a, b);
     if (mode === 'balanceAsc') return -balance || fallback(a, b);
     if (mode === 'balanceDesc') return balance || fallback(a, b);
