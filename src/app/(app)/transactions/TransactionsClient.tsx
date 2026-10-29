@@ -26,6 +26,7 @@ import { SearchToolbar, type TypeFilter } from '@/components/transactions/Search
 import { ResultsSummary, FlowFigures } from '@/components/transactions/ResultsSummary';
 import { cents, daySeries, daysInMonth, groupByDay, monthBounds, monthFigures, summarizeMonths, balanceReader } from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
+import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import { ImportCsvButton } from '@/components/shared/ImportCsv';
 import { DeltaChip } from '@/components/kit/DeltaChip';
@@ -119,19 +120,8 @@ export function TransactionsClient({
   }, [entriesById]);
 
   // ---- Accounts ------------------------------------------------------------
-  // Account names are USER DATA. ONE ordering for the Today ledger and the
-  // Account filter (it used to be written twice): starred first, then bank
-  // and cash by highest balance, then credit cards by most owed.
-  const sortedAccounts = useMemo(() => {
-    const rank = (a: Account) => (a.isPreferred ? 0 : a.kind === 'credit' ? 2 : 1);
-    return [...accounts].sort((x, y) => {
-      const bx = balancesByAccount[x.id] ?? 0;
-      const by = balancesByAccount[y.id] ?? 0;
-      if (rank(x) !== rank(y)) return rank(x) - rank(y);
-      // Cards hold negative balances: most owed = lowest balance.
-      return x.kind === 'credit' ? bx - by : by - bx;
-    });
-  }, [accounts, balancesByAccount]);
+  // Keep the Today ledger and account filter in the order saved in Settings.
+  const sortedAccounts = useOrderedAccounts(accounts, balancesByAccount);
 
   const accountOptions: SelectFieldOption[] = useMemo(() => [
     { value: ALL_ACCOUNTS, label: d.txnSearch.allAccounts },
