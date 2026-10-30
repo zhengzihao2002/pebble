@@ -1,11 +1,11 @@
-import type { Transaction } from '@/types';
+import type { RecurringRule, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 
 /** Reasons are dictionary keys, never user-facing English. */
 export type BudgetRecommendationReason =
   | 'noHistory' | 'limitedHistory' | 'newBudget' | 'steadySpending'
   | 'risingSpending' | 'fallingSpending' | 'unusedRoom'
-  | 'seasonalSpending' | 'unusualSpike';
+  | 'seasonalSpending' | 'unusualSpike' | 'inactiveCategory';
 
 export interface BudgetRecommendation {
   categoryId: string;
@@ -16,7 +16,7 @@ export interface BudgetRecommendation {
   reason: BudgetRecommendationReason;
   confidence: 'low' | 'medium' | 'high';
   sampleMonths: number;
-  /** Annualized spending before the 10% allowance. Null without observations. */
+  /** Raw recorded spending annualized, before trend/outlier adjustments. */
   baselineAnnual: number | null;
   recentAnnual: number | null;
   bufferPercent: number;
@@ -25,6 +25,12 @@ export interface BudgetRecommendation {
   trendPercent: number | null;
   windowStart: string;
   windowEnd: string;
+  recordedTotal: number;
+  calculation: null | {
+    method: 'history' | 'trend' | 'spike';
+    basisAnnual: number; bufferAmount: number; withBuffer: number;
+    minimumAnnual: number | null; keepCurrent: boolean;
+  };
 }
 
 export interface AnnualRecommendationInput {
@@ -32,6 +38,7 @@ export interface AnnualRecommendationInput {
   categories: readonly CategoryItem[];
   currentAmounts: Readonly<Record<string, number>>;
   today: string;
+  recurringRules?: readonly RecurringRule[];
 }
 
 const BUFFER = 10;
@@ -58,7 +65,7 @@ const validDate = (date: string) => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]
  * a large purchase is not assumed to recur twelve times next year. Even with
  * strong evidence, a decrease is limited to 20% for the user to review.
  */
-export function recommendAnnualBudgets({ transactions, categories, currentAmounts, today }: AnnualRecommendationInput): BudgetRecommendation[] {
+export function recommendAnnualBudgets({ transactions, categories, currentAmounts, today, recurringRules }: AnnualRecommendationInput): BudgetRecommendation[] {
   if (!validDate(today)) throw new Error('A calendar date is required for budget recommendations.');
   const currentMonth = monthIndex(today);
   const lastComplete = currentMonth - 1;
@@ -98,13 +105,26 @@ export function recommendAnnualBudgets({ transactions, categories, currentAmount
         reason, confidence: 'low', sampleMonths: months.length,
         baselineAnnual: baseline === null ? null : Math.round(baseline * 100) / 100,
         recentAnnual: null, bufferPercent: BUFFER, excludedSpikeAmount: 0,
-        trendPercent: null,
+        trendPercent: null, recordedTotal: Math.round(total * 100) / 100, calculation: null,
         windowStart: monthLabel(months[0] ?? Math.min(windowStart, lastComplete)),
         windowEnd: monthLabel(months[months.length - 1] ?? lastComplete),
         ...details,
       };
     };
+    const quietStart = lastComplete - 23;
+    const quietCategory = current > 0 && recurringRules !== undefined
+      && Array.from({ length: 24 }, (_, i) => quietStart + i).every(m => activity.has(m))
+      && expenses.some(t => monthIndex(t.date) < quietStart)
+      && !transactions.some(t => t.type === 'expense' && t.amount < 0 && t.category === category.name && monthIndex(t.date) >= quietStart)
+      && !recurringRules.some(r => r.kind === 'expense' && r.category === category.name && r.status !== 'deleted');
+    if (quietCategory) return result('inactiveCategory', 0, { confidence: 'medium', sampleMonths: 24,
+      baselineAnnual: 0, recordedTotal: 0, windowStart: monthLabel(quietStart), windowEnd: monthLabel(lastComplete) });
     if (total === 0) return result('noHistory');
+    const calculate = (basis: number, method: 'history' | 'trend' | 'spike', minimumAnnual: number | null = null, keepCurrent = false) => {
+      const basisAnnual = Math.round(basis * 100) / 100;
+      const bufferAmount = Math.round(basisAnnual * BUFFER) / 100;
+      return { method, basisAnnual, bufferAmount, withBuffer: Math.round((basisAnnual + bufferAmount) * 100) / 100, minimumAnnual, keepCurrent };
+    };
     // Do not annualize a new category's first bill or stale recording history.
     if (months.length < 3 || !fresh) return result('limitedHistory');
 
@@ -127,9 +147,11 @@ export function recommendAnnualBudgets({ transactions, categories, currentAmount
       const recurringAnnual = Math.max(0, total - oneOff) / months.length * 12;
       // A one-off cannot justify cutting a planned budget. Show the excluded
       // amount so the user can put it back if it WILL recur next year.
-      return result('unusualSpike', Math.max(current, recurringAnnual * (1 + BUFFER / 100)), {
+      const calculation = calculate(recurringAnnual, 'spike', current);
+      return result('unusualSpike', Math.max(current, calculation.withBuffer), {
+        calculation,
         confidence: 'medium', excludedSpikeAmount: Math.round(oneOff * 100) / 100,
-        baselineAnnual: Math.round(recurringAnnual * 100) / 100,
+
       });
     }
 
@@ -139,8 +161,9 @@ export function recommendAnnualBudgets({ transactions, categories, currentAmount
     if (seasonal) {
       // A complete annual cycle can fund the observed annual expense plus
       // room; a partial cycle cannot predict what remains of the year.
-      const proposed = fullYear ? Math.max(current, total * (1 + BUFFER / 100)) : current;
-      return result('seasonalSpending', proposed, { confidence: fullYear ? 'medium' : 'low' });
+      const calculation = fullYear ? calculate(total, 'history', current) : null;
+      const proposed = calculation ? Math.max(current, calculation.withBuffer) : current;
+      return result('seasonalSpending', proposed, { calculation, confidence: fullYear ? 'medium' : 'low' });
     }
 
     const canDecrease = fullYear && months.length === 12;
@@ -163,14 +186,16 @@ export function recommendAnnualBudgets({ transactions, categories, currentAmount
     }
     const confidence = canDecrease ? 'high' : 'medium';
     const details = { confidence, trendPercent: trend, recentAnnual: recentAnnual === null ? null : Math.round(recentAnnual * 100) / 100 } as const;
-    const runRate = direction && recentAnnual !== null ? recentAnnual * 0.7 + baseline! * 0.3 : baseline!;
-    const target = runRate * (1 + BUFFER / 100);
-    if (current === 0) return result('newBudget', target, details);
-    if (target > current * 1.05) return result(direction === 'up' ? 'risingSpending' : 'steadySpending', target, details);
+    const runRate = direction && recentAnnual !== null ? details.recentAnnual! * 0.7 + (Math.round(baseline! * 100) / 100) * 0.3 : baseline!;
+    const calculation = calculate(runRate, direction ? 'trend' : 'history');
+    const target = calculation.withBuffer;
+    const calculatedDetails = { ...details, calculation };
+    if (current === 0) return result('newBudget', target, calculatedDetails);
+    if (target > current * 1.05) return result(direction === 'up' ? 'risingSpending' : 'steadySpending', target, calculatedDetails);
     if (target < current * 0.95) {
       if (!canDecrease) return result('limitedHistory', current, { ...details, confidence: 'low' });
-      return result(direction === 'down' ? 'fallingSpending' : 'unusedRoom', Math.max(current * 0.8, target), details);
+      return result(direction === 'down' ? 'fallingSpending' : 'unusedRoom', Math.max(current * 0.8, target), { ...details, calculation: { ...calculation, minimumAnnual: Math.round(current * 80) / 100 } });
     }
-    return result('steadySpending', current, details);
+    return result('steadySpending', current, { ...details, calculation: { ...calculation, keepCurrent: true } });
   });
 }

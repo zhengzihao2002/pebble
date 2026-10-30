@@ -72,6 +72,38 @@ try {
   assert.equal(rounded.amount, 1321, 'round up annual whole-dollar recommendation');
   const large = recommend(year.map((m) => expense(m, 9999999999)), 0);
   assert.equal(large.amount, 9999999999); assert.ok(Number.isFinite(large.amount));
+  // Every displayed formula must reconcile in cents, including hidden trend/hold rules.
+  const precise = year.map((m,i) => expense(m, i === 11 ? 3181.80 : 3181.83));
+  const held = recommend(precise, 40739);
+  assert.equal(held.recordedTotal, 38181.93);
+  assert.equal(held.calculation.basisAnnual, 38181.93);
+  assert.equal(held.calculation.bufferAmount, 3818.19);
+  assert.equal(held.calculation.withBuffer, 42000.12);
+  assert.equal(held.amount,40739); assert.equal(held.calculation.keepCurrent,true);
+  assert.equal(recommend(precise,0).amount,42001);
+  for(const r of [steady,unused,rising,falling,spike,seasonal,annualPeak,rounded,large,held]) {
+    const c=r.calculation;
+    if(!c)continue;
+    assert.equal(Math.round((c.basisAnnual+c.bufferAmount)*100),Math.round(c.withBuffer*100));
+    const preRound=c.keepCurrent?r.amount:Math.max(c.minimumAnnual??0,c.withBuffer);
+    assert.equal(r.amount,Math.min(9999999999,Math.ceil(preRound-1e-7)));
+  }
+  for(const r of [rising,falling]) assert.equal(r.calculation.basisAnnual,Math.round((r.recentAnnual*.7+r.baselineAnnual*.3)*100)/100);
+  assert.equal(rising.calculation.method,'trend');assert.equal(falling.calculation.method,'trend');
+  assert.equal(spike.baselineAnnual,6200,'raw history remains distinct from outlier-adjusted basis');
+  assert.equal(spike.calculation.basisAnnual,1200);
+  const quietMonths=months('2025-01',24);
+  const dormantCategory=[expense('2024-12',100),...quietMonths.map(income)];
+  const withRules=(rows,rules=[])=>recommendAnnualBudgets({transactions:rows,categories,currentAmounts:{groceries:2400},today:'2027-01-01',recurringRules:rules})[0];
+  const zero=withRules(dormantCategory);
+  assert.equal(zero.reason,'inactiveCategory');assert.equal(zero.amount,0);assert.equal(zero.changePercent,-100);assert.equal(zero.sampleMonths,24);
+  assert.equal(withRules(dormantCategory.slice(0,-1)).amount,2400,'stale activity cannot justify zero');
+  assert.equal(withRules([expense('2025-12',100),...year.map(income)]).amount,2400,'12 quiet months alone cannot justify zero');
+  assert.notEqual(withRules([...dormantCategory,expense('2027-01',50)]).amount,0,'in-progress spending blocks zero');
+  assert.notEqual(withRules([...dormantCategory,expense('2028-01',50)]).amount,0,'future recorded spending blocks zero');
+  for(const status of ['active','paused'])assert.equal(withRules(dormantCategory,[{kind:'expense',category:'Groceries',status}]).amount,2400);
+  assert.equal(withRules(dormantCategory,[{kind:'expense',category:'Groceries',status:'deleted'}]).amount,0);
+  assert.equal(recommend(dormantCategory,2400).amount,2400,'unknown scheduled-rule data cannot justify zero');
   assert.throws(() => recommendAnnualBudgets({ transactions: [], categories, currentAmounts: {}, today: 'bad' }));
   console.log('PASS: annual budget recommendations — completed months, thin/stale history, dormant gaps, stable rates, sustained trends, capped decreases, new budgets, seasonal bills, disclosed one-offs, rounding, future dates and 2028–2030 rollover. No DB/auth imported.');
 } finally { fs.rmSync(dir, { recursive: true, force: true }); }

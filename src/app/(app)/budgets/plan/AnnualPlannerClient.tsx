@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CalendarCheck, Check, ChevronDown, Lightbulb, Sparkles } from 'lucide-react';
 import type { CategoryItem } from '@/lib/data/mappers';
-import type { Transaction } from '@/types';
+import type { RecurringRule, Transaction } from '@/types';
 import type { AnnualPlannerData, AnnualPlan } from '@/lib/budgets/annualTypes';
 import { recommendAnnualBudgets, type BudgetRecommendation } from '@/lib/budgets/recommendations';
 import { saveAnnualPlanAction, cancelAnnualPlanAction } from '@/lib/actions/annualBudgets';
@@ -38,13 +38,13 @@ function reasonText(r: BudgetRecommendation, x: Copy) {
   const reasons = {
     noHistory: x.noHistory, limitedHistory: x.limitedHistory, newBudget: x.newBudgetReason,
     steadySpending: x.steadySpending, risingSpending: x.risingSpending, fallingSpending: x.fallingSpending,
-    unusedRoom: x.unusedRoom, seasonalSpending: x.seasonalSpending, unusualSpike: x.unusualSpike,
+    unusedRoom: x.unusedRoom, seasonalSpending: x.seasonalSpending, unusualSpike: x.unusualSpike, inactiveCategory: x.inactiveCategory,
   };
   return reasons[r.reason];
 }
 
-export function AnnualPlannerClient({ data, categories, transactions, today }: {
-  data: AnnualPlannerData; categories: CategoryItem[]; transactions: Transaction[]; today: string;
+export function AnnualPlannerClient({ data, categories, transactions, today, recurringRules }: {
+  data: AnnualPlannerData; categories: CategoryItem[]; transactions: Transaction[]; today: string; recurringRules?: RecurringRule[];
 }) {
   const { d, t } = useTranslation();
   const x = d.ux.annualBudgets;
@@ -61,7 +61,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
   const [error, setError] = useState<string | null>(null);
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const suggestions = useMemo(() => recommendAnnualBudgets({ transactions, categories, currentAmounts: data.currentAmounts, today }), [transactions, categories, data.currentAmounts, today]);
+  const suggestions = useMemo(() => recommendAnnualBudgets({ transactions, categories, currentAmounts: data.currentAmounts, today, recurringRules }), [transactions, categories, data.currentAmounts, today, recurringRules]);
   const recommendations = useMemo(() => new Map(suggestions.map(r => [r.categoryId, r])), [suggestions]);
   const history = useMemo<BudgetHistory>(() => {
     const month = Number(today.slice(5,7));
@@ -213,11 +213,23 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
             {recommendation && <details className="pb-annual-recommendation">
               <summary><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span><ChevronDown size={14} aria-hidden="true" /></summary>
               <div className="pb-annual-reason"><p>{reasonText(recommendation, x)}</p><div className="pb-annual-evidence"><span>{recommendation.confidence === 'high' ? x.confidenceHigh : recommendation.confidence === 'medium' ? x.confidenceMedium : x.confidenceLow}</span><span>{t(x.months, { count: String(recommendation.sampleMonths) })}</span>{recommendation.windowStart && recommendation.windowEnd && <span>{t(x.window, { from: recommendation.windowStart, to: recommendation.windowEnd })}</span>}</div>
-                {recommendation.baselineAnnual !== null && <p>{t(x.baseline, { amount: formatCurrency(recommendation.baselineAnnual) })}</p>}
-                {recommendation.recentAnnual !== null && recommendation.reason === 'risingSpending' && <p>{t(x.recent, { amount: formatCurrency(recommendation.recentAnnual) })}</p>}
-                {recommendation.trendPercent !== null && (recommendation.reason === 'risingSpending' || recommendation.reason === 'fallingSpending') && <p>{t(x.trend, { percent: signedPercent(recommendation.trendPercent) })}</p>}
+                {recommendation.baselineAnnual !== null && <p>{t(recommendation.sampleMonths === 12 ? x.last12Total : x.observedTotal, { amount: formatCurrency(recommendation.recordedTotal), count: String(recommendation.sampleMonths) })}</p>}
+                {recommendation.baselineAnnual !== null && recommendation.sampleMonths !== 12 && recommendation.sampleMonths !== 24 && <p>{t(x.annualized, { amount: formatCurrency(recommendation.baselineAnnual) })}</p>}
                 {recommendation.excludedSpikeAmount > 0 && <p>{t(x.spike, { amount: formatCurrency(recommendation.excludedSpikeAmount) })}</p>}
-                {recommendation.baselineAnnual !== null && recommendation.amount > 0 && recommendation.reason !== 'limitedHistory' && recommendation.reason !== 'seasonalSpending' && <p>{t(x.buffer, { percent: String(recommendation.bufferPercent) })}</p>}
+                {recommendation.calculation && <div className="pb-annual-calculation">
+                  {recommendation.calculation.method === 'trend' && <>
+                    <p>{t(x.recentBasis, { amount: formatCurrency(recommendation.recentAnnual ?? 0) })}</p>
+                    <p>{t(x.blendedBasis, { recent: formatCurrency(recommendation.recentAnnual ?? 0), history: formatCurrency(recommendation.baselineAnnual ?? 0), amount: formatCurrency(recommendation.calculation.basisAnnual) })}</p>
+                  </>}
+                  <p>{t(x.calculationBasis, { amount: formatCurrency(recommendation.calculation.basisAnnual) })}</p>
+                  <p>{t(x.calculationBuffer, { amount: formatCurrency(recommendation.calculation.bufferAmount), percent: String(recommendation.bufferPercent) })}</p>
+                  <p>{formatCurrency(recommendation.calculation.basisAnnual)} + {formatCurrency(recommendation.calculation.bufferAmount)} = <strong>{formatCurrency(recommendation.calculation.withBuffer)}</strong></p>
+                  {recommendation.calculation.minimumAnnual !== null && recommendation.calculation.withBuffer < recommendation.calculation.minimumAnnual && <p>{t(x.calculationFloor, { amount: formatCurrency(recommendation.calculation.minimumAnnual) })}</p>}
+                  {recommendation.calculation.keepCurrent && <p>{x.keepClose}</p>}
+                  {recommendation.calculation.withBuffer > MAX_AMOUNT && <p>{t(x.maximumNote, { amount: formatCurrency(MAX_AMOUNT) })}</p>}
+                  <p>{x.roundingNote}</p>
+                  <p><strong>{t(x.calculationFinal, { amount: formatCurrency(recommendation.amount) })}</strong></p>
+                </div>}
                 <button type="button" className="pill" disabled={applied} onClick={() => { setStarter('custom'); setCustomOpen(false); changeValues({ ...values, [c.id]: String(recommendation.amount) }); }}>{applied ? <><Check size={14} />{x.selectedSuggestion}</> : x.applySuggestion}</button>
               </div>
             </details>}

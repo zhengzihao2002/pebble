@@ -24,7 +24,7 @@ Older years without a captured plan show spending without inventing historical b
 
 ## Recommendations
 
-Suggestions use recorded complete months, sustained changes in spending, and a disclosed 10% allowance. Sparse history, seasonal concentration, dormant recording periods, and unusual large purchases receive conservative handling and explanations. Proposed reductions need a full observed year and are limited to 20% per planning session. These are optional planning estimates, not predictions; the user reviews and schedules the actual amounts.
+Suggestions use recorded complete months, sustained changes in spending, and a disclosed 10% allowance. Sparse history, seasonal concentration, dormant recording periods, and unusual large purchases receive conservative handling and explanations. Proposed reductions need a full observed year and are limited to 20% per planning session. Each disclosure shows the actual recorded total and window, any annualization or 70% recent / 30% historical blend, the precise basis plus 10% allowance, retained-budget floors or the within-5% keep rule, and rounding. Raw spending and an outlier-adjusted basis are labeled separately. A zero budget is suggested only for a previously used category with 24 complete months of monthly recording activity but no category spending, no current/future recorded expenses, and no active or paused expense rules; missing rule data or a recording gap blocks that suggestion. These are optional planning estimates, not predictions; the user reviews and schedules the actual amounts.
 
 ## Verification
 

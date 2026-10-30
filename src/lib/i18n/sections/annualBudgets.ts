@@ -1,4 +1,11 @@
 export const annualBudgetsEn = {
+  maximumNote: 'The supported annual limit is {amount}; the suggestion is capped at that amount.',
+  roundingNote: 'When calculating a new amount, we round up to the next whole dollar. An unchanged budget keeps its original amount.',
+  inactiveCategory: 'No recorded spending in this category for 24 complete months, while you continued recording activity every month. No current or future recorded expenses or scheduled rules were found. Consider a zero budget if you do not expect it to return; this is not a guarantee.',
+  last12Total: 'Spending in the last 12 complete months: {amount}', observedTotal: 'Spending across {count} complete recorded months: {amount}', annualized: 'Annualized equivalent (recorded spending ÷ recorded months × 12): {amount}',
+  recentBasis: 'Last 3 complete months, annualized (total ÷ 3 × 12): {amount}', blendedBasis: 'Trend-adjusted estimate: 70% × {recent} + 30% × {history} = {amount}',
+  calculationBasis: 'Amount used for the calculation: {amount}', calculationBuffer: '10% breathing room on that amount: +{amount}', calculationFloor: 'Minimum retained budget: {amount}. Ordinary cuts are limited to 20%; seasonal expenses and unusual purchases do not justify a cut.', keepClose: 'The calculated amount is within 5% of your current budget, so we keep your current amount.', calculationFinal: 'Suggested budget after these rules: {amount}',
+
   chartTitle: 'See your plan take shape', chartNote: 'Compare annual amounts on the same scale. The chart updates as you edit.', allocation: 'Next year’s allocation', chartCurrent: 'Current budget', chartNext: 'Proposed budget', history: 'Spending history & quick set', historyNote: 'Recorded spending compared with this year’s budget. Quick set changes next year’s amount only.', editCurrent: 'Edit this year’s budgets', otherCategories: 'Other categories', noAllocation: 'Add amounts below to see your allocation.',
   planNextYear: 'Plan {year}', reviewNextYear: 'Review {year} plan', scheduledStatus: '{year} plan scheduled · Starts January 1', draftStatus: '{year} plan draft · Not scheduled', carryStatus: '{year} · Carried forward · Review needed', reviewedStatus: '{year} plan', notReadyStatus: 'Annual planning will be available after setup.', remind: 'Ready for next year?', later: 'Later', reviewCurrent: 'Review plan',
   planYear: 'Plan {year}', title: 'Your {year} plan', back: 'Back to Budgets',
@@ -45,6 +52,13 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
+  maximumNote: '年度金额上限为 {amount}，建议金额已限制在该范围内。',
+  roundingNote: '重新计算的金额向上取整到元；保持不变的预算保留原金额。',
+  inactiveCategory: '连续 24 个完整月份，你每月都有记账，但此类别没有支出。目前也未发现本月、未来已记录的支出或定期规则。如果预计不会再发生，可考虑将预算设为零；这并非保证。',
+  last12Total: '最近 12 个完整月份的支出：{amount}', observedTotal: '{count} 个有记录完整月份的支出：{amount}', annualized: '年化金额（已记录支出 ÷ 月数 × 12）：{amount}',
+  recentBasis: '最近 3 个完整月份的年化金额（合计 ÷ 3 × 12）：{amount}', blendedBasis: '趋势调整金额：70% × {recent} + 30% × {history} = {amount}',
+  calculationBasis: '计算采用的基数：{amount}', calculationBuffer: '按该基数预留 10% 余量：+{amount}', calculationFloor: '保留的最低预算为 {amount}。一般降幅不超过 20%；季节性支出和异常大额支出不会作为削减依据。', keepClose: '计算结果与当前预算相差不超过 5%，因此保留当前金额。', calculationFinal: '根据上述规则得出的建议预算：{amount}',
+
   chartTitle: '看清新一年的安排', chartNote: '以相同比例对比年度金额，随编辑实时更新。', allocation: '明年预算分配', chartCurrent: '今年预算', chartNext: '明年预算', history: '支出历史与快速设置', historyNote: '历史支出与今年预算对比。快速设置只修改明年的金额。', editCurrent: '修改今年预算', otherCategories: '其他类别', noAllocation: '在下方输入金额，查看预算分配。',
   planNextYear: '规划 {year} 年', reviewNextYear: '查看 {year} 年计划', scheduledStatus: '{year} 年计划已安排 · 1 月 1 日启用', draftStatus: '{year} 年草稿 · 尚未安排', carryStatus: '{year} 年 · 已沿用预算 · 待检查', reviewedStatus: '{year} 年计划', notReadyStatus: '完成设置后即可规划下一年。', remind: '准备好迎接新的一年了吗？', later: '稍后再说', reviewCurrent: '查看计划',
   planYear: '规划 {year} 年', title: '你的 {year} 年计划', back: '返回预算',

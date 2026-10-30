@@ -121,3 +121,7 @@
 .pebble-root .pb-annual-history > summary { cursor:pointer; color:var(--pine); font-size:.85rem; padding:.6rem 0; }
 .pebble-root .pb-annual-history > p, .pebble-root .pb-annual-chart-empty { color:var(--ink-soft); font-size:.8rem; line-height:1.5; }
 @media(max-width:639px) { .pebble-root .pb-annual-chart-rows { grid-template-columns:minmax(0,1fr); } .pebble-root .pb-annual-charts { padding:1.1rem; } }
+
+.pebble-root .pb-annual-calculation { margin: .75rem 0; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: color-mix(in srgb,var(--pine) 4%,var(--mist)); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-calculation p { margin: .4rem 0; }
+.pebble-root .pb-annual-calculation strong { color: var(--ink); font-weight: 600; }
