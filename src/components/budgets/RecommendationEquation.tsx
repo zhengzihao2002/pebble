@@ -28,6 +28,9 @@ export function RecommendationEquation({ recommendation: r, current }: { recomme
     </div>;
   }
   const steps = recommendationAdjustments(r, current);
+  // Rounding belongs in the result box, rather than another three-box equation.
+  const firstRounding = steps[0]?.kind === 'round' ? steps[0] : undefined;
+  const visibleSteps = steps.filter(step => step.kind !== 'round');
   const basis = c.method === 'trend' ? x.equationTrend : c.method === 'spike' ? x.equationSpike : r.sampleMonths === 12 ? x.equationLast12 : t(x.equationAnnualized, { count: String(r.sampleMonths) });
   const basisFormula = c.method === 'spike'
     ? `(${formatCurrency(r.recordedTotal)} − ${formatCurrency(r.excludedSpikeAmount)}) ÷ ${r.sampleMonths} × 12`
@@ -53,15 +56,19 @@ export function RecommendationEquation({ recommendation: r, current }: { recomme
       <Box amount={c.basisAnnual} label={basis} detail={c.method === 'trend' ? undefined : <>{period}{basisFormula && <><br />{basisFormula}</>}</>} />
       <span className="pb-plan-equation-sign" aria-hidden="true">+</span>
       <Box amount={c.bufferAmount} label={t(x.equationRoom, { percent: String(r.bufferPercent) })} />
-      <span className="pb-plan-equation-sign" aria-hidden="true">=</span>
-      <Box amount={c.withBuffer} label={steps.length ? x.traceWithRoom : x.categorySuggested} final={!steps.length} />
+      <span className="pb-plan-equation-sign" aria-hidden="true">{firstRounding ? '≈' : '='}</span>
+      <Box amount={firstRounding?.to ?? c.withBuffer} label={visibleSteps.length ? x.traceWithRoom : x.categorySuggested} detail={firstRounding ? x.roundedCaption : undefined} final={!visibleSteps.length} />
     </div>
-    {steps.map((step, index) => <div className="pb-plan-equation" key={step.kind}>
+    {visibleSteps.map((step, index) => {
+      const following = steps[steps.indexOf(step) + 1];
+      const rounding = following?.kind === 'round' ? following : undefined;
+      return <div className="pb-plan-equation" key={step.kind}>
       <Box amount={step.from} label={index === 0 ? x.traceWithRoom : x.traceAdjusted} />
       <span className="pb-plan-equation-sign" aria-hidden="true">{step.delta < 0 ? '−' : '+'}</span>
       <Box amount={Math.abs(step.delta)} label={labels[step.kind]} />
-      <span className="pb-plan-equation-sign" aria-hidden="true">=</span>
-      <Box amount={step.to} label={index === steps.length - 1 ? x.categorySuggested : x.traceAdjusted} final={index === steps.length - 1} />
-    </div>)}
+      <span className="pb-plan-equation-sign" aria-hidden="true">{rounding ? '≈' : '='}</span>
+      <Box amount={rounding?.to ?? step.to} label={index === visibleSteps.length - 1 ? x.categorySuggested : x.traceAdjusted} detail={rounding ? x.roundedCaption : undefined} final={index === visibleSteps.length - 1} />
+    </div>;
+    })}
   </div>;
 }

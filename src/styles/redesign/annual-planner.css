@@ -152,7 +152,6 @@
 .pebble-root .pb-category-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.4rem; width:100%; }
 .pebble-root .pb-category-choice { align-self:start; }
 .pebble-root .pb-category-options button { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:.15rem; min-width:0; min-height:2.6rem; padding:.4rem .6rem; border:1px solid var(--line); border-radius:.6rem; background:var(--mist); color:var(--ink); font:inherit; font-size:.8rem; line-height:1.4; text-align:left; overflow-wrap:anywhere; cursor:pointer; }
-.pebble-root .pb-category-options button[aria-checked="true"] { border-color:var(--pine); background:color-mix(in srgb,var(--pine) 8%,var(--mist)); box-shadow:inset 0 0 0 1px var(--pine); }
 .pebble-root .pb-category-options small { font-size:.75rem; color:var(--ink-soft); }
 @container content (max-width:639px) { .pebble-root .pb-category-options { grid-template-columns:repeat(2,minmax(0,1fr)); } .pebble-root .pb-category-options button { min-height:2.75rem; } }
 
@@ -202,4 +201,24 @@
 @container content (max-width:639px) {
   .pebble-root .pb-category-options { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .pebble-root .pb-plan-equation-hold { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Keep the category/input header shallow; its supporting figures share the quick-set heading. */
+.pebble-root .pb-annual-category { align-self:center; padding-top:0; }
+.pebble-root .pb-annual-current { align-self:center; padding-top:0; }
+.pebble-root .pb-category-choice { gap:.45rem; }
+.pebble-root .pb-category-quick-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.25rem 1rem; width:100%; }
+.pebble-root .pb-category-quick-title { width:auto; margin:0; flex:none; }
+.pebble-root .pb-category-amount-summary { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.2rem .65rem; color:var(--ink-soft); font-size:.75rem; line-height:1.5; }
+@container content (max-width:639px) {
+  .pebble-root .pb-category-quick-head { align-items:flex-start; }
+  .pebble-root .pb-category-amount-summary { flex:1; min-width:0; }
+}
+
+/* Quick sets are fill actions, with equal widths and no persistent selection state. */
+.pebble-root .pb-category-options { grid-template-columns:repeat(3,minmax(0,1fr)); }
+@container content (max-width:639px) {
+  .pebble-root .pb-category-options { grid-template-columns:minmax(0,1fr); }
+  .pebble-root .pb-category-options button, .pebble-root .pb-category-options button:last-child { flex-direction:row; align-items:center; justify-content:space-between; gap:.6rem; min-height:2.75rem; }
+  .pebble-root .pb-category-options small { flex:none; max-width:45%; text-align:right; }
 }

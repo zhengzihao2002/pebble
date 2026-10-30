@@ -161,7 +161,6 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
           const amount = amounts[c.id];
           const percent = Number.isFinite(amount) ? changePercent(amount, current) : null;
           const recommendation = recommendations.get(c.id);
-          const applied = recommendation !== undefined && amount === recommendation.amount;
           const name = categoryLabel(d, c.name);
           const quick = budgetQuickSet(history, c.name);
           const decision = decisions[c.id] ?? "";
@@ -170,11 +169,11 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
             <div className="pb-annual-category"><span className="pb-budget-icon" style={{ backgroundColor: `${c.color}20`, color: c.color }}><Icon size={19} /></span><strong>{name}</strong>{isChosen && <Check size={14} className="pb-category-chosen" aria-label={x.categoryChosen} />}</div>
             <div className="pb-annual-current"><span className="pb-annual-mobile-label">{x.thisYear}</span><span className="font-mono-tab">{formatCurrency(current)}</span></div>
             <label className="pb-annual-amount"><span className="pb-annual-mobile-label">{x.next}</span><span className="pb-annual-money"><span aria-hidden="true">$</span><AmountInput wholeDollars value={values[c.id] ?? '0'} aria-label={t(x.annualAmount, { name })} className="font-mono-tab" onValueChange={value => { setDecisions(previous => ({ ...previous, [c.id]: 'amount' })); setBaseAmounts(previous => ({ ...previous, [c.id]: current })); changeValues({ ...values, [c.id]: value }); }} /></span>
-              <small>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</small>
-              {Number.isFinite(amount) && amount >= 0 && <small>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</small>}
             </label>
-            <CategoryPlanChoice name={name} current={current} decision={decision}
+            <CategoryPlanChoice name={name}
               suggested={recommendation?.amount ?? null} average6={quick.sixMonthAnnual} last12={quick.last12Total}
+              summary={<><span>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</span>
+              {Number.isFinite(amount) && amount >= 0 && <span>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</span>}</>}
               onChoose={(method, chosenAmount) => chooseCategory(c.id, method, chosenAmount)} />
             <div className="pb-annual-row-tools">
             <PlanDisclosure className="pb-annual-history" title={<span>{x.history}</span>}>
@@ -185,7 +184,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
             {recommendation && <PlanDisclosure className="pb-annual-recommendation" title={<><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span></>}>
               <div className="pb-annual-reason">
                 <RecommendationEquation recommendation={recommendation} current={current} />
-                <button type="button" className="pill" disabled={applied && isChosen} onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{applied && isChosen ? <><Check size={14} />{x.selectedSuggestion}</> : x.applySuggestion}</button>
+                <button type="button" className="pill" onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{x.applySuggestion}</button>
               </div>
             </PlanDisclosure>}
 

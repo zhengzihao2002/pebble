@@ -1,5 +1,5 @@
 export const annualBudgetsEn = {
-  openPlanner: 'Plan next year', quickSet: 'Quick set', traceCentRounding: 'cent rounding',
+  openPlanner: 'Plan next year', quickSet: 'Quick set', roundedCaption: '(Rounded)', traceCentRounding: 'cent rounding',
   traceWithRoom: 'Spending + breathing room', traceAdjusted: 'After adjustment', traceKeep: 'Keep this year’s budget: difference within 5%', traceLimitCut: 'Limit the budget reduction to 20%', traceSeasonal: 'Retain room for seasonal spending', traceSpike: 'Retain budget after excluding a one-off purchase', traceRecentWeight: '70% of last 3 complete months, annualized', traceHistoryWeight: '30% of recorded spending, annualized', traceQuietBasis: 'No spending in 24 complete months', traceQuiet: 'No recorded upcoming expenses or scheduled rules. Zero is optional; spending may return.', traceNoHistory: 'Keep this year’s budget: not enough spending history.', tracePartialSeason: 'Keep this year’s budget: a full seasonal cycle is not yet recorded.', traceLimited: 'Keep this year’s budget: history is too short or incomplete for a reliable reduction.',
 
   equationLast12: 'Last 12 complete months', equationAnnualized: '{count} complete months, annualized', equationTrend: 'Trend-adjusted annual spending', equationSpike: 'Annual spending without one-off purchase', equationRoom: '{percent}% breathing room', equationCalculated: 'Calculated amount', equationBlend: '70% of last 3 complete months, annualized ({recent}) + 30% of recorded annual pace ({history}).', equationExcluded: 'Excludes a one-off {amount}. Add it back if it will recur.', equationKeep: 'Within 5% — keeping this year’s budget.', equationFloor: 'Budget safeguard applied: cuts limited to 20%; no cut for seasonal or one-off spending.', equationCap: 'Annual amount limit applied.', equationRounded: 'Rounded up to the next whole dollar.',
@@ -60,7 +60,7 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
-  openPlanner: '规划下一年', quickSet: '快速设置', traceCentRounding: '分位取整',
+  openPlanner: '规划下一年', quickSet: '快速设置', roundedCaption: '（已取整）', traceCentRounding: '分位取整',
   traceWithRoom: '支出加预留余量', traceAdjusted: '调整后金额', traceKeep: '差额不超过 5%，保留今年预算', traceLimitCut: '将预算降幅限制为 20%', traceSeasonal: '保留季节性支出的预算空间', traceSpike: '扣除一次性支出后保留原预算', traceRecentWeight: '最近 3 个完整月份年化支出的 70%', traceHistoryWeight: '历史年化支出的 30%', traceQuietBasis: '连续 24 个完整月份无支出', traceQuiet: '未发现未来已记录支出或定期规则。零预算仅供选择，支出仍可能再次发生。', traceNoHistory: '支出记录不足，保留今年预算。', tracePartialSeason: '尚未记录完整的季节性周期，保留今年预算。', traceLimited: '记录时间较短或不完整，暂时保留今年预算。',
 
   equationLast12: '最近 12 个完整月份', equationAnnualized: '{count} 个完整月份的年化支出', equationTrend: '按近期趋势调整的年支出', equationSpike: '扣除一次性支出后的年支出', equationRoom: '{percent}% 余量', equationCalculated: '计算金额', equationBlend: '最近 3 个完整月份的年化支出（{recent}）× 70% + 历史年化支出（{history}）× 30%。', equationExcluded: '未包含一次性支出 {amount}。如明年仍会发生，请另行预留。', equationKeep: '差额不超过 5%，保留今年预算。', equationFloor: '已应用预算保护：一般降幅不超过 20%；季节性或一次性支出不作为削减依据。', equationCap: '已应用年度金额上限。', equationRounded: '向上取整到元。',
