@@ -31,10 +31,23 @@ export function useSystemDark(): boolean {
  * any unrecognised stored value) following the device live. forceSystem is
  * for the auth pages, which always follow the device.
  */
-export function useResolvedDark(forceSystem = false): boolean {
-  const appearance = usePebbleStore((s) => s.appearance);
-  const systemDark = useSystemDark();
+function subscribeAppearance(onChange: () => void) {
+  const stopStore = usePebbleStore.subscribe(onChange);
+  const stopSystem = subscribe(onChange);
+  return () => { stopStore(); stopSystem(); };
+}
+function readResolvedDark(): boolean {
+  const appearance = usePebbleStore.getState().appearance;
   const choice = isAppearance(appearance) ? appearance : 'system';
-  if (forceSystem || choice === 'system') return systemDark;
-  return choice === 'dark';
+  return choice === 'system' ? readSystemDark() : choice === 'dark';
+}
+function readBootDark(): boolean {
+  // Zustand's hydration snapshot contains static defaults (System), even when
+  // localStorage has Light. Honor the pre-paint result until hydration finishes.
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('pebble-dark');
+}
+export function useResolvedDark(forceSystem = false): boolean {
+  const savedDark = useSyncExternalStore(subscribeAppearance, readResolvedDark, readBootDark);
+  const systemDark = useSystemDark();
+  return forceSystem ? systemDark : savedDark;
 }

@@ -17,6 +17,8 @@ import { formatCurrency } from '@/lib/format';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { BudgetDetails, type BudgetHistory } from '@/components/budgets/BudgetDetails';
+import { AnnualPlanCharts } from '@/components/budgets/AnnualPlanCharts';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 
 type Starter = 'same' | 'recommended' | '3' | '5' | 'custom';
@@ -61,6 +63,21 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
   const [notice, setNotice] = useState<string | null>(null);
   const suggestions = useMemo(() => recommendAnnualBudgets({ transactions, categories, currentAmounts: data.currentAmounts, today }), [transactions, categories, data.currentAmounts, today]);
   const recommendations = useMemo(() => new Map(suggestions.map(r => [r.categoryId, r])), [suggestions]);
+  const history = useMemo<BudgetHistory>(() => {
+    const month = Number(today.slice(5,7));
+    const months: string[] = [];
+    for (let y=data.year-3;y<=data.year;y++) for(let m=1;m<=12;m++) {
+      if(y===data.year && m>month) break;
+      months.push(`${y}-${String(m).padStart(2,'0')}`);
+    }
+    const indices = new Map(months.map((m,i)=>[m,i]));
+    const byCat: Record<string, number[]> = {};
+    for(const entry of transactions) {
+      const i=indices.get(entry.date.slice(0,7));
+      if(entry.type==='expense' && entry.amount<0 && i!==undefined) (byCat[entry.category] ??= Array(months.length).fill(0))[i]+=Math.abs(entry.amount);
+    }
+    return {months,byCat,current:today.slice(0,7)};
+  },[transactions,today,data.year]);
   const savedValues = amountStrings(categories, savedPlan?.amounts ?? data.currentAmounts);
   const dirty = categories.some(c => values[c.id] !== savedValues[c.id]);
   const baseChanged = savedPlan !== null && categories.some(c => (savedPlan.baseAmounts[c.id] ?? 0) !== (data.currentAmounts[c.id] ?? 0));
@@ -148,7 +165,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
 
   return (
     <div className="pb-annual">
-      <Link href="/budgets" className="pb-annual-back" onClick={e => { if ((dirty || saving) && !window.confirm(x.leave)) e.preventDefault(); }}><ArrowLeft size={16} />{x.back}</Link>
+      <Link href="/budgets" className="pb-annual-back" onClick={e => { if ((dirty || saving) && !window.confirm(x.leave)) e.preventDefault(); }}><ArrowLeft size={16} />{x.editCurrent}</Link>
       <header className="pb-annual-heading">
         <div><p className="pb-annual-eyebrow">{x.subtitle}</p><h2>{t(x.title, { year: String(year) })}</h2></div>
         <span className="pb-annual-date"><CalendarCheck size={17} /><span>{t(x.starts, { year: String(year) })}<small>{t(x.zone, { zone: data.timeZone })}</small></span></span>
@@ -160,6 +177,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
         <div><span>{t(x.nextYear, { year: String(year) })}</span><strong className="font-mono-tab">{formatCurrency(nextTotal)}</strong><small>{t(x.monthly, { amount: formatCurrency(nextTotal / 12) })}</small></div>
         <div className="pb-annual-difference"><span>{x.difference}</span><strong className="font-mono-tab">{delta === 0 ? x.same : signedMoney(delta)}</strong><small>{totalPct !== null && delta !== 0 ? `${signedPercent(totalPct)}% · ` : ''}{t(x.monthly, { amount: signedMoney(delta / 12) })}</small></div>
       </section>
+      <AnnualPlanCharts categories={categories} current={data.currentAmounts} proposed={amounts} />
       <fieldset className="card pb-annual-start" disabled={saving || !data.available || reloadNeeded}>
         <SectionHeader icon={Sparkles} title={x.startWith} subtitle={x.startNote} />
         <div className="pb-annual-starter-desktop"><SegmentedControl options={startOptions} value={starter} onChange={chooseStarter} ariaLabel={x.startWith} /></div>
@@ -187,6 +205,11 @@ export function AnnualPlannerClient({ data, categories, transactions, today }: {
               <small>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</small>
               {Number.isFinite(amount) && amount >= 0 && <small>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</small>}
             </label>
+            <details className="pb-annual-history">
+              <summary>{x.history}</summary><p>{x.historyNote}</p>
+              <BudgetDetails name={c.name} color={c.color} budget={current} history={history} today={today}
+                onSuggest={value => { setStarter('custom'); changeValues({ ...values, [c.id]: String(value) }); }} />
+            </details>
             {recommendation && <details className="pb-annual-recommendation">
               <summary><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span><ChevronDown size={14} aria-hidden="true" /></summary>
               <div className="pb-annual-reason"><p>{reasonText(recommendation, x)}</p><div className="pb-annual-evidence"><span>{recommendation.confidence === 'high' ? x.confidenceHigh : recommendation.confidence === 'medium' ? x.confidenceMedium : x.confidenceLow}</span><span>{t(x.months, { count: String(recommendation.sampleMonths) })}</span>{recommendation.windowStart && recommendation.windowEnd && <span>{t(x.window, { from: recommendation.windowStart, to: recommendation.windowEnd })}</span>}</div>

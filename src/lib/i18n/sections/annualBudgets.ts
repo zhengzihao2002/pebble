@@ -1,4 +1,5 @@
 export const annualBudgetsEn = {
+  chartTitle: 'See your plan take shape', chartNote: 'Compare annual amounts on the same scale. The chart updates as you edit.', allocation: 'Next year’s allocation', chartCurrent: 'Current budget', chartNext: 'Proposed budget', history: 'Spending history & quick set', historyNote: 'Recorded spending compared with this year’s budget. Quick set changes next year’s amount only.', editCurrent: 'Edit this year’s budgets', otherCategories: 'Other categories', noAllocation: 'Add amounts below to see your allocation.',
   planNextYear: 'Plan {year}', reviewNextYear: 'Review {year} plan', scheduledStatus: '{year} plan scheduled · Starts January 1', draftStatus: '{year} plan draft · Not scheduled', carryStatus: '{year} · Carried forward · Review needed', reviewedStatus: '{year} plan', notReadyStatus: 'Annual planning will be available after setup.', remind: 'Ready for next year?', later: 'Later', reviewCurrent: 'Review plan',
   planYear: 'Plan {year}', title: 'Your {year} plan', back: 'Back to Budgets',
   subtitle: 'A little intention for the year ahead.', starts: 'Starts January 1, {year}',
@@ -44,6 +45,7 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
+  chartTitle: '看清新一年的安排', chartNote: '以相同比例对比年度金额，随编辑实时更新。', allocation: '明年预算分配', chartCurrent: '今年预算', chartNext: '明年预算', history: '支出历史与快速设置', historyNote: '历史支出与今年预算对比。快速设置只修改明年的金额。', editCurrent: '修改今年预算', otherCategories: '其他类别', noAllocation: '在下方输入金额，查看预算分配。',
   planNextYear: '规划 {year} 年', reviewNextYear: '查看 {year} 年计划', scheduledStatus: '{year} 年计划已安排 · 1 月 1 日启用', draftStatus: '{year} 年草稿 · 尚未安排', carryStatus: '{year} 年 · 已沿用预算 · 待检查', reviewedStatus: '{year} 年计划', notReadyStatus: '完成设置后即可规划下一年。', remind: '准备好迎接新的一年了吗？', later: '稍后再说', reviewCurrent: '查看计划',
   planYear: '规划 {year} 年', title: '你的 {year} 年计划', back: '返回预算',
   subtitle: '从容安排新的一年。', starts: '{year} 年 1 月 1 日启用',

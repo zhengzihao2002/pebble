@@ -102,3 +102,22 @@
   .pebble-root .pb-annual-review-actions > button { min-height: 2.75rem; flex: 1 1 10rem; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .pebble-root .pb-annual-recommendation > summary > svg { transition: none; } }
+
+.pebble-root .pb-annual-charts { padding: 1.25rem 1.5rem; }
+.pebble-root .pb-annual-chart-key { display:flex; flex-wrap:wrap; gap:1rem; margin:1rem 0; font-size:.8rem; color:var(--ink-soft); }
+.pebble-root .pb-annual-chart-key span { display:inline-flex; align-items:center; gap:.4rem; }
+.pebble-root .pb-annual-chart-key i { display:inline-block; width:1.25rem; height:5px; background:var(--pine); border-radius:9px; }
+.pebble-root .pb-annual-chart-key .pb-annual-chart-old { opacity:.3; }
+.pebble-root .pb-annual-allocation { display:flex; gap:3px; height:20px; border-radius:12px; overflow:hidden; background:var(--line); margin-bottom:1.25rem; }
+.pebble-root .pb-annual-allocation span { flex-basis:0; min-width:1px; }
+.pebble-root .pb-annual-chart-rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.25rem 2rem; }
+.pebble-root .pb-annual-chart-name { display:flex; align-items:center; gap:.4rem; font-size:.85rem; margin-bottom:.5rem; overflow-wrap:anywhere; }
+.pebble-root .pb-annual-chart-name i { width:7px; height:7px; border-radius:50%; flex:none; }
+.pebble-root .pb-annual-chart-series { display:flex; align-items:center; gap:.7rem; margin:.3rem 0; font-size:.8rem; }
+.pebble-root .pb-annual-chart-track { flex:1; min-width:20px; background:color-mix(in srgb,var(--ink) 5%,transparent); height:6px; border-radius:6px; overflow:hidden; }
+.pebble-root .pb-annual-chart-track i { height:100%; display:block; border-radius:inherit; }
+.pebble-root .pb-annual-chart-series > .font-mono-tab { max-width:65%; overflow-wrap:anywhere; text-align:right; }
+.pebble-root .pb-annual-history { grid-column:1/-1; min-width:0; }
+.pebble-root .pb-annual-history > summary { cursor:pointer; color:var(--pine); font-size:.85rem; padding:.6rem 0; }
+.pebble-root .pb-annual-history > p, .pebble-root .pb-annual-chart-empty { color:var(--ink-soft); font-size:.8rem; line-height:1.5; }
+@media(max-width:639px) { .pebble-root .pb-annual-chart-rows { grid-template-columns:minmax(0,1fr); } .pebble-root .pb-annual-charts { padding:1.1rem; } }
