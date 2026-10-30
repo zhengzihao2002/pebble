@@ -1,5 +1,7 @@
 -- Additive migration. Review and run in the Neon SQL Editor before enabling
 -- annual planning. Existing budget rows and all transaction tables are untouched.
+-- COPY THE WHOLE FILE, including every function body and the final COMMIT.
+-- In the SQL Editor, select all SQL before running; a selected fragment fails.
 BEGIN;
 -- Monotonic revisions prevent a cancelled/recreated plan from accepting an old tab.
 CREATE SEQUENCE IF NOT EXISTS annual_budget_plan_revision_seq AS integer;
@@ -166,3 +168,4 @@ BEGIN
   RETURN true;
 END $$;
 COMMIT;
+-- END OF COMPLETE ANNUAL BUDGET MIGRATION

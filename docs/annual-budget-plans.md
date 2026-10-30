@@ -10,6 +10,8 @@ The app safely reads existing budgets while this migration is absent. The planne
 
 Before migration, preserve the existing Neon snapshot. Do not drop the new tables as a rollback after people have started saving plans: they hold the authoritative annual history. Older application builds only read legacy budgets, so rolling code back after annual adoption can show stale amounts. Prefer a forward fix that preserves the annual tables.
 
+If the editor reports `unterminated dollar-quoted string`, it received an incomplete function body. A function includes all statements from `CREATE OR REPLACE FUNCTION` through its matching `END $$;`; intermediate `END IF;` lines are not the end. In that editor, run `ROLLBACK;` separately to clear a failed open transaction, then replace the editor contents with the entire migration file. Select all its SQL and run it together, including the final `COMMIT;`. The file ends with `-- END OF COMPLETE ANNUAL BUDGET MIGRATION`. Do not try to repair an incomplete fragment by adding a closing delimiter: that would omit the actual budget-writing logic.
+
 ## Data and concurrency
 
 Every read and write is scoped to the authenticated user. A per-user transaction lock serializes saves, cancellations, and current-budget edits. A sequence-backed revision prevents stale tabs from editing a plan that was canceled and recreated. Future-plan saves capture a current-year baseline without changing legacy rows. Current-year edits materialize a new year if the amounts were carried forward, preserving previous years.
