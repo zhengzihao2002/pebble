@@ -5,8 +5,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatCurrency } from '@/lib/format';
 
 export type CategoryDecision = '' | 'saved' | 'suggested' | 'average6' | 'last12' | 'same' | 'amount' | 'percent' | 'pendingPercent';
-export function CategoryPlanChoice({ name, current, value, decision, suggested, average6, last12, onChoose }: {
-  name: string; current: number; value: string; decision: CategoryDecision;
+export function CategoryPlanChoice({ name, current, decision, suggested, average6, last12, onChoose }: {
+  name: string; current: number; decision: CategoryDecision;
   suggested: number | null; average6: number | null; last12: number | null;
   onChoose: (decision: CategoryDecision, amount?: number) => void;
 }) {
@@ -18,8 +18,7 @@ export function CategoryPlanChoice({ name, current, value, decision, suggested, 
   const choose = (method: CategoryDecision) => {
     setError(false);
     if (method === 'percent') { onChoose('pendingPercent'); requestAnimationFrame(() => input.current?.focus()); return; }
-    if (method === 'amount' && value.trim() === '') { onChoose('amount'); return; }
-    const amount = method === 'suggested' ? suggested : method === 'average6' ? average6 : method === 'last12' ? last12 : method === 'same' ? current : Number(value);
+    const amount = method === 'suggested' ? suggested : method === 'average6' ? average6 : method === 'last12' ? last12 : current;
     if (amount !== null && Number.isFinite(amount)) onChoose(method, amount);
   };
   const apply = () => {
@@ -35,7 +34,6 @@ export function CategoryPlanChoice({ name, current, value, decision, suggested, 
         {method:'last12',label:x.last12,amount:last12},
         {method:'same',label:x.keepSame,amount:current},
         {method:'percent',label:x.categoryPercent},
-        {method:'amount',label:x.categoryAmount},
       ] as {method:CategoryDecision;label:string;amount?:number|null}[]).map(option => <button key={option.method} type="button" role="radio"
         aria-checked={decision === option.method || (option.method === 'percent' && decision === 'pendingPercent')}
         disabled={option.amount === null} onClick={() => choose(option.method)}>

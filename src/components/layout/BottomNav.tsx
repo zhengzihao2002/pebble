@@ -42,8 +42,11 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
   const pathname = usePathname();
   const { d, t } = useTranslation();
   const budgetPlanYear = useBudgetPlanNavigation();
-  const showBudgetPlan = pathname === '/budgets' && budgetPlanYear !== null;
-  const budgetPlanLabel = showBudgetPlan ? t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) }) : '';
+  // The entry must exist even before the streamed budget page registers its
+  // server-resolved year. Only its label depends on that registration.
+  const showBudgetPlan = pathname === '/budgets' || pathname === '/budgets/plan';
+  const budgetPlanLabel = budgetPlanYear === null ? d.ux.annualBudgets.openPlanner
+    : t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) });
   const addPanelRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);

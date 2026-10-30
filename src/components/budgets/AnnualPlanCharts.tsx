@@ -8,6 +8,24 @@ import type { CategoryItem } from '@/lib/data/mappers';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 
 type ChartRow = { id: string; name: string; color: string; current: number; next: number };
+/** Omit the whole label when either line would truncate; the segment still has its tooltip. */
+function AllocationLabel({ row, total }: { row: ChartRow; total: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const label = ref.current;
+    if (!label) return;
+    const measure = () => {
+      const lines = Array.from(label.children) as HTMLElement[];
+      label.style.visibility = lines.every(line => line.scrollWidth <= line.clientWidth) ? 'visible' : 'hidden';
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(label);
+    document.fonts.addEventListener('loadingdone', measure);
+    measure();
+    return () => { observer.disconnect(); document.fonts.removeEventListener('loadingdone', measure); };
+  }, [row.name, row.next, total]);
+  return <span ref={ref} style={{ flexGrow: row.next, visibility: 'hidden' }}>{row.next / total >= .1 && <><span className="pb-bud-ribbon-name">{row.name}</span><span className="pb-bud-ribbon-share font-mono-tab">{share(row.next,total)}</span></>}</span>;
+}
 function share(amount: number, total: number): string {
   const value = total > 0 ? amount / total * 100 : 0;
   return value > 0 && value < .1 ? '<0.1%' : `${value.toFixed(1)}%`;
@@ -88,7 +106,7 @@ export function AnnualPlanCharts({ categories, current, proposed }: { categories
           })}
         </div>
         {total > 0 && <div className="pb-bud-ribbon-labels pb-annual-allocation-labels" aria-hidden="true">
-          {allocation.map(c => <span key={c.id} style={{flexGrow:c.next}}>{c.next/total >= .1 && <><span className="pb-bud-ribbon-name">{c.name}</span><span className="pb-bud-ribbon-share font-mono-tab">{share(c.next,total)}</span></>}</span>)}
+          {allocation.map(c => <AllocationLabel key={c.id} row={c} total={total} />)}
         </div>}
         {activeRow && active && <AllocationTip key={activeRow.id} row={activeRow} total={total} anchor={active.element} id={tooltipId} />}
       </div>

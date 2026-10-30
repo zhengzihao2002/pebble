@@ -1,4 +1,7 @@
 export const annualBudgetsEn = {
+  openPlanner: 'Plan next year',
+  equationLast12: 'Last 12 complete months', equationAnnualized: '{count} complete months, annualized', equationTrend: 'Trend-adjusted annual spending', equationSpike: 'Annual spending without one-off purchase', equationRoom: '{percent}% breathing room', equationCalculated: 'Calculated amount', equationBlend: '70% of last 3 complete months, annualized ({recent}) + 30% of recorded annual pace ({history}).', equationExcluded: 'Excludes a one-off {amount}. Add it back if it will recur.', equationKeep: 'Within 5% — keeping this year’s budget.', equationFloor: 'Budget safeguard applied: cuts limited to 20%; no cut for seasonal or one-off spending.', equationCap: 'Annual amount limit applied.', equationRounded: 'Rounded up to the next whole dollar.',
+
   percentRounding: 'Based on this year’s budget; rounded to the nearest whole dollar.',
   chooseBasis: 'Choose how to set it', chooseCategory: '{name}: choose budget basis', categorySuggested: 'Suggested', average6: '6-month average × 12', last12: 'Spent in last 12 months', categoryPercent: 'Custom percentage', categoryAmount: 'Use entered amount', savedAmount: 'Scheduled amount', percentFor: '{name}: percentage change', categoryChosen: 'Chosen', chosenCount: '{count} of {total} chosen', chooseAll: 'Choose a budget for every category before scheduling. You can save a draft at any time.', pickEachNote: 'Pick a basis for each category, or enter your own annual amount.', editScheduled: 'Your plan is scheduled. Keep editing below, then review and save changes to update it before January 1.',
 
@@ -55,6 +58,9 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
+  openPlanner: '规划下一年',
+  equationLast12: '最近 12 个完整月份', equationAnnualized: '{count} 个完整月份的年化支出', equationTrend: '按近期趋势调整的年支出', equationSpike: '扣除一次性支出后的年支出', equationRoom: '{percent}% 余量', equationCalculated: '计算金额', equationBlend: '最近 3 个完整月份的年化支出（{recent}）× 70% + 历史年化支出（{history}）× 30%。', equationExcluded: '未包含一次性支出 {amount}。如明年仍会发生，请另行预留。', equationKeep: '差额不超过 5%，保留今年预算。', equationFloor: '已应用预算保护：一般降幅不超过 20%；季节性或一次性支出不作为削减依据。', equationCap: '已应用年度金额上限。', equationRounded: '向上取整到元。',
+
   percentRounding: '以今年的预算为基数，并四舍五入到元。',
   chooseBasis: '选择设置方式', chooseCategory: '{name}：选择预算依据', categorySuggested: '建议金额', average6: '近 6 个月平均 × 12', last12: '最近 12 个月实际支出', categoryPercent: '自定义百分比', categoryAmount: '采用输入的金额', savedAmount: '已安排的金额', percentFor: '{name}：变动百分比', categoryChosen: '已选择', chosenCount: '已选择 {count} / {total}', chooseAll: '安排前请为每个类别选择预算。你可以随时保存草稿。', pickEachNote: '逐项选择预算依据，或直接输入年度金额。', editScheduled: '计划已安排。你仍可在下方修改，并在 1 月 1 日前检查、保存更改。',
 

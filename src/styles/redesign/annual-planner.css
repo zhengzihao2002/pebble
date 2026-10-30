@@ -160,3 +160,41 @@
 .pebble-root .pb-category-options button[aria-checked="true"] { border-color:var(--pine); background:color-mix(in srgb,var(--pine) 8%,var(--mist)); box-shadow:inset 0 0 0 1px var(--pine); }
 .pebble-root .pb-category-options small { font-size:.75rem; color:var(--ink-soft); }
 @container content (max-width:639px) { .pebble-root .pb-category-options { grid-template-columns:repeat(2,minmax(0,1fr)); } .pebble-root .pb-category-options button { min-height:2.75rem; } }
+
+/* One amount, five optional starting points, then independent expandable details. */
+.pebble-root .pb-annual-row { grid-template-areas:"category current amount" "choice choice choice" "tools tools tools"; row-gap:.65rem; }
+.pebble-root .pb-category-options { display:flex; flex-wrap:wrap; gap:.45rem; }
+.pebble-root .pb-category-options button { flex:1 1 8rem; min-height:3.1rem; border-radius:.75rem; background:color-mix(in srgb,var(--pine) 3%,var(--mist)); }
+.pebble-root .pb-category-options button:last-child { flex-grow:0; flex-basis:9rem; }
+.pebble-root .pb-annual-row-tools > .pb-plan-disclosure { width:100%; min-width:0; }
+.pebble-root .pb-plan-disclosure-toggle { display:flex; align-items:center; gap:.45rem; width:100%; border:0; background:none; color:var(--pine); font:inherit; font-size:.85rem; text-align:left; padding:.55rem .1rem; cursor:pointer; }
+.pebble-root .pb-annual-recommendation > .pb-plan-disclosure-toggle { padding:.6rem .75rem; }
+.pebble-root .pb-plan-disclosure-toggle > svg { flex:none; }
+.pebble-root .pb-plan-disclosure-toggle > svg:last-child { margin-left:auto; transition:transform .28s ease; }
+.pebble-root .pb-plan-disclosure[data-open="true"] > .pb-plan-disclosure-toggle > svg:last-child { transform:rotate(180deg); }
+.pebble-root .pb-plan-disclosure-body { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .32s cubic-bezier(.22,.61,.36,1),opacity .24s ease; }
+.pebble-root .pb-plan-disclosure[data-open="true"] > .pb-plan-disclosure-body { grid-template-rows:1fr; opacity:1; }
+.pebble-root .pb-plan-disclosure-body > div { min-height:0; overflow:hidden; }
+.pebble-root .pb-plan-history-note { font-size:.8rem; color:var(--ink-soft); margin:.25rem 0 .75rem; }
+.pebble-root .pb-plan-equation { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr); gap:.6rem; align-items:stretch; padding:.5rem 0; }
+.pebble-root .pb-plan-equation-box { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:.35rem; padding:1rem .6rem; border:1px solid var(--line); border-radius:.85rem; text-align:center; background:var(--mist); min-width:0; }
+.pebble-root .pb-plan-equation-box strong { font-size:clamp(1.1rem,2cqi,1.65rem); line-height:1.3; font-weight:600; color:var(--ink); overflow-wrap:anywhere; }
+.pebble-root .pb-plan-equation-box small { font-size:.75rem; line-height:1.4; color:var(--ink-soft); }
+.pebble-root .pb-plan-equation-result { background:color-mix(in srgb,var(--pine) 8%,var(--mist)); border-color:color-mix(in srgb,var(--pine) 24%,var(--line)); }
+.pebble-root .pb-plan-equation-sign { align-self:center; color:var(--ink-soft); font-size:1.2rem; }
+.pebble-root .pb-plan-equation-note { font-size:.75rem; line-height:1.5; }
+.pebble-root .pb-plan-no-calculation { padding:.65rem 0; }
+.pebble-root .pb-plan-no-calculation > strong { font-size:1.5rem; color:var(--ink); }
+@container content (max-width:639px) {
+  .pebble-root .pb-annual-row { grid-template-areas:"category" "current" "amount" "choice" "tools"; }
+  .pebble-root .pb-category-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .pebble-root .pb-category-options button:last-child { grid-column:1/-1; align-items:center; min-height:2.75rem; }
+  .pebble-root .pb-annual-amount { align-items:stretch; }
+  .pebble-root .pb-plan-equation { grid-template-columns:minmax(0,1fr); gap:.3rem; }
+  .pebble-root .pb-plan-equation-box { padding:.8rem; }
+  .pebble-root .pb-plan-equation-box strong { font-size:1.5rem; }
+  .pebble-root .pb-plan-equation-sign { text-align:center; line-height:1; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pebble-root .pb-plan-disclosure-body, .pebble-root .pb-plan-disclosure-toggle > svg:last-child { transition:none; }
+}

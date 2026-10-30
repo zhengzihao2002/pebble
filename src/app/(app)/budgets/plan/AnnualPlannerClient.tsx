@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CalendarCheck, Check, ChevronDown, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarCheck, Check, Lightbulb } from 'lucide-react';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { RecurringRule, Transaction } from '@/types';
 import type { AnnualPlannerData, AnnualPlan } from '@/lib/budgets/annualTypes';
-import { recommendAnnualBudgets, type BudgetRecommendation } from '@/lib/budgets/recommendations';
+import { recommendAnnualBudgets } from '@/lib/budgets/recommendations';
 import { saveAnnualPlanAction, cancelAnnualPlanAction } from '@/lib/actions/annualBudgets';
 import { callAction } from '@/lib/actions/callAction';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -20,9 +20,10 @@ import { CategoryPlanChoice, type CategoryDecision } from '@/components/budgets/
 import { budgetQuickSet, budgetHistoryThroughToday } from '@/lib/budgets/spendingProjection';
 import { BudgetDetails, type BudgetHistory } from '@/components/budgets/BudgetDetails';
 import { AnnualPlanCharts } from '@/components/budgets/AnnualPlanCharts';
+import { PlanDisclosure } from '@/components/budgets/PlanDisclosure';
+import { RecommendationEquation } from '@/components/budgets/RecommendationEquation';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 
-type Copy = ReturnType<typeof useTranslation>['d']['ux']['annualBudgets'];
 const MAX_AMOUNT = 9_999_999_999;
 
 function amountStrings(categories: CategoryItem[], amounts: Record<string, number>) {
@@ -33,14 +34,6 @@ function changePercent(amount: number, baseline: number) {
 }
 function signedPercent(value: number) {
   return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(1).replace(/\.0$/, '')}`;
-}
-function reasonText(r: BudgetRecommendation, x: Copy) {
-  const reasons = {
-    noHistory: x.noHistory, limitedHistory: x.limitedHistory, newBudget: x.newBudgetReason,
-    steadySpending: x.steadySpending, risingSpending: x.risingSpending, fallingSpending: x.fallingSpending,
-    unusedRoom: x.unusedRoom, seasonalSpending: x.seasonalSpending, unusualSpike: x.unusualSpike, inactiveCategory: x.inactiveCategory,
-  };
-  return reasons[r.reason];
 }
 
 export function AnnualPlannerClient({ data, categories, transactions, today, recurringRules }: {
@@ -180,38 +173,22 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
               <small>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</small>
               {Number.isFinite(amount) && amount >= 0 && <small>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</small>}
             </label>
-            <CategoryPlanChoice name={name} current={current} value={values[c.id] ?? ''} decision={decision}
+            <CategoryPlanChoice name={name} current={current} decision={decision}
               suggested={recommendation?.amount ?? null} average6={quick.sixMonthAnnual} last12={quick.last12Total}
               onChoose={(method, chosenAmount) => chooseCategory(c.id, method, chosenAmount)} />
             <div className="pb-annual-row-tools">
-            <details className="pb-annual-history">
-              <summary>{x.history}</summary><p>{x.historyNote}</p>
+            <PlanDisclosure className="pb-annual-history" title={<span>{x.history}</span>}>
+              <p className="pb-plan-history-note">{x.historyNote}</p>
               <BudgetDetails name={c.name} color={c.color} budget={current} history={history} today={today} hideQuickSet
                 onSuggest={value => chooseCategory(c.id, 'amount', value)} />
-            </details>
-            {recommendation && <details className="pb-annual-recommendation">
-              <summary><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span><ChevronDown size={14} aria-hidden="true" /></summary>
-              <div className="pb-annual-reason"><p>{reasonText(recommendation, x)}</p><div className="pb-annual-evidence"><span>{recommendation.confidence === 'high' ? x.confidenceHigh : recommendation.confidence === 'medium' ? x.confidenceMedium : x.confidenceLow}</span><span>{t(x.months, { count: String(recommendation.sampleMonths) })}</span>{recommendation.windowStart && recommendation.windowEnd && <span>{t(x.window, { from: recommendation.windowStart, to: recommendation.windowEnd })}</span>}</div>
-                {recommendation.baselineAnnual !== null && <p>{t(recommendation.sampleMonths === 12 ? x.last12Total : x.observedTotal, { amount: formatCurrency(recommendation.recordedTotal), count: String(recommendation.sampleMonths) })}</p>}
-                {recommendation.baselineAnnual !== null && recommendation.sampleMonths !== 12 && recommendation.sampleMonths !== 24 && <p>{t(x.annualized, { amount: formatCurrency(recommendation.baselineAnnual) })}</p>}
-                {recommendation.excludedSpikeAmount > 0 && <p>{t(x.spike, { amount: formatCurrency(recommendation.excludedSpikeAmount) })}</p>}
-                {recommendation.calculation && <div className="pb-annual-calculation">
-                  {recommendation.calculation.method === 'trend' && <>
-                    <p>{t(x.recentBasis, { amount: formatCurrency(recommendation.recentAnnual ?? 0) })}</p>
-                    <p>{t(x.blendedBasis, { recent: formatCurrency(recommendation.recentAnnual ?? 0), history: formatCurrency(recommendation.baselineAnnual ?? 0), amount: formatCurrency(recommendation.calculation.basisAnnual) })}</p>
-                  </>}
-                  <p>{t(x.calculationBasis, { amount: formatCurrency(recommendation.calculation.basisAnnual) })}</p>
-                  <p>{t(x.calculationBuffer, { amount: formatCurrency(recommendation.calculation.bufferAmount), percent: String(recommendation.bufferPercent) })}</p>
-                  <p>{formatCurrency(recommendation.calculation.basisAnnual)} + {formatCurrency(recommendation.calculation.bufferAmount)} = <strong>{formatCurrency(recommendation.calculation.withBuffer)}</strong></p>
-                  {recommendation.calculation.minimumAnnual !== null && recommendation.calculation.withBuffer < recommendation.calculation.minimumAnnual && <p>{t(x.calculationFloor, { amount: formatCurrency(recommendation.calculation.minimumAnnual) })}</p>}
-                  {recommendation.calculation.keepCurrent && <p>{x.keepClose}</p>}
-                  {recommendation.calculation.withBuffer > MAX_AMOUNT && <p>{t(x.maximumNote, { amount: formatCurrency(MAX_AMOUNT) })}</p>}
-                  <p>{x.roundingNote}</p>
-                  <p><strong>{t(x.calculationFinal, { amount: formatCurrency(recommendation.amount) })}</strong></p>
-                </div>}
+            </PlanDisclosure>
+            {recommendation && <PlanDisclosure className="pb-annual-recommendation" title={<><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span></>}>
+              <div className="pb-annual-reason">
+                <RecommendationEquation recommendation={recommendation} />
                 <button type="button" className="pill" disabled={applied && isChosen} onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{applied && isChosen ? <><Check size={14} />{x.selectedSuggestion}</> : x.applySuggestion}</button>
               </div>
-            </details>}
+            </PlanDisclosure>}
+
             </div>
           </article>;
         })}
