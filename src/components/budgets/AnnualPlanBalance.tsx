@@ -66,7 +66,7 @@ export function AnnualPlanBalance({ year, budget, transactions, today }: { year:
         {incomeVisited && <div className="card"><IncomeControl {...control} /></div>}
       </div></div>
     </div>
-    <section ref={balanceRef} className="card pb-annual-balance" data-stuck={stuck} aria-label={t(x.balanceTitle, { year: String(year) })}>
+    <section ref={balanceRef} className="pb-annual-balance" data-stuck={stuck} aria-label={t(x.balanceTitle, { year: String(year) })}>
       <div className="pb-annual-balance-heading"><span>{t(x.balanceTitle, { year: String(year) })}</span><small>{x.balanceEstimated}</small></div>
       <div className="pb-annual-balance-track pb-chart-fade" role="img" aria-label={known ? t(shortfall ? x.balanceDeficitSummary : x.balanceSummary, { income: formatCurrency(income), budget: formatCurrency(safeBudget), savings: formatCurrency(Math.abs(savings ?? 0)) }) : x.balanceNeedsIncome}>
         <span className="pb-annual-balance-budget" style={{ width: `${budgetShare}%` }} />
