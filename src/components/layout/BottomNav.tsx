@@ -137,7 +137,11 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
           <div className={`pebble-add-menu pb-shell-sheet-clip ${addOpen ? 'open' : ''}`}>
             <div ref={addPanelRef} className="pebble-bottom-nav-stack-panel pb-shell-sheet">
               <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.addTitle}</p>
-              <div className="pb-shell-sheet-grid" data-count={actions.length}>
+              <div className="pb-shell-sheet-grid" data-count={actions.length + (showBudgetPlan ? 1 : 0)}>
+                {showBudgetPlan && <Link href="/budgets/plan" prefetch={false} onClick={close} tabIndex={addOpen ? 0 : -1} className="pb-shell-tile pb-shell-tile-primary" style={{textDecoration:'none'}}>
+                  <span className="pb-shell-tile-icon" aria-hidden="true"><CalendarClock size={20} strokeWidth={2} /></span>
+                  <span className="pb-shell-tile-label">{budgetPlanLabel}</span>
+                </Link>}
                 {actions.map((a, i) => {
                   const Icon = actionIcon[a.kind];
                   return (
@@ -146,7 +150,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
                       onClick={() => { close(); run[a.kind](); }}
                       // Not keyboard-reachable while collapsed, like the More items.
                       tabIndex={addOpen ? 0 : -1}
-                      className={`pb-shell-tile${i === 0 ? ' pb-shell-tile-primary' : ''}`}
+                      className={`pb-shell-tile${i === 0 && !showBudgetPlan ? ' pb-shell-tile-primary' : ''}`}
                     >
                       <span className="pb-shell-tile-icon" aria-hidden="true">
                         <Icon size={20} strokeWidth={2} />
@@ -160,14 +164,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             </div>
           </div>
 
-          {showBudgetPlan ? (
-            <Link href="/budgets/plan" prefetch={false} onClick={close} className="bottom-nav-add pb-budget-plan-fab" aria-label={budgetPlanLabel} title={budgetPlanLabel} style={{ textDecoration: 'none' }}>
-              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, lineHeight: 1 }} aria-hidden="true">
-                <CalendarClock size={22} strokeWidth={2.1} style={{ width: '1.4rem', height: '1.4rem' }} />
-                <span style={{ fontSize: '.6rem', fontWeight: 700 }}>{budgetPlanYear}</span>
-              </span>
-            </Link>
-          ) : <button
+          <button
             type="button"
             onClick={() => toggle('add')}
             aria-expanded={addOpen}
@@ -175,7 +172,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             className="bottom-nav-add"
           >
             <Plus size={24} strokeWidth={2.25} />
-          </button>}
+          </button>
         </div>
 
         {primaryNavItems.slice(2).map(renderLink)}

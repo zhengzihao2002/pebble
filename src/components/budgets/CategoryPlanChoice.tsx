@@ -28,16 +28,20 @@ export function CategoryPlanChoice({ name, current, value, decision, suggested, 
     setError(false); onChoose('percent', Math.min(9_999_999_999, Math.round(current * (1 + n/100))));
   };
   return <div className="pb-category-choice">
-    <label><span className="sr-only">{t(x.chooseCategory, { name })}</span>
-      <select value={decision === 'pendingPercent' ? 'percent' : decision} onChange={e => choose(e.target.value as CategoryDecision)}>
-        <option value="" disabled>{x.chooseBasis}</option>
-        {decision === 'saved' && <option value="saved">{x.savedAmount}</option>}
-        <option value="suggested" disabled={suggested === null}>{x.categorySuggested}{suggested !== null ? ` · ${formatCurrency(suggested)}` : ''}</option>
-        <option value="average6" disabled={average6 === null}>{x.average6}{average6 !== null ? ` · ${formatCurrency(average6)}` : ''}</option>
-        <option value="last12" disabled={last12 === null}>{x.last12}{last12 !== null ? ` · ${formatCurrency(last12)}` : ''}</option>
-        <option value="same">{x.keepSame}</option><option value="percent">{x.categoryPercent}</option><option value="amount">{x.categoryAmount}</option>
-      </select>
-    </label>
+    <div className="pb-category-options" role="radiogroup" aria-label={t(x.chooseCategory, { name })}>
+      {([
+        {method:'suggested',label:x.categorySuggested,amount:suggested},
+        {method:'average6',label:x.average6,amount:average6},
+        {method:'last12',label:x.last12,amount:last12},
+        {method:'same',label:x.keepSame,amount:current},
+        {method:'percent',label:x.categoryPercent},
+        {method:'amount',label:x.categoryAmount},
+      ] as {method:CategoryDecision;label:string;amount?:number|null}[]).map(option => <button key={option.method} type="button" role="radio"
+        aria-checked={decision === option.method || (option.method === 'percent' && decision === 'pendingPercent')}
+        disabled={option.amount === null} onClick={() => choose(option.method)}>
+        <span>{option.label}</span>{option.amount !== undefined && option.amount !== null && <small className="font-mono-tab">{formatCurrency(option.amount)}</small>}
+      </button>)}
+    </div>
     {(decision === 'percent' || decision === 'pendingPercent') && <div className="pb-category-percent">
       <label><span className="sr-only">{t(x.percentFor, { name })}</span><input ref={input} type="number" min="-100" max="1000" step="0.1" value={percent} onChange={e => { setPercent(e.target.value); onChoose('pendingPercent'); }} onKeyDown={e => { if(e.key==='Enter'){ e.preventDefault(); apply(); } }} /><span aria-hidden="true">%</span></label>
       <button type="button" className="pill" onClick={apply}>{x.applyAdjustment}</button>

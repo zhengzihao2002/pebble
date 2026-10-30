@@ -183,6 +183,13 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+          {pathname === '/budgets' && budgetPlanYear !== null && (
+            <div className="header-actions">
+              <Link href="/budgets/plan" prefetch={false} className="btn-primary pb-budget-plan-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                <CalendarClock size={16} aria-hidden="true" />{t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) })}
+              </Link>
+            </div>
+          )}
           {/* The 万能bar: a field on wide headers, an icon on narrow ones. Both open
               the command palette. Outside .header-actions so phones show it. */}
           <button type="button" onClick={onSearchClick} className="pb-search-field" aria-label={d.palette.title}>
@@ -209,13 +216,6 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
           >
             {privacyOn ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
-          {pathname === '/budgets' && budgetPlanYear !== null && (
-            <div className="header-actions">
-              <Link href="/budgets/plan" prefetch={false} className="btn-primary pb-budget-plan-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                <CalendarClock size={16} aria-hidden="true" />{t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) })}
-              </Link>
-            </div>
-          )}
           {current.action && handleActionClick && (
             <div ref={actionsRef} className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               {/* Drops BELOW the header rather than expanding sideways: a
