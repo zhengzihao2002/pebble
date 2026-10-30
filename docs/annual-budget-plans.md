@@ -38,3 +38,5 @@ Both Budgets and the planner use the same monthly/cumulative category charts. Cu
 - `npm run build` with database and auth URLs overridden to unused localhost ports during isolated verification
 
 Browser fixtures also verify English/Chinese, light/dark, mobile/desktop, large amounts, save/review/schedule/cancel/conflicts, recorded yearly budget charts, and New Year rollover/offline recovery. No production sign-in or test account is needed.
+
+The planner’s whole-year balance sits immediately before category editing and sticks below the measured app header while the user scrolls. It separates the total proposed budget from planned savings, with live width transitions as amounts change. A striped shortfall replaces savings when budgets exceed expected income; missing income remains unknown rather than implying zero savings. Both budget screens share the trailing-12-month Standard Income estimate and manual-income controls. Manual typed amounts remain on-page inputs, matching the existing main page; neither income assumptions nor this summary add database writes. The category allocation ribbon remains separate. Motion respects Reduced Motion.

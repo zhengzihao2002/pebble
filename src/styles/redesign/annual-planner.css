@@ -245,3 +245,38 @@
   .pebble-root .pb-category-detail-panel { animation:none !important; }
 }
 .pebble-root .pb-category-detail-window > div { display:flow-root; }
+
+/* A whole-plan balance sits at the handoff from overview to category editing. */
+.pebble-root .pb-annual-income-settings { min-width:0; }
+.pebble-root .pb-annual-income-settings > summary { display:flex; align-items:center; gap:.45rem; cursor:pointer; color:var(--ink-soft); font-size:.8rem; list-style:none; padding:.15rem .2rem; }
+.pebble-root .pb-annual-income-settings > summary::-webkit-details-marker { display:none; }
+.pebble-root .pb-annual-income-settings > summary small { margin-left:auto; font-size:.75rem; }
+.pebble-root .pb-annual-income-settings > summary svg { flex:none; }
+.pebble-root .pb-annual-income-settings[open] > summary > svg:last-child { transform:rotate(180deg); }
+.pebble-root .pb-annual-income-settings > .card { padding:1rem 1.25rem; margin-top:.6rem; }
+.pebble-root .pb-annual-balance { position:sticky; top:calc(var(--pb-header-h,0px) + .4rem); z-index:5; min-width:0; padding:.85rem 1.1rem; background:var(--mist); box-shadow:var(--shadow); }
+.pebble-root .pb-annual-balance-heading { display:flex; justify-content:space-between; gap:.5rem; color:var(--ink); font-size:.8rem; margin-bottom:.65rem; }
+.pebble-root .pb-annual-balance-heading small { color:var(--ink-soft); font-size:.7rem; }
+.pebble-root .pb-annual-balance-track { display:flex; height:14px; overflow:hidden; border-radius:99px; background:var(--line); }
+.pebble-root .pb-annual-balance-track > span { height:100%; flex:none; min-width:0; transition:width .45s cubic-bezier(.22,.61,.36,1); }
+.pebble-root .pb-annual-balance-budget { background:var(--gold); }
+.pebble-root .pb-annual-balance-saved { background:var(--pine); }
+.pebble-root .pb-annual-balance-deficit { background:repeating-linear-gradient(125deg,var(--wine),var(--wine) 5px,color-mix(in srgb,var(--wine) 65%,var(--mist)) 5px,color-mix(in srgb,var(--wine) 65%,var(--mist)) 9px); }
+.pebble-root .pb-annual-balance-figures { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:.6rem 0 0; }
+.pebble-root .pb-annual-balance-figures > div { min-width:0; }
+.pebble-root .pb-annual-balance-figures dt { display:flex; align-items:center; gap:.3rem; color:var(--ink-soft); font-size:.75rem; }
+.pebble-root .pb-annual-balance-figures dt i { width:6px; height:6px; border-radius:50%; background:var(--pine); flex:none; }
+.pebble-root .pb-annual-balance-figures dd { margin:.2rem 0 0; font-size:1.1rem; font-weight:600; line-height:1.3; overflow-wrap:anywhere; color:var(--ink); }
+.pebble-root .pb-annual-balance-figures [data-tone="budget"] :is(dd,i) { color:var(--gold); }
+.pebble-root .pb-annual-balance-figures [data-tone="budget"] i { background:var(--gold); }
+.pebble-root .pb-annual-balance-figures [data-tone="saved"] dd { color:var(--pine); }
+.pebble-root .pb-annual-balance-figures [data-tone="deficit"] dd { color:var(--wine); }
+.pebble-root .pb-annual-balance-figures [data-tone="deficit"] i { background:var(--wine); }
+.pebble-root .pb-annual-balance-note { margin:.5rem 0 0; color:var(--ink-soft); font-size:.75rem; }
+@container content (max-width:639px) {
+  .pebble-root .pb-annual-balance { padding:.7rem .8rem; top:var(--pb-header-h,0px); border-radius:.85rem; }
+  .pebble-root .pb-annual-balance-figures { gap:.5rem; }
+  .pebble-root .pb-annual-balance-figures dt { font-size:.7rem; }
+  .pebble-root .pb-annual-balance-figures dd { font-size:1rem; }
+}
+@media (prefers-reduced-motion:reduce) { .pebble-root .pb-annual-balance-track > span { transition:none; } }

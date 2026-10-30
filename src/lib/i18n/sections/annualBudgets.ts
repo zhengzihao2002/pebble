@@ -1,4 +1,6 @@
 export const annualBudgetsEn = {
+  balanceTitle: '{year} plan balance', balanceEstimated: 'Annual estimate', balanceIncomeSettings: 'Expected income', balanceIncome: 'Income', balanceBudget: 'Budget', balanceSavings: 'Planned savings', balanceShortfall: 'Shortfall', balanceNeedsIncome: 'Set expected income above to see planned savings.', balanceSummary: 'Income {income}: budget {budget}, planned savings {savings}.', balanceDeficitSummary: 'Income {income}: budget {budget}, shortfall {savings}.',
+
   openPlanner: 'Plan next year', savePlan: 'Save', saveHint: 'Starts automatically on January 1, {year}. You can edit and save changes until then.', quickSet: 'Quick set', roundedCaption: '(Rounded)', traceCentRounding: 'cent rounding',
   traceWithRoom: 'Spending + breathing room', traceAdjusted: 'After adjustment', traceKeep: 'Keep this year’s budget: difference within 5%', traceLimitCut: 'Limit the budget reduction to 20%', traceSeasonal: 'Retain room for seasonal spending', traceSpike: 'Retain budget after excluding a one-off purchase', traceRecentWeight: '70% of last 3 complete months, annualized', traceHistoryWeight: '30% of recorded spending, annualized', traceQuietBasis: 'No spending in 24 complete months', traceQuiet: 'No recorded upcoming expenses or scheduled rules. Zero is optional; spending may return.', traceNoHistory: 'Keep this year’s budget: not enough spending history.', tracePartialSeason: 'Keep this year’s budget: a full seasonal cycle is not yet recorded.', traceLimited: 'Keep this year’s budget: history is too short or incomplete for a reliable reduction.',
 
@@ -60,6 +62,8 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
+  balanceTitle: '{year} 年计划结余', balanceEstimated: '年度估算', balanceIncomeSettings: '预计收入', balanceIncome: '收入', balanceBudget: '预算', balanceSavings: '计划储蓄', balanceShortfall: '缺口', balanceNeedsIncome: '在上方设置预计收入，即可查看计划储蓄。', balanceSummary: '收入 {income}：预算 {budget}，计划储蓄 {savings}。', balanceDeficitSummary: '收入 {income}：预算 {budget}，缺口 {savings}。',
+
   openPlanner: '规划下一年', savePlan: '保存', saveHint: '将于 {year} 年 1 月 1 日自动启用。在此之前，你可以继续修改并保存。', quickSet: '快速设置', roundedCaption: '（已取整）', traceCentRounding: '分位取整',
   traceWithRoom: '支出加预留余量', traceAdjusted: '调整后金额', traceKeep: '差额不超过 5%，保留今年预算', traceLimitCut: '将预算降幅限制为 20%', traceSeasonal: '保留季节性支出的预算空间', traceSpike: '扣除一次性支出后保留原预算', traceRecentWeight: '最近 3 个完整月份年化支出的 70%', traceHistoryWeight: '历史年化支出的 30%', traceQuietBasis: '连续 24 个完整月份无支出', traceQuiet: '未发现未来已记录支出或定期规则。零预算仅供选择，支出仍可能再次发生。', traceNoHistory: '支出记录不足，保留今年预算。', tracePartialSeason: '尚未记录完整的季节性周期，保留今年预算。', traceLimited: '记录时间较短或不完整，暂时保留今年预算。',
 

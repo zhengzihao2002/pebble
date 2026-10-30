@@ -19,6 +19,7 @@ import { AmountInput } from '@/components/shared/AmountInput';
 import { CategoryPlanChoice } from '@/components/budgets/CategoryPlanChoice';
 import { budgetQuickSet, budgetHistoryThroughToday } from '@/lib/budgets/spendingProjection';
 import { BudgetDetails, type BudgetHistory } from '@/components/budgets/BudgetDetails';
+import { AnnualPlanBalance } from '@/components/budgets/AnnualPlanBalance';
 import { AnnualPlanCharts } from '@/components/budgets/AnnualPlanCharts';
 import { CategoryPlanDetails } from '@/components/budgets/CategoryPlanDetails';
 import { RecommendationEquation } from '@/components/budgets/RecommendationEquation';
@@ -139,6 +140,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
       <AnnualPlanCharts categories={categories} current={data.currentAmounts} proposed={amounts} />
       {savedPlan?.state === 'scheduled' && <p className="pb-annual-scheduled-note"><CalendarCheck size={16} aria-hidden="true" />{x.editScheduled}</p>}
       {baseChanged && <aside className="pb-annual-base-note" role="status">{x.baseChanged}</aside>}
+      <AnnualPlanBalance year={year} budget={nextTotal} transactions={transactions} today={today} />
       <fieldset className="card pb-annual-categories" disabled={saving || !data.available || reloadNeeded}>
         <SectionHeader title={x.categories} subtitle={x.pickEachNote} />
         <div className="pb-annual-column-head" aria-hidden="true"><span>{x.category}</span><span>{x.thisYear}</span><span>{x.next}</span></div>
