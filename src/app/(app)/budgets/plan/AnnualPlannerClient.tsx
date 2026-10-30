@@ -57,7 +57,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
   const history = useMemo<BudgetHistory>(() => budgetHistoryThroughToday(transactions, today), [transactions, today]);
   const savedValues = amountStrings(categories, savedPlan?.amounts ?? data.currentAmounts);
   const dirty = categories.some(c => values[c.id] !== savedValues[c.id]);
-  const chosen = categories.filter(c => decisions[c.id] && decisions[c.id] !== 'pendingPercent').length;
+  const chosen = categories.filter(c => decisions[c.id]).length;
   const allChosen = chosen === categories.length;
 
   const baseChanged = savedPlan !== null && categories.some(c => (savedPlan.baseAmounts[c.id] ?? 0) !== (data.currentAmounts[c.id] ?? 0));
@@ -165,7 +165,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
           const name = categoryLabel(d, c.name);
           const quick = budgetQuickSet(history, c.name);
           const decision = decisions[c.id] ?? "";
-          const isChosen = decision !== "" && decision !== "pendingPercent";
+          const isChosen = decision !== "";
           return <article key={c.id} className="pb-annual-row">
             <div className="pb-annual-category"><span className="pb-budget-icon" style={{ backgroundColor: `${c.color}20`, color: c.color }}><Icon size={19} /></span><strong>{name}</strong>{isChosen && <Check size={14} className="pb-category-chosen" aria-label={x.categoryChosen} />}</div>
             <div className="pb-annual-current"><span className="pb-annual-mobile-label">{x.thisYear}</span><span className="font-mono-tab">{formatCurrency(current)}</span></div>
@@ -184,7 +184,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
             </PlanDisclosure>
             {recommendation && <PlanDisclosure className="pb-annual-recommendation" title={<><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span></>}>
               <div className="pb-annual-reason">
-                <RecommendationEquation recommendation={recommendation} />
+                <RecommendationEquation recommendation={recommendation} current={current} />
                 <button type="button" className="pill" disabled={applied && isChosen} onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{applied && isChosen ? <><Check size={14} />{x.selectedSuggestion}</> : x.applySuggestion}</button>
               </div>
             </PlanDisclosure>}

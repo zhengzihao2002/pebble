@@ -9,14 +9,15 @@ const { buildSync } = req('esbuild');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pebble-budget-recommendations-'));
 try {
   const bundle = path.join(dir, 'recommendations.cjs');
-  buildSync({ entryPoints: [path.resolve(__dirname, '../src/lib/budgets/recommendations.ts')], outfile: bundle, bundle: true, platform: 'node', format: 'cjs' });
-  const { recommendAnnualBudgets } = require(bundle);
+  buildSync({ stdin: { contents: "export { recommendAnnualBudgets } from './src/lib/budgets/recommendations'; export { recommendationAdjustments } from './src/lib/budgets/recommendationExplanation';", resolveDir: path.resolve(__dirname, '..'), loader: 'ts' }, outfile: bundle, bundle: true, platform: 'node', format: 'cjs' });
+  const { recommendAnnualBudgets, recommendationAdjustments } = require(bundle);
+  const explanationCases = [];
   const categories = [{ id: 'groceries', name: 'Groceries', iconKey: 'ShoppingCart', color: '#123456', isSystem: false, sortOrder: 0 }];
   let serial = 0;
   function expense(month, amount, day = '01', extra = {}) { return { id: String(++serial), type: 'expense', category: 'Groceries', date: `${month}-${day}`, amount: -amount, description: '', paymentMethod: 'Cash', accountId: 'cash', ...extra }; }
   function income(month) { return { id: String(++serial), type: 'income', category: 'Standard Income', date: `${month}-01`, amount: 1000, grossAmount: 1000, netAmount: 1000, description: '', paymentMethod: 'Cash', accountId: 'cash' }; }
   function months(start, count) { const i = Number(start.slice(0, 4)) * 12 + Number(start.slice(5, 7)) - 1; return Array.from({ length: count }, (_, j) => `${Math.floor((i + j) / 12)}-${String((i + j) % 12 + 1).padStart(2, '0')}`); }
-  function recommend(transactions, current = 1500, today = '2027-01-01') { return recommendAnnualBudgets({ transactions, categories, currentAmounts: { groceries: current }, today })[0]; }
+  function recommend(transactions, current = 1500, today = '2027-01-01') { const r = recommendAnnualBudgets({ transactions, categories, currentAmounts: { groceries: current }, today })[0]; explanationCases.push({ r, current }); return r; }
   const year = months('2026-01', 12);
   const stable = year.map((m) => expense(m, 100));
   const steady = recommend(stable, 1320);
@@ -104,6 +105,25 @@ try {
   for(const status of ['active','paused'])assert.equal(withRules(dormantCategory,[{kind:'expense',category:'Groceries',status}]).amount,2400);
   assert.equal(withRules(dormantCategory,[{kind:'expense',category:'Groceries',status:'deleted'}]).amount,0);
   assert.equal(recommend(dormantCategory,2400).amount,2400,'unknown scheduled-rule data cannot justify zero');
+  // Explanation traces must end at the actual suggestion, not the pre-safeguard total.
+  recommend(stable, 1319.56); // Unchanged budgets preserve cents.
+  recommend([...stable, expense('2026-06', 5000, '15')], 1800.45); // One-off floor preserves cents.
+  recommend(seasonalRows, 4000.55); // Seasonal floor preserves cents.
+  const kinds = new Set();
+  for (const { r, current } of explanationCases) {
+    const steps = recommendationAdjustments(r, current);
+    if (!r.calculation) { assert.deepEqual(steps, []); continue; }
+    let shown = r.calculation.withBuffer;
+    for (const step of steps) {
+      kinds.add(step.kind);
+      assert.equal(step.from, shown);
+      assert.equal(Math.round(step.from * 100) + Math.round(step.delta * 100), Math.round(step.to * 100), 'each displayed equation reconciles in cents');
+      shown = step.to;
+    }
+    assert.equal(shown, r.amount, 'last box equals the recommended amount for every calculation path');
+  }
+  for (const kind of ['keep', 'limitCut', 'seasonal', 'spike', 'round', 'cap']) assert.ok(kinds.has(kind), 'covered adjustment: ' + kind);
+  assert.deepEqual(recommendationAdjustments(held, 40739), [{ kind: 'keep', from: 42000.12, delta: -1261.12, to: 40739 }]);
   assert.throws(() => recommendAnnualBudgets({ transactions: [], categories, currentAmounts: {}, today: 'bad' }));
   console.log('PASS: annual budget recommendations — completed months, thin/stale history, dormant gaps, stable rates, sustained trends, capped decreases, new budgets, seasonal bills, disclosed one-offs, rounding, future dates and 2028–2030 rollover. No DB/auth imported.');
 } finally { fs.rmSync(dir, { recursive: true, force: true }); }
