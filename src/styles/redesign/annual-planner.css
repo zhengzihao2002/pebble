@@ -248,12 +248,6 @@
 
 /* A whole-plan balance sits at the handoff from overview to category editing. */
 .pebble-root .pb-annual-income-settings { min-width:0; }
-.pebble-root .pb-annual-income-settings > summary { display:flex; align-items:center; gap:.45rem; cursor:pointer; color:var(--ink-soft); font-size:.8rem; list-style:none; padding:.15rem .2rem; }
-.pebble-root .pb-annual-income-settings > summary::-webkit-details-marker { display:none; }
-.pebble-root .pb-annual-income-settings > summary small { margin-left:auto; font-size:.75rem; }
-.pebble-root .pb-annual-income-settings > summary svg { flex:none; }
-.pebble-root .pb-annual-income-settings[open] > summary > svg:last-child { transform:rotate(180deg); }
-.pebble-root .pb-annual-income-settings > .card { padding:1rem 1.25rem; margin-top:.6rem; }
 .pebble-root .pb-annual-balance { position:sticky; top:calc(var(--pb-header-h,0px) + .4rem); z-index:5; min-width:0; padding:.85rem 1.1rem; background:var(--mist); box-shadow:var(--shadow); }
 .pebble-root .pb-annual-balance-heading { display:flex; justify-content:space-between; gap:.5rem; color:var(--ink); font-size:.8rem; margin-bottom:.65rem; }
 .pebble-root .pb-annual-balance-heading small { color:var(--ink-soft); font-size:.7rem; }
@@ -280,3 +274,19 @@
   .pebble-root .pb-annual-balance-figures dd { font-size:1rem; }
 }
 @media (prefers-reduced-motion:reduce) { .pebble-root .pb-annual-balance-track > span { transition:none; } }
+
+/* The anchored balance becomes a distinct edge-to-edge shelf under the header. */
+.pebble-root .pb-annual-balance { top:var(--pb-header-h,0px); transition:margin-inline-start .32s var(--pb-ease-out),margin-inline-end .32s var(--pb-ease-out),border-radius .32s var(--pb-ease-out),box-shadow .32s ease,border-color .32s ease; }
+.pebble-root .pb-annual-balance[data-stuck="true"] { margin-inline-start:calc(-1 * var(--balance-bleed-left,0px)); margin-inline-end:calc(-1 * var(--balance-bleed-right,0px)); border-radius:0 0 1rem 1rem; border-color:color-mix(in srgb,var(--pine) 30%,var(--line)); box-shadow:0 1px 0 color-mix(in srgb,var(--pine) 15%,transparent),0 12px 24px -12px color-mix(in srgb,var(--ink) 35%,transparent); }
+.pebble-root .pb-annual-income-toggle { display:flex; align-items:center; gap:.45rem; width:100%; cursor:pointer; color:var(--ink-soft); font:inherit; font-size:.8rem; padding:.25rem .2rem; border:0; background:none; text-align:left; }
+.pebble-root .pb-annual-income-toggle small { margin-left:auto; font-size:.75rem; }
+.pebble-root .pb-annual-income-toggle svg { flex:none; }
+.pebble-root .pb-annual-income-toggle > svg:last-child { transition:transform .3s ease; }
+.pebble-root .pb-annual-income-settings[data-open="true"] .pb-annual-income-toggle > svg:last-child { transform:rotate(180deg); }
+.pebble-root .pb-annual-income-reveal { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .32s var(--pb-ease-out),opacity .22s ease; }
+.pebble-root .pb-annual-income-settings[data-open="true"] .pb-annual-income-reveal { grid-template-rows:1fr; opacity:1; }
+.pebble-root .pb-annual-income-reveal > div { min-height:0; overflow:hidden; }
+.pebble-root .pb-annual-income-reveal .card { padding:1rem 1.25rem; margin-top:.6rem; }
+@media (prefers-reduced-motion:reduce) {
+  .pebble-root .pb-annual-balance,.pebble-root .pb-annual-income-reveal,.pebble-root .pb-annual-income-toggle > svg:last-child { transition:none; }
+}
