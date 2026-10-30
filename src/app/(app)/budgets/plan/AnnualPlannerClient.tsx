@@ -48,7 +48,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
   const [baseAmounts, setBaseAmounts] = useState(data.plan?.baseAmounts ?? data.currentAmounts);
   const [decisions, setDecisions] = useState<Record<string, CategoryDecision>>(() => Object.fromEntries(categories.map(c => [c.id, data.plan?.state === 'scheduled' && data.plan.amounts[c.id] !== undefined ? 'saved' : ''])));
   const [saving, setSaving] = useState(false);
-  const [review, setReview] = useState<'schedule' | 'cancel' | null>(null);
+  const [review, setReview] = useState<'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,15 +91,15 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
     }
     return true;
   };
-  const save = async (state: 'draft' | 'scheduled') => {
+  const save = async () => {
     if (saving || !checkYear()) return;
     if (!valid) { setError(x.invalidAmount); setReview(null); return; }
-    if (state === 'scheduled' && !allChosen) { setError(x.chooseAll); setReview(null); return; }
+    if (!allChosen) { setError(x.chooseAll); setReview(null); return; }
     setSaving(true); setError(null); setNotice(null);
     // Keep the editable snapshot aligned with today's category IDs. Historical
     // snapshots may still contain deleted categories, and new ones start at zero.
     const currentBase = Object.fromEntries(categories.map(c => [c.id, baseAmounts[c.id] ?? 0]));
-    const result = await callAction(() => saveAnnualPlanAction({ year, timeZone: data.timeZone, state,
+    const result = await callAction(() => saveAnnualPlanAction({ year, timeZone: data.timeZone, state: 'scheduled',
       revision: savedPlan?.revision ?? null, amounts, baseAmounts: currentBase }));
     setSaving(false); setReview(null);
     if (!result.ok) {
@@ -110,7 +110,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
     }
     setSavedPlan(result.plan);
     if (result.plan) { setValues(amountStrings(categories, result.plan.amounts)); setBaseAmounts(result.plan.baseAmounts); }
-    setNotice(state === 'draft' ? x.savedDraft : x.savedSchedule);
+    setNotice(x.savedSchedule);
     router.refresh();
   };
   const cancel = async () => {
@@ -127,12 +127,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
     setSavedPlan(result.plan); setValues(amountStrings(categories, result.plan?.amounts ?? data.currentAmounts));
     setBaseAmounts(result.plan?.baseAmounts ?? data.currentAmounts); setDecisions({}); setNotice(x.canceled); router.refresh();
   };
-  const startReview = () => {
-    if (!checkYear()) return;
-    if (!valid) { setError(x.invalidAmount); return; }
-    if (!allChosen) { setError(x.chooseAll); return; }
-    setReview('schedule'); setError(null); setNotice(null);
-  };
+
 
   return (
     <div className="pb-annual">
@@ -193,10 +188,10 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
         })}
       </fieldset>
       <div className="pb-annual-feedback" aria-live="polite">{error && <p className="pb-annual-error" role="alert">{error}</p>}{notice && <p className="pb-annual-success"><Check size={16} />{notice}</p>}{reloadNeeded && <button type="button" className="pill" onClick={() => window.location.reload()}>{x.reload}</button>}</div>
-      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{review === 'schedule' ? t(x.reviewTitle, { year: String(year) }) : x.cancelTitle}</h3><p>{review === 'schedule' ? t(x.reviewNote, { amount: formatCurrency(nextTotal), year: String(year), zone: data.timeZone }) : x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void (review === 'schedule' ? save('scheduled') : cancel())}>{saving ? x.saving : review === 'schedule' ? x.confirmSchedule : x.confirmCancel}</button></div></div></section>}
-      <footer className="pb-annual-footer"><div><span>{dirty ? x.unsaved : savedPlan ? t(savedPlan.state === 'scheduled' ? x.scheduled : x.draft, { year: String(year) }) : t(x.starts, { year: String(year) })}</span><small>{!allChosen ? x.chooseAll : x.savedNote}</small></div><div className="pb-annual-footer-actions">
-        {savedPlan?.state === 'scheduled' ? <button type="button" className="pill" disabled={saving || reloadNeeded || !data.available} onClick={() => { setReview('cancel'); setError(null); }}>{x.cancelSchedule}</button> : <button type="button" className="pill" disabled={saving || reloadNeeded || !data.available || categories.length === 0} onClick={() => void save('draft')}>{saving ? x.saving : x.saveDraft}</button>}
-        <button type="button" className="btn-primary" disabled={saving || reloadNeeded || !data.available || categories.length === 0 || !allChosen || (savedPlan?.state === 'scheduled' && !dirty)} onClick={startReview}>{savedPlan?.state === 'scheduled' ? x.saveChanges : x.schedule}</button>
+      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{x.cancelTitle}</h3><p>{x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void cancel()}>{saving ? x.saving : x.confirmCancel}</button></div></div></section>}
+      <footer className="pb-annual-footer"><div><span>{dirty ? x.unsaved : savedPlan ? t(savedPlan.state === 'scheduled' ? x.scheduled : x.draft, { year: String(year) }) : t(x.starts, { year: String(year) })}</span><small>{!allChosen ? x.chooseAll : t(x.saveHint, { year: String(year) })}</small></div><div className="pb-annual-footer-actions">
+        {savedPlan?.state === 'scheduled' && <button type="button" className="pill" disabled={saving || reloadNeeded || !data.available} onClick={() => { setReview('cancel'); setError(null); }}>{x.cancelSchedule}</button>}
+        <button type="button" className="btn-primary" disabled={saving || reloadNeeded || !data.available || categories.length === 0 || !allChosen || (savedPlan?.state === 'scheduled' && !dirty)} onClick={() => void save()}>{saving ? x.saving : x.savePlan}</button>
       </div></footer>
     </div>
   );

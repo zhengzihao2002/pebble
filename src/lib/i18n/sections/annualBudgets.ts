@@ -1,11 +1,11 @@
 export const annualBudgetsEn = {
-  openPlanner: 'Plan next year', quickSet: 'Quick set', roundedCaption: '(Rounded)', traceCentRounding: 'cent rounding',
+  openPlanner: 'Plan next year', savePlan: 'Save', saveHint: 'Starts automatically on January 1, {year}. You can edit and save changes until then.', quickSet: 'Quick set', roundedCaption: '(Rounded)', traceCentRounding: 'cent rounding',
   traceWithRoom: 'Spending + breathing room', traceAdjusted: 'After adjustment', traceKeep: 'Keep this year’s budget: difference within 5%', traceLimitCut: 'Limit the budget reduction to 20%', traceSeasonal: 'Retain room for seasonal spending', traceSpike: 'Retain budget after excluding a one-off purchase', traceRecentWeight: '70% of last 3 complete months, annualized', traceHistoryWeight: '30% of recorded spending, annualized', traceQuietBasis: 'No spending in 24 complete months', traceQuiet: 'No recorded upcoming expenses or scheduled rules. Zero is optional; spending may return.', traceNoHistory: 'Keep this year’s budget: not enough spending history.', tracePartialSeason: 'Keep this year’s budget: a full seasonal cycle is not yet recorded.', traceLimited: 'Keep this year’s budget: history is too short or incomplete for a reliable reduction.',
 
   equationLast12: 'Last 12 complete months', equationAnnualized: '{count} complete months, annualized', equationTrend: 'Trend-adjusted annual spending', equationSpike: 'Annual spending without one-off purchase', equationRoom: '{percent}% breathing room', equationCalculated: 'Calculated amount', equationBlend: '70% of last 3 complete months, annualized ({recent}) + 30% of recorded annual pace ({history}).', equationExcluded: 'Excludes a one-off {amount}. Add it back if it will recur.', equationKeep: 'Within 5% — keeping this year’s budget.', equationFloor: 'Budget safeguard applied: cuts limited to 20%; no cut for seasonal or one-off spending.', equationCap: 'Annual amount limit applied.', equationRounded: 'Rounded up to the next whole dollar.',
 
   percentRounding: 'Based on this year’s budget; rounded to the nearest whole dollar.',
-  chooseBasis: 'Choose how to set it', chooseCategory: '{name}: choose budget basis', categorySuggested: 'Suggested', average6: '6-month average × 12', last12: 'Spent in last 12 months', categoryPercent: 'Custom percentage', categoryAmount: 'Use entered amount', savedAmount: 'Scheduled amount', percentFor: '{name}: percentage change', categoryChosen: 'Chosen', chosenCount: '{count} of {total} chosen', chooseAll: 'Choose a budget for every category before scheduling. You can save a draft at any time.', pickEachNote: 'Pick a basis for each category, or enter your own annual amount.', editScheduled: 'Your plan is scheduled. Keep editing below, then review and save changes to update it before January 1.',
+  chooseBasis: 'Choose how to set it', chooseCategory: '{name}: choose budget basis', categorySuggested: 'Suggested', average6: '6-month average × 12', last12: 'Spent in last 12 months', categoryPercent: 'Custom percentage', categoryAmount: 'Use entered amount', savedAmount: 'Scheduled amount', percentFor: '{name}: percentage change', categoryChosen: 'Chosen', chosenCount: '{count} of {total} chosen', chooseAll: 'Set an amount for every category before saving.', pickEachNote: 'Pick a basis for each category, or enter your own annual amount.', editScheduled: 'Your saved plan starts automatically on January 1. You can edit it until then; save any changes.',
 
   maximumNote: 'The supported annual limit is {amount}; the suggestion is capped at that amount.',
   roundingNote: 'When calculating a new amount, we round up to the next whole dollar. An unchanged budget keeps its original amount.',
@@ -15,7 +15,7 @@ export const annualBudgetsEn = {
   calculationBasis: 'Amount used for the calculation: {amount}', calculationBuffer: '10% breathing room on that amount: +{amount}', calculationFloor: 'Minimum retained budget: {amount}. Ordinary cuts are limited to 20%; seasonal expenses and unusual purchases do not justify a cut.', keepClose: 'The calculated amount is within 5% of your current budget, so we keep your current amount.', calculationFinal: 'Suggested budget after these rules: {amount}',
 
   chartTitle: 'See your plan take shape', chartNote: 'Compare annual amounts on the same scale. The chart updates as you edit.', allocation: 'Next year’s allocation', chartCurrent: 'Current budget', chartNext: 'Proposed budget', history: 'Spending history', historyNote: 'Recorded spending compared with this year’s budget.', editCurrent: 'Edit this year’s budgets', otherCategories: 'Other categories', noAllocation: 'Add amounts below to see your allocation.',
-  planNextYear: 'Plan {year}', reviewNextYear: 'Review {year} plan', scheduledStatus: '{year} plan scheduled · Starts January 1', draftStatus: '{year} plan draft · Not scheduled', carryStatus: '{year} · Carried forward · Review needed', reviewedStatus: '{year} plan', notReadyStatus: 'Annual planning will be available after setup.', remind: 'Ready for next year?', later: 'Later', reviewCurrent: 'Review plan',
+  planNextYear: 'Plan {year}', reviewNextYear: 'Review {year} plan', scheduledStatus: '{year} plan saved · Starts January 1', draftStatus: '{year} plan · Save to use from January 1', carryStatus: '{year} · Carried forward · Review needed', reviewedStatus: '{year} plan', notReadyStatus: 'Annual planning will be available after setup.', remind: 'Ready for next year?', later: 'Later', reviewCurrent: 'Review plan',
   planYear: 'Plan {year}', title: 'Your {year} plan', back: 'Back to Budgets',
   subtitle: 'A little intention for the year ahead.', starts: 'Starts January 1, {year}',
   zone: 'Midnight in {zone}', currentYear: '{year} budget', nextYear: '{year} plan',
@@ -41,11 +41,11 @@ export const annualBudgetsEn = {
   baseline: 'Recorded annual pace: {amount}', recent: 'Recent annual pace: {amount}', buffer: 'Includes {percent}% breathing room.',
   spike: 'Excluded from the recurring estimate: {amount}. Allow for it separately if it will happen again.', trend: 'Recent spending trend: {percent}%.',
   saveDraft: 'Save draft', savedDraft: 'Draft saved', schedule: 'Schedule for January 1',
-  scheduled: '{year} plan scheduled', draft: '{year} draft', unsaved: 'Unsaved changes',
-  saveChanges: 'Review changes', savedSchedule: 'Your plan is scheduled. This year’s budgets stay as they are.',
-  cancelSchedule: 'Cancel schedule', cancelTitle: 'Cancel this scheduled plan?',
+  scheduled: '{year} plan saved', draft: '{year} plan · Not yet saved for January 1', unsaved: 'Unsaved changes',
+  saveChanges: 'Review changes', savedSchedule: 'Plan saved. It starts automatically on January 1, and you can edit it until then.',
+  cancelSchedule: 'Remove saved plan', cancelTitle: 'Remove this saved plan?',
   cancelNote: 'Your current budgets will continue into next year until you choose another plan.',
-  confirmCancel: 'Cancel scheduled plan', canceled: 'Schedule canceled. Your current budgets are unchanged.',
+  confirmCancel: 'Remove plan', canceled: 'Saved plan removed. Your current budgets are unchanged.',
   reviewTitle: 'Ready for {year}?', reviewNote: 'Your annual budget will be {amount}. It starts automatically on January 1, {year}, at midnight in {zone}.',
   confirmSchedule: 'Confirm schedule', backToEdit: 'Keep editing',
   savedNote: 'Changes to this year’s budgets do not automatically alter a saved plan.',
@@ -60,13 +60,13 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
-  openPlanner: '规划下一年', quickSet: '快速设置', roundedCaption: '（已取整）', traceCentRounding: '分位取整',
+  openPlanner: '规划下一年', savePlan: '保存', saveHint: '将于 {year} 年 1 月 1 日自动启用。在此之前，你可以继续修改并保存。', quickSet: '快速设置', roundedCaption: '（已取整）', traceCentRounding: '分位取整',
   traceWithRoom: '支出加预留余量', traceAdjusted: '调整后金额', traceKeep: '差额不超过 5%，保留今年预算', traceLimitCut: '将预算降幅限制为 20%', traceSeasonal: '保留季节性支出的预算空间', traceSpike: '扣除一次性支出后保留原预算', traceRecentWeight: '最近 3 个完整月份年化支出的 70%', traceHistoryWeight: '历史年化支出的 30%', traceQuietBasis: '连续 24 个完整月份无支出', traceQuiet: '未发现未来已记录支出或定期规则。零预算仅供选择，支出仍可能再次发生。', traceNoHistory: '支出记录不足，保留今年预算。', tracePartialSeason: '尚未记录完整的季节性周期，保留今年预算。', traceLimited: '记录时间较短或不完整，暂时保留今年预算。',
 
   equationLast12: '最近 12 个完整月份', equationAnnualized: '{count} 个完整月份的年化支出', equationTrend: '按近期趋势调整的年支出', equationSpike: '扣除一次性支出后的年支出', equationRoom: '{percent}% 余量', equationCalculated: '计算金额', equationBlend: '最近 3 个完整月份的年化支出（{recent}）× 70% + 历史年化支出（{history}）× 30%。', equationExcluded: '未包含一次性支出 {amount}。如明年仍会发生，请另行预留。', equationKeep: '差额不超过 5%，保留今年预算。', equationFloor: '已应用预算保护：一般降幅不超过 20%；季节性或一次性支出不作为削减依据。', equationCap: '已应用年度金额上限。', equationRounded: '向上取整到元。',
 
   percentRounding: '以今年的预算为基数，并四舍五入到元。',
-  chooseBasis: '选择设置方式', chooseCategory: '{name}：选择预算依据', categorySuggested: '建议金额', average6: '近 6 个月平均 × 12', last12: '最近 12 个月实际支出', categoryPercent: '自定义百分比', categoryAmount: '采用输入的金额', savedAmount: '已安排的金额', percentFor: '{name}：变动百分比', categoryChosen: '已选择', chosenCount: '已选择 {count} / {total}', chooseAll: '安排前请为每个类别选择预算。你可以随时保存草稿。', pickEachNote: '逐项选择预算依据，或直接输入年度金额。', editScheduled: '计划已安排。你仍可在下方修改，并在 1 月 1 日前检查、保存更改。',
+  chooseBasis: '选择设置方式', chooseCategory: '{name}：选择预算依据', categorySuggested: '建议金额', average6: '近 6 个月平均 × 12', last12: '最近 12 个月实际支出', categoryPercent: '自定义百分比', categoryAmount: '采用输入的金额', savedAmount: '已安排的金额', percentFor: '{name}：变动百分比', categoryChosen: '已选择', chosenCount: '已选择 {count} / {total}', chooseAll: '保存前请为每个类别设置金额。', pickEachNote: '逐项选择预算依据，或直接输入年度金额。', editScheduled: '已保存的计划将于 1 月 1 日自动启用。在此之前可继续修改，请记得保存更改。',
 
   maximumNote: '年度金额上限为 {amount}，建议金额已限制在该范围内。',
   roundingNote: '重新计算的金额向上取整到元；保持不变的预算保留原金额。',
@@ -76,7 +76,7 @@ export const annualBudgetsZh: typeof annualBudgetsEn = {
   calculationBasis: '计算采用的基数：{amount}', calculationBuffer: '按该基数预留 10% 余量：+{amount}', calculationFloor: '保留的最低预算为 {amount}。一般降幅不超过 20%；季节性支出和异常大额支出不会作为削减依据。', keepClose: '计算结果与当前预算相差不超过 5%，因此保留当前金额。', calculationFinal: '根据上述规则得出的建议预算：{amount}',
 
   chartTitle: '看清新一年的安排', chartNote: '以相同比例对比年度金额，随编辑实时更新。', allocation: '明年预算分配', chartCurrent: '今年预算', chartNext: '明年预算', history: '支出历史', historyNote: '历史支出与今年预算对比。', editCurrent: '修改今年预算', otherCategories: '其他类别', noAllocation: '在下方输入金额，查看预算分配。',
-  planNextYear: '规划 {year} 年', reviewNextYear: '查看 {year} 年计划', scheduledStatus: '{year} 年计划已安排 · 1 月 1 日启用', draftStatus: '{year} 年草稿 · 尚未安排', carryStatus: '{year} 年 · 已沿用预算 · 待检查', reviewedStatus: '{year} 年计划', notReadyStatus: '完成设置后即可规划下一年。', remind: '准备好迎接新的一年了吗？', later: '稍后再说', reviewCurrent: '查看计划',
+  planNextYear: '规划 {year} 年', reviewNextYear: '查看 {year} 年计划', scheduledStatus: '{year} 年计划已保存 · 1 月 1 日启用', draftStatus: '{year} 年计划 · 保存后于 1 月 1 日启用', carryStatus: '{year} 年 · 已沿用预算 · 待检查', reviewedStatus: '{year} 年计划', notReadyStatus: '完成设置后即可规划下一年。', remind: '准备好迎接新的一年了吗？', later: '稍后再说', reviewCurrent: '查看计划',
   planYear: '规划 {year} 年', title: '你的 {year} 年计划', back: '返回预算',
   subtitle: '从容安排新的一年。', starts: '{year} 年 1 月 1 日启用',
   zone: '{zone} 时区的午夜', currentYear: '{year} 年预算', nextYear: '{year} 年计划',
@@ -102,11 +102,11 @@ export const annualBudgetsZh: typeof annualBudgetsEn = {
   baseline: '记录所示的年支出水平：{amount}', recent: '近期年化支出：{amount}', buffer: '包含 {percent}% 的余量。',
   spike: '经常性支出估算未包含 {amount} 的异常支出。如果明年还会发生，请另外预留预算。', trend: '近期支出趋势：{percent}%。',
   saveDraft: '保存草稿', savedDraft: '草稿已保存', schedule: '安排在 1 月 1 日启用',
-  scheduled: '{year} 年计划已安排', draft: '{year} 年草稿', unsaved: '有未保存的更改',
-  saveChanges: '检查更改', savedSchedule: '计划已安排。今年的预算保持不变。',
-  cancelSchedule: '取消安排', cancelTitle: '取消这个已安排的计划？',
+  scheduled: '{year} 年计划已保存', draft: '{year} 年计划 · 尚未保存为 1 月 1 日启用', unsaved: '有未保存的更改',
+  saveChanges: '检查更改', savedSchedule: '计划已保存，将于 1 月 1 日自动启用。在此之前仍可修改。',
+  cancelSchedule: '移除已保存的计划', cancelTitle: '移除此已保存的计划？',
   cancelNote: '在你选择其他计划之前，当前预算将延续到明年。',
-  confirmCancel: '取消计划安排', canceled: '已取消安排。当前预算保持不变。',
+  confirmCancel: '移除计划', canceled: '已移除保存的计划。当前预算保持不变。',
   reviewTitle: '准备好迎接 {year} 年了吗？', reviewNote: '年度预算将为 {amount}，在 {year} 年 1 月 1 日 {zone} 时区的午夜自动启用。',
   confirmSchedule: '确认安排', backToEdit: '继续编辑',
   savedNote: '今年预算的变动不会自动更改已保存的计划。',
