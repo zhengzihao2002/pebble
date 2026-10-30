@@ -65,6 +65,7 @@ export const secondaryNavItems = navItems.filter((i) => !PRIMARY_NAV_HREFS.inclu
  * disagree about which item is active.
  */
 export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === '/budgets') return pathname === href || pathname.startsWith('/budgets/');
   if (href === '/settings') {
     return pathname === '/settings' || pathname.startsWith('/account/');
   }

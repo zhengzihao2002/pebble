@@ -44,6 +44,7 @@ export const budgetsEn = {
   cumulativeLabel: '{name}, spending added up through {year}',
   endOf: 'End of {month}',
   aboutMonthly: 'about {amount} a month',
+  noRecordedPlan: 'No saved budget plan for {year}. Showing spending only.',
 
   // Placeholders: a new account still sees every card, with what it needs.
   forecastNeedsBudget: 'Set a budget to see where the year is heading.',
@@ -91,6 +92,7 @@ export const budgetsZh: typeof budgetsEn = {
   cumulativeLabel: '{name}，{year} 年累计支出',
   endOf: '{month}底',
   aboutMonthly: '约每月 {amount}',
+  noRecordedPlan: '{year} 年没有保存的预算计划，仅显示支出。',
 
   forecastNeedsBudget: '设置预算后，这里会预测全年的走向。',
   ribbonNeeds: '至少设置一项预算后，这里会展示收入如何分配到各项预算和储蓄。',

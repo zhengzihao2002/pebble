@@ -1,14 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import { computeCategorySpent } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { estimateAnnualIncomeTrailing12 } from '@/lib/analysis/annualIncome';
-import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
-import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
-import { todayInZone } from '@/lib/recurring/occurrences';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { BudgetPlanCard } from '@/components/budgets/BudgetPlanCard';
 import { BudgetRows } from '@/components/budgets/BudgetRows';
@@ -16,28 +13,24 @@ import { UnbudgetedList } from '@/components/budgets/UnbudgetedList';
 import { IncomeControl, MANUAL_FREQUENCY_MULTIPLIER } from '@/components/budgets/IncomeControl';
 import type { BudgetEntry } from '@/components/budgets/types';
 import type { BudgetHistory } from '@/components/budgets/BudgetDetails';
+import type { AnnualBudgetContext } from '@/lib/budgets/annualTypes';
+import { AnnualPlanEntry } from '@/components/budgets/AnnualPlanEntry';
 
 interface BudgetsClientProps {
   transactions: Transaction[];
   categories: CategoryItem[];
   budgets: Record<string, number>;
+  annualContext: AnnualBudgetContext;
+  budgetsByYear: Record<string, Record<string, number> | null>;
+  today: string;
 }
 
-export function BudgetsClient({ transactions, categories, budgets }: BudgetsClientProps) {
+export function BudgetsClient({ transactions, categories, budgets, annualContext, budgetsByYear, today }: BudgetsClientProps) {
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
-  // Zone-aware 'YYYY-MM-DD', resolved in the browser as on the Dashboard, so a
-  // Settings > Time Zone override is honoured. Null for the first frame keeps
-  // the server render and the first client render equal.
-  const timeZoneOverride = useTimeZoneOverride();
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => {
-    setToday(todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
-  }, [timeZoneOverride]);
-
-  // Budgets are annual and reset each year, so this uses the viewer's current
-  // year (zone-aware once known; the browser's clock for the first frame).
-  const year = today ? Number(today.slice(0, 4)) : new Date().getFullYear();
+  // Server-resolved in the saved planning timezone; the year boundary refresh
+  // remounts this screen so it cannot retain last year's totals or editors.
+  const year = Number(today.slice(0, 4));
   const entries: BudgetEntry[] = useMemo(() => {
     const categorySpent = computeCategorySpent(transactions, year);
 
@@ -78,8 +71,8 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
       if (i === undefined) continue;
       (byCat[x.category] ??= Array(months.length).fill(0))[i] += Math.abs(x.amount);
     }
-    return { months, byCat, current: months[months.length - 1] };
-  }, [transactions, today]);
+    return { months, byCat, current: months[months.length - 1], budgetsByYear };
+  }, [transactions, today, budgetsByYear]);
 
   const totalBudget = entries.reduce((s, e) => s + e.budget, 0);
   const totalSpent = entries.reduce((s, e) => s + e.spent, 0);
@@ -120,6 +113,7 @@ export function BudgetsClient({ transactions, categories, budgets }: BudgetsClie
   // render; a card with nothing to show says what it needs.
   return (
     <div className="pb-bud">
+      <AnnualPlanEntry context={annualContext} today={today} hasBudgets={Object.values(budgets).some(amount => amount > 0)} />
       <BudgetPlanCard
         entries={entries}
         totalBudget={totalBudget}

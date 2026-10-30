@@ -11,6 +11,7 @@ import { reportsEn, reportsZh } from './reports';
 import { analysisEn, analysisZh } from './analysis';
 import { insightsEn, insightsZh } from './insights';
 import { budgetsEn, budgetsZh } from './budgets';
+import { annualBudgetsEn, annualBudgetsZh } from './annualBudgets';
 import { goalsEn, goalsZh } from './goals';
 import { scheduledEn, scheduledZh } from './scheduled';
 import { settingsEn, settingsZh } from './settings';
@@ -26,6 +27,7 @@ export const uxEn = {
   analysis: analysisEn,
   insights: insightsEn,
   budgets: budgetsEn,
+  annualBudgets: annualBudgetsEn,
   goals: goalsEn,
   scheduled: scheduledEn,
   settings: settingsEn,
@@ -42,6 +44,7 @@ export const uxZh: typeof uxEn = {
   analysis: analysisZh,
   insights: insightsZh,
   budgets: budgetsZh,
+  annualBudgets: annualBudgetsZh,
   goals: goalsZh,
   scheduled: scheduledZh,
   settings: settingsZh,

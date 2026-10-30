@@ -569,3 +569,34 @@ export type BalanceAdjustmentRow = typeof balanceAdjustment.$inferSelect;
 export type BalanceAdjustmentInsert = typeof balanceAdjustment.$inferInsert;
 export type RecurringRuleRow = typeof recurringRule.$inferSelect;
 export type RecurringRuleInsert = typeof recurringRule.$inferInsert;
+
+/** Annual budgets are snapshots. Date-based reads activate scheduled plans. */
+export const annualBudgetPlan = pgTable('annual_budget_plan', {
+  userId: uuid('user_id').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  year: integer().notNull(),
+  state: text().notNull(),
+  timeZone: text('time_zone').notNull(),
+  effectiveAt: timestamp('effective_at', { withTimezone: true, mode: 'string' }).notNull(),
+  revision: integer().default(sql`nextval('annual_budget_plan_revision_seq')`).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.year] }),
+  check('annual_budget_plan_year_check', sql`${table.year} BETWEEN 2000 AND 9999`),
+  check('annual_budget_plan_state_check', sql`${table.state} IN ('draft', 'scheduled')`),
+  check('annual_budget_plan_revision_check', sql`${table.revision} > 0`),
+]);
+
+/** Category IDs survive renames; name snapshots survive category deletion. */
+export const annualBudgetPlanItem = pgTable('annual_budget_plan_item', {
+  userId: uuid('user_id').notNull(),
+  year: integer().notNull(),
+  categoryId: text('category_id').notNull(),
+  categoryName: text('category_name').notNull(),
+  annualAmount: numeric('annual_amount', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+  baseAmount: numeric('base_amount', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.year, table.categoryId] }),
+  foreignKey({ columns: [table.userId, table.year], foreignColumns: [annualBudgetPlan.userId, annualBudgetPlan.year] }).onDelete('cascade'),
+  check('annual_budget_plan_item_amount_check', sql`${table.annualAmount} >= 0 AND ${table.baseAmount} >= 0`),
+]);

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { and, asc, desc, eq, isNull, ne, or, lt } from 'drizzle-orm';
 import { db } from '@/db';
+import { getEffectiveAnnualBudgets } from '@/lib/budgets/annualData';
 import {
   balanceAdjustment,
   budget,
@@ -78,11 +79,13 @@ export async function getIncome(userId: string): Promise<IncomeTransaction[]> {
 }
 
 /**
- * Returns category -> annual budget amount. Categories with no row are absent
- * from the map rather than present with 0, so callers can distinguish "unset"
- * from "deliberately zero" if they ever need to.
+ * Returns category -> annual budget amount from the effective yearly plan.
+ * Explicit annual-plan zeroes are authoritative. Before annual adoption, use
+ * legacy rows (where categories without a budget are absent from the map).
  */
-export async function getBudgets(userId: string): Promise<Record<string, number>> {
+export async function getBudgets(userId: string, year?: number): Promise<Record<string, number>> {
+  const annual = await getEffectiveAnnualBudgets(userId, year);
+  if (annual !== null) return annual;
   const rows = await db
     .select()
     .from(budget)

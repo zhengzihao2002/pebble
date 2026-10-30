@@ -1,0 +1,104 @@
+/* Annual planning keeps the budget page's mist surfaces, typography and pine actions. */
+.pebble-root .pb-annual { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; padding-bottom: 1rem; }
+.pebble-root .pb-annual-back { display: inline-flex; align-items: center; align-self: flex-start; gap: .45rem; color: var(--ink-soft); text-decoration: none; font-size: .875rem; }
+.pebble-root .pb-annual-back:hover { color: var(--pine); }
+.pebble-root .pb-annual-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .25rem .2rem; }
+.pebble-root .pb-annual-heading h2 { font-size: 1.75rem; line-height: 1.2; font-weight: 600; color: var(--ink); margin: .35rem 0 0; }
+.pebble-root .pb-annual-eyebrow { font-size: .875rem; color: var(--ink-soft); margin: 0; }
+.pebble-root .pb-annual-date { display: inline-flex; align-items: center; gap: .65rem; color: var(--pine); font-size: .875rem; }
+.pebble-root .pb-annual-date small { display: block; color: var(--ink-soft); margin-top: .2rem; font-size: .75rem; }
+.pebble-root .pb-annual-summary { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr); align-items: center; gap: 1.25rem; padding: 1.5rem; background: linear-gradient(115deg,color-mix(in srgb,var(--pine) 7%,var(--mist)),var(--mist) 64%,color-mix(in srgb,var(--gold) 6%,var(--mist))); }
+.pebble-root .pb-annual-summary > div { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.pebble-root .pb-annual-summary span { font-size: .8rem; color: var(--ink-soft); }
+.pebble-root .pb-annual-summary strong { font-size: 1.55rem; font-weight: 600; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-summary small { font-size: .8rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-summary-arrow { color: var(--ink-soft); }
+.pebble-root .pb-annual-difference { border-left: 1px solid var(--line); padding-left: 1.25rem; }
+.pebble-root .pb-annual-difference strong { font-size: 1.15rem; }
+.pebble-root :is(.pb-annual-start,.pb-annual-categories) { min-width: 0; margin: 0; padding: 1.25rem 1.5rem; }
+.pebble-root .pb-annual-start .pb-sec-head, .pebble-root .pb-annual-categories > .pb-sec-head { margin-bottom: 1.2rem; }
+.pebble-root .pb-annual-starter-desktop { display: flex; }
+.pebble-root .pb-annual-starter-mobile { display: none; }
+.pebble-root .pb-annual-insight-note { display: flex; gap: .55rem; align-items: flex-start; max-width: 48rem; margin: 1rem 0 0; color: var(--ink-soft); font-size: .8rem; line-height: 1.6; }
+.pebble-root .pb-annual-insight-note svg { flex-shrink: 0; margin-top: .15rem; color: var(--pine); }
+.pebble-root .pb-annual-custom { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-top: 1rem; }
+.pebble-root .pb-annual-custom label { display: flex; flex-direction: column; gap: .4rem; font-size: .8rem; color: var(--ink-soft); }
+.pebble-root .pb-annual-custom input { width: 8rem; border-radius: .7rem; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 1rem; padding: .6rem .75rem; }
+.pebble-root .pb-annual-base-note { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-left: 3px solid var(--pine); padding: .5rem 1rem; font-size: .85rem; color: var(--ink-soft); line-height: 1.6; }
+.pebble-root .pb-annual-column-head, .pebble-root .pb-annual-row { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr); column-gap: 1.5rem; }
+.pebble-root .pb-annual-column-head { padding: 0 0 .75rem; color: var(--ink-soft); font-size: .75rem; }
+.pebble-root .pb-annual-column-head > :not(:first-child) { text-align: right; }
+.pebble-root .pb-annual-row { padding: 1.1rem 0; border-top: 1px solid var(--line); align-items: start; row-gap: .8rem; }
+.pebble-root .pb-annual-category { display: flex; align-items: center; gap: .65rem; padding-top: .5rem; min-width: 0; }
+.pebble-root .pb-annual-category strong { font-size: .95rem; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-category .pb-budget-icon { width: 2.2rem; height: 2.2rem; border-radius: .7rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.pebble-root .pb-annual-current { color: var(--ink-soft); text-align: right; padding-top: .8rem; font-size: 1rem; overflow-wrap: anywhere; }
+.pebble-root .pb-annual-mobile-label { display: none; }
+.pebble-root .pb-annual-amount { display: flex; flex-direction: column; gap: .4rem; align-items: flex-end; min-width: 0; }
+.pebble-root .pb-annual-money { position: relative; display: flex; align-items: center; width: 100%; max-width: 15rem; }
+.pebble-root .pb-annual-money > span { position: absolute; left: .75rem; color: var(--ink-soft); font-size: 1rem; pointer-events: none; }
+.pebble-root .pb-annual-money input { box-sizing: border-box; min-width: 0; width: 100%; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: .75rem; padding: .65rem .75rem .65rem 1.6rem; font-size: 1rem; line-height: 1.5; text-align: right; }
+.pebble-root .pb-annual-amount small { font-size: .75rem; line-height: 1.5; color: var(--ink-soft); text-align: right; }
+.pebble-root .pb-annual-recommendation { grid-column: 1/-1; min-width: 0; border-radius: .85rem; background: color-mix(in srgb,var(--pine) 4%,transparent); }
+.pebble-root .pb-annual-recommendation > summary { display: flex; align-items: center; gap: .45rem; padding: .65rem .8rem; font-size: .8rem; color: var(--pine); cursor: pointer; list-style: none; flex-wrap: wrap; }
+.pebble-root .pb-annual-recommendation > summary::-webkit-details-marker { display: none; }
+.pebble-root .pb-annual-recommendation > summary > svg:first-child { flex-shrink: 0; }
+.pebble-root .pb-annual-recommendation > summary > svg:last-child { margin-left: auto; flex-shrink: 0; transition: transform .2s; }
+.pebble-root .pb-annual-recommendation[open] > summary > svg:last-child { transform: rotate(180deg); }
+.pebble-root .pb-annual-rec-percent { color: var(--ink-soft); border-left: 1px solid var(--line); padding-left: .5rem; }
+.pebble-root .pb-annual-reason { padding: 0 .9rem .9rem; color: var(--ink-soft); font-size: .8rem; line-height: 1.65; }
+.pebble-root .pb-annual-reason p { margin: .35rem 0; }
+.pebble-root .pb-annual-reason > p:first-child { color: var(--ink); }
+.pebble-root .pb-annual-reason .pill { display: inline-flex; align-items: center; gap: .35rem; margin-top: .5rem; }
+.pebble-root .pb-annual-evidence { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .7rem; margin: .5rem 0; color: var(--ink-soft); font-size: .75rem; }
+.pebble-root .pb-annual-evidence > span:first-child { padding: .1rem .5rem; border-radius: 99px; background: color-mix(in srgb,var(--pine) 8%,transparent); color: var(--pine); }
+.pebble-root .pb-annual-feedback:empty { display: none; }
+.pebble-root .pb-annual-error { margin: 0; color: var(--wine); font-size: .875rem; line-height: 1.65; }
+.pebble-root .pb-annual-success { display: flex; gap: .4rem; align-items: flex-start; margin: 0; color: var(--pine); font-size: .875rem; line-height: 1.6; }
+.pebble-root .pb-annual-feedback .pill { margin-top: .65rem; }
+.pebble-root .pb-annual-review { display: flex; gap: 1rem; padding: 1.5rem; border-color: color-mix(in srgb,var(--pine) 32%,var(--line)); }
+.pebble-root .pb-annual-review > svg { flex-shrink: 0; color: var(--pine); margin-top: .2rem; }
+.pebble-root .pb-annual-review > div { flex: 1; min-width: 0; }
+.pebble-root .pb-annual-review h3 { font-size: 1.1rem; font-weight: 600; margin: 0; color: var(--ink); }
+.pebble-root .pb-annual-review p { margin: .5rem 0 1rem; font-size: .875rem; line-height: 1.7; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-review-actions { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.pebble-root .pb-annual-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: .5rem 0; }
+.pebble-root .pb-annual-footer > div:first-child { flex: 1 1 18rem; min-width: 0; color: var(--ink); font-size: .875rem; }
+.pebble-root .pb-annual-footer small { display: block; max-width: 38rem; margin-top: .35rem; color: var(--ink-soft); font-size: .75rem; line-height: 1.6; }
+.pebble-root .pb-annual-footer-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.pebble-root .pb-annual-message { padding: 1.25rem 1.5rem; color: var(--ink-soft); font-size: .875rem; line-height: 1.7; }
+.pebble-root .pb-annual :is(input,select,button,summary,a):focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+.pebble-root .pb-annual button:disabled { cursor: default; opacity: .55; }
+.pebble-root .pb-annual fieldset { border-width: 1px; }
+@container content (max-width: 639px) {
+  .pebble-root .pb-annual { gap: 1rem; }
+  .pebble-root .pb-annual-heading h2 { font-size: 1.5rem; }
+  .pebble-root .pb-annual-heading { align-items: flex-start; flex-direction: column; }
+  .pebble-root .pb-annual-summary { grid-template-columns: minmax(0,1fr); padding: 1.2rem; gap: 1rem; }
+  .pebble-root .pb-annual-summary > div { display: grid; grid-template-columns: minmax(0,1fr); gap: .25rem; }
+  .pebble-root .pb-annual-summary strong { font-size: 1.5rem; }
+  .pebble-root .pb-annual-summary-arrow { display: none; }
+  .pebble-root .pb-annual-difference { border-left: 0; padding-left: 0; padding-top: .85rem; border-top: 1px solid var(--line); }
+  .pebble-root .pb-annual-difference strong { font-size: 1.1rem; }
+  .pebble-root :is(.pb-annual-start,.pb-annual-categories) { padding: 1.1rem; }
+  .pebble-root .pb-annual-starter-desktop { display: none; }
+  .pebble-root .pb-annual-starter-mobile { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: var(--ink-soft); font-size: .875rem; }
+  .pebble-root .pb-annual-native { position: relative; min-width: 0; flex: 1; max-width: 15rem; }
+  .pebble-root .pb-annual-native select { appearance: none; box-sizing: border-box; width: 100%; border: 1px solid var(--line); border-radius: .75rem; background: var(--paper); color: var(--ink); padding: .7rem 2rem .7rem .8rem; font: inherit; font-size: 1rem; }
+  .pebble-root .pb-annual-native > svg { position: absolute; right: .65rem; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .pebble-root .pb-annual-column-head { display: none; }
+  .pebble-root .pb-annual-row { grid-template-columns: minmax(0,1fr); column-gap: 0; gap: .75rem; padding: 1rem 0; }
+  .pebble-root .pb-annual-category { padding-top: 0; }
+  .pebble-root .pb-annual-current { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding-top: 0; }
+  .pebble-root .pb-annual-mobile-label { display: inline; font-size: .8rem; color: var(--ink-soft); }
+  .pebble-root .pb-annual-amount { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: .4rem; }
+  .pebble-root .pb-annual-amount > .pb-annual-mobile-label { text-align: left; }
+  .pebble-root .pb-annual-money { max-width: none; }
+  .pebble-root .pb-annual-recommendation { grid-column: 1; }
+  .pebble-root .pb-annual-review { padding: 1.1rem; gap: .7rem; }
+  .pebble-root .pb-annual-footer-actions { width: 100%; flex-direction: column-reverse; align-items: stretch; }
+  .pebble-root .pb-annual-footer-actions > button { width: 100%; justify-content: center; min-height: 2.75rem; }
+  .pebble-root .pb-annual-review-actions { align-items: stretch; }
+  .pebble-root .pb-annual-review-actions > button { min-height: 2.75rem; flex: 1 1 10rem; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .pebble-root .pb-annual-recommendation > summary > svg { transition: none; } }

@@ -25,6 +25,7 @@ import { generateId, generateTransId } from '@/lib/ids';
 import { isClientId } from '@/lib/offline/clientId';
 import { addToGoalGuarded } from '@/lib/data/goalAllocation';
 import { userWriteLockStatement } from '@/lib/data/userWriteLock';
+import { patchCurrentAnnualBudgets } from '@/lib/budgets/annualData';
 import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
 import type {
   PaymentMethod,
@@ -92,7 +93,7 @@ const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const MUTATED_ROUTES = ['/dashboard', '/transactions', '/reports', '/budgets', '/goals', '/scheduled', '/settings'];
+const MUTATED_ROUTES = ['/dashboard', '/transactions', '/reports', '/budgets', '/budgets/plan', '/analysis', '/insights', '/goals', '/scheduled', '/settings'];
 
 function revalidateAll(): void {
   for (const route of MUTATED_ROUTES) {
@@ -682,6 +683,11 @@ async function modifyBudgets(
           { category },
         );
       }
+    }
+
+    if (await patchCurrentAnnualBudgets(userId, budgets)) {
+      revalidateAll();
+      return { ok: true };
     }
 
     for (const [category, amount] of entries) {

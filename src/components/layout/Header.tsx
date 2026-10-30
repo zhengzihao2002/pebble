@@ -155,7 +155,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   // than falling back to Dashboard - whose greeting and Add transaction
   // button made those pages look like the wrong place.
   const accountMeta: PageMeta = { title: d.account.title, subtitle: d.ux.shell.subtitleAccount };
-  const current = pageMeta[pathname] ?? (pathname.startsWith('/account/') ? accountMeta : pageMeta['/dashboard']);
+  const current = pageMeta[pathname] ?? (pathname.startsWith('/budgets/') ? pageMeta['/budgets'] : pathname.startsWith('/account/') ? accountMeta : pageMeta['/dashboard']);
   // The page's own nav icon beside its title, so the header and the nav read
   // as one system. Settings' icon on /account/*, matching the lit nav item.
   const PageIcon = currentNavItem(pathname)?.icon;

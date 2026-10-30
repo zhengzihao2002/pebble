@@ -1,0 +1,32 @@
+# Annual budget planning
+
+`/budgets/plan` always prepares the next calendar year. Yearly plans contain fixed category amounts, not a percentage rule that repeats indefinitely. Drafts never affect live budgets. Scheduled plans take effect at midnight January 1 in the timezone shown on the plan. The budget page and planner refresh at that boundary and re-check on focus, reconnect, and return from the browser's back/forward cache.
+
+## Production setup
+
+The repository requires schema migrations to be reviewed SQL run manually in Neon's SQL Editor (see `src/db/schema.ts`). Run the entire `migrations/20261030_annual_budget_plans.sql` file against the app's database. It is transactional and rerunnable. It adds two tables, a revision sequence, and three atomic mutation functions; it does not replace or delete existing budgets, transactions, accounts, or auth records. Do not run the synthetic test fixtures against Neon.
+
+The app safely reads existing budgets while this migration is absent. The planner clearly reports that saving is unavailable. Once the migration succeeds, reload Budgets; no environment variable or cron configuration is needed.
+
+Before migration, preserve the existing Neon snapshot. Do not drop the new tables as a rollback after people have started saving plans: they hold the authoritative annual history. Older application builds only read legacy budgets, so rolling code back after annual adoption can show stale amounts. Prefer a forward fix that preserves the annual tables.
+
+## Data and concurrency
+
+Every read and write is scoped to the authenticated user. A per-user transaction lock serializes saves, cancellations, and current-budget edits. A sequence-backed revision prevents stale tabs from editing a plan that was canceled and recreated. Future-plan saves capture a current-year baseline without changing legacy rows. Current-year edits materialize a new year if the amounts were carried forward, preserving previous years.
+
+Category IDs link amounts to live names. Renaming follows the category; deleting a category leaves its historical name and amount intact. Newly created categories start unbudgeted. Zero amounts in an annual plan are authoritative and do not fall back to legacy amounts. A missed year carries the latest effective plan forward and is marked for review; percentage increases never repeat without approval.
+
+Older years without a captured plan show spending without inventing historical budget reference lines. Existing historical values cannot be reconstructed from the yearless legacy table.
+
+## Recommendations
+
+Suggestions use recorded complete months, sustained changes in spending, and a disclosed 10% allowance. Sparse history, seasonal concentration, dormant recording periods, and unusual large purchases receive conservative handling and explanations. Proposed reductions need a full observed year and are limited to 20% per planning session. These are optional planning estimates, not predictions; the user reviews and schedules the actual amounts.
+
+## Verification
+
+- `node --test tests/annualBudgetCalendar.test.cjs tests/annualBudgetRecommendations.test.cjs`
+- `bash scripts/test-annual-budgets-db.sh` (local Docker required; creates and removes its own PostgreSQL container with synthetic fixtures, no Neon connection or production credentials)
+- `npx tsc --noEmit`
+- `npm run build` with database and auth URLs overridden to unused localhost ports during isolated verification
+
+Browser fixtures also verify English/Chinese, light/dark, mobile/desktop, large amounts, save/review/schedule/cancel/conflicts, recorded yearly budget charts, and New Year rollover/offline recovery. No production sign-in or test account is needed.

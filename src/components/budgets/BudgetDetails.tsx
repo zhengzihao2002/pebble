@@ -14,6 +14,8 @@ export interface BudgetHistory {
   byCat: Record<string, number[]>;
   /** The current month, 'YYYY-MM' - included in months, still in progress. */
   current: string;
+  /** Saved annual budgets by category name. Null means that year's plan was never recorded. */
+  budgetsByYear?: Record<string, Record<string, number> | null>;
 }
 
 type TipItem = { payload?: { key?: string; amount?: number; current?: boolean } };
@@ -103,7 +105,8 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   const { d, t, locale } = useTranslation();
   const ux = d.ux.budgets;
   const currentYear = history ? Number(history.current.slice(0, 4)) : new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
+  // null follows the current year, including an already-open January 1 rollover.
+  const [year, setYear] = useState<number | null>(null);
   const [view, setView] = useState<'month' | 'cumulative'>('month');
   const series = history?.byCat[name] ?? null;
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
@@ -126,7 +129,13 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   // This year always; each of the previous three only when it has spending here.
   const yearTotal = (yy: number) => history.months.reduce((s, k, i) => (k.startsWith(`${yy}-`) ? s + series[i] : s), 0);
   const years = [0, 1, 2, 3].map((n) => currentYear - n).filter((yy) => yy === currentYear || yearTotal(yy) > 0);
-  const shown = years.includes(year) ? year : currentYear;
+  const shown = year !== null && years.includes(year) ? year : currentYear;
+  // A current amount must never be projected backwards into an earlier year.
+  // An existing plan with no category amount means unbudgeted (0); an absent
+  // historical plan means unknown (null), not a zero-dollar budget.
+  const savedYear = history.budgetsByYear?.[String(shown)];
+  const shownBudget = shown === currentYear ? budget : savedYear ? (savedYear[name] ?? 0) : null;
+  const hasBudget = shownBudget !== null && shownBudget > 0;
 
   const data = Array.from({ length: 12 }, (_, mi) => {
     const key = `${shown}-${pad(mi + 1)}`;
@@ -167,16 +176,16 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
     const label = mi === 0
       ? new Date(shown, 0, 1).toLocaleDateString(tag, { month: 'short', day: 'numeric', year: 'numeric' })
       : t(ux.endOf, { month: monthDate(data[mi - 1].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) });
-    cum.push({ x: ticks[mi], label, spent: Math.round(run * 100) / 100, pace: budget > 0 ? budget * ticks[mi] : null });
+    cum.push({ x: ticks[mi], label, spent: Math.round(run * 100) / 100, pace: hasBudget ? shownBudget! * ticks[mi] : null });
     run += data[mi].amount;
   }
   cum.push({
     x: todayX,
     label: isCurrent ? ux.todayTick : t(ux.endOf, { month: monthDate(data[11].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) }),
-    spent: Math.round(run * 100) / 100, pace: budget > 0 ? budget * todayX : null, today: isCurrent,
+    spent: Math.round(run * 100) / 100, pace: hasBudget ? shownBudget! * todayX : null, today: isCurrent,
   });
   // The pace line carries on to Dec 31 past today.
-  if (isCurrent && budget > 0) cum.push({ x: 1, label: '', spent: null, pace: budget });
+  if (isCurrent && hasBudget) cum.push({ x: 1, label: '', spent: null, pace: shownBudget });
 
   const suggestions = [
     { key: 'typical', value: typical, hint: d.budgetSuggest.averageHint, caption: d.budgetRow.typicalCaption },
@@ -191,7 +200,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             <div role="group" aria-label={d.budgetDetails.yearLabel} className="pb-bud-det-years">
               {years.map((yy) => (
                 <button
-                  key={yy} type="button" onClick={() => setYear(yy)} aria-pressed={yy === shown}
+                  key={yy} type="button" onClick={() => setYear(yy === currentYear ? null : yy)} aria-pressed={yy === shown}
                   className={`pill pb-tnum ${yy === shown ? 'active' : ''}`}
                 >
                   {yy}
@@ -209,8 +218,8 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval={0} />
-                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={budget} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} />} />
-                {budget > 0 && <ReferenceLine y={budget / 12} stroke="var(--ink-soft)" strokeDasharray="4 4" />}
+                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={shownBudget ?? 0} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} />} />
+                {hasBudget && <ReferenceLine y={shownBudget! / 12} stroke="var(--ink-soft)" strokeDasharray="4 4" />}
                 <Bar dataKey="amount" name={name} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
                   {data.map((p) => <Cell key={p.key} fill={color} fillOpacity={p.current ? 0.5 : 1} />)}
                 </Bar>
@@ -228,7 +237,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
                 />
                 <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} />} />
                 {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 10, fill: 'var(--ink-soft)' }} />}
-                {budget > 0 && (
+                {hasBudget && (
                   <Line dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
                 )}
                 <Area
@@ -239,11 +248,12 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             </ResponsiveContainer>
           </div>
         )}
+        {shownBudget === null && <p className="pb-bud-det-empty" role="note">{t(ux.noRecordedPlan, { year: String(shown) })}</p>}
         <div className="pb-bud-det-foot">
           <p className="font-mono-tab">
             {t(d.budgetDetails.spentIn, { year: String(shown), amount: formatCurrency(spentInYear) })}
           </p>
-          {budget > 0 && (
+          {hasBudget && (
             <span className="pb-bud-det-key" aria-hidden="true">
               <span className="pb-bud-det-key-dash" />
               {view === 'month' ? d.budgetRow.tipMonthly : ux.evenPace}

@@ -1,0 +1,9 @@
+.pebble-root .pb-annual-entry { display: flex; align-items: center; gap: 0.8rem; padding: 1rem 1.25rem; }
+.pebble-root .pb-annual-entry-copy { flex: 1; min-width: 0; }
+.pebble-root .pb-annual-entry-copy p { margin: 0; font-size: var(--pb-text-sm); color: var(--ink); }
+.pebble-root .pb-annual-entry-copy small { color: var(--ink-soft); }
+.pebble-root .pb-annual-entry-link { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; flex-shrink: 0; }
+@media (max-width: 639px) {
+  .pebble-root .pb-annual-entry { flex-wrap: wrap; padding: 1rem 1.1rem; }
+  .pebble-root .pb-annual-entry-link { margin-left: auto; }
+}
