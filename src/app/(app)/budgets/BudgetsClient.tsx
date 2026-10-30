@@ -14,19 +14,16 @@ import { IncomeControl, MANUAL_FREQUENCY_MULTIPLIER } from '@/components/budgets
 import type { BudgetEntry } from '@/components/budgets/types';
 import { budgetHistoryThroughToday } from '@/lib/budgets/spendingProjection';
 import type { BudgetHistory } from '@/components/budgets/BudgetDetails';
-import type { AnnualBudgetContext } from '@/lib/budgets/annualTypes';
-import { AnnualPlanEntry } from '@/components/budgets/AnnualPlanEntry';
 
 interface BudgetsClientProps {
   transactions: Transaction[];
   categories: CategoryItem[];
   budgets: Record<string, number>;
-  annualContext: AnnualBudgetContext;
   budgetsByYear: Record<string, Record<string, number> | null>;
   today: string;
 }
 
-export function BudgetsClient({ transactions, categories, budgets, annualContext, budgetsByYear, today }: BudgetsClientProps) {
+export function BudgetsClient({ transactions, categories, budgets, budgetsByYear, today }: BudgetsClientProps) {
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Server-resolved in the saved planning timezone; the year boundary refresh
@@ -100,7 +97,6 @@ export function BudgetsClient({ transactions, categories, budgets, annualContext
   // render; a card with nothing to show says what it needs.
   return (
     <div className="pb-bud">
-      <AnnualPlanEntry context={annualContext} today={today} hasBudgets={Object.values(budgets).some(amount => amount > 0)} />
       <BudgetPlanCard
         entries={entries}
         totalBudget={totalBudget}

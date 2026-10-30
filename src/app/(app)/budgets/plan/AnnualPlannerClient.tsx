@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CalendarCheck, Check, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarCheck, Check } from 'lucide-react';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { RecurringRule, Transaction } from '@/types';
 import type { AnnualPlannerData, AnnualPlan } from '@/lib/budgets/annualTypes';
@@ -20,7 +20,7 @@ import { CategoryPlanChoice, type CategoryDecision } from '@/components/budgets/
 import { budgetQuickSet, budgetHistoryThroughToday } from '@/lib/budgets/spendingProjection';
 import { BudgetDetails, type BudgetHistory } from '@/components/budgets/BudgetDetails';
 import { AnnualPlanCharts } from '@/components/budgets/AnnualPlanCharts';
-import { PlanDisclosure } from '@/components/budgets/PlanDisclosure';
+import { CategoryPlanDetails } from '@/components/budgets/CategoryPlanDetails';
 import { RecommendationEquation } from '@/components/budgets/RecommendationEquation';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 
@@ -170,20 +170,14 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
               summary={<><span>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</span>
               {Number.isFinite(amount) && amount >= 0 && <span>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</span>}</>}
               onChoose={(method, chosenAmount) => chooseCategory(c.id, method, chosenAmount)} />
-            <div className="pb-annual-row-tools">
-            <PlanDisclosure className="pb-annual-history" title={<span>{x.history}</span>}>
+            <CategoryPlanDetails name={name} history={<>
               <p className="pb-plan-history-note">{x.historyNote}</p>
               <BudgetDetails name={c.name} color={c.color} budget={current} history={history} today={today} hideQuickSet
                 onSuggest={value => chooseCategory(c.id, 'amount', value)} />
-            </PlanDisclosure>
-            {recommendation && <PlanDisclosure className="pb-annual-recommendation" title={<><Lightbulb size={15} aria-hidden="true" /><span>{t(x.suggestion, { amount: formatCurrency(recommendation.amount) })}</span><span className="pb-annual-rec-percent">{recommendation.changePercent === null ? recommendation.amount > 0 ? x.newBudget : x.same : recommendation.changePercent === 0 ? x.same : `${signedPercent(recommendation.changePercent)}%`}</span></>}>
-              <div className="pb-annual-reason">
-                <RecommendationEquation recommendation={recommendation} current={current} />
-                <button type="button" className="pill" onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{x.applySuggestion}</button>
-              </div>
-            </PlanDisclosure>}
-
-            </div>
+            </>} suggested={recommendation ? <>
+              <RecommendationEquation recommendation={recommendation} current={current} />
+              <button type="button" className="pill" onClick={() => chooseCategory(c.id, 'suggested', recommendation.amount)}>{x.applySuggestion}</button>
+            </> : null} />
           </article>;
         })}
       </fieldset>

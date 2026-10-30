@@ -41,7 +41,6 @@ export default async function BudgetsPage() {
         transactions={mergeTransactions(expenses, income)}
         categories={categories}
         budgets={budgets}
-        annualContext={annualContext}
         budgetsByYear={budgetsByYear}
         today={todayInZone(annualContext.timeZone)}
       />
