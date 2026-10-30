@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
+import { useId, useState } from 'react';
+import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { renderTemplate } from '@/lib/i18n/RichText';
+import { budgetQuickSet, budgetCurrencyAxis, projectCategorySpending } from '@/lib/budgets/spendingProjection';
 import { yearFraction } from '@/lib/budgetPace';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { Skeleton } from '@/components/kit/Skeleton';
@@ -18,8 +20,8 @@ export interface BudgetHistory {
   budgetsByYear?: Record<string, Record<string, number> | null>;
 }
 
-type TipItem = { payload?: { key?: string; amount?: number; current?: boolean } };
-type CumItem = { payload?: { x?: number; label?: string; spent?: number; pace?: number; today?: boolean } };
+type TipItem = { payload?: { key?: string; amount?: number; estimated?: number | null; current?: boolean; future?: boolean } };
+type CumItem = { payload?: { x?: number; label?: string; spent?: number; pace?: number; estimated?: number | null; today?: boolean } };
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -30,9 +32,9 @@ function monthStart(year: number, mi: number): number {
 }
 
 /** Month, what was spent, and the monthly share of the yearly budget. */
-function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthlyLabel }: {
+function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthlyLabel, estimatedLabel, totalLabel }: {
   active?: boolean; payload?: ReadonlyArray<TipItem>; tag: string; budget: number;
-  inProgress: string; spentLabel: string; monthlyLabel: string;
+  inProgress: string; spentLabel: string; monthlyLabel: string; estimatedLabel: string; totalLabel: string;
 }) {
   const p = payload?.[0]?.payload;
   if (!active || !p?.key) return null;
@@ -42,10 +44,11 @@ function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthl
         {new Date(Number(p.key.slice(0, 4)), Number(p.key.slice(5, 7)) - 1, 1).toLocaleDateString(tag, { month: 'long', year: 'numeric' })}
         {p.current && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>{` · ${inProgress}`}</span>}
       </span>
-      <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+      {!p.future && <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
         <span style={{ color: 'var(--ink-soft)' }}>{spentLabel}</span>
         <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.amount ?? 0)}</span>
-      </span>
+      </span>}
+      {p.estimated != null && <><span className="pb-bud-tip-row"><span>{estimatedLabel}</span><span className="font-mono-tab">{formatCurrency(p.estimated)}</span></span><span className="pb-bud-tip-row"><span>{totalLabel}</span><strong className="font-mono-tab">{formatCurrency((p.amount ?? 0) + p.estimated)}</strong></span></>}
       {budget > 0 && (
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
           <span style={{ color: 'var(--ink-soft)' }}>{monthlyLabel}</span>
@@ -57,17 +60,17 @@ function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthl
 }
 
 /** A point on the Year to date line: when, the running total, and the pace. */
-function CumTip({ active, payload, spentLabel, paceLabel }: {
-  active?: boolean; payload?: ReadonlyArray<CumItem>; spentLabel: string; paceLabel: string;
+function CumTip({ active, payload, spentLabel, paceLabel, estimatedLabel }: {
+  active?: boolean; payload?: ReadonlyArray<CumItem>; spentLabel: string; paceLabel: string; estimatedLabel: string;
 }) {
   const p = payload?.[0]?.payload;
-  if (!active || !p?.label || p.spent == null) return null;
+  if (!active || !p?.label || (p.spent == null && p.estimated == null)) return null;
   return (
     <div className="pb-bud-tip">
       <span style={{ fontWeight: 600 }}>{p.label}</span>
       <span className="pb-bud-tip-row">
-        <span>{spentLabel}</span>
-        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.spent)}</span>
+        <span>{p.spent == null ? estimatedLabel : spentLabel}</span>
+        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.spent ?? p.estimated ?? 0)}</span>
       </span>
       {p.pace != null && (
         <span className="pb-bud-tip-row">
@@ -92,7 +95,7 @@ function CumTip({ active, payload, spentLabel, paceLabel }: {
  * Dec 31 (an even pace), with today marked in the current year: the picture
  * of "ahead or behind". Wide cards put Quick set beside the chart.
  */
-export function BudgetDetails({ name, color, budget, history, today, onSuggest }: {
+export function BudgetDetails({ name, color, budget, history, today, onSuggest, hideQuickSet = false }: {
   name: string;
   color: string;
   /** Yearly budget, 0 when none. */
@@ -101,8 +104,10 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   /** Zone-aware 'YYYY-MM-DD' (places today on the Year to date line). */
   today?: string | null;
   onSuggest: (yearly: number) => void;
+  hideQuickSet?: boolean;
 }) {
   const { d, t, locale } = useTranslation();
+  const hatchId = useId().replace(/:/g, '');
   const ux = d.ux.budgets;
   const currentYear = history ? Number(history.current.slice(0, 4)) : new Date().getFullYear();
   // null follows the current year, including an already-open January 1 rollover.
@@ -137,6 +142,8 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   const shownBudget = shown === currentYear ? budget : savedYear ? (savedYear[name] ?? 0) : null;
   const hasBudget = shownBudget !== null && shownBudget > 0;
 
+  const projection = today ? projectCategorySpending(history, name, today, shown) : null;
+  const currentMonth = Number(history.current.slice(5,7)) - 1;
   const data = Array.from({ length: 12 }, (_, mi) => {
     const key = `${shown}-${pad(mi + 1)}`;
     const i = indexOf.get(key);
@@ -145,14 +152,14 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
       label: monthDate(key).toLocaleDateString(tag, { month: 'short' }),
       amount: i === undefined ? 0 : Math.round(series[i] * 100) / 100,
       current: key === history.current,
+      future: shown === currentYear && mi > currentMonth,
+      estimated: projection && projection.remaining > 0 ? projection.additions[mi] : null,
     };
   });
   const spentInYear = Math.round(data.reduce((s, p) => s + p.amount, 0) * 100) / 100;
 
   // Quick set: the last 12 COMPLETE months (everything before the current month).
-  const complete = series.slice(-13, -1);
-  const typical = Math.round((complete.slice(6).reduce((s, v) => s + v, 0) / 6) * 12);
-  const pastYear = Math.round(complete.reduce((s, v) => s + v, 0));
+  const { sixMonthAnnual: typical, last12Total: pastYear } = budgetQuickSet(history, name);
 
   // Year to date: spending added up to the start of each month (x is the
   // share of the year by days), then today's running total in the current
@@ -170,7 +177,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
     const mi = labelTicks.indexOf(x);
     return mi < 0 ? '' : data[mi].label;
   };
-  const cum: { x: number; label: string; spent: number | null; pace: number | null; today?: boolean }[] = [];
+  const cum: { x: number; label: string; spent: number | null; pace: number | null; estimated?: number | null; today?: boolean }[] = [];
   let run = 0;
   for (let mi = 0; mi <= lastMonth; mi++) {
     const label = mi === 0
@@ -184,8 +191,21 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
     label: isCurrent ? ux.todayTick : t(ux.endOf, { month: monthDate(data[11].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) }),
     spent: Math.round(run * 100) / 100, pace: hasBudget ? shownBudget! * todayX : null, today: isCurrent,
   });
-  // The pace line carries on to Dec 31 past today.
-  if (isCurrent && hasBudget) cum.push({ x: 1, label: '', spent: null, pace: shownBudget });
+  // Estimates share today's exact endpoint, then extend to each remaining month end.
+  if (isCurrent && projection && projection.remaining > 0) {
+    cum[cum.length - 1].estimated = Math.round(run * 100) / 100;
+    let estimated = run;
+    for (let mi = lastMonth; mi < 12; mi++) {
+      estimated += projection.additions[mi] ?? 0;
+      const x = mi === 11 ? 1 : monthStart(shown, mi + 1);
+      if (x <= todayX) continue;
+      cum.push({ x, label: t(ux.endOf, { month: monthDate(data[mi].key).toLocaleDateString(tag, { month: 'long', year: 'numeric' }) }), spent: null, estimated: Math.round(estimated * 100) / 100, pace: hasBudget ? shownBudget! * x : null });
+    }
+  } else if (isCurrent && hasBudget && todayX < 1) cum.push({ x: 1, label: '', spent: null, pace: shownBudget });
+  const monthAxis = budgetCurrencyAxis([...data.map(p => p.amount + (p.estimated ?? 0)), hasBudget ? shownBudget! / 12 : 0]);
+  const cumulativeAxis = budgetCurrencyAxis([...cum.flatMap(p => [p.spent, p.estimated, p.pace])]);
+  const axisFormat = (value: number) => new Intl.NumberFormat(tag, { style: 'currency', currency: 'USD', notation: value >= 10000 ? 'compact' : 'standard', maximumFractionDigits: value >= 10000 ? 1 : Number.isInteger(value) ? 0 : 2 }).format(value);
+
 
   const suggestions = [
     { key: 'typical', value: typical, hint: d.budgetSuggest.averageHint, caption: d.budgetRow.typicalCaption },
@@ -193,7 +213,7 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
   ];
 
   return (
-    <div className="pb-bud-det">
+    <div className={`pb-bud-det${hideQuickSet ? ' pb-bud-det-chart-only' : ''}`}>
       <div className="pb-bud-det-chart">
         <div className="pb-bud-det-tools">
           {years.length > 1 && (
@@ -216,13 +236,17 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
         {view === 'month' ? (
           <div key="month" className="pb-chart-fade pb-bud-det-plot" aria-label={t(d.budgetDetails.chartLabel, { name, year: String(shown) })} role="img">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval={0} />
-                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={shownBudget ?? 0} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} />} />
+              <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                <defs><pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={color} fillOpacity={0.12} /><path d="M-1 1l2-2M0 6L6 0M5 7l2-2" stroke={color} strokeOpacity={0.45} strokeWidth="1" /></pattern></defs>
+                <CartesianGrid vertical={false} stroke="var(--line)" />
+                <YAxis ticks={monthAxis.ticks} domain={monthAxis.domain} tickFormatter={axisFormat} width={58} tick={{ fontSize: 10, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6} />
+                <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={shownBudget ?? 0} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} estimatedLabel={ux.estimatedRemaining} totalLabel={ux.estimatedMonthTotal} />} />
                 {hasBudget && <ReferenceLine y={shownBudget! / 12} stroke="var(--ink-soft)" strokeDasharray="4 4" />}
-                <Bar dataKey="amount" name={name} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
+                <Bar dataKey="amount" stackId="spending" name={name} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
                   {data.map((p) => <Cell key={p.key} fill={color} fillOpacity={p.current ? 0.5 : 1} />)}
                 </Bar>
+                {projection && projection.remaining > 0 && <Bar dataKey="estimated" stackId="spending" name={ux.estimatedRemaining} fill={`url(#${hatchId})`} stroke={color} strokeOpacity={0.45} strokeDasharray="3 2" radius={[4,4,0,0]} maxBarSize={24} isAnimationActive={false} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -231,15 +255,17 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cum} margin={{ top: 18, right: 6, left: 6, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--line)" />
+                <YAxis ticks={cumulativeAxis.ticks} domain={cumulativeAxis.domain} tickFormatter={axisFormat} width={58} tick={{ fontSize: 10, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
                 <XAxis
                   dataKey="x" type="number" domain={[0, 1]} ticks={labelTicks} tickFormatter={tickLabel}
-                  tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval={0}
+                  tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6}
                 />
-                <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} />} />
+                <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} estimatedLabel={ux.estimatedYearTotal} />} />
                 {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 10, fill: 'var(--ink-soft)' }} />}
                 {hasBudget && (
                   <Line dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
                 )}
+                {projection && projection.remaining > 0 && <Line dataKey="estimated" type="linear" stroke={color} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} isAnimationActive={false} />}
                 <Area
                   dataKey="spent" type="linear" stroke={color} strokeWidth={2} strokeLinejoin="round" fill={color} fillOpacity={0.1}
                   connectNulls={false} dot={false} activeDot={{ r: 3.5, stroke: 'var(--mist)', strokeWidth: 2 }} isAnimationActive={false}
@@ -248,6 +274,8 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
             </ResponsiveContainer>
           </div>
         )}
+        {projection && projection.remaining > 0 ? <p className="pb-bud-estimate-note">{renderTemplate(ux.projectionBasis, { count: String(projection.sampleMonths), from: projection.from, through: projection.through, amount: <span className="font-mono-tab">{formatCurrency(projection.averageMonthly)}</span> })}</p> : isCurrent && !projection ? <p className="pb-bud-estimate-note">{ux.projectionNeedsHistory}</p> : null}
+        {isCurrent && projection && projection.remaining > 0 && <div className="pb-bud-projection-key"><span><i className="pb-bud-projection-actual" style={{ backgroundColor: color }} />{d.budgetRow.tipSpent}</span><span><i style={{ borderColor: color }} />{ux.estimatedRemaining}</span><strong>{renderTemplate(ux.projectedYearEnd, { amount: <span className="font-mono-tab">{formatCurrency(spentInYear + projection.remaining)}</span> })}</strong></div>}
         {shownBudget === null && <p className="pb-bud-det-empty" role="note">{t(ux.noRecordedPlan, { year: String(shown) })}</p>}
         <div className="pb-bud-det-foot">
           <p className="font-mono-tab">
@@ -261,21 +289,21 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest }
           )}
         </div>
       </div>
-      <div className="pb-bud-qs">
+      {!hideQuickSet && <div className="pb-bud-qs">
         <span className="pb-bud-qs-title">{d.budgetRow.quickSet}</span>
         <div className="pb-bud-qs-grid">
           {suggestions.map((s) => (
-            <button key={s.key} type="button" className="pb-bud-qs-card" title={s.hint} onClick={() => onSuggest(s.value)}>
+            <button key={s.key} type="button" className="pb-bud-qs-card" title={s.hint} disabled={s.value === null} onClick={() => { if (s.value !== null) onSuggest(s.value); }}>
               <span className="pb-bud-qs-amt">
-                <span className="font-mono-tab">{formatCurrency(s.value)}</span>{' '}
+                <span className="font-mono-tab">{s.value === null ? '—' : formatCurrency(s.value)}</span>{' '}
                 <span className="pb-bud-qs-unit">{d.budgetRow.annually}</span>
               </span>
-              <span className="pb-bud-qs-month font-mono-tab">{t(ux.aboutMonthly, { amount: formatCurrency(s.value / 12) })}</span>
+              <span className="pb-bud-qs-month font-mono-tab">{t(ux.aboutMonthly, { amount: s.value === null ? '—' : formatCurrency(s.value / 12) })}</span>
               <span className="pb-bud-qs-cap">{s.caption}</span>
             </button>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

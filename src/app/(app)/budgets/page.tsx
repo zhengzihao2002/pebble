@@ -5,6 +5,7 @@ import { mergeTransactions } from '@/lib/stats';
 import { BudgetsClient } from './BudgetsClient';
 import { getAnnualBudgetContext, getEffectiveAnnualBudgets } from '@/lib/budgets/annualData';
 import { BudgetCalendarRefresh } from '@/components/budgets/BudgetCalendarRefresh';
+import { BudgetPlanNavigationRegistration } from '@/components/budgets/BudgetPlanNavigation';
 import { todayInZone } from '@/lib/recurring/occurrences';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,7 @@ export default async function BudgetsPage() {
 
   return (
     <>
+      <BudgetPlanNavigationRegistration year={annualContext.year + 1} />
       <BudgetCalendarRefresh year={annualContext.year} timeZone={annualContext.timeZone} />
       <BudgetsClient
         key={annualContext.year}

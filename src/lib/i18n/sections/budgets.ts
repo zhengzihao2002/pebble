@@ -8,6 +8,11 @@
  * English one, so a missing translation is a compile error.
  */
 export const budgetsEn = {
+  estimatedRemaining: 'Estimated remaining', estimatedMonthTotal: 'Estimated month total', estimatedYearTotal: 'Estimated cumulative total',
+  projectionBasis: 'Estimate: {amount}/month from {count} complete months ({from}–{through}). The current month adds only its remaining days; striped bars and the dashed line are estimates, not recorded spending.',
+  projectionNeedsHistory: 'An estimate needs at least three complete months with spending. Recorded spending is shown without a forecast for now.',
+  projectedYearEnd: 'Estimated year-end spending: {amount}',
+
   // Year at a glance (plan card hero). Labels that double as an aria-label
   // never carry an amount.
   ringLabel: '{used}% of your budgets used, {year}% of the year gone',
@@ -61,6 +66,11 @@ export const budgetsEn = {
 };
 
 export const budgetsZh: typeof budgetsEn = {
+  estimatedRemaining: '剩余时间估算', estimatedMonthTotal: '本月预计合计', estimatedYearTotal: '预计累计支出',
+  projectionBasis: '根据 {count} 个完整月份（{from}–{through}）估算，每月约 {amount}。本月仅估算剩余天数；斜纹柱和虚线代表估算，并非已记录支出。',
+  projectionNeedsHistory: '至少需要三个有支出的完整月份才能估算。目前仅显示已记录支出。',
+  projectedYearEnd: '预计年底支出：{amount}',
+
   ringLabel: '预算已用 {used}%，今年已过 {year}%',
   used: '已用',
   yearGone: '今年已过 {pct}%',

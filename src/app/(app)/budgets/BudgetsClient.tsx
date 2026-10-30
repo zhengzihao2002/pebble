@@ -12,6 +12,7 @@ import { BudgetRows } from '@/components/budgets/BudgetRows';
 import { UnbudgetedList } from '@/components/budgets/UnbudgetedList';
 import { IncomeControl, MANUAL_FREQUENCY_MULTIPLIER } from '@/components/budgets/IncomeControl';
 import type { BudgetEntry } from '@/components/budgets/types';
+import { budgetHistoryThroughToday } from '@/lib/budgets/spendingProjection';
 import type { BudgetHistory } from '@/components/budgets/BudgetDetails';
 import type { AnnualBudgetContext } from '@/lib/budgets/annualTypes';
 import { AnnualPlanEntry } from '@/components/budgets/AnnualPlanEntry';
@@ -57,21 +58,7 @@ export function BudgetsClient({ transactions, categories, budgets, annualContext
   // months. Null until today is known.
   const history: BudgetHistory | null = useMemo(() => {
     if (!today) return null;
-    const y = Number(today.slice(0, 4));
-    const m = Number(today.slice(5, 7)) - 1;
-    const months: string[] = [];
-    for (let dt = new Date(y - 3, 0, 1); dt.getFullYear() < y || dt.getMonth() <= m; dt = new Date(dt.getFullYear(), dt.getMonth() + 1, 1)) {
-      months.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
-    }
-    const index = new Map(months.map((k, i) => [k, i]));
-    const byCat: Record<string, number[]> = {};
-    for (const x of transactions) {
-      if (x.amount >= 0) continue;
-      const i = index.get(x.date.slice(0, 7));
-      if (i === undefined) continue;
-      (byCat[x.category] ??= Array(months.length).fill(0))[i] += Math.abs(x.amount);
-    }
-    return { months, byCat, current: months[months.length - 1], budgetsByYear };
+    return { ...budgetHistoryThroughToday(transactions, today), budgetsByYear };
   }, [transactions, today, budgetsByYear]);
 
   const totalBudget = entries.reduce((s, e) => s + e.budget, 0);

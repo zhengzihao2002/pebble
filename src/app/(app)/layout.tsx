@@ -5,6 +5,7 @@ import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { getUserTimeZoneOverride } from '@/lib/data/queries';
 import { TimeZoneOverrideProvider } from '@/lib/time/TimeZoneOverrideContext';
 import { OfflineProvider } from '@/components/offline/OfflineProvider';
+import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNavigation';
 import { BUILD_ID } from '@/lib/offline/buildId';
 
 /**
@@ -46,7 +47,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
             no page without it. Not a secret: the same id is in the page data. */}
         <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
         <OfflineProvider userId={userId}>
-          <AppShell>{children}</AppShell>
+          <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>
         </OfflineProvider>
       </TimeZoneOverrideProvider>
     </LocaleProvider>

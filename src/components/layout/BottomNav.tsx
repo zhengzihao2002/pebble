@@ -9,6 +9,7 @@ import { primaryNavItems, secondaryNavItems, isNavItemActive, type NavItem } fro
 import { pageAction, type PageActionKind } from './pageActions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useBottomNavPanels } from './useBottomNavPanels';
+import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 
 interface BottomNavProps {
   onAddTransactionClick: () => void;
@@ -39,7 +40,10 @@ interface BottomNavProps {
  */
 export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
   const pathname = usePathname();
-  const { d } = useTranslation();
+  const { d, t } = useTranslation();
+  const budgetPlanYear = useBudgetPlanNavigation();
+  const showBudgetPlan = pathname === '/budgets' && budgetPlanYear !== null;
+  const budgetPlanLabel = showBudgetPlan ? t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) }) : '';
   const addPanelRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
@@ -156,7 +160,14 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             </div>
           </div>
 
-          <button
+          {showBudgetPlan ? (
+            <Link href="/budgets/plan" prefetch={false} onClick={close} className="bottom-nav-add pb-budget-plan-fab" aria-label={budgetPlanLabel} title={budgetPlanLabel} style={{ textDecoration: 'none' }}>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, lineHeight: 1 }} aria-hidden="true">
+                <CalendarClock size={22} strokeWidth={2.1} style={{ width: '1.4rem', height: '1.4rem' }} />
+                <span style={{ fontSize: '.6rem', fontWeight: 700 }}>{budgetPlanYear}</span>
+              </span>
+            </Link>
+          ) : <button
             type="button"
             onClick={() => toggle('add')}
             aria-expanded={addOpen}
@@ -164,7 +175,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             className="bottom-nav-add"
           >
             <Plus size={24} strokeWidth={2.25} />
-          </button>
+          </button>}
         </div>
 
         {primaryNavItems.slice(2).map(renderLink)}

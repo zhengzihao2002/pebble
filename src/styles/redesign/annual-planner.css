@@ -15,15 +15,7 @@
 .pebble-root .pb-annual-summary-arrow { color: var(--ink-soft); }
 .pebble-root .pb-annual-difference { border-left: 1px solid var(--line); padding-left: 1.25rem; }
 .pebble-root .pb-annual-difference strong { font-size: 1.15rem; }
-.pebble-root :is(.pb-annual-start,.pb-annual-categories) { min-width: 0; margin: 0; padding: 1.25rem 1.5rem; }
-.pebble-root .pb-annual-start .pb-sec-head, .pebble-root .pb-annual-categories > .pb-sec-head { margin-bottom: 1.2rem; }
-.pebble-root .pb-annual-starter-desktop { display: flex; }
-.pebble-root .pb-annual-starter-mobile { display: none; }
-.pebble-root .pb-annual-insight-note { display: flex; gap: .55rem; align-items: flex-start; max-width: 48rem; margin: 1rem 0 0; color: var(--ink-soft); font-size: .8rem; line-height: 1.6; }
-.pebble-root .pb-annual-insight-note svg { flex-shrink: 0; margin-top: .15rem; color: var(--pine); }
-.pebble-root .pb-annual-custom { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; margin-top: 1rem; }
-.pebble-root .pb-annual-custom label { display: flex; flex-direction: column; gap: .4rem; font-size: .8rem; color: var(--ink-soft); }
-.pebble-root .pb-annual-custom input { width: 8rem; border-radius: .7rem; background: var(--paper); border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: 1rem; padding: .6rem .75rem; }
+.pebble-root .pb-annual-categories { min-width: 0; margin: 0; padding: 1.25rem 1.5rem; }
 .pebble-root .pb-annual-base-note { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-left: 3px solid var(--pine); padding: .5rem 1rem; font-size: .85rem; color: var(--ink-soft); line-height: 1.6; }
 .pebble-root .pb-annual-column-head, .pebble-root .pb-annual-row { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr); column-gap: 1.5rem; }
 .pebble-root .pb-annual-column-head { padding: 0 0 .75rem; color: var(--ink-soft); font-size: .75rem; }
@@ -80,9 +72,7 @@
   .pebble-root .pb-annual-summary-arrow { display: none; }
   .pebble-root .pb-annual-difference { border-left: 0; padding-left: 0; padding-top: .85rem; border-top: 1px solid var(--line); }
   .pebble-root .pb-annual-difference strong { font-size: 1.1rem; }
-  .pebble-root :is(.pb-annual-start,.pb-annual-categories) { padding: 1.1rem; }
-  .pebble-root .pb-annual-starter-desktop { display: none; }
-  .pebble-root .pb-annual-starter-mobile { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: var(--ink-soft); font-size: .875rem; }
+  .pebble-root .pb-annual-categories { padding: 1.1rem; }
   .pebble-root .pb-annual-native { position: relative; min-width: 0; flex: 1; max-width: 15rem; }
   .pebble-root .pb-annual-native select { appearance: none; box-sizing: border-box; width: 100%; border: 1px solid var(--line); border-radius: .75rem; background: var(--paper); color: var(--ink); padding: .7rem 2rem .7rem .8rem; font: inherit; font-size: 1rem; }
   .pebble-root .pb-annual-native > svg { position: absolute; right: .65rem; top: 50%; transform: translateY(-50%); pointer-events: none; }
@@ -125,3 +115,38 @@
 .pebble-root .pb-annual-calculation { margin: .75rem 0; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: color-mix(in srgb,var(--pine) 4%,var(--mist)); overflow-wrap: anywhere; }
 .pebble-root .pb-annual-calculation p { margin: .4rem 0; }
 .pebble-root .pb-annual-calculation strong { color: var(--ink); font-weight: 600; }
+
+/* A category is one compact decision row. Details expand only when requested. */
+.pebble-root .pb-annual-row { grid-template-columns: minmax(0,1.35fr) minmax(0,.65fr) minmax(0,1fr); grid-template-areas: "category current amount" "choice choice amount" "tools tools tools"; column-gap:1.25rem; row-gap:.45rem; padding:.85rem 0; }
+.pebble-root .pb-annual-category { grid-area:category; padding-top:.1rem; }
+.pebble-root .pb-category-chosen { color:var(--pine); flex:none; }
+.pebble-root .pb-annual-current { grid-area:current; padding-top:.3rem; }
+.pebble-root .pb-annual-amount { grid-area:amount; gap:.15rem; }
+.pebble-root .pb-annual-money input { padding-top:.45rem; padding-bottom:.45rem; }
+.pebble-root .pb-category-choice { grid-area:choice; display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; min-width:0; }
+.pebble-root .pb-category-choice > label { min-width:0; max-width:100%; }
+.pebble-root .pb-category-choice select { box-sizing:border-box; max-width:100%; width:20rem; min-height:2.35rem; padding:.35rem .65rem; font:inherit; font-size:.85rem; border:1px solid var(--line); border-radius:.6rem; background:var(--mist); color:var(--ink); }
+.pebble-root .pb-category-percent { display:flex; align-items:center; gap:.4rem; }
+.pebble-root .pb-category-percent label { display:flex; align-items:center; gap:.3rem; font-size:.85rem; color:var(--ink-soft); }
+.pebble-root .pb-category-percent input { width:5.2rem; min-height:2.35rem; padding:.3rem .4rem; font:inherit; border:1px solid var(--line); border-radius:.6rem; background:var(--mist); color:var(--ink); }
+.pebble-root .pb-category-choice > small { flex-basis:100%; color:var(--wine); }
+.pebble-root .pb-category-choice > .pb-category-percent-hint { color:var(--ink-soft); font-size:.75rem; }
+.pebble-root .pb-annual-row-tools { grid-area:tools; display:flex; flex-wrap:wrap; align-items:flex-start; column-gap:1rem; row-gap:.25rem; min-width:0; }
+.pebble-root .pb-annual-row-tools > details { min-width:0; max-width:100%; }
+.pebble-root .pb-annual-row-tools > details[open] { flex-basis:100%; order:1; }
+.pebble-root .pb-annual-row-tools .pb-annual-history > summary { padding:.35rem .1rem; }
+.pebble-root .pb-annual-row-tools .pb-annual-recommendation > summary { padding:.35rem .6rem; }
+.pebble-root .pb-annual-reviewed-count { color:var(--pine); font-size:.8rem; white-space:nowrap; }
+.pebble-root .pb-annual-scheduled-note { display:flex; gap:.5rem; align-items:flex-start; margin:0; color:var(--pine); font-size:.85rem; line-height:1.5; }
+.pebble-root .pb-annual-scheduled-note svg { flex:none; margin-top:.1rem; }
+@container content (max-width:639px) {
+  .pebble-root .pb-annual-row { grid-template-columns:minmax(0,1fr); grid-template-areas:"category" "current" "choice" "amount" "tools"; row-gap:.5rem; padding:.9rem 0; }
+  .pebble-root .pb-annual-current { padding-top:0; }
+  .pebble-root .pb-category-choice > label { width:100%; }
+  .pebble-root .pb-category-choice select { width:100%; font-size:1rem; min-height:2.75rem; }
+  .pebble-root .pb-category-percent input { min-height:2.75rem; font-size:1rem; }
+  .pebble-root .pb-annual-amount { gap:.2rem; }
+  .pebble-root .pb-annual-amount small { display:inline; }
+  .pebble-root .pb-annual-row-tools { column-gap:.6rem; }
+}
+.pebble-root .pb-annual-column-head { grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr) minmax(0,1fr); column-gap:1.25rem; }

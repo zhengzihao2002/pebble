@@ -7,3 +7,7 @@
   .pebble-root .pb-annual-entry { flex-wrap: wrap; padding: 1rem 1.1rem; }
   .pebble-root .pb-annual-entry-link { margin-left: auto; }
 }
+
+.pebble-root .pb-annual-status { padding:.2rem 0; background:none; box-shadow:none; border:0; }
+.pebble-root .pb-annual-status .pb-sec-head-icon { width:1.5rem; height:1.5rem; background:none; }
+.pebble-root .pb-annual-status .pb-annual-entry-copy p { color:var(--ink-soft); }

@@ -413,3 +413,13 @@
   .pebble-root .pb-bud .pb-bud-chip-btn { min-height: 44px; }
   .pebble-root .pb-bud .pb-bud-input { min-height: 44px; font-size: 16px; } /* 16px: iOS zooms into smaller fields */
 }
+
+/* Estimates never wear the same solid mark as recorded spending. */
+.pebble-root .pb-bud-det.pb-bud-det-chart-only { grid-template-columns: minmax(0, 1fr); }
+.pebble-root .pb-bud-estimate-note { font-size: .75rem; color: var(--ink-soft); line-height: 1.55; margin: .2rem 0; }
+.pebble-root .pb-bud-projection-key { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1rem; font-size: .75rem; color: var(--ink-soft); }
+.pebble-root .pb-bud-projection-key > span { display: inline-flex; align-items: center; gap: .35rem; }
+.pebble-root .pb-bud-projection-key i { display: inline-block; width: 18px; height: 0; border-top: 2px dashed; }
+.pebble-root .pb-bud-projection-key i.pb-bud-projection-actual { height: 5px; border: 0; border-radius: 3px; }
+.pebble-root .pb-bud-projection-key strong { font-weight: 500; color: var(--ink); }
+.pebble-root .pb-bud-qs-card:disabled { opacity: .5; cursor: default; }

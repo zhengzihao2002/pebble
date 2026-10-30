@@ -1,4 +1,7 @@
 export const annualBudgetsEn = {
+  percentRounding: 'Based on this year’s budget; rounded to the nearest whole dollar.',
+  chooseBasis: 'Choose how to set it', chooseCategory: '{name}: choose budget basis', categorySuggested: 'Suggested', average6: '6-month average × 12', last12: 'Spent in last 12 months', categoryPercent: 'Custom percentage', categoryAmount: 'Use entered amount', savedAmount: 'Scheduled amount', percentFor: '{name}: percentage change', categoryChosen: 'Chosen', chosenCount: '{count} of {total} chosen', chooseAll: 'Choose a budget for every category before scheduling. You can save a draft at any time.', pickEachNote: 'Pick a basis for each category, or enter your own annual amount.', editScheduled: 'Your plan is scheduled. Keep editing below, then review and save changes to update it before January 1.',
+
   maximumNote: 'The supported annual limit is {amount}; the suggestion is capped at that amount.',
   roundingNote: 'When calculating a new amount, we round up to the next whole dollar. An unchanged budget keeps its original amount.',
   inactiveCategory: 'No recorded spending in this category for 24 complete months, while you continued recording activity every month. No current or future recorded expenses or scheduled rules were found. Consider a zero budget if you do not expect it to return; this is not a guarantee.',
@@ -52,6 +55,9 @@ export const annualBudgetsEn = {
   empty: 'Add expense categories in Settings to begin planning.', saving: 'Saving…',
 };
 export const annualBudgetsZh: typeof annualBudgetsEn = {
+  percentRounding: '以今年的预算为基数，并四舍五入到元。',
+  chooseBasis: '选择设置方式', chooseCategory: '{name}：选择预算依据', categorySuggested: '建议金额', average6: '近 6 个月平均 × 12', last12: '最近 12 个月实际支出', categoryPercent: '自定义百分比', categoryAmount: '采用输入的金额', savedAmount: '已安排的金额', percentFor: '{name}：变动百分比', categoryChosen: '已选择', chosenCount: '已选择 {count} / {total}', chooseAll: '安排前请为每个类别选择预算。你可以随时保存草稿。', pickEachNote: '逐项选择预算依据，或直接输入年度金额。', editScheduled: '计划已安排。你仍可在下方修改，并在 1 月 1 日前检查、保存更改。',
+
   maximumNote: '年度金额上限为 {amount}，建议金额已限制在该范围内。',
   roundingNote: '重新计算的金额向上取整到元；保持不变的预算保留原金额。',
   inactiveCategory: '连续 24 个完整月份，你每月都有记账，但此类别没有支出。目前也未发现本月、未来已记录的支出或定期规则。如果预计不会再发生，可考虑将预算设为零；这并非保证。',

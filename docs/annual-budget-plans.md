@@ -1,6 +1,6 @@
 # Annual budget planning
 
-`/budgets/plan` always prepares the next calendar year. Yearly plans contain fixed category amounts, not a percentage rule that repeats indefinitely. Drafts never affect live budgets. Scheduled plans take effect at midnight January 1 in the timezone shown on the plan. The budget page and planner refresh at that boundary and re-check on focus, reconnect, and return from the browser's back/forward cache.
+`/budgets/plan` always prepares the next calendar year. Open it from the desktop Budgets header or the mobile center calendar/year button while on Budgets. Other pages retain the usual Add button. Each category requires an explicit choice: Suggested, the last six completed months’ average annualized, last twelve completed months’ spending, Keep same, a custom percentage, or an entered amount. The global starting-point control is removed. Drafts can save partial progress; before scheduling a reloaded draft, confirm each category’s saved amount or choose another basis. Scheduled amounts remain editable until January 1; review and save updates the same scheduled plan using its current revision. Yearly plans contain fixed category amounts, not a percentage rule that repeats indefinitely. Drafts never affect live budgets. Scheduled plans take effect at midnight January 1 in the timezone shown on the plan. The budget page and planner refresh at that boundary and re-check on focus, reconnect, and return from the browser's back/forward cache.
 
 ## Production setup
 
@@ -26,9 +26,13 @@ Older years without a captured plan show spending without inventing historical b
 
 Suggestions use recorded complete months, sustained changes in spending, and a disclosed 10% allowance. Sparse history, seasonal concentration, dormant recording periods, and unusual large purchases receive conservative handling and explanations. Proposed reductions need a full observed year and are limited to 20% per planning session. Each disclosure shows the actual recorded total and window, any annualization or 70% recent / 30% historical blend, the precise basis plus 10% allowance, retained-budget floors or the within-5% keep rule, and rounding. Raw spending and an outlier-adjusted basis are labeled separately. A zero budget is suggested only for a previously used category with 24 complete months of monthly recording activity but no category spending, no current/future recorded expenses, and no active or paused expense rules; missing rule data or a recording gap blocks that suggestion. These are optional planning estimates, not predictions; the user reviews and schedules the actual amounts.
 
+## Spending charts
+
+Both Budgets and the planner use the same monthly/cumulative category charts. Current-year charts estimate remaining spending from up to six completed months, requiring at least three months with positive category spending. The current month contributes only its remaining days; December 31 contributes no forecast. Future estimates use striped bars and a dashed cumulative continuation with an explicit monthly basis/window. Historical years have no forecast. Currency Y-axis ticks use equal monetary increments and include every visible series/budget line. Estimates are optional context, not recorded expenses, and do not change budget or transaction data.
+
 ## Verification
 
-- `node --test tests/annualBudgetCalendar.test.cjs tests/annualBudgetRecommendations.test.cjs`
+- `node --test tests/annualBudgetCalendar.test.cjs tests/annualBudgetRecommendations.test.cjs tests/budgetSpendingProjection.test.cjs`
 - `bash scripts/test-annual-budgets-db.sh` (local Docker required; creates and removes its own PostgreSQL container with synthetic fixtures, no Neon connection or production credentials)
 - `npx tsc --noEmit`
 - `npm run build` with database and auth URLs overridden to unused localhost ports during isolated verification

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Plus, ArrowRightLeft, X, Eye, EyeOff, Search } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, ArrowRightLeft, CalendarClock, X, Eye, EyeOff, Search } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { getGreetingKey } from '@/lib/format';
@@ -12,6 +13,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { currentNavItem } from './navItems';
 import { useShortcutLabel } from './useShortcutLabel';
 import { OfflineStatus } from '@/components/offline/OfflineStatus';
+import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 
 interface HeaderProps {
   onAddTransactionClick: () => void;
@@ -36,6 +38,7 @@ interface PageMeta {
 
 export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
   const pathname = usePathname();
+  const budgetPlanYear = useBudgetPlanNavigation();
   const { name, isPending } = useCurrentUser();
   const { d, t } = useTranslation();
   const privacyOn = usePebbleStore((s) => s.privacyOn);
@@ -206,6 +209,13 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
           >
             {privacyOn ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
+          {pathname === '/budgets' && budgetPlanYear !== null && (
+            <div className="header-actions">
+              <Link href="/budgets/plan" prefetch={false} className="btn-primary pb-budget-plan-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                <CalendarClock size={16} aria-hidden="true" />{t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) })}
+              </Link>
+            </div>
+          )}
           {current.action && handleActionClick && (
             <div ref={actionsRef} className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               {/* Drops BELOW the header rather than expanding sideways: a
