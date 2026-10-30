@@ -12,6 +12,9 @@ docker_local() {
 psql_local() {
   docker_local exec -i "$test_container" psql -U postgres -d annual_budget_test -v ON_ERROR_STOP=1 "$@"
 }
+psql_app() {
+  docker_local exec -i -e PGOPTIONS='-c role=pebble_app' "$test_container" psql -U postgres -d annual_budget_test -v ON_ERROR_STOP=1 "$@"
+}
 cleanup() {
   docker_local stop --time 3 "$test_container" >/dev/null 2>&1 || true
   rm -rf "$test_logs"
@@ -29,7 +32,15 @@ psql_local < "$repo_root/tests/annual-budgets/fixture.sql" > "$test_logs/setup.l
 psql_local < "$repo_root/migrations/20261030_annual_budget_plans.sql" >> "$test_logs/setup.log"
 # A second application must preserve data/schema and remain safe.
 psql_local < "$repo_root/migrations/20261030_annual_budget_plans.sql" >> "$test_logs/setup.log"
+psql_local < "$repo_root/tests/annual-budgets/privileges.sql"
+# Reproduce the original SQL Editor owner/runtime role mismatch, then prove
+# the standalone repair fixes it without rewriting any budget/user rows.
+psql_local < "$repo_root/tests/annual-budgets/reproduce-missing-privilege.sql"
+psql_local < "$repo_root/migrations/20261030_annual_budget_permissions.sql" >> "$test_logs/setup.log"
+psql_local < "$repo_root/migrations/20261030_annual_budget_permissions.sql" >> "$test_logs/setup.log"
+psql_local < "$repo_root/tests/annual-budgets/privileges.sql"
 psql_local < "$repo_root/tests/annual-budgets/lifecycle.sql"
+psql_local < "$repo_root/tests/annual-budgets/privileges.sql"
 psql_local -c "INSERT INTO neon_auth.\"user\" VALUES ('00000000-0000-0000-0000-000000000003'),('00000000-0000-0000-0000-000000000004'); INSERT INTO category VALUES ('u3-cat','00000000-0000-0000-0000-000000000003','Food'),('u4-cat','00000000-0000-0000-0000-000000000004','Food'); INSERT INTO budget(user_id,category,annual_amount) VALUES ('00000000-0000-0000-0000-000000000003','Food',100),('00000000-0000-0000-0000-000000000004','Food',100);" >/dev/null
 # Start a competing connection only once the first has visibly acquired the
 # write lock; \echo flushes a marker before pg_sleep keeps the transaction open.
@@ -41,7 +52,7 @@ wait_for_marker() {
   cat "$1" >&2
   return 1
 }
-psql_local > "$test_logs/edit-first.log" <<'SQL' &
+psql_app > "$test_logs/edit-first.log" <<'SQL' &
 BEGIN;
 SELECT pebble_patch_current_annual_budgets('00000000-0000-0000-0000-000000000003','{"Food":125}','2026-10-01T00:00Z');
 \echo LOCK_HELD
@@ -50,9 +61,9 @@ COMMIT;
 SQL
 edit_pid=$!
 wait_for_marker "$test_logs/edit-first.log"
-psql_local -c "SELECT pebble_save_annual_budget_plan('00000000-0000-0000-0000-000000000003',2027,'UTC','scheduled',NULL,'{\"u3-cat\":150}','{\"u3-cat\":100}','2026-10-01T00:00Z');" > "$test_logs/save-last.log"
+psql_app -c "SELECT pebble_save_annual_budget_plan('00000000-0000-0000-0000-000000000003',2027,'UTC','scheduled',NULL,'{\"u3-cat\":150}','{\"u3-cat\":100}','2026-10-01T00:00Z');" > "$test_logs/save-last.log"
 wait "$edit_pid"
-psql_local > "$test_logs/save-first.log" <<'SQL' &
+psql_app > "$test_logs/save-first.log" <<'SQL' &
 BEGIN;
 SELECT pebble_save_annual_budget_plan('00000000-0000-0000-0000-000000000004',2027,'UTC','scheduled',NULL,'{"u4-cat":150}','{"u4-cat":100}','2026-10-01T00:00Z');
 \echo LOCK_HELD
@@ -61,13 +72,14 @@ COMMIT;
 SQL
 save_pid=$!
 wait_for_marker "$test_logs/save-first.log"
-psql_local -c "SELECT pebble_patch_current_annual_budgets('00000000-0000-0000-0000-000000000004','{\"Food\":125}','2026-10-01T00:00Z');" > "$test_logs/edit-last.log"
+psql_app -c "SELECT pebble_patch_current_annual_budgets('00000000-0000-0000-0000-000000000004','{\"Food\":125}','2026-10-01T00:00Z');" > "$test_logs/edit-last.log"
 wait "$save_pid"
-psql_local <<'SQL'
+psql_app <<'SQL'
 DO $$ BEGIN
+  ASSERT current_user='pebble_app', 'Concurrency checks must use the restricted app role';
   ASSERT (SELECT annual_amount FROM annual_budget_plan_item WHERE user_id='00000000-0000-0000-0000-000000000003' AND year=2026 AND category_id='u3-cat')=125;
   ASSERT (SELECT annual_amount FROM annual_budget_plan_item WHERE user_id='00000000-0000-0000-0000-000000000004' AND year=2026 AND category_id='u4-cat')=125;
   RAISE NOTICE 'PASS: concurrent current edit and first annual save preserve the edit in both lock acquisition orders';
 END $$;
 SQL
-printf 'PASS: additive migration rerun, lifecycle, tenant isolation, and concurrency. No production service contacted.\n'
+printf 'PASS: restricted app-role privileges, permission repair, migration rerun, lifecycle, tenant isolation, and concurrency. No production service contacted.\n'

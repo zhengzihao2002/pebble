@@ -1,4 +1,5 @@
 \set ON_ERROR_STOP on
+SET ROLE pebble_app;
 DO $$
 DECLARE
   u uuid := '00000000-0000-0000-0000-000000000001';
@@ -7,6 +8,8 @@ DECLARE
   base jsonb := '{"u1-food":1200,"u1-rent":12000,"u1-extra":0}';
   r jsonb; n integer; v numeric; yr integer; rev integer; stale integer;
 BEGIN
+  ASSERT current_user='pebble_app', 'These checks must run as the restricted app role';
+  ASSERT NOT (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname=current_user), 'App test role must not bypass permissions';
   r := pebble_save_annual_budget_plan(u,2027,'America/New_York','draft',NULL,amounts,base,'2026-10-01T12:00:00Z');
   ASSERT r->>'ok'='true', r::text;
   rev := (r#>>'{plan,revision}')::integer; ASSERT rev>0;
@@ -70,3 +73,5 @@ BEGIN
   ASSERT NOT EXISTS(SELECT 1 FROM annual_budget_plan_item WHERE annual_amount<0);
   RAISE NOTICE 'PASS: annual plans 2027/2028/2029, frozen Jan1 timezone, carry-forward, zero amounts, revision guards, category changes, tenant isolation, cancellation, atomic rollback; legacy budgets unchanged';
 END $$;
+
+RESET ROLE;

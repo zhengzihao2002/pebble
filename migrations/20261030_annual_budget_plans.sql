@@ -167,5 +167,15 @@ BEGIN
   UPDATE annual_budget_plan SET state='scheduled',revision=nextval('annual_budget_plan_revision_seq'),updated_at=p_now WHERE user_id=p_user AND year=v_year;
   RETURN true;
 END $$;
+-- The SQL Editor owner differs from the app connection role.
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON TABLE public.annual_budget_plan, public.annual_budget_plan_item
+  TO pebble_app;
+GRANT USAGE ON SEQUENCE public.annual_budget_plan_revision_seq TO pebble_app;
+GRANT EXECUTE ON FUNCTION
+  public.pebble_save_annual_budget_plan(uuid, integer, text, text, integer, jsonb, jsonb, timestamptz),
+  public.pebble_cancel_annual_budget_plan(uuid, integer, integer, timestamptz),
+  public.pebble_patch_current_annual_budgets(uuid, jsonb, timestamptz)
+  TO pebble_app;
 COMMIT;
 -- END OF COMPLETE ANNUAL BUDGET MIGRATION
