@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingBlock } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
@@ -8,5 +9,5 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
  */
 export function ReportLoadingStatus() {
   const { d } = useTranslation();
-  return <span role="status" className="pb-rep-sr">{d.ux.reports.loadingReport}</span>;
+  return <div className="pb-page-loading-status"><LoadingBlock minHeight={0} size={64} labelSize="1rem" label={d.ux.reports.loadingReport} /></div>;
 }

@@ -88,7 +88,7 @@ function SigningOutOverlay({ phase, onRetry, onCancel }: { phase: Phase; onRetry
     >
       {working ? (
         <>
-          <LoadingOutline preview />
+          <LoadingOutline />
           <Spinner size={56} color="var(--pine)" />
           <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, margin: 0 }}>{d.auth.signingOut}</p>
         </>

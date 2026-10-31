@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { animateReportLayout } from '@/components/reports/animateReportLayout';
 import { SlidersHorizontal } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
@@ -925,7 +926,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const railRef = useRef<HTMLButtonElement>(null);
   const toggleFilters = () => {
     const opening = !filtersExpanded;
-    setFiltersExpanded(opening);
+    animateReportLayout(pageRef.current, () => setFiltersExpanded(opening));
     const rail = railRef.current;
     if (!rail || rail.offsetParent === null) return;
     // The swapped-in control only becomes focusable once its visibility has

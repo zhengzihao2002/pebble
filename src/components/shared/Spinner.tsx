@@ -40,12 +40,8 @@ export function Spinner({ size = 15, color = 'currentColor' }: SpinnerProps) {
 }
 
 /** A quiet content silhouette, never announced or allowed to intercept input. */
-export function LoadingOutline({ preview = false }: { preview?: boolean }) {
-  return <span className="pb-loading-outline" aria-hidden="true">
-    {preview && <span className="pb-loading-preview">
-      <i /><i /><i /><i />
-    </span>}
-  </span>;
+export function LoadingOutline() {
+  return <span className="pb-loading-outline" aria-hidden="true" />;
 }
 
 /**
@@ -109,7 +105,7 @@ export function LoadingBlock({
   const text = label ?? d.common.loading;
   return (
     <div className="pb-loading-block" data-compact={minHeight === 0} style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem' }}>
-      {minHeight !== 0 && <LoadingOutline preview />}
+      {minHeight !== 0 && <LoadingOutline />}
       <Spinner size={size} color="var(--pine)" />
       <span style={{ fontSize: labelSize, color: 'var(--ink-soft)' }}>{text}</span>
     </div>

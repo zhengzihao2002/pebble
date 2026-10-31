@@ -306,6 +306,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   // recurring catch-up skipped rather than guessing. One refresh, guarded by a
   // ref so it can never loop, re-runs that render with the zone known.
   const rootRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    let next = 0;
+    const first = requestAnimationFrame(() => { next = requestAnimationFrame(() => { if (root) root.dataset.pbThemeReady = 'true'; }); });
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(next); };
+  }, []);
   const tzRef = useRef(false);
 
   // OFFLINE. Both effects below end in router.refresh(). With no connection

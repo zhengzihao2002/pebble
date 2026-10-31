@@ -741,3 +741,20 @@
 .pebble-root .pb-rep-skel-card.is-list { padding: 1.1rem 0 0.25rem; gap: 0; }
 .pebble-root .pb-rep-skel-card.is-list > .pb-skel:first-child { margin: 0 1.5rem 0.75rem; }
 .pebble-root .pb-rep-skel-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.5rem; border-top: 1px solid var(--line); }
+/* Layout is committed once; snapshots carry the width/height morph on the compositor. */
+@container content (min-width:1040px) {
+  .pebble-root .pb-rep-grid,
+  .pebble-root .pb-rep-grid .pb-rep-side-card,
+  .pebble-root .pb-rep-grid .pb-rep-rail,
+  .pebble-root .pb-rep-grid .pb-rep-filter-panel { transition:none; }
+}
+html.pb-report-transition { view-transition-name:none; }
+html.pb-report-transition .pb-rep-hero { view-transition-name:report-summary; }
+html.pb-report-transition .has-inspector .pb-rep-filters,
+html.pb-report-transition .pb-rep-grid:not(.has-inspector) .pb-rep-rail { view-transition-name:report-filter; }
+html.pb-report-transition::view-transition-group(report-summary),
+html.pb-report-transition::view-transition-group(report-filter) { animation-duration:520ms; animation-timing-function:cubic-bezier(.22,.78,.22,1); }
+html.pb-report-transition::view-transition-old(report-summary),
+html.pb-report-transition::view-transition-new(report-summary),
+html.pb-report-transition::view-transition-old(report-filter),
+html.pb-report-transition::view-transition-new(report-filter) { height:100%; width:100%; animation-duration:520ms; }

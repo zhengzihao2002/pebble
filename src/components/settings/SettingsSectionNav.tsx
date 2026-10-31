@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useNavGlass } from '@/components/layout/useNavGlass';
 import { useSectionJump } from './useSectionJump';
 
 export interface SettingsNavItem {
@@ -36,9 +37,12 @@ export function SettingsSectionNav({ items, label, activeId, onSelect }: Setting
   const own = useSectionJump(controlled ? [] : items.map((i) => i.id));
   const current = controlled ? activeId : own.activeId;
   const select = controlled ? onSelect : own.jump;
+  const { ref: glassRef, indicatorRef } = useNavGlass<HTMLDivElement>(current ?? '');
 
   return (
     <nav className="settings-nav" aria-label={label}>
+      <div ref={glassRef} className="pb-nav-glass-host pb-settings-glass">
+        <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <ul className="settings-nav-list">
         {items.map((item) => {
           const active = item.id === current;
@@ -48,6 +52,7 @@ export function SettingsSectionNav({ items, label, activeId, onSelect }: Setting
                 type="button"
                 onClick={() => select(item.id)}
                 aria-current={active ? 'true' : undefined}
+                data-pb-nav-link data-pb-nav-selected={active || undefined}
                 className={`settings-nav-btn ${active ? 'active' : ''}`}
               >
                 {item.title}
@@ -55,7 +60,7 @@ export function SettingsSectionNav({ items, label, activeId, onSelect }: Setting
             </li>
           );
         })}
-      </ul>
+      </ul></div>
     </nav>
   );
 }
@@ -79,6 +84,7 @@ interface SettingsJumpBarProps {
  */
 export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJumpBarProps) {
   const ref = useRef<HTMLElement>(null);
+  const { ref: glassRef, indicatorRef } = useNavGlass<HTMLDivElement>(activeId);
 
   useEffect(() => {
     const el = ref.current;
@@ -93,6 +99,8 @@ export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJu
 
   return (
     <nav ref={ref} className="pb-settings-jump" aria-label={label}>
+      <div ref={glassRef} className="pb-nav-glass-host pb-settings-glass">
+        <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <ul className="pb-settings-jump-list">
         {items.map((item) => {
           const active = item.id === activeId;
@@ -102,6 +110,7 @@ export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJu
                 type="button"
                 onClick={() => onSelect(item.id)}
                 aria-current={active ? 'true' : undefined}
+                data-pb-nav-link data-pb-nav-selected={active || undefined}
                 className={`pb-settings-jump-btn${active ? ' is-active' : ''}`}
               >
                 {item.short ?? item.title}
@@ -109,7 +118,7 @@ export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJu
             </li>
           );
         })}
-      </ul>
+      </ul></div>
     </nav>
   );
 }

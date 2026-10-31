@@ -15,7 +15,7 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
     let readyFrame = 0;
     const measure = () => {
       frame = 0;
-      const target = host.querySelector<HTMLElement>('[data-pb-nav-selected="true"]');
+      const target = host.querySelector<HTMLElement>('[data-pb-nav-selected="true"]:not([href="/settings"]):not([href^="/account/"])');
       const bounds = host.getBoundingClientRect();
       if (!target || bounds.width < 1 || bounds.height < 1) {
         delete host.dataset.pbGlassReady;
