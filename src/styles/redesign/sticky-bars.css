@@ -1,0 +1,17 @@
+/* Match the annual planner's anchored shelf, retaining each bar's glass layer. */
+.pebble-root .pb-sticky-shelf {
+  transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out),
+    border-radius .32s var(--pb-ease-out), box-shadow .32s ease, border-color .32s ease;
+}
+.pebble-root .pb-sticky-shelf[data-stuck="true"] {
+  margin-inline-start: calc(-1 * var(--pb-sticky-bleed-left, 0px));
+  margin-inline-end: calc(-1 * var(--pb-sticky-bleed-right, 0px));
+  border-radius: 0 0 1rem 1rem;
+  border-color: color-mix(in srgb, var(--pine) 30%, var(--line));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--pine) 15%, transparent),
+    0 12px 24px -12px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+.pebble-root .pb-sticky-shelf.pb-period-pulse::after { border-radius: inherit; }
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-sticky-shelf { transition: none; }
+}

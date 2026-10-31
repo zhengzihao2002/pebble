@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { PeriodDot } from '@/components/shared/PeriodLink';
+import { useStickyExpansion } from '@/components/shared/useStickyExpansion';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { ANALYSIS_WINDOW_KEYS, type AnalysisWindow, type AnalysisWindowKey } from '@/lib/analysis/windows';
@@ -41,7 +42,7 @@ interface PeriodBarProps {
 export function PeriodBar({ windowKey, onChange, analysisWindow, rail, active, onJump }: PeriodBarProps) {
   const { d, t } = useTranslation();
   const x = d.ux.analysis;
-  const ref = useRef<HTMLDivElement>(null);
+  const { ref, stuck } = useStickyExpansion<HTMLDivElement>();
   const railRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function PeriodBar({ windowKey, onChange, analysisWindow, rail, active, o
     const ro = new ResizeObserver(publish);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [ref]);
 
   // Keep the lit rail chip in view when the rail scrolls sideways (phone).
   useEffect(() => {
@@ -68,7 +69,7 @@ export function PeriodBar({ windowKey, onChange, analysisWindow, rail, active, o
   const count = analysisWindow?.calendarMonths ?? 0;
 
   return (
-    <div ref={ref} id={PERIOD_BAR_ID} className="pb-ana-bar">
+    <div ref={ref} id={PERIOD_BAR_ID} className="pb-ana-bar pb-sticky-shelf" data-stuck={stuck}>
       <div className="pb-ana-bar-period">
         <span className="filter-label pb-ana-bar-label" id="analysis-window-label" aria-hidden="true">
           <PeriodDot />

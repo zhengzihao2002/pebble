@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useStickyExpansion } from '@/components/shared/useStickyExpansion';
 
 export interface JumpItem {
   id: string;
@@ -19,7 +20,7 @@ export interface JumpItem {
  */
 export function JumpBar({ items }: { items: JumpItem[] }) {
   const { d } = useTranslation();
-  const ref = useRef<HTMLElement>(null);
+  const { ref, stuck } = useStickyExpansion<HTMLElement>();
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<string | null>(null);
   // The chip last tapped. Two cards side by side start at the same height, so
@@ -36,7 +37,7 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
     const ro = new ResizeObserver(publish);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [ref]);
 
   // The section nearest the top of the reading area is the lit one.
   useEffect(() => {
@@ -81,7 +82,7 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
   };
 
   return (
-    <nav ref={ref} className="pb-ins-bar" aria-label={d.ux.insights.jumpTo}>
+    <nav ref={ref} className="pb-ins-bar pb-sticky-shelf" data-stuck={stuck} aria-label={d.ux.insights.jumpTo}>
       <div ref={trackRef} className="pb-ins-bar-track">
         {items.map((i) => (
           <button

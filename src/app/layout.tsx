@@ -16,6 +16,7 @@ import "@/styles/redesign/budgets.css";
 import "@/styles/redesign/annual-planner.css";
 import "@/styles/redesign/annual-allocation.css";
 import "@/styles/redesign/annual-entry.css";
+import "@/styles/redesign/sticky-bars.css";
 import "@/styles/redesign/goals.css";
 import "@/styles/redesign/scheduled.css";
 import "@/styles/redesign/settings.css";

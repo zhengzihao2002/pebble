@@ -1,8 +1,9 @@
 'use client';
 
-import { forwardRef, useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { CalendarRange, ChevronDown, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, Copy, Download, Ellipsis, RotateCcw } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useStickyExpansion } from '@/components/shared/useStickyExpansion';
 import type { PeriodGroup } from './types';
 
 interface ReportToolbarProps {
@@ -55,6 +56,9 @@ export const ReportToolbar = forwardRef<HTMLDivElement, ReportToolbarProps>(func
   const [menuOpen, setMenuOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { ref: barRef, stuck } = useStickyExpansion<HTMLDivElement>();
+  // Keep the parent's live toolbar-height measurement on the same DOM node.
+  useImperativeHandle(ref, () => barRef.current!, [barRef]);
 
   // A tap anywhere else, or Escape, closes the menu.
   useEffect(() => {
@@ -106,7 +110,7 @@ export const ReportToolbar = forwardRef<HTMLDivElement, ReportToolbarProps>(func
   };
 
   return (
-    <div ref={ref} className="pb-rep-bar" role="toolbar" aria-label={x.reportTools}>
+    <div ref={barRef} className="pb-rep-bar pb-sticky-shelf" data-stuck={stuck} role="toolbar" aria-label={x.reportTools}>
       <div className={`pb-rep-stepper${steppable ? '' : ' is-fixed'}`}>
         {steppable && stepBtn('prev')}
         {/* aria-live so stepping is announced; the label is the period name. */}
