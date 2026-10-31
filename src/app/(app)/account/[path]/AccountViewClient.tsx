@@ -13,9 +13,11 @@ import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';
  * immediately - a guaranteed hydration mismatch. ssr: false skips the server
  * render entirely rather than papering over the difference.
  */
+const PendingPanel = () => <span className="pb-loading-announcement" aria-busy="true"/>;
+
 const AccountView = dynamic(
   () => import('@neondatabase/auth-ui').then((m) => m.AccountView),
-  { ssr: false },
+  { ssr: false, loading: PendingPanel },
 );
 
 // The library's Security page is Change Password + Sessions. Its SessionsCard
@@ -23,7 +25,7 @@ const AccountView = dynamic(
 // the library's own, loaded client-only for the same reason as AccountView.
 const ChangePasswordCard = dynamic(
   () => import('@neondatabase/auth-ui').then((m) => m.ChangePasswordCard),
-  { ssr: false },
+  { ssr: false, loading: PendingPanel },
 );
 
 const TABS = [

@@ -18,7 +18,7 @@ import { ReportToolbar } from '@/components/reports/ReportToolbar';
 import { ReportFilterChips, type ActiveFilterChip } from '@/components/reports/ReportFilterChips';
 import { ReportSummary, type ReportDelta, type ShareSlice } from '@/components/reports/ReportSummary';
 import { ReportTimeline } from '@/components/reports/ReportTimeline';
-import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 import { previousWindow, resolvePeriodBounds, shiftCustomRange, stepPeriod, diffDays, type Bounds } from '@/components/reports/periodBounds';
 import { buildReportBuckets } from '@/components/reports/reportBuckets';
 import { categoryMonthlySeries } from '@/components/reports/categorySeries';
@@ -946,7 +946,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // First frame: the saved filters and the zone-aware date are not known yet.
   // The report's outline instead of the whole unfiltered history (which used
   // to paint and then snap to the real view).
-  if (!ready) return <ReportSkeleton />;
+  if (!ready) return <PageSkeleton pathname="/reports"/>;
 
   const heroKind = selectedTypes.size === 0 ? 'none' : mixed ? 'net' : includeExpense ? 'spent' : 'received';
 

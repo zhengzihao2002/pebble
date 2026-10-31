@@ -208,7 +208,7 @@ export function PebbleSessionsCard() {
   };
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
+    <div className="card" aria-busy={sessions === null && !error && !needsConfirmation} style={{ padding: '1.5rem' }}>
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.sessions.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem', lineHeight: 1.5 }}>{d.sessions.blurb}</p>
 

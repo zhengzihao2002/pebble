@@ -19,7 +19,8 @@
 }
 /* No empty first frame: destination outlines are visible immediately, even
    before a non-prefetched route's first streamed response arrives. */
-.pebble-root .pb-navigation-content { display:contents; }
+.pebble-root .pb-navigation-stage { position:relative; min-width:0; }
+.pebble-root .pb-navigation-content { display:flow-root; min-width:0; }
 .pebble-root .pb-navigation-content[hidden] { display:none; }
 .pebble-root .pb-navigation-preview { min-width:0; }
 .pebble-root :is(.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel,.pb-page-skeleton) { animation:none !important; opacity:1; }
@@ -46,3 +47,11 @@
 .pebble-root .pb-cached-layout-box.is-bar { justify-content:center; padding:.5rem 1rem; }
 .pebble-root .pb-cached-layout-box.is-hero { background:linear-gradient(130deg,color-mix(in srgb,var(--pine) 8%,var(--mist)),var(--mist)); }
 @media(prefers-reduced-motion:reduce) { .pebble-root .pb-cached-layout-box { animation:none; } }
+
+.pebble-root .pb-layout-restored { display:none; }
+.pebble-root .pb-layout-skeleton-host[data-layout-restored] > .pb-layout-estimate { display:none; }
+.pebble-root .pb-layout-skeleton-host[data-layout-restored] > .pb-layout-restored { display:block; }
+.pebble-root .pb-page-handoff { position:absolute; z-index:6; pointer-events:none; }
+/* A rise-in would move the incoming cards away from their saved contours. */
+.pebble-root .pb-page-arriving .pb-rise { animation:none; }
+@media(prefers-reduced-motion:reduce) { .pebble-root .pb-page-handoff { display:none; } }

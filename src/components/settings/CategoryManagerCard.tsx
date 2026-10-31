@@ -272,7 +272,7 @@ export function CategoryManagerCard() {
   };
 
   return (
-    <div className="card pb-settings-card" style={{ position: 'relative' }}>
+    <div className="card pb-settings-card" aria-busy={loading} style={{ position: 'relative' }}>
       {busy && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.categoryManager.saved : ''}</span>

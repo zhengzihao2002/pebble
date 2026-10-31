@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { Goal, LedgerRecord, RecurringRule, Transaction } from '@/types';
@@ -93,6 +94,8 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
     { id: SECTION_IDS.places, label: ux.sectionPlaces },
     { id: SECTION_IDS.good, label: ux.sectionGood },
   ];
+
+  if (!today) return <PageSkeleton pathname="/insights"/>;
 
   return (
     <div className="pb-ins">

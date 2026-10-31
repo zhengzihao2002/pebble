@@ -35,7 +35,7 @@ import { YearOverYearChart } from '@/components/analysis/YearOverYearChart';
 import { PeriodBar, type RailItem } from '@/components/analysis/PeriodBar';
 import { AnalysisHero } from '@/components/analysis/AnalysisHero';
 import { CurrentMonthCard } from '@/components/analysis/CurrentMonthCard';
-import { AnalysisSkeleton } from '@/components/analysis/AnalysisSkeleton';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 import { TopCategories } from '@/components/analysis/TopCategories';
 import { PaycheckSplit, StabilityMeter } from '@/components/analysis/IncomeVisuals';
 import { CommitmentsCard, CushionCard } from '@/components/analysis/CushionCard';
@@ -245,16 +245,14 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     setActive(id);
   };
 
+  if (!restored) return <PageSkeleton pathname="/analysis"/>;
+
   return (
     <div className="pb-ana">
       <PeriodBar
         windowKey={windowKey} onChange={setWindowKey} analysisWindow={analysisWindow}
         rail={rail} active={active} onJump={jump}
       />
-
-      {/* Until the zone-aware date is known: the page's shape, not a blank.
-          After that a missing date (Intl failed) shows only the bar, as before. */}
-      {!restored && <AnalysisSkeleton />}
 
       {analysisWindow && (
         <section id="pb-ana-overview" className="pb-ana-section" aria-label={x.overview}>

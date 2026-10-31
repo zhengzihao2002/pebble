@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { setRecurringRuleStatusAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
@@ -134,6 +135,8 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
     pulseTimer.current = window.setTimeout(() => head.classList.remove('pb-period-pulse'), 1900);
   }, [jumpSeq]);
   useEffect(() => () => window.clearTimeout(pulseTimer.current), []);
+
+  if (!today) return <PageSkeleton pathname="/scheduled"/>;
 
   return (
     <div className="pb-sched">

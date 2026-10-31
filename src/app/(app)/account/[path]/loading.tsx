@@ -1,2 +1,1 @@
-import { PageSkeleton } from '@/components/loading/PageSkeleton';
-export default function Loading() { return <PageSkeleton pathname='/account/security'/>; }
+export { RouteLoading as default } from '@/components/loading/NavigationContent';

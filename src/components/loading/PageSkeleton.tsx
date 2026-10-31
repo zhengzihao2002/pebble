@@ -1,6 +1,6 @@
 import { CachedPageSkeleton } from './CachedPageSkeleton';
-import DashboardLoading from '@/app/(app)/dashboard/loading';
-import TransactionsLoading from '@/app/(app)/transactions/loading';
+import { DashboardSkeleton } from './DashboardSkeleton';
+import { TransactionsSkeleton } from './TransactionsSkeleton';
 import { AnalysisSkeleton } from '@/components/analysis/AnalysisSkeleton';
 import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { AccountsSkeleton, InsightsSkeleton, BudgetsSkeleton, GoalsSkeleton, ScheduledSkeleton, SettingsSkeleton, PlannerSkeleton, AccountSettingsSkeleton } from './PageSkeletons';
@@ -9,8 +9,8 @@ import { LoadingStatus } from '@/components/dashboard/LoadingStatus';
 function DefaultPageSkeleton({ pathname }: { pathname: string }) {
   let content;
   switch (pathname.split('/')[1]) {
-    case 'dashboard': return <DashboardLoading/>;
-    case 'transactions': return <TransactionsLoading/>;
+    case 'dashboard': return <DashboardSkeleton/>;
+    case 'transactions': return <TransactionsSkeleton/>;
     case 'analysis': return <AnalysisSkeleton withBar/>;
     case 'reports': return <ReportSkeleton/>;
     case 'accounts': content = <AccountsSkeleton/>; break;

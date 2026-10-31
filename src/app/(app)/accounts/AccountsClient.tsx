@@ -18,7 +18,7 @@ import { PayOffDialog } from '@/components/accounts/PayOffDialog';
 import { SelfTransferDialog } from '@/components/accounts/SelfTransferDialog';
 import { TransferModal } from '@/components/modals/TransferModal';
 import { PeriodLink } from '@/components/shared/PeriodLink';
-import { Skeleton } from '@/components/kit/Skeleton';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 import { buildDays, isRange, periodWords, rangeStart, shownAccounts, type DayPoint as AccountDayPoint, type Range } from '@/components/accounts/accountMath';
 
 export type DayPoint = AccountDayPoint;
@@ -129,6 +129,8 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
 
   const periodChip = <PeriodLink label={words.cardsPeriod} control="accounts" />;
 
+  if (!days) return <PageSkeleton pathname="/accounts"/>;
+
   return (
     <div className="pb-accounts">
       <AccountsHero
@@ -137,16 +139,7 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
         selfCount={selfPairs.length} onReviewSelf={() => setSelfOpen(true)}
       />
 
-      {!days ? (
-        // Shapes of what is coming while today resolves; decorative.
-        <div className="pb-accounts-skel" aria-hidden="true">
-          <Skeleton height="9.5rem" radius="var(--pb-radius-lg)" />
-          <div className="pb-accounts-skel-tiles">
-            {[0, 1, 2].map((k) => <Skeleton key={k} height="13.5rem" radius="var(--pb-radius-lg)" />)}
-          </div>
-        </div>
-      ) : (
-        <>
+      <>
           {current !== null && <MoneyMixCard items={items} total={current} />}
           {current !== null && today && (
             <AccountCards
@@ -159,8 +152,7 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
           {today && chrono.length > 0 && (
             <FlowCalendar key={range} days={days} expenses={expenses} income={income} today={today} periodChip={periodChip} />
           )}
-        </>
-      )}
+      </>
 
       {detail && days && today && (
         <AccountDetailSheet

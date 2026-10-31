@@ -15,7 +15,7 @@ global.document = {documentElement:html,querySelector:selector=>selector.startsW
 global.localStorage = { getItem:key=>values.get(key)??null, setItem:(key,value)=>values.set(key,value), removeItem:key=>values.delete(key) };
 global.getComputedStyle = element=>element===html?{fontSize:'16px'}:element===main?{paddingLeft:'20px',paddingRight:'20px',paddingTop:'20px'}:{visibility:'visible',borderTopLeftRadius:'22px',boxShadow:'none'};
 function entry() { return {key:cache.layoutProfile('/accounts',main),savedAt:Date.now(),width:560,height:640,boxes:[{x:0,y:0,width:560,height:640,radius:22,kind:'card',flat:true}]}; }
-function seed(value) { values.set(cache.LAYOUT_CACHE_PREFIX+owner,JSON.stringify({version:1,entries:[value]})); }
+function seed(value) { values.set(cache.LAYOUT_CACHE_PREFIX+owner,JSON.stringify({version:2,entries:[value]})); }
 function setup(name) {owner=name;window.innerWidth=1024;window.innerHeight=768;html.lang='en';main.clientWidth=600;content=null;}
 
 test('reuses card sizes only for the same page, viewport and text layout',()=>{
@@ -27,12 +27,12 @@ test('reuses card sizes only for the same page, viewport and text layout',()=>{
 });
 test('corrupt, expired, oversized and invalid geometry fall back safely',()=>{
  setup('validation');values.set(cache.LAYOUT_CACHE_PREFIX+owner,'not json');assert.equal(cache.readPageLayout('/accounts',main),null);
- for(const change of [e=>e.savedAt=Date.now()-31*86400000,e=>e.boxes[0].height=Infinity,e=>e.boxes[0].width=9000,e=>e.boxes[0].x=-1,e=>e.boxes[0].kind='HTML',e=>e.boxes=Array(81).fill(e.boxes[0])]) {const e=entry();change(e);seed(e);assert.equal(cache.readPageLayout('/accounts',main),null);}
+ for(const change of [e=>e.savedAt=Date.now()-31*86400000,e=>e.boxes[0].height=Infinity,e=>e.boxes[0].width=9000,e=>e.boxes[0].x=-101,e=>e.boxes[0].kind='HTML',e=>e.boxes=Array(81).fill(e.boxes[0])]) {const e=entry();change(e);seed(e);assert.equal(cache.readPageLayout('/accounts',main),null);}
 });
 test('records geometry without reading card text, HTML, IDs or financial data',()=>{
  setup('geometry');const card={getBoundingClientRect:()=>({left:20,top:20,width:560,height:640}),closest:()=>null,contains:()=>false,matches:()=>false};
  for(const property of ['innerHTML','textContent','id']) Object.defineProperty(card,property,{get(){throw Error('Content must never be read')}});
- content={hidden:false,closest:()=>main,querySelector:()=>null,querySelectorAll:()=>[card]};
+ content={hidden:false,closest:()=>main,querySelector:()=>null,children:[],querySelectorAll:selector=>selector==='.pb-rise'?[]:[card]};
  cache.capturePageLayout('/accounts');const result=cache.readPageLayout('/accounts',main);assert.equal(result.boxes[0].height,640);assert.equal(result.boxes[0].radius,22);
  assert.deepEqual(Object.keys(result.boxes[0]).sort(),['flat','height','kind','radius','width','x','y']);
  cache.clearLayoutCache();cache.capturePageLayout('/accounts');assert.equal(localStorage.getItem(cache.LAYOUT_CACHE_PREFIX+owner),null);
@@ -46,4 +46,24 @@ test('sign-out clearing and storage keys keep users separate',()=>{
 test('unavailable storage is a harmless cache miss',()=>{
  setup('private');const original=localStorage.getItem;localStorage.getItem=()=>{throw Error('Blocked')};
  try { assert.equal(cache.readPageLayout('/accounts',main),null); } finally { localStorage.getItem=original; }
+});
+test('keeps full-width bars and space below the final card without clipping',()=>{
+ setup('bleed');const card={getBoundingClientRect:()=>({left:0,top:20,width:600,height:64}),closest:()=>null,matches:()=>true};
+ content={hidden:false,closest:()=>main,querySelector:()=>null,children:[{getBoundingClientRect:()=>({bottom:920})}],querySelectorAll:selector=>selector==='.pb-rise'?[]:[card]};
+ cache.capturePageLayout('/accounts');const saved=cache.readPageLayout('/accounts',main);
+ assert.equal(saved.boxes[0].x,-20);assert.equal(saved.boxes[0].width,600);assert.equal(saved.height,900);
+});
+test('streamed pre-paint restoration uses the same validated numeric geometry',()=>{
+ setup('bootstrap');seed(entry());
+ buildSync({entryPoints:[path.resolve('src/components/loading/layoutSnapshot.ts')],bundle:true,platform:'node',format:'cjs',outfile:path.join(temp,'snapshot.cjs')});
+ const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
+ const node=()=>({style:{},dataset:{},children:[],setAttribute(key,value){this[key]=value},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
+ const surface=node(),host=node();host.dataset.layoutPath='/accounts';host.closest=()=>main;host.querySelector=()=>surface;
+ const doc={...document,currentScript:{parentElement:host},createElement:node};
+ require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date});
+ assert.equal(host['data-layout-restored'],'true');assert.equal(surface.children[0].style.height,'640px');
+ assert.equal(surface.children[0].children[0].style.width,'560px');
+ values.set(cache.LAYOUT_CACHE_PREFIX+owner,'invalid');host.removeAttribute=key=>delete host[key];
+ require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date});
+ assert.equal(host['data-layout-restored'],undefined);assert.equal(surface.children.length,0);
 });

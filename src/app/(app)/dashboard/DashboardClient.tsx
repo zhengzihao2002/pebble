@@ -1,4 +1,5 @@
 'use client';
+import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
@@ -223,6 +224,8 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+
+  if (!today) return <PageSkeleton pathname="/dashboard"/>;
 
   // LAYOUT. .pb-dash is a grid placed by container queries on the content
   // area (dashboard.css). The DOM order below IS the phone order - and the
