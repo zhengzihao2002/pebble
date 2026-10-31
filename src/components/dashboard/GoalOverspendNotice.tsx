@@ -1,7 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';

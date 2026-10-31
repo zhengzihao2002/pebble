@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { RefreshCw, DatabaseZap, LayoutDashboard } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 

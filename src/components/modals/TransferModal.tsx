@@ -2,7 +2,7 @@
 
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ArrowRight, Coins, Landmark } from 'lucide-react';
 import { LoadingOverlay, Spinner } from '@/components/shared/Spinner';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';

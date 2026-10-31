@@ -17,3 +17,25 @@
   .pebble-root :is(.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel) .card,
   .pebble-root :is(.pb-dash-skel-hero,.pb-rep-skel-bar,.pb-ana-skel-bar) { animation:none; }
 }
+/* No empty first frame: destination outlines are visible immediately, even
+   before a non-prefetched route's first streamed response arrives. */
+.pebble-root .pb-navigation-content { display:contents; }
+.pebble-root .pb-navigation-content[hidden] { display:none; }
+.pebble-root .pb-navigation-preview { min-width:0; }
+.pebble-root :is(.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel,.pb-page-skeleton) { animation:none !important; opacity:1; }
+.pebble-root .pb-page-skeleton { position:relative; min-width:0; }
+.pebble-root .pb-page-skel-card { padding:1.25rem 1.5rem; display:flex; flex-direction:column; gap:1rem; min-width:0; }
+.pebble-root .pb-page-skeleton .card, .pebble-root .pb-ins-card[aria-busy=true] { outline:1px solid transparent; outline-offset:-1px; animation:pb-container-breathe 2.8s ease-in-out infinite; }
+.pebble-root .pb-page-skel-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr)); gap:1.25rem; min-width:0; }
+.pebble-root .pb-page-skel-row { display:flex; align-items:center; gap:.75rem; min-width:0; padding:.65rem 0; border-bottom:1px solid var(--line); }
+.pebble-root .pb-page-skel-row > div { flex:1; min-width:0; display:flex; flex-direction:column; gap:.45rem; }
+.pebble-root .pb-page-skel-row > .pb-skel { flex-shrink:0; }
+.pebble-root .pb-page-skeleton[data-skeleton=account] { display:grid; gap:1.25rem; }
+@media(prefers-reduced-motion:reduce) { .pebble-root .pb-page-skeleton .card,.pebble-root .pb-ins-card[aria-busy=true] { animation:none; } }
+/* Accounts also has a brief client-side date-resolution skeleton. */
+.pebble-root .pb-accounts-skel > .pb-skel,
+.pebble-root .pb-accounts-skel-tiles > .pb-skel { outline:1px solid transparent; outline-offset:-1px; animation:pb-container-breathe 2.8s ease-in-out infinite; }
+@media(prefers-reduced-motion:reduce) {
+  .pebble-root .pb-accounts-skel > .pb-skel,
+  .pebble-root .pb-accounts-skel-tiles > .pb-skel { animation:none; }
+}

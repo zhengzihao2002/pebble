@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ChevronLeft, Shield, User } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';

@@ -1,7 +1,7 @@
 'use client';
 
 import { createElement, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Clock, RefreshCw, WifiOff } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from '@/components/loading/PendingLink';
+import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import { ArrowRightLeft, CalendarClock, MoreHorizontal, Plus, Receipt, Target, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { primaryNavItems, secondaryNavItems, isNavItemActive, type NavItem } from './navItems';

@@ -1,7 +1,7 @@
 'use client';
 
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';

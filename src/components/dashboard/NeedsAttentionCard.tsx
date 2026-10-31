@@ -1,7 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ChevronRight, PiggyBank } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { computeCategorySpent } from '@/lib/stats';

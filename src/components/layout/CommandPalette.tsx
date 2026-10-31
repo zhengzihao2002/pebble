@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { beginNavigation } from '@/components/loading/navigation';
 import { useRouter } from 'next/navigation';
 import { ArrowRightLeft, CalendarClock, CornerDownLeft, Receipt, Eye, EyeOff, Plus, Search, SearchX, Settings as SettingsIcon, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -159,7 +160,7 @@ export function CommandPalette({
       el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
       return true;
     };
-    if (window.location.pathname !== '/settings') router.push('/settings');
+    if (window.location.pathname !== '/settings') { beginNavigation('/settings'); router.push('/settings'); }
     let tries = 0;
     const tick = () => { if (scroll() || ++tries > 40) return; window.setTimeout(tick, 50); };
     window.setTimeout(tick, 0);
@@ -176,7 +177,7 @@ export function CommandPalette({
     },
     ...navItems.map((item): Command => ({
       id: item.href, label: d.nav[item.labelKey], icon: item.icon, group: 'pages',
-      run: () => router.push(item.href),
+      run: () => { beginNavigation(item.href); router.push(item.href); },
     })),
     { id: 's-money', label: d.settingsSections.money, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-money') },
     { id: 's-appearance', label: d.settingsSections.appearance, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-appearance') },
@@ -185,7 +186,7 @@ export function CommandPalette({
     { id: 's-account', label: d.account.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-pebble-account') },
     { id: 's-privacy', label: d.privacyMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
     { id: 's-dropdowns', label: d.selectMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
-    { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => router.push('/account/security') },
+    { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => { beginNavigation('/account/security'); router.push('/account/security'); } },
   ];
 
   const q = query.trim().toLowerCase();

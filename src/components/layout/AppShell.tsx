@@ -12,6 +12,7 @@ import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
 import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
 import { playEventSound } from '@/lib/sound/useSound';
+import { NavigationContent } from '@/components/loading/NavigationContent';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
@@ -553,7 +554,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onTransferClick={() => setShowTransferModal(true)}
             onSearchClick={() => setShowPalette(true)}
           />
-          <main className="pebble-main">{children}</main>
+          <main className="pebble-main"><NavigationContent>{children}</NavigationContent></main>
         </div>
         <BottomNav
           onAddTransactionClick={() => setShowAddModal(true)}

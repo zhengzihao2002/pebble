@@ -1,7 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate, splitCents } from '@/lib/format';

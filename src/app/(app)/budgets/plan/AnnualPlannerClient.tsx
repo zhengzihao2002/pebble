@@ -2,7 +2,7 @@
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, CalendarCheck, Check } from 'lucide-react';
 import type { CategoryItem } from '@/lib/data/mappers';

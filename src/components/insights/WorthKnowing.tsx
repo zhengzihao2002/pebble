@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { CheckCircle2, ChevronDown, Lightbulb, Sparkles, X } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';

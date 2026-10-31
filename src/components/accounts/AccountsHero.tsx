@@ -2,7 +2,7 @@
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ArrowRightLeft, ChevronRight, Plus, Wallet, ReceiptText } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatCurrency, formatDate, formatLongDate, splitCents } from '@/lib/format';

@@ -1,4 +1,1 @@
-/** Avoid a generic intermediate screen before each route's own fallback. */
-export default function AppGroupLoading() {
-  return null;
-}
+export { RouteLoading as default } from '@/components/loading/NavigationContent';

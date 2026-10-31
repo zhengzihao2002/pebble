@@ -2,7 +2,7 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Coins, CreditCard, Landmark, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Account } from '@/lib/data/mappers';

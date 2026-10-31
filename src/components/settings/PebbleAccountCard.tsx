@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { useState } from 'react';
 import { useSafetyLock } from '@/lib/useSafetyLock';
 import { ChevronRight, Shield, Trash2, User } from 'lucide-react';

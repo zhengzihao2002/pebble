@@ -2,7 +2,7 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ChevronRight, Gauge } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { usePebbleStore } from '@/store/usePebbleStore';

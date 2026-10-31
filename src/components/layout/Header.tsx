@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
+import Link from '@/components/loading/PendingLink';
 import { Plus, ArrowRightLeft, CalendarClock, X, Eye, EyeOff, Search } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';

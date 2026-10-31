@@ -1,7 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { Check, ChevronRight, Plus, Target } from 'lucide-react';
 import type { Goal } from '@/types';
 import { formatCurrency, formatGoalDate } from '@/lib/format';

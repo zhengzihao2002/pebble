@@ -2,7 +2,7 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { ChevronRight, Plus, ReceiptText } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';

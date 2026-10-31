@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import type { Metadata } from 'next';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { PRIVACY_NOTICE } from '@/lib/legal/privacyNotice';

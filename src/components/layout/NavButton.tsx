@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from '@/components/loading/PendingLink';
+import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { isNavItemActive } from './navItems';
 

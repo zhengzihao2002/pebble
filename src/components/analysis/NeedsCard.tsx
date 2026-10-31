@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import type { ReactNode } from 'react';
 import { CalendarRange, Hourglass, PiggyBank, Receipt, Wallet, type LucideIcon } from 'lucide-react';
 import { EmptyState } from '@/components/kit/EmptyState';

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/loading/PendingLink';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { NeonAuthUIProvider } from '@neondatabase/auth-ui';
