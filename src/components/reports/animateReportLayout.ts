@@ -19,7 +19,7 @@ export function animateReportLayout(page: HTMLElement | null, update: () => void
     });
     return;
   }
-  const elements = [...page.querySelectorAll<HTMLElement>('.pb-rep-hero, .pb-rep-side-col')];
+  const elements = [...page.querySelectorAll<HTMLElement>('.pb-rep-hero, .pb-rep-results, .pb-rep-side-col')];
   const before = elements.map(el => el.getBoundingClientRect());
   flushSync(update);
   elements.forEach((el,index) => {

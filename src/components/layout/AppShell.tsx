@@ -251,7 +251,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     // running fade: the page is in step with THIS value only because that
     // earlier one has not landed yet, and it would land after us and win
     // (toggle, toggle back, quickly). Joining the queue keeps the order.
-    if (!themeChangePending() && html.classList.contains('pebble-dark') === darkMode && rootRef.current?.classList.contains('dark') === darkMode) return;
+    if (!themeChangePending() && html.classList.contains('pebble-dark') === darkMode) {
+      // Hydration only mirrors the already-correct prepaint theme onto the
+      // root. Taking theme snapshots here captured the pre-hydration pill.
+      apply();
+      return;
+    }
     runThemeChange(apply);
   }, [darkMode]);
 

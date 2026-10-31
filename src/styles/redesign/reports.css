@@ -758,3 +758,10 @@ html.pb-report-transition::view-transition-old(report-summary),
 html.pb-report-transition::view-transition-new(report-summary),
 html.pb-report-transition::view-transition-old(report-filter),
 html.pb-report-transition::view-transition-new(report-filter) { height:100%; width:100%; animation-duration:520ms; }
+
+/* Results travel vertically and resize with the summary, on the same timeline. */
+html.pb-report-transition .pb-rep-results { view-transition-name:report-results; }
+html.pb-report-transition::view-transition-group(report-results) { animation-duration:520ms; animation-timing-function:cubic-bezier(.22,.78,.22,1); }
+html.pb-report-transition::view-transition-old(report-results),
+html.pb-report-transition::view-transition-new(report-results) { height:100%; width:100%; animation-duration:520ms; }
+.pebble-root .pb-rep-filters, .pebble-root .pb-rep-rail { box-shadow:none; }

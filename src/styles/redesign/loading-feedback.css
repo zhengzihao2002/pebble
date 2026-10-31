@@ -11,7 +11,7 @@
 .pebble-root :is(.pb-dash-skel-hero,.pb-rep-skel-bar,.pb-ana-skel-bar) {
   outline:1px solid transparent; outline-offset:-1px; animation:pb-container-breathe 2.8s ease-in-out infinite;
 }
-.pebble-root .pb-page-loading-status { position:absolute; top:clamp(5rem,22vh,12rem); left:0; right:0; z-index:3; pointer-events:none; padding:1.5rem; background:radial-gradient(ellipse at center,color-mix(in srgb,var(--paper) 94%,transparent),transparent 72%); }
+.pebble-root .pb-loading-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 @media(prefers-reduced-motion:reduce) {
   .pebble-root .pb-loading-outline { animation:none; opacity:.45; }
   .pebble-root :is(.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel) .card,

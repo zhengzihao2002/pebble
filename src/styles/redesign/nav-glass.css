@@ -52,3 +52,26 @@
 }
 
 .pebble-root .account-tabs:not(.pb-thumb-ready) a[aria-current="page"] { background: color-mix(in srgb,var(--pine) 16%,transparent); }
+
+/* The server-rendered selected link must already look like the measured glass.
+   Otherwise hydration replaces a solid legacy pill with a different surface. */
+.pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active,
+.pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active:hover,
+.pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before {
+  background:linear-gradient(145deg,color-mix(in srgb,var(--mist) 72%,transparent),transparent 58%),color-mix(in srgb,var(--pine) 16%,transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--mist) 85%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--pine) 12%,transparent),0 5px 15px -9px color-mix(in srgb,var(--pine) 55%,transparent);
+  outline:1px solid color-mix(in srgb,var(--pine) 24%,transparent); outline-offset:-1px;
+  color:var(--pine); font-weight:600;
+  -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
+}
+.pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before { border-radius:1rem; }
+.pebble-root .pb-settings-glass[data-pb-glass-ready] .settings-nav-btn[data-pb-nav-selected="true"]:hover,
+.pebble-root .pb-settings-glass[data-pb-glass-ready] .pb-settings-jump-btn[data-pb-nav-selected="true"]:hover,
+.pebble-root .account-tabs.pb-thumb-ready a[aria-current="page"]:hover {
+  background:transparent; box-shadow:none; color:var(--pine);
+}
+
+.pebble-root .pb-settings-glass[data-pb-glass-ready] .settings-nav-btn[data-pb-nav-selected="true"],
+.pebble-root .pb-settings-glass[data-pb-glass-ready] .pb-settings-jump-btn[data-pb-nav-selected="true"] {
+  background:transparent; box-shadow:none; color:var(--pine); transition-property:color;
+}
