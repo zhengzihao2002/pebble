@@ -35,13 +35,19 @@ also captures the outgoing page before it is hidden. Sign-out clears the active
 user's cache and prevents pagehide from recreating it. Dimensions never constrain
 the loaded page itself; newly loaded data replaces the estimate and updates it.
 
-`node --test tests/layoutCache.test.cjs` checks profile isolation, validation,
-expiry, user separation, content-free capture and sign-out cleanup. Browser
-fixtures render the real app clients with synthetic props and stubbed actions.
-They compare every visible card's bounds on repeat visits and each reveal frame
-on desktop and mobile, and delay React JavaScript to verify pre-hydration refresh
-restoration. A split-stream check pauses just before the inline bootstrap and
-records every paint to reject any default-skeleton frame on a cached visit;
-staged-segment tests also cover attachment and zero-width layout. All
-verification is isolated from Neon.
-Bump the cache version/prefix when changing this geometry format.
+`node --test tests/layoutCache.test.cjs tests/loadingRoutes.test.mjs` checks
+profile isolation, validation, expiry, user separation, content-free capture and
+sign-out cleanup. It also renders the actual Reports and Analysis route
+fallbacks and executes their cache bootstrap against a saved layout.
+
+Browser fixtures render the real app clients with synthetic props and stubbed
+actions, and import each route's actual loading.tsx. They compare card bounds and
+record every paint through route loading and client initialization under 3G on
+desktop and mobile. Income fixtures render all four Analysis income tiles, and
+assert each one's matching cached rectangle. Analysis's standalone metric tiles
+share the capture/resize selector; tiles inside an outer card are not duplicated.
+
+Split-stream checks delay React JavaScript and pause just before the inline
+bootstrap to reject any default-skeleton frame on a cached visit. Staged-segment
+tests also cover attachment and zero-width layout. All verification is isolated
+from Neon. Bump the cache version/prefix when changing this geometry format.

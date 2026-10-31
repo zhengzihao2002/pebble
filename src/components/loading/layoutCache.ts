@@ -4,7 +4,7 @@ export const LAYOUT_CACHE_PREFIX = layoutTools.prefix;
 const TTL = 30 * 86400000;
 const MAX_ENTRIES = 48;
 const MAX_BOXES = 80;
-const candidates = '[data-slot="card"], .add-goal-tile, .pb-annual-footer, .card, .pb-dash-hero, .pb-accounts-tile, .pb-ins-bar, .pb-ana-bar, .pb-rep-bar, .pb-rep-rail, .pb-settings-jump, .account-subnav';
+export const LAYOUT_CONTOUR_SELECTOR = '.pb-ana-tile, [data-slot="card"], .add-goal-tile, .pb-annual-footer, .card, .pb-dash-hero, .pb-accounts-tile, .pb-ins-bar, .pb-ana-bar, .pb-rep-bar, .pb-rep-rail, .pb-settings-jump, .account-subnav';
 const loading = '.pb-page-skeleton,.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel,[data-slot="skeleton"],.pb-accounts-skel,.pb-cached-layout,[aria-busy="true"]';
 const clearedOwners = new Set<string>();
 const rounded = (value: number) => Math.round(value * 100) / 100;
@@ -26,7 +26,7 @@ export function capturePageLayout(pathname: string): void {
   const bounds = main.getBoundingClientRect(), style = getComputedStyle(main);
   const origin = { x:bounds.left + parseFloat(style.paddingLeft), y:bounds.top + parseFloat(style.paddingTop) };
   const width = rounded(main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
-  const elements = [...content.querySelectorAll<HTMLElement>(candidates)].slice(0,500).filter(el => !el.closest('[role="dialog"],.pb-modal-overlay'));
+  const elements = [...content.querySelectorAll<HTMLElement>(LAYOUT_CONTOUR_SELECTOR)].slice(0,500).filter(el => !el.closest('[role="dialog"],.pb-modal-overlay'));
   const visible = elements.filter(el => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden'; });
   const visibleSet = new Set(visible);
   const boxes: LayoutBox[] = [];

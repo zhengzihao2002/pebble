@@ -84,3 +84,16 @@ test('streamed hosts wait for attachment and a measurable main before choosing a
  assert.equal(host['data-layout-restored'],'true');assert.equal(host['data-layout-ready'],'true');
  assert.equal(surface.children[0].style.height,'640px');assert(stopped>=2,'temporary observers disconnect after restoration');
 });
+test('captures the four standalone Analysis income tiles without duplicating tiles inside cards',()=>{
+ setup('income-tiles');window.location.pathname='/analysis';
+ const shape=(left,top,width,height,parentElement)=>({parentElement,getBoundingClientRect:()=>({left,top,width,height}),closest:()=>null,matches:()=>false});
+ content={hidden:false,closest:()=>main,querySelector:()=>null,children:[]};
+ const group={parentElement:content};
+ const tiles=Array.from({length:4},(_,i)=>shape(20+(i%2)*290,20+Math.floor(i/2)*120,270,100,group));
+ const chart=shape(20,320,560,400,content),nested=shape(40,340,200,50,chart);
+ content.querySelectorAll=selector=>selector==='.pb-rise'?[]:selector.includes('.pb-ana-tile')?[...tiles,chart,nested]:[chart];
+ cache.capturePageLayout('/analysis');const saved=cache.readPageLayout('/analysis',main);
+ assert.equal(saved.boxes.length,5);assert.equal(saved.boxes.filter(box=>box.width===270&&box.height===100).length,4);
+ assert.equal(saved.boxes.filter(box=>box.width===200).length,0,'an existing outer card covers its own nested tiles');
+ window.location.pathname='/accounts';
+});

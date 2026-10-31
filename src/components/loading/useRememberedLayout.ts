@@ -1,6 +1,6 @@
 'use client';
 import { useLayoutEffect, type RefObject } from 'react';
-import { capturePageLayout } from './layoutCache';
+import { capturePageLayout, LAYOUT_CONTOUR_SELECTOR } from './layoutCache';
 
 /** Observe loaded card geometry; never cache a fallback or a hidden old page. */
 export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathname: string) {
@@ -14,7 +14,7 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
     const resize = new ResizeObserver(schedule);
     const measure = () => {
       timer = 0;
-      for (const el of [...content.children,...content.querySelectorAll('.card,[data-slot="card"],.add-goal-tile,.pb-annual-footer,.pb-dash-hero,.pb-accounts-tile')]) {
+      for (const el of [...content.children,...content.querySelectorAll(LAYOUT_CONTOUR_SELECTOR)]) {
         if (!observed.has(el)) { observed.add(el); resize.observe(el); }
       }
       for (const el of observed) if (!el.isConnected) { resize.unobserve(el); observed.delete(el); }
