@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -105,7 +106,7 @@ export function GoalsAllocationBar({ slices, total, allocated, unallocated }: Go
                 <span>{r.name}</span>
               </div>
               <div className="pb-plan-pop-figs">
-                <span className="font-mono-tab">{formatCurrency(r.value)}</span> · <span className="pb-tnum">{shareText(r.value)}</span>
+                <span className="font-mono-tab"><RollingAmount value={formatCurrency(r.value)} /></span> · <span className="pb-tnum">{shareText(r.value)}</span>
               </div>
             </div>
           );
@@ -145,7 +146,7 @@ export function GoalsAllocationBar({ slices, total, allocated, unallocated }: Go
       {over && (
         <p className="pb-goals-over-label" style={{ width: `max(${overShare * 100}%, 9rem)` }}>
           <span>{ux.overShort}</span>
-          <span className="font-mono-tab">{t(ux.overBy, { amount: formatCurrency(allocated - Math.max(total, 0)) })}</span>
+          <span className="font-mono-tab"><RollingMoneyText value={t(ux.overBy, { amount: formatCurrency(allocated - Math.max(total, 0)) })} /></span>
         </p>
       )}
     </div>

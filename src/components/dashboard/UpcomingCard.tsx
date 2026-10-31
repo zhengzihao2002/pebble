@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CalendarCheck, CalendarClock, ChevronRight, CreditCard } from 'lucide-react';
@@ -122,7 +123,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
           </span>
         </span>
         <span className="font-mono-tab pb-dash-row-amount" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
-          {isIncome ? '+' : ''}{formatCurrency(it.amount)}
+          {isIncome ? '+' : ''}<RollingAmount value={formatCurrency(it.amount)} />
         </span>
       </li>
     );
@@ -140,7 +141,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
         {g.date !== continues && (
           <div className="pb-dash-day-head">
             <span>{heading(g.date)}</span>
-            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}{formatCurrency(net)}</span>
+            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
           </div>
         )}
         <ul className="pb-dash-rows">{g.items.map(itemRow)}</ul>
@@ -231,7 +232,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
                             {overdue ? t(d.upcomingCard.cardOverdue, { date: formatDate(s.previous, locale) }) : dayLabel(s.next)}
                           </span>
                         </span>
-                        <span className="font-mono-tab pb-dash-row-amount">{formatCurrency(s.dueNow)}</span>
+                        <span className="font-mono-tab pb-dash-row-amount"><RollingAmount value={formatCurrency(s.dueNow)} /></span>
                         <button type="button" className="pill pb-dash-payoff" onClick={() => setPayOff(s.card)}>
                           {d.accounts.payOffAction}
                         </button>
@@ -268,8 +269,8 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
             <p className="pb-dash-up-foot">
               <span>
                 {renderTemplate(ux.upcomingTotals, {
-                  income: <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+{formatCurrency(incomeTotal)}</span>,
-                  expense: <span className="font-mono-tab">{formatCurrency(-expenseTotal)}</span>,
+                  income: <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(incomeTotal)} /></span>,
+                  expense: <span className="font-mono-tab"><RollingAmount value={formatCurrency(-expenseTotal)} /></span>,
                 })}
               </span>
               <InfoTooltip label={ux.upcomingTotalsNote}>{ux.upcomingTotalsNote}</InfoTooltip>

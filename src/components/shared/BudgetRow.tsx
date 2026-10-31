@@ -1,3 +1,4 @@
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
@@ -76,7 +77,7 @@ export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFra
             )}
           </div>
           <span className="font-mono-tab pb-dash-budget-figs" style={{ color: over ? 'var(--wine)' : undefined }}>
-            {formatCurrency(spent)} <span style={{ opacity: 0.6 }}>/ {formatCurrency(budget)}</span>
+            <RollingAmount value={formatCurrency(spent)} /> <span style={{ opacity: 0.6 }}>/ <RollingAmount value={formatCurrency(budget)} /></span>
           </span>
         </>
       ) : (

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { PiggyBank, TrendingDown } from 'lucide-react';
 import type { Transaction } from '@/types';
 import { isSideCash } from '@/lib/stats';
@@ -128,9 +129,9 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
       </div>
       <div className="pb-ins-hero-head">
         <p id="pb-ins-hero-label" className="pb-ins-hero-label">{label} · <span className="pb-tnum">{range}</span></p>
-        <span className="font-display pb-money pb-ins-hero-figure">{figure}</span>
+        <span className="font-display pb-money pb-ins-hero-figure"><RollingMoneyText value={figure} /></span>
       </div>
-      <p className="pb-money pb-ins-hero-sentence">{sentence}</p>
+      <p className="pb-money pb-ins-hero-sentence"><RollingMoneyText value={sentence} /></p>
       <div className="pb-ins-hero-split">
         <div className="pb-ins-split-bar pb-chart-fade" role="img" aria-label={ux.splitLabel}>
           <span className="pb-ins-split-spent" style={{ width: `${spentPct}%` }} />
@@ -138,9 +139,9 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
           {!good && <span className="pb-ins-split-mark" style={{ left: `${incomePct}%` }} />}
         </div>
         <dl className="pb-ins-split-legend">
-          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab">{wholeDollars(income)}</dd></div>
-          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab">{wholeDollars(spending)}</dd></div>
-          <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab">{wholeDollars(Math.abs(kept))}</dd></div>
+          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(income)} /></dd></div>
+          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(spending)} /></dd></div>
+          <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(Math.abs(kept))} /></dd></div>
         </dl>
       </div>
       {months >= 2 && (

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight, CircleAlert, Gauge, PiggyBank, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
@@ -230,7 +231,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                       <span>{r.name}</span>
                     </div>
                     <div className="font-mono-tab pb-plan-pop-figs">
-                      {formatCurrency(r.value)} · {formatShare(r.value, base)}
+                      <RollingAmount value={formatCurrency(r.value)} /> · {formatShare(r.value, base)}
                     </div>
                     {r.savings && <div className="pb-plan-pop-note">{d.budgetPage.plannedSavingsHint}</div>}
                   </div>
@@ -243,7 +244,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
             )}
             {savings !== null && savings < 0 && (
               <p className="pb-plan-caption" style={{ color: 'var(--wine)' }}>
-                {t(d.budgetPlan.overIncome, { amount: formatCurrency(Math.abs(savings)) })}
+                <RollingMoneyText value={t(d.budgetPlan.overIncome, { amount: formatCurrency(Math.abs(savings)) })} />
               </p>
             )}
 
@@ -257,7 +258,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                   />
                   <span className="pb-donut-name">{r.name}</span>
                   <span className="pb-donut-share font-mono-tab">{formatShare(r.value, base)}</span>
-                  <span className="pb-donut-amount font-mono-tab">{formatCurrency(r.value)}</span>
+                  <span className="pb-donut-amount font-mono-tab"><RollingAmount value={formatCurrency(r.value)} /></span>
                   {/* NEW: a hairline of the row's size against the largest, so
                       the list reads as magnitudes, not only numbers. */}
                   <span className="pb-bud-legend-bar" aria-hidden="true">

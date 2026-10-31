@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useRef, useState } from 'react';
 import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
 import { useAccountOrdering } from '@/lib/useAccountOrdering';
@@ -272,7 +273,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               <span className="pb-tnum pb-settings-acct-sum-sleep">{` · ${t(d.ux.settings.sleepingCount, { count: sleepingCount })}`}</span>
             )}
           </span>
-          <span className="font-mono-tab pb-settings-acct-sum-total">{formatCurrency(listTotal)}</span>
+          <span className="font-mono-tab pb-settings-acct-sum-total"><RollingAmount value={formatCurrency(listTotal)} /></span>
         </div>
       )}
 
@@ -378,7 +379,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
               {/* Hibernated balances still count toward the total, so they
                   are shown - the grey box says dormant rather than absent. */}
-              <p className="font-mono-tab pb-settings-acct-bal">{formatCurrency(balance)}</p>
+              <p className="font-mono-tab pb-settings-acct-bal"><RollingAmount value={formatCurrency(balance)} /></p>
 
               {a.kind === 'credit' && (share !== null || due) && (
                 <div className="pb-settings-acct-credit">

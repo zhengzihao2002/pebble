@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Coins, CreditCard, Landmark, ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -30,7 +31,7 @@ function BalTip({ active, payload, locale }: { active?: boolean; payload?: Reado
   return (
     <div className="pb-accounts-tip">
       <div className="pb-accounts-tip-date">{formatDate(String(p.date), locale)}</div>
-      <div className="font-mono-tab pb-accounts-tip-amount">{formatCurrency(Number(p.v ?? 0))}</div>
+      <div className="font-mono-tab pb-accounts-tip-amount"><RollingAmount value={formatCurrency(Number(p.v ?? 0))} /></div>
     </div>
   );
 }
@@ -42,7 +43,7 @@ function MonthTip({ active, payload, labels }: {
   const p = payload?.[0]?.payload;
   if (!active || !p) return null;
   const row = (label: string, v: number, signed = false) => (v ? (
-    <div className="pb-accounts-tip-row"><span>{label}</span><span className="font-mono-tab">{signed ? (v > 0 ? '+' : '−') : ''}{formatCurrency(Math.abs(v))}</span></div>
+    <div className="pb-accounts-tip-row"><span>{label}</span><span className="font-mono-tab">{signed ? (v > 0 ? '+' : '−') : ''}<RollingAmount value={formatCurrency(Math.abs(v))} /></span></div>
   ) : null);
   const vals = [Number(p.in), Number(p.tin), Number(p.out), Number(p.tout), Number(p.corr)];
   return (
@@ -194,7 +195,7 @@ export function AccountDetailSheet({
               <div className="pb-accounts-detail-main">
                 <div>
                   <p className="pb-accounts-detail-label">{credit ? x.owedLabel : x.balanceLabel}</p>
-                  <p className="font-display pb-money pb-accounts-detail-figure">{whole}<span className="pb-accounts-cents">{cents}</span></p>
+                  <p className="font-display pb-money pb-accounts-detail-figure"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
                   {credit && <p className="pb-accounts-detail-sub">{f?.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>}
                 </div>
 
@@ -256,18 +257,18 @@ export function AccountDetailSheet({
               <div className="pb-accounts-detail-side">
                 <p className="pb-accounts-detail-cap">{rangeLabel}</p>
                 <dl className="pb-accounts-detail-stats">
-                  <div><dt><ArrowDownLeft size={13} aria-hidden="true" className="is-in" />{x.moneyIn}</dt><dd className="font-mono-tab">{formatCurrency(moneyIn)}</dd></div>
-                  <div><dt><ArrowUpRight size={13} aria-hidden="true" className="is-out" />{x.moneyOut}</dt><dd className="font-mono-tab">{formatCurrency(moneyOut)}</dd></div>
+                  <div><dt><ArrowDownLeft size={13} aria-hidden="true" className="is-in" />{x.moneyIn}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyIn)} /></dd></div>
+                  <div><dt><ArrowUpRight size={13} aria-hidden="true" className="is-out" />{x.moneyOut}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyOut)} /></dd></div>
                   <div>
                     <dt>{x.largestExpense}</dt>
-                    <dd className="font-mono-tab">{largest ? formatCurrency(Math.abs(largest.amount)) : '—'}</dd>
+                    <dd className="font-mono-tab"><RollingAmount value={largest ? formatCurrency(Math.abs(largest.amount)) : '—'} /></dd>
                     {largest && <dd className="pb-accounts-detail-stat-note">{titleOf(largest)}</dd>}
                   </div>
                   <div><dt>{x.records}</dt><dd className="pb-tnum">{inRange.length}</dd></div>
                   {anyMoves && (
                     <div className="is-wide">
                       <dt><ArrowRightLeft size={13} aria-hidden="true" />{x.movesNet}</dt>
-                      <dd className="font-mono-tab">{movesNet > 0 ? '+' : movesNet < 0 ? '−' : ''}{formatCurrency(Math.abs(movesNet))}</dd>
+                      <dd className="font-mono-tab">{movesNet > 0 ? '+' : movesNet < 0 ? '−' : ''}<RollingAmount value={formatCurrency(Math.abs(movesNet))} /></dd>
                     </div>
                   )}
                 </dl>
@@ -289,7 +290,7 @@ export function AccountDetailSheet({
                               <span className="pb-accounts-detail-meta">{formatDate(r.date, locale)}{subOf(r) && ` · ${subOf(r)}`}</span>
                             </span>
                             <span className={`font-mono-tab pb-accounts-detail-amt${r.amount > 0 ? ' is-in' : ''}`}>
-                              {r.amount > 0 ? '+' : '−'}{formatCurrency(Math.abs(r.amount))}
+                              {r.amount > 0 ? '+' : '−'}<RollingAmount value={formatCurrency(Math.abs(r.amount))} />
                             </span>
                           </li>
                         );

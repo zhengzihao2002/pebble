@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { Download } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
@@ -64,7 +65,7 @@ export function IncomeControl({
             </InfoTooltip>
           </span>
           <span className="font-mono-tab pb-bud-income-value">
-            {effectiveAnnual !== null ? formatCurrency(effectiveAnnual) : '—'}
+            <RollingAmount value={effectiveAnnual !== null ? formatCurrency(effectiveAnnual) : '—'} />
           </span>
           {/* A dash alone reads as broken: say what the estimate needs. */}
           {effectiveAnnual === null && !manual && <span className="pb-bud-income-needs">{ux.incomeNeeds}</span>}

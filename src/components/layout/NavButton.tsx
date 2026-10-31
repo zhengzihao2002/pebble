@@ -19,9 +19,10 @@ export function NavButton({ href, icon: Icon, label }: NavButtonProps) {
   // tab it re-requested every route every few minutes, and each request ran
   // the session check, which can reach the auth service and the database.
   return (
-    <Link href={href} prefetch={false} className={`nav-btn ${active ? 'active' : ''}`} style={{ textDecoration: 'none' }}>
+    <Link href={href} prefetch={false} className={`nav-btn ${active ? 'active' : ''}`} style={{ textDecoration: 'none' }}
+      aria-current={active ? 'page' : undefined} data-pb-nav-link data-pb-nav-selected={active || undefined}>
       <Icon size={18} strokeWidth={2} className={`nav-icon ${active ? 'active' : ''}`} />
-      <span className="nav-label" style={{ fontSize: active ? '0.96rem' : '0.9rem' }}>{label}</span>
+      <span className="nav-label" style={{ fontSize: '0.9rem' }}>{label}</span>
     </Link>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
@@ -34,7 +35,7 @@ export function ChargeRow({ txn, categoryMeta, sub, onOpen }: {
         <span className="pb-ins-charge-sub">{sub ?? categoryLabel(d, txn.category)}</span>
       </span>
       <span className={`font-mono-tab pb-ins-charge-amt${txn.amount < 0 ? ' is-out' : ' is-in'}`}>
-        {txn.amount > 0 ? '+' : ''}{formatCurrency(txn.amount)}
+        {txn.amount > 0 ? '+' : ''}<RollingAmount value={formatCurrency(txn.amount)} />
       </span>
     </button>
   );

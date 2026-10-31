@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { Banknote, SlidersHorizontal, CircleHelp, CreditCard, Landmark, Coins } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
@@ -244,7 +245,7 @@ export function StatementRow({
         onMouseLeave={canHover ? () => setHoverPos(null) : undefined}
       >
         <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
-          {amountPrefix}{formatCurrency(txn.amount)}
+          {amountPrefix}<RollingAmount value={formatCurrency(txn.amount)} />
         </div>
         {/* Account lens: this account's own running balance, above the
             unchanged total line. */}
@@ -258,12 +259,12 @@ export function StatementRow({
           </div>
         )}
         <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
-          {t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })}
+          <RollingMoneyText value={t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })} />
         </div>
         {/* The same figure without the "Bal" prefix, for the ledger's
             "Balance after" column (one or the other is displayed). */}
         {ledger && (
-          <div className="font-mono-tab pb-txn-srow-balcell">{formatCurrency(totalBalanceAfter)}</div>
+          <div className="font-mono-tab pb-txn-srow-balcell"><RollingAmount value={formatCurrency(totalBalanceAfter)} /></div>
         )}
       </div>
 
@@ -293,14 +294,14 @@ export function StatementRow({
               <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{a.name}</span>
                 <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-                  {formatCurrency(balancesAfter[a.id] ?? 0)}
+                  <RollingAmount value={formatCurrency(balancesAfter[a.id] ?? 0)} />
                 </span>
               </div>
             ))}
             {lensAccount && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
-                <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(totalBalanceAfter)}</span>
+                <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
               </div>
             )}
           </div>
@@ -329,14 +330,14 @@ export function StatementRow({
             >
               <span style={{ color: 'var(--ink-soft)' }}>{a.name}</span>
               <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
-                {formatCurrency(balancesAfter[a.id] ?? 0)}
+                <RollingAmount value={formatCurrency(balancesAfter[a.id] ?? 0)} />
               </span>
             </div>
           ))}
           {lensAccount && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
-              <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>{formatCurrency(totalBalanceAfter)}</span>
+              <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
             </div>
           )}
         </div>

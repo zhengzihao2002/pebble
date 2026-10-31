@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import Link from 'next/link';
 import { ChevronRight, PiggyBank } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
@@ -75,7 +76,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
   // hidden) so they can be measured; otherwise just the rows shown.
   const topBudgets = ranked.slice(0, fit.fill ? MAX_ROWS : fit.count);
 
-  const money = (n: number) => <span className="pb-money">{formatCurrency(n)}</span>;
+  const money = (n: number) => <span className="pb-money"><RollingAmount value={formatCurrency(n)} /></span>;
 
   // The Budgets page's status words: over budget, then over / under / on pace.
   const statusOf = (b: (typeof topBudgets)[number]) => {
@@ -111,7 +112,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
                 status={s.text} statusColor={s.color}
                 markerLabel={ux.paceMarker}
                 markerTip={renderTemplate(d.budgetPlan.expectedByToday, { amount: money(b.budget * yf) })}
-                note={renderTemplate(d.budgetRow.spent, { amount: <span className="font-mono-tab">{formatCurrency(b.spent)}</span> })}
+                note={renderTemplate(d.budgetRow.spent, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(b.spent)} /></span> })}
               />
             );
           })}

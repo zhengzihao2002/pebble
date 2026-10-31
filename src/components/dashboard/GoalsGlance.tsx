@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import Link from 'next/link';
 import { Check, ChevronRight, Plus, Target } from 'lucide-react';
 import type { Goal } from '@/types';
@@ -101,8 +102,8 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
                   <span className="pb-dash-goal-name">{g.name}</span>
                   <span className="pb-dash-goal-figs">
                     {renderTemplate(ux.goalOf, {
-                      current: <span className="font-mono-tab">{formatCurrency(g.current)}</span>,
-                      target: <span className="font-mono-tab">{formatCurrency(g.target)}</span>,
+                      current: <span className="font-mono-tab"><RollingAmount value={formatCurrency(g.current)} /></span>,
+                      target: <span className="font-mono-tab"><RollingAmount value={formatCurrency(g.target)} /></span>,
                     })}
                   </span>
                   <span className="pb-dash-goal-date">
@@ -123,8 +124,8 @@ export function GoalsGlance({ goals, allocated, totalBalance }: GoalsGlanceProps
               <span className="pb-dash-goals-sum-label">{ux.goalsTogether}</span>
               <span className="pb-dash-goal-figs">
                 {renderTemplate(ux.goalOf, {
-                  current: <span className="font-mono-tab">{formatCurrency(together.current)}</span>,
-                  target: <span className="font-mono-tab">{formatCurrency(together.target)}</span>,
+                  current: <span className="font-mono-tab"><RollingAmount value={formatCurrency(together.current)} /></span>,
+                  target: <span className="font-mono-tab"><RollingAmount value={formatCurrency(together.target)} /></span>,
                 })}
               </span>
             </span>

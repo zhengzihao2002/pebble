@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -52,7 +53,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
   const changeText = change === null ? null : flat
     ? d.accountsPage.flat.replace('{period}', period)
     : renderTemplate(change.change > 0 ? d.accountsPage.upNoPct : d.accountsPage.downNoPct, {
-        amount: <span className="font-mono-tab">{formatCurrency(Math.abs(change.change))}</span>,
+        amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(change.change))} /></span>,
         period,
       });
 
@@ -91,7 +92,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
           </InfoTooltip>
         </p>
         <p className="font-display hero-balance">
-          {whole}<span className="pb-hero-cents">{cents}</span>
+          <RollingAmount value={whole + cents} fractionClassName="pb-hero-cents" />
         </p>
         {/* Reserved line: blank until today resolves, so nothing shifts. */}
         <p className="pb-dash-hero-change">
@@ -111,12 +112,12 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-dash-alloc-key">
                 <i className="pb-dash-alloc-dot is-goals" aria-hidden="true" />
                 {d.goals.setAside}
-                <span className="font-mono-tab">{formatCurrency(allocated)}</span>
+                <span className="font-mono-tab"><RollingAmount value={formatCurrency(allocated)} /></span>
               </span>
               <span className="pb-dash-alloc-key">
                 <i className="pb-dash-alloc-dot" aria-hidden="true" />
                 {overAllocated ? d.ux.dashboard.overAllocated : d.goals.unallocated}
-                <span className="font-mono-tab">{formatCurrency(Math.abs(totalBalance - allocated))}</span>
+                <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(totalBalance - allocated))} /></span>
               </span>
             </div>
           </div>
@@ -163,7 +164,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-hero-account-name">
                 {r.label}
               </span>
-              <span className="pb-hero-account-amount font-mono-tab">{formatCurrency(r.balance)}</span>
+              <span className="pb-hero-account-amount font-mono-tab"><RollingAmount value={formatCurrency(r.balance)} /></span>
               {positive > 0 && r.balance > 0 && (
                 <span className="pb-dash-hero-share pb-chart-fill" aria-hidden="true" style={{ width: `${(r.balance / positive) * 100}%` }} />
               )}

@@ -1,3 +1,4 @@
+import { RollingMoneyText } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from 'lucide-react';
 
 interface DeltaChipProps {
@@ -26,7 +27,7 @@ export function DeltaChip({ delta, text, good = 'up', label, money = false }: De
   return (
     <span className={`pb-delta pb-delta-${tone}`} aria-label={label} title={label}>
       <Icon size={12} strokeWidth={2.4} aria-hidden="true" />
-      <span className={money ? 'font-mono-tab' : 'pb-delta-num'}>{text}</span>
+      <span className={money ? 'font-mono-tab' : 'pb-delta-num'}>{money ? <RollingMoneyText value={text} /> : text}</span>
     </span>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef } from 'react';
 import { ArrowDownRight, ArrowUpRight, Repeat } from 'lucide-react';
 import type { RecurringRule, Transaction } from '@/types';
@@ -95,7 +96,7 @@ export function LooksRecurringNotice({ transactions, rules, today, onSchedule }:
                 {/* The title is USER DATA. */}
                 <p className="pb-dash-rec-title">{c.title}</p>
                 <p className="pb-dash-rec-sub">
-                  {renderTemplate(phrase[c.frequency], { amount: <span className="font-mono-tab">{formatCurrency(Math.abs(c.amount))}</span> })}
+                  {renderTemplate(phrase[c.frequency], { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(c.amount))} /></span> })}
                   <span aria-hidden="true"> · </span>
                   {renderTemplate(ux.recSeen, { count: <span className="pb-tnum">{c.occurrences}</span> })}
                   <span aria-hidden="true"> · </span>

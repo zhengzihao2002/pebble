@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Landmark, Coins, CreditCard, Star, Sun } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -85,7 +86,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
         <div className="pb-txn-total" style={{ minWidth: 0 }}>
           <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
           <p className="font-display pb-money pb-txn-total-amount" style={{ fontWeight: 600 }}>
-            {total.whole}<span className="pb-txn-cents">{total.cents}</span>
+            <RollingAmount value={total.whole + total.cents} fractionClassName="pb-txn-cents" />
           </p>
         </div>
         {/* Each account's balance as a quiet ledger: one row each, figures
@@ -136,7 +137,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
                   </span>
                   {/* Only the figure blurs in privacy mode; "owed" stays readable. */}
                   <span data-acc-amount="" className="pb-txn-acc-fig">
-                    <span className="font-mono-tab">{formatCurrency(owed !== null ? owed : value)}</span>
+                    <span className="font-mono-tab"><RollingAmount value={formatCurrency(owed !== null ? owed : value)} /></span>
                     {owed !== null && <span className="pb-txn-acc-owed">{d.accountsPage.cardOwed}</span>}
                   </span>
                   <span className="pb-txn-sr">{d.ux.transactions.showStatement}</span>

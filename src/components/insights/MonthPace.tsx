@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Gauge } from 'lucide-react';
 import type { CategoryMeta, RecurringRule, Transaction } from '@/types';
@@ -193,7 +194,7 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
       {header}
       <div className="pb-ins-pace-head">
         <p className="pb-ins-pace-spent">
-          {renderTemplate(ux.paceSoFar, { amount: <strong className="font-mono-tab">{formatCurrency(spent)}</strong> })}
+          {renderTemplate(ux.paceSoFar, { amount: <strong className="font-mono-tab"><RollingAmount value={formatCurrency(spent)} /></strong> })}
         </p>
         {pct !== null && (
           <DeltaChip
@@ -245,9 +246,9 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
           <div className="pb-ins-tip pb-ins-pace-tip" style={{ left: tipLeft }}>
             <div className="pb-ins-tip-head">{t(ux.paceDay, { n: hv })} · {formatDate(dateOf(hv), locale)}</div>
             {hv <= td && (
-              <div className="pb-ins-tip-row"><span><i className="pb-ins-key is-out" />{ux.paceThisMonth}</span><span className="font-mono-tab">{formatCurrency(curCum[hv - 1])}</span></div>
+              <div className="pb-ins-tip-row"><span><i className="pb-ins-key is-out" />{ux.paceThisMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(curCum[hv - 1])} /></span></div>
             )}
-            <div className="pb-ins-tip-row"><span><i className="pb-ins-key is-usual" />{ux.paceUsualLine}</span><span className="font-mono-tab">{formatCurrency(usual[hv - 1])}</span></div>
+            <div className="pb-ins-tip-row"><span><i className="pb-ins-key is-usual" />{ux.paceUsualLine}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(usual[hv - 1])} /></span></div>
           </div>
         )}
       </div>
@@ -260,7 +261,7 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
 
       {td < len && (
         <p className="pb-ins-pace-forecast">
-          <span>{renderTemplate(ux.paceForecast, { amount: <strong className="font-mono-tab">{formatCurrency(forecast)}</strong> })}</span>
+          <span>{renderTemplate(ux.paceForecast, { amount: <strong className="font-mono-tab"><RollingAmount value={formatCurrency(forecast)} /></strong> })}</span>
           <span className="pb-ins-pace-note">{ux.paceForecastNote}</span>
         </p>
       )}
@@ -288,7 +289,7 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
                       <span className="pb-ins-due-name">{descriptionTitle(it.description) || categoryLabel(d, it.category)}</span>
                       <span className="pb-ins-due-sub">{formatDate(it.date, locale)}</span>
                     </span>
-                    <span className="font-mono-tab pb-ins-due-amt">{formatCurrency(-Math.abs(it.amount))}</span>
+                    <span className="font-mono-tab pb-ins-due-amt"><RollingAmount value={formatCurrency(-Math.abs(it.amount))} /></span>
                   </li>
                 );
               })}

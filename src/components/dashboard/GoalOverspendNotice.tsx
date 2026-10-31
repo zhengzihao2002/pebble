@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import Link from 'next/link';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
@@ -50,9 +51,9 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
         <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0.3rem 0 0' }}>
           {renderTemplate(d.goalOverspend.body, {
             // pb-money: amounts inside a sentence blur in privacy mode too.
-            allocated: <span className="pb-money">{formatCurrency(allocated)}</span>,
-            balance: <span className="pb-money">{formatCurrency(totalBalance)}</span>,
-            shortfall: <strong className="pb-money" style={{ color: 'var(--wine)' }}>{formatCurrency(shortfall)}</strong>,
+            allocated: <span className="pb-money"><RollingAmount value={formatCurrency(allocated)} /></span>,
+            balance: <span className="pb-money"><RollingAmount value={formatCurrency(totalBalance)} /></span>,
+            shortfall: <strong className="pb-money" style={{ color: 'var(--wine)' }}><RollingAmount value={formatCurrency(shortfall)} /></strong>,
           })}
         </p>
         <Link href="/goals" prefetch={false} className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>

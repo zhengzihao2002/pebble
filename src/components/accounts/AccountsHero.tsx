@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRightLeft, ChevronRight, Plus, Wallet, ReceiptText } from 'lucide-react';
@@ -101,7 +102,7 @@ export function AccountsHero({
             // No aria-live: the text changes back to today's total whenever a
             // scrub ends, which would announce it after every hover.
             <p className="font-display hero-balance pb-money pb-accounts-hero-figure">
-              {whole}<span className="pb-accounts-cents">{cents}</span>
+              <RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" />
             </p>
           ) : (
             <p className="font-display hero-balance pb-accounts-hero-figure" aria-hidden="true">
@@ -119,7 +120,7 @@ export function AccountsHero({
               </>
             ) : (
               <>
-                <span className="pb-money pb-accounts-hero-summary" style={{ color: summaryColor }}>{summaryText}</span>
+                <span className="pb-money pb-accounts-hero-summary" style={{ color: summaryColor }}><RollingMoneyText value={summaryText} /></span>
               </>
             )}
           </p>
@@ -197,7 +198,7 @@ function DayTip({ active, payload, locale }: { active?: boolean; payload?: Reado
   return (
     <div className="pb-accounts-tip">
       <div className="pb-accounts-tip-date">{formatDate(p.date, locale)}</div>
-      <div className="font-mono-tab pb-accounts-tip-amount">{formatCurrency(p.total ?? 0)}</div>
+      <div className="font-mono-tab pb-accounts-tip-amount"><RollingAmount value={formatCurrency(p.total ?? 0)} /></div>
     </div>
   );
 }

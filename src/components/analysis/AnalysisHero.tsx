@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { Sparkline } from '@/components/kit/Sparkline';
 import { DeltaChip } from '@/components/kit/DeltaChip';
@@ -99,7 +100,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
               {renderTemplate(sentence, {
                 range: <span className="pb-tnum">{range}</span>,
                 pct: <strong className="pb-tnum">{rate === null ? '' : `${Math.round(rate * 100)}%`}</strong>,
-                amount: <strong className="font-mono-tab">{net === null ? '' : wholeDollars(Math.abs(net))}</strong>,
+                amount: <strong className="font-mono-tab"><RollingAmount value={net === null ? '' : wholeDollars(Math.abs(net))} /></strong>,
               })}
             </p>
           </div>
@@ -114,7 +115,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
             <InfoTooltip label={cf.avgNetTooltipLabel}>{cf.avgNetTooltip}</InfoTooltip>
           </p>
           <p className="pb-ana-kpi-value pb-money font-display">
-            {whole}<span className="pb-ana-cents">{cents}</span>
+            <RollingAmount value={whole + cents} fractionClassName="pb-ana-cents" />
           </p>
           <p className="pb-ana-kpi-note">
             {net === null ? cf.avgNetNeedsOne : net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}
@@ -143,7 +144,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
           return (
             <div key={k.key} className="pb-ana-kpi">
               <p className="pb-ana-kpi-label">{k.label}</p>
-              <p className="pb-ana-kpi-value pb-money font-display">{k.value === null ? '—' : wholeDollars(k.value)}</p>
+              <p className="pb-ana-kpi-value pb-money font-display"><RollingAmount value={k.value === null ? '—' : wholeDollars(k.value)} /></p>
               {months.length > 1 && (
                 <Sparkline values={k.series} height={30} color="var(--pb-hero-fg)" label={t(x.trendLabel, { name: k.label })} />
               )}

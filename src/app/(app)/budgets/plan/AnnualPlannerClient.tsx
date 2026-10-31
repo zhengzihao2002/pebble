@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -132,9 +133,9 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
       </header>
       {!data.available && <div className="card pb-annual-message" role="status">{x.unavailable}</div>}
       <section className="card pb-annual-summary" aria-label={t(x.title, { year: String(year) })}>
-        <div><span>{t(x.currentYear, { year: String(data.year) })}</span><strong className="font-mono-tab">{formatCurrency(currentTotal)}</strong><small>{t(x.monthly, { amount: formatCurrency(currentTotal / 12) })}</small></div>
+        <div><span>{t(x.currentYear, { year: String(data.year) })}</span><strong className="font-mono-tab"><RollingAmount value={formatCurrency(currentTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(currentTotal / 12) })} /></small></div>
         <ArrowRight size={22} className="pb-annual-summary-arrow" aria-hidden="true" />
-        <div><span>{t(x.nextYear, { year: String(year) })}</span><strong className="font-mono-tab">{formatCurrency(nextTotal)}</strong><small>{t(x.monthly, { amount: formatCurrency(nextTotal / 12) })}</small></div>
+        <div><span>{t(x.nextYear, { year: String(year) })}</span><strong className="font-mono-tab"><RollingAmount value={formatCurrency(nextTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(nextTotal / 12) })} /></small></div>
         <div className="pb-annual-difference"><span>{x.difference}</span><strong className="font-mono-tab">{delta === 0 ? x.same : signedMoney(delta)}</strong><small>{totalPct !== null && delta !== 0 ? `${signedPercent(totalPct)}% · ` : ''}{t(x.monthly, { amount: signedMoney(delta / 12) })}</small></div>
       </section>
       <AnnualPlanCharts categories={categories} current={data.currentAmounts} proposed={amounts} />
@@ -155,13 +156,13 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
           const quick = budgetQuickSet(history, c.name);
           return <article key={c.id} className="pb-annual-row">
             <div className="pb-annual-category"><span className="pb-budget-icon" style={{ backgroundColor: `${c.color}20`, color: c.color }}><Icon size={19} /></span><strong>{name}</strong></div>
-            <div className="pb-annual-current"><span className="pb-annual-mobile-label">{x.thisYear}</span><span className="font-mono-tab">{formatCurrency(current)}</span></div>
+            <div className="pb-annual-current"><span className="pb-annual-mobile-label">{x.thisYear}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(current)} /></span></div>
             <label className="pb-annual-amount"><span className="pb-annual-mobile-label">{x.next}</span><span className="pb-annual-money"><span aria-hidden="true">$</span><AmountInput wholeDollars value={values[c.id] ?? '0'} aria-label={t(x.annualAmount, { name })} className="font-mono-tab" onValueChange={value => { setBaseAmounts(previous => ({ ...previous, [c.id]: current })); changeValues({ ...values, [c.id]: value }); }} /></span>
             </label>
             <CategoryPlanChoice name={name}
               suggested={recommendation?.amount ?? null} average6={quick.sixMonthAnnual} last12={quick.last12Total}
               summary={<><span>{Number.isFinite(amount) && amount >= 0 ? current === 0 ? amount > 0 ? x.newBudget : x.same : percent === 0 ? x.same : t(x.change, { percent: signedPercent(percent ?? 0) }) : '—'}</span>
-              {Number.isFinite(amount) && amount >= 0 && <span>{t(x.monthly, { amount: formatCurrency(amount / 12) })}</span>}</>}
+              {Number.isFinite(amount) && amount >= 0 && <span><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(amount / 12) })} /></span>}</>}
               onFill={chosenAmount => fillCategory(c.id, chosenAmount)} />
             <CategoryPlanDetails name={name} history={<>
               <p className="pb-plan-history-note">{x.historyNote}</p>

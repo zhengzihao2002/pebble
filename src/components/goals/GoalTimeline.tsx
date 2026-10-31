@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { createElement, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, ChevronRight, Pencil, Plus, TrendingUp } from 'lucide-react';
 import type { Goal } from '@/types';
@@ -253,7 +254,7 @@ function GoalFacts({ goal, today, compact = false }: { goal: Goal; today: string
   const reached = isReached(goal);
   const when = timeToTarget(d, today, goal.date);
   const pace = monthlyPace(goal, today);
-  const money = (n: number) => <span className="font-mono-tab">{formatCurrency(n)}</span>;
+  const money = (n: number) => <span className="font-mono-tab"><RollingAmount value={formatCurrency(n)} /></span>;
   // Compact rows sit inside a <button>, which takes phrasing content only.
   const Box = compact ? 'span' : 'div';
   const Line = compact ? 'span' : 'p';

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { MoreHorizontal, Tag } from 'lucide-react';
 import type { CategoryMeta } from '@/types';
@@ -46,7 +47,7 @@ export function TopCategories({ categories, categoryMeta }: { categories: Catego
                 income category names are translated for display. */}
             <span className="pb-ana-cat-name" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{categoryLabel(d, c.category)}</span>
             <span className="pb-ana-cat-figs">
-              <span className="font-mono-tab">{formatCurrency(c.total)}</span>
+              <span className="font-mono-tab"><RollingAmount value={formatCurrency(c.total)} /></span>
               <span className="pb-tnum"> · {pct(c.share)}</span>
             </span>
           </span>
@@ -77,7 +78,7 @@ export function TopCategories({ categories, categoryMeta }: { categories: Catego
                     {x.other} <span className="pb-ana-cat-sub pb-tnum">· {t(x.otherCount, { count: rest.length })}</span>
                   </span>
                   <span className="pb-ana-cat-figs">
-                    <span className="font-mono-tab">{formatCurrency(restTotal)}</span>
+                    <span className="font-mono-tab"><RollingAmount value={formatCurrency(restTotal)} /></span>
                     <span className="pb-tnum"> · {pct(restShare)}</span>
                   </span>
                 </span>

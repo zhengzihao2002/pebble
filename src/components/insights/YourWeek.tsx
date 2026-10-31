@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { BarChart3, CalendarRange } from 'lucide-react';
 import type { Transaction } from '@/types';
 import { formatCurrency } from '@/lib/format';
@@ -122,13 +123,13 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
         /></div>
       ) : (
         <>
-          <p className="pb-money pb-ins-week-sentence">{sentence}</p>
+          <p className="pb-money pb-ins-week-sentence"><RollingMoneyText value={sentence} /></p>
           <div
             className="pb-chart-fade pb-ins-week-chart" role="img"
             aria-label={order.map((wd, i) => `${dayName(wd, 'long')}: ${wholeDollars(avg[i])}`).join(', ')}
           >
             <div className="pb-ins-week-amts" aria-hidden="true">
-              {avg.map((v, i) => <span key={order[i]} className={`font-mono-tab${i === topIdx ? ' is-top' : ''}`}>{wholeDollars(v)}</span>)}
+              {avg.map((v, i) => <span key={order[i]} className={`font-mono-tab${i === topIdx ? ' is-top' : ''}`}><RollingAmount value={wholeDollars(v)} /></span>)}
             </div>
             <div className="pb-ins-week-plot" aria-hidden="true">
               <div className="pb-ins-week-area">
@@ -153,7 +154,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
             {/* The dashed line's key, under the chart rather than over a bar. */}
             {rest > 0 && (
               <div className="pb-ins-legend pb-ins-week-key" aria-hidden="true">
-                <span><i className="pb-ins-key-line is-dashed is-ink" /><span className="font-mono-tab">{t(ux.typicalDay, { amount: wholeDollars(rest) })}</span></span>
+                <span><i className="pb-ins-key-line is-dashed is-ink" /><span className="font-mono-tab"><RollingMoneyText value={t(ux.typicalDay, { amount: wholeDollars(rest) })} /></span></span>
               </div>
             )}
           </div>
@@ -167,7 +168,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
                 <dd className="pb-ins-week-split-track pb-chart-fade" aria-hidden="true">
                   <span style={{ width: `${splitMax > 0 ? Math.max(2, (r.v / splitMax) * 100) : 0}%` }} className={r.v === splitMax && splitMax > 0 ? 'is-top' : undefined} />
                 </dd>
-                <dd className="font-mono-tab pb-ins-week-split-amt">{t(d.insights.yourWeekPerDay, { amount: wholeDollars(r.v) })}</dd>
+                <dd className="font-mono-tab pb-ins-week-split-amt"><RollingMoneyText value={t(d.insights.yourWeekPerDay, { amount: wholeDollars(r.v) })} /></dd>
               </div>
             ))}
           </dl>

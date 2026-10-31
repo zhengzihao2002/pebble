@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { Banknote } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -94,12 +95,12 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         </div>
         {!compact && txn.type === 'income' && txn.grossAmount !== txn.netAmount && (
           <div className="font-mono-tab" style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 1 }}>
-            {t(d.txn.gross, { amount: formatCurrency(txn.grossAmount) })}
+            <RollingMoneyText value={t(d.txn.gross, { amount: formatCurrency(txn.grossAmount) })} />
           </div>
         )}
       </div>
       <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--wine)', whiteSpace: 'nowrap' }}>
-        {isIncome ? '+' : ''}{formatCurrency(txn.amount)}
+        {isIncome ? '+' : ''}<RollingAmount value={formatCurrency(txn.amount)} />
       </div>
     </div>
   );

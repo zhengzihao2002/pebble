@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, CalendarClock } from 'lucide-react';
 import { computeCommitments } from '@/lib/analysis/cashflow';
 import { formatCurrency, formatDate, splitCents } from '@/lib/format';
@@ -66,8 +67,8 @@ export function ScheduleSummary({ rules, upcoming, previewDays, today }: Schedul
           <span>
             {renderTemplate(x.windowTotals, {
               days: <span className="pb-tnum">{previewDays}</span>,
-              in: <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+{formatCurrency(windowIn)}</span>,
-              out: <span className="font-mono-tab" style={{ color: 'var(--wine)' }}>{formatCurrency(-windowOut)}</span>,
+              in: <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(windowIn)} /></span>,
+              out: <span className="font-mono-tab" style={{ color: 'var(--wine)' }}><RollingAmount value={formatCurrency(-windowOut)} /></span>,
             })}
           </span>
         )}
@@ -78,16 +79,16 @@ export function ScheduleSummary({ rules, upcoming, previewDays, today }: Schedul
           <p className="pb-sched-hero-label">{x.perMonthNet}</p>
           {/* formatCurrency stays en-US in every locale: real dollars. */}
           <p className="font-display pb-money pb-sched-hero-num">
-            {net > 0 ? '+' : ''}{whole}<span className="pb-hero-cents">{cents}</span>
+            <RollingAmount value={`${net > 0 ? '+' : ''}${whole}${cents}`} fractionClassName="pb-hero-cents" />
           </p>
           <dl className="pb-sched-hero-split">
             <div className="pb-sched-hero-cell">
               <dt><span className="pb-sched-kind-dot is-in" aria-hidden="true"><ArrowUpRight size={11} strokeWidth={2.6} /></span>{x.perMonthIn}</dt>
-              <dd className="font-mono-tab" style={{ color: 'var(--pine)' }}>+{formatCurrency(incomeMonthly)}</dd>
+              <dd className="font-mono-tab" style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(incomeMonthly)} /></dd>
             </div>
             <div className="pb-sched-hero-cell">
               <dt><span className="pb-sched-kind-dot is-out" aria-hidden="true"><ArrowDownRight size={11} strokeWidth={2.6} /></span>{x.perMonthOut}</dt>
-              <dd className="font-mono-tab" style={{ color: 'var(--wine)' }}>{formatCurrency(-expenseMonthly)}</dd>
+              <dd className="font-mono-tab" style={{ color: 'var(--wine)' }}><RollingAmount value={formatCurrency(-expenseMonthly)} /></dd>
             </div>
           </dl>
         </div>
@@ -97,7 +98,7 @@ export function ScheduleSummary({ rules, upcoming, previewDays, today }: Schedul
             <span>{horizon ? t(x.netBy, { date: formatDate(horizon, locale) }) : ' '}</span>
             {today && (
               <span className="font-mono-tab" style={{ color: end > 0 ? 'var(--pine)' : end < 0 ? 'var(--wine)' : 'var(--ink)' }}>
-                {end > 0 ? '+' : ''}{formatCurrency(end)}
+                {end > 0 ? '+' : ''}<RollingAmount value={formatCurrency(end)} />
               </span>
             )}
           </div>
@@ -120,7 +121,7 @@ export function ScheduleSummary({ rules, upcoming, previewDays, today }: Schedul
           <span className="pb-sched-hero-next-title">{descriptionTitle(next.description)}</span>
           <span className="pb-sched-hero-next-when pb-tnum">{rel(next.date)}</span>
           <span className="font-mono-tab pb-sched-hero-next-amt" style={{ color: next.kind === 'income' ? 'var(--pine)' : 'var(--ink)' }}>
-            {next.kind === 'income' ? '+' : ''}{formatCurrency(next.amount)}
+            {next.kind === 'income' ? '+' : ''}<RollingAmount value={formatCurrency(next.amount)} />
           </span>
         </div>
       )}

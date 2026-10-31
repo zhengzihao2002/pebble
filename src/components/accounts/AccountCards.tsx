@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Coins, CreditCard, Landmark, BedDouble } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -229,7 +230,7 @@ function SparkTip({ active, payload, locale }: { active?: boolean; payload?: Rea
     <div className="pb-accounts-tip is-compact">
       <span className="pb-accounts-tip-date">{formatDate(p.date, locale)}</span>
       {' · '}
-      <span className="font-mono-tab pb-accounts-tip-amount">{formatCurrency(p.v ?? 0)}</span>
+      <span className="font-mono-tab pb-accounts-tip-amount"><RollingAmount value={formatCurrency(p.v ?? 0)} /></span>
     </div>
   );
 }
@@ -281,7 +282,7 @@ function BankTile({ item, days, total, seen, words, onOpen, index }: {
       </div>
       <div>
         <div className="pb-accounts-tile-balrow">
-          <p className="font-display pb-money pb-accounts-tile-bal">{whole}<span className="pb-accounts-cents">{cents}</span></p>
+          <p className="font-display pb-money pb-accounts-tile-bal"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
           {a.status === 'hibernated' && <SleepingBadge />}
         </div>
         <p className="font-mono-tab pb-accounts-change" style={{ color: f.tone }}>
@@ -330,7 +331,7 @@ function BankRow({ item, days, total, seen, words, onOpen }: {
           <Sparkline values={f.data.map((p) => p.v)} height={28} color={f.tone} area endDot={false} />
         </span>
         <span className="pb-accounts-row-fig">
-          <span className="font-mono-tab pb-accounts-row-bal">{formatCurrency(now)}</span>
+          <span className="font-mono-tab pb-accounts-row-bal"><RollingAmount value={formatCurrency(now)} /></span>
           {/* The percent gives way first on a very narrow row; the open
               panel below still shows the full change. */}
           <span className="font-mono-tab pb-accounts-row-change" style={{ color: f.tone }}>

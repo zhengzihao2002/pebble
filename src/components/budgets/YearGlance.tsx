@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { CalendarClock } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -72,7 +73,7 @@ export function YearForecast({ totalBudget, totalSpent, fraction, status, unbudg
 }) {
   const { d, t } = useTranslation();
   const ux = d.ux.budgets;
-  const money = (n: number) => <span className="font-mono-tab">{formatCurrency(n)}</span>;
+  const money = (n: number) => <span className="font-mono-tab"><RollingAmount value={formatCurrency(n)} /></span>;
 
   if (fraction === null) {
     return (

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, Scale } from 'lucide-react';
@@ -161,7 +162,7 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
               {/* Chinese drops the space between the account name and the noun,
                   which is why this is a template rather than concatenation. */}
               <span>{t(d.modifyBalance.balanceNow, { account: account?.name ?? '' })}</span>
-              <span className="font-mono-tab pb-settings-adjust-now-amt">{formatCurrency(currentBalance)}</span>
+              <span className="font-mono-tab pb-settings-adjust-now-amt"><RollingAmount value={formatCurrency(currentBalance)} /></span>
             </div>
           </div>
 
@@ -219,11 +220,11 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
                 text={`${delta > 0 ? '+' : '\u2212'}${formatCurrency(Math.abs(delta))}`}
               />
               <span className="pb-settings-adjust-flow">
-                <span className="font-mono-tab pb-settings-adjust-before">{formatCurrency(currentBalance)}</span>
+                <span className="font-mono-tab pb-settings-adjust-before"><RollingAmount value={formatCurrency(currentBalance)} /></span>
                 <ArrowRight size={14} aria-hidden="true" />
                 <span className="pb-settings-adjust-after">
                   <span className="pb-settings-adjust-after-label">{d.ux.settings.balanceAfter}</span>
-                  <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(resulting)}</span>
+                  <span className="font-mono-tab" style={{ color: delta > 0 ? 'var(--pine)' : 'var(--wine)' }}><RollingAmount value={formatCurrency(resulting)} /></span>
                 </span>
               </span>
             </div>

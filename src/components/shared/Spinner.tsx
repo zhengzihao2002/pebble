@@ -5,9 +5,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 /**
  * Loading indicators.
  *
- * Pure inline SVG and inline styles - no global CSS is touched, per the
- * project's no-restyling rule. The keyframes are injected once via a <style>
- * tag rather than added to globals.css.
+ * The spinner remains the working indicator. A decorative, softly pulsing
+ * outline behind it gives its loading region a visible shape.
  */
 
 const KEYFRAMES = `
@@ -40,6 +39,15 @@ export function Spinner({ size = 15, color = 'currentColor' }: SpinnerProps) {
   );
 }
 
+/** A quiet content silhouette, never announced or allowed to intercept input. */
+export function LoadingOutline({ preview = false }: { preview?: boolean }) {
+  return <span className="pb-loading-outline" aria-hidden="true">
+    {preview && <span className="pb-loading-preview">
+      <i /><i /><i /><i />
+    </span>}
+  </span>;
+}
+
 /**
  * Covers its nearest positioned ancestor while a server call is in flight.
  * Blocks every click underneath, so the user cannot fire a second mutation or
@@ -57,6 +65,7 @@ export function LoadingOverlay({ label }: { label?: string }) {
     <>
       <style>{KEYFRAMES}</style>
       <div
+        className="pb-loading-overlay"
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         style={{
           position: 'absolute', inset: 0, zIndex: 20,
@@ -78,6 +87,7 @@ export function LoadingOverlay({ label }: { label?: string }) {
             backdropFilter: 'blur(1.5px)',
           }}
         />
+        <LoadingOutline />
         <Spinner size={26} color="var(--pine)" />
         <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', fontWeight: 500, position: 'relative' }}>{text}</span>
       </div>
@@ -98,7 +108,8 @@ export function LoadingBlock({
   const { d } = useTranslation();
   const text = label ?? d.common.loading;
   return (
-    <div style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem' }}>
+    <div className="pb-loading-block" data-compact={minHeight === 0} style={{ minHeight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem' }}>
+      {minHeight !== 0 && <LoadingOutline preview />}
       <Spinner size={size} color="var(--pine)" />
       <span style={{ fontSize: labelSize, color: 'var(--ink-soft)' }}>{text}</span>
     </div>

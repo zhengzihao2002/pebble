@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, CalendarClock, CalendarRange, LifeBuoy, Receipt, Telescope, TrendingUp, Wallet, Gauge, BarChart3, ListOrdered, Plus } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
@@ -534,9 +535,9 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                           <span className="pb-tnum">{y.year}</span>
                           {y.isCurrent && <span className="pb-ana-badge is-tiny">{x.soFar}</span>}
                         </th>
-                        <td className="is-wide font-mono-tab">{formatCurrency(y.income)}</td>
-                        <td className="is-wide font-mono-tab">{formatCurrency(y.spending)}</td>
-                        <td className="font-mono-tab" style={{ color: y.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(y.net)}</td>
+                        <td className="is-wide font-mono-tab"><RollingAmount value={formatCurrency(y.income)} /></td>
+                        <td className="is-wide font-mono-tab"><RollingAmount value={formatCurrency(y.spending)} /></td>
+                        <td className="font-mono-tab" style={{ color: y.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}><RollingAmount value={formatCurrency(y.net)} /></td>
                         <td className="pb-tnum">
                           {y.savingsRate === null ? '—' : pct(y.savingsRate)}
                         </td>

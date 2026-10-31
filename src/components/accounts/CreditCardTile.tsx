@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronRight, CreditCard } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -190,7 +191,7 @@ export function StatementTrack({ card, charges, today, st }: {
               <>
                 <span className="pb-accounts-pop-title">{titleById.get(shown.points[0].id)}</span>
                 <span className="pb-accounts-pop-meta pb-tnum">{formatDate(shown.points[0].date, locale)} · {stateWord[shown.points[0].state]}</span>
-                <span className="font-mono-tab pb-accounts-pop-amount">{formatCurrency(shown.points[0].amount)}</span>
+                <span className="font-mono-tab pb-accounts-pop-amount"><RollingAmount value={formatCurrency(shown.points[0].amount)} /></span>
               </>
             ) : (
               <>
@@ -201,7 +202,7 @@ export function StatementTrack({ card, charges, today, st }: {
                       <span className="pb-accounts-pop-title">{titleById.get(p.id)}</span>
                       <span className="pb-accounts-pop-meta pb-tnum">{formatDate(p.date, locale)} · {stateWord[p.state]}</span>
                     </span>
-                    <span className="font-mono-tab pb-accounts-pop-amount">{formatCurrency(p.amount)}</span>
+                    <span className="font-mono-tab pb-accounts-pop-amount"><RollingAmount value={formatCurrency(p.amount)} /></span>
                   </span>
                 ))}
                 {shown.points.length > POP_MAX && <span className="pb-accounts-pop-meta pb-tnum">{t(x.moreCharges, { count: shown.points.length - POP_MAX })}</span>}
@@ -273,7 +274,7 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
           )}
         </div>
         <div className="pb-accounts-cc-owed">
-          <p className="font-display pb-money">{whole}<span className="pb-accounts-cents">{cents}</span></p>
+          <p className="font-display pb-money"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
           <p className="pb-accounts-cc-owed-word">{f.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>
         </div>
         <div className="pb-accounts-cc-row is-bottom">

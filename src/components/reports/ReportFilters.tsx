@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronRight, Search, X } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -212,6 +212,42 @@ export function ReportFilters({
   // dict/tr, not d/t: `t` and `d` are used as closure parameters below.
   const { d: dict, t: tr } = useTranslation();
   const uid = useId();
+  const cardRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    const root = card?.closest('.pebble-root');
+    if (!card || !root) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const bottomNav = root.querySelector('.pebble-bottom-nav')?.getBoundingClientRect().height ?? 0;
+      const room = Math.max(0, window.innerHeight - bottomNav - card.getBoundingClientRect().top);
+      // Before sticking, the card also sits below the main padding/chips.
+      // Keep a little air below it unless the window is exceptionally short.
+      const gap = Math.min(16, Math.max(0, room - 48));
+      card.style.setProperty('--pb-rep-filter-available', `${Math.max(0, room - gap)}px`);
+    };
+    const queue = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const observer = new ResizeObserver(queue);
+    observer.observe(root);
+    const page = card.closest('.pb-rep');
+    // The first active chip mounts after this effect; watching the page also
+    // catches that insertion/removal and later chip wrapping above the card.
+    if (page) observer.observe(page);
+    for (const selector of ['.pebble-header', '.pb-rep-bar', '.pb-rep-chips', '.pebble-bottom-nav']) {
+      const element = root.querySelector(selector);
+      if (element) observer.observe(element);
+    }
+    root.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    measure();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      root.removeEventListener('scroll', queue);
+      window.removeEventListener('resize', queue);
+    };
+  }, []);
   // Sub-category appears only while exactly one category is selected, so it
   // opens by default and is not persisted - there is nothing to restore.
   const [tagsExpanded, setTagsExpanded] = useState(true);
@@ -263,7 +299,7 @@ export function ReportFilters({
   const panelId = `${uid}-panel`;
 
   return (
-    <div className="card pb-rep-filters" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div ref={cardRef} className="card pb-rep-filters" style={{ display: 'flex', flexDirection: 'column' }}>
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
@@ -282,12 +318,12 @@ export function ReportFilters({
         />
       </button>
 
-      <div id={panelId} className={`collapsible-rows ${expanded ? 'expanded' : ''}`} inert={!expanded}>
+      <div id={panelId} className={`collapsible-rows pb-rep-filter-panel ${expanded ? 'expanded' : ''}`} inert={!expanded}>
         <div className="collapsible-rows-inner">
           {/* 4px of side and bottom padding so focus rings are not clipped by
               .collapsible-rows-inner's overflow: hidden (a 2px outline at a 2px
               offset). Set here because that class is shared elsewhere. */}
-          <div style={{ display: 'flex', flexDirection: 'column', padding: '1.15rem 4px 4px' }}>
+          <div className="pb-rep-filter-scroll" style={{ display: 'flex', flexDirection: 'column', padding: '1.15rem 4px 4px' }}>
             {/* An explicit selection, like Categories: All is both types, and
                 clicking All while it is lit clears everything. From All, a click
                 on one type isolates it. Values are the stored ReportType
@@ -523,6 +559,7 @@ export function ReportFilters({
           </div>
         </div>
       </div>
+      <p className="pb-rep-keys" aria-hidden="true">{dict.ux.reports.shortcutsHint}</p>
     </div>
   );
 }

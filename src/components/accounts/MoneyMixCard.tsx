@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, PieChart, Equal } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -102,17 +103,17 @@ export function MoneyMixCard({ items, total }: {
       <dl className="pb-accounts-strip">
         <div>
           <dt><ArrowUpRight size={13} aria-hidden="true" className="is-in" />{x.assets}</dt>
-          <dd className="font-mono-tab">{formatCurrency(assets)}</dd>
+          <dd className="font-mono-tab"><RollingAmount value={formatCurrency(assets)} /></dd>
           <dd className="pb-accounts-strip-hint">{x.assetsHint}</dd>
         </div>
         <div>
           <dt><ArrowDownRight size={13} aria-hidden="true" className="is-out" />{x.owed}</dt>
-          <dd className="font-mono-tab">{formatCurrency(owed)}</dd>
+          <dd className="font-mono-tab"><RollingAmount value={formatCurrency(owed)} /></dd>
           <dd className="pb-accounts-strip-hint">{x.owedHint}</dd>
         </div>
         <div className="is-net">
           <dt><Equal size={13} aria-hidden="true" />{x.net}</dt>
-          <dd className="font-mono-tab">{formatCurrency(total)}</dd>
+          <dd className="font-mono-tab"><RollingAmount value={formatCurrency(total)} /></dd>
           <dd className="pb-accounts-strip-hint">{x.netHint}</dd>
         </div>
       </dl>
@@ -135,7 +136,7 @@ export function MoneyMixCard({ items, total }: {
                 {activeSeg.name}
                 {activeSeg.last4 && <span className="font-mono-tab pb-accounts-last4"> ····{activeSeg.last4}</span>}
               </span>
-              <span className="font-mono-tab pb-accounts-pop-amount">{formatCurrency(activeSeg.owed ? -activeSeg.amount : activeSeg.amount)}</span>
+              <span className="font-mono-tab pb-accounts-pop-amount"><RollingAmount value={formatCurrency(activeSeg.owed ? -activeSeg.amount : activeSeg.amount)} /></span>
               <span className="pb-accounts-pop-meta font-mono-tab">
                 {activeSeg.owed ? t(x.segOwed, { pct: pctOf(activeSeg.amount, owed) }) : t(x.segShare, { pct: pctOf(activeSeg.amount, assets) })}
               </span>
@@ -159,7 +160,7 @@ export function MoneyMixCard({ items, total }: {
                   {/* The last four are a figure: blurred in privacy mode. */}
                   {s.last4 && <span className="font-mono-tab pb-accounts-last4"> ····{s.last4}</span>}
                 </span>
-                <span className="font-mono-tab pb-accounts-legend-amt">{formatCurrency(s.owed ? -s.amount : s.amount)}</span>
+                <span className="font-mono-tab pb-accounts-legend-amt"><RollingAmount value={formatCurrency(s.owed ? -s.amount : s.amount)} /></span>
                 <span className="font-mono-tab pb-accounts-legend-pct">{s.owed ? '' : shareOfTotal(s.amount)}</span>
               </button>
             </li>

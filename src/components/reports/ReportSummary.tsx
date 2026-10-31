@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { DeltaChip } from '@/components/kit/DeltaChip';
+import { RollingAmount } from '@/components/shared/RollingAmount';
 
 export interface ShareSlice {
   /** Stored category name, or '__other__'. */
@@ -96,7 +97,7 @@ export function ReportSummary(p: ReportSummaryProps) {
         <div className="pb-rep-figure-row">
           <span className="pb-rep-figure-label">{label}</span>
           <p className="pb-rep-figure font-display pb-money" style={{ color: p.accent }}>
-            {whole}<span className="pb-rep-cents">{cents}</span>
+            <RollingAmount value={whole + cents} fractionClassName="pb-rep-cents" />
           </p>
         </div>
         <div className="pb-rep-subline">
@@ -123,15 +124,15 @@ export function ReportSummary(p: ReportSummaryProps) {
             <div className="pb-rep-flow-figs">
               <div className="pb-rep-flow-fig is-in">
                 <span className="pb-rep-flow-name"><ArrowDownLeft size={14} aria-hidden="true" />{x.moneyIn}</span>
-                <span className="font-mono-tab">{formatCurrency(p.inSum)}</span>
+                <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.inSum)} /></span>
               </div>
               <div className="pb-rep-flow-fig is-out">
                 <span className="pb-rep-flow-name"><ArrowUpRight size={14} aria-hidden="true" />{x.moneyOut}</span>
-                <span className="font-mono-tab">{formatCurrency(p.outSum)}</span>
+                <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.outSum)} /></span>
               </div>
               <div className="pb-rep-flow-fig">
                 <span className="pb-rep-flow-name">{x.net}</span>
-                <span className="font-mono-tab" style={{ color: p.accent }}>{p.total > 0 ? '+' : ''}{formatCurrency(p.total)}</span>
+                <span className="font-mono-tab" style={{ color: p.accent }}><RollingAmount value={`${p.total > 0 ? '+' : ''}${formatCurrency(p.total)}`} /></span>
               </div>
             </div>
             {flowMax > 0 && (
@@ -147,7 +148,7 @@ export function ReportSummary(p: ReportSummaryProps) {
           {p.dailyAverage !== null && (
             <div className="pb-rep-stat">
               <dt>{x.dailyAverage}</dt>
-              <dd className="font-mono-tab">{formatCurrency(p.dailyAverage)}</dd>
+              <dd className="font-mono-tab"><RollingAmount value={formatCurrency(p.dailyAverage)} /></dd>
             </div>
           )}
           {p.largest && (
@@ -155,7 +156,7 @@ export function ReportSummary(p: ReportSummaryProps) {
               <dt>{x.largest}</dt>
               <dd>
                 <button type="button" className="pb-rep-stat-btn" onClick={() => p.onOpenDetail(p.largest!)}>
-                  <span className="font-mono-tab">{formatCurrency(Math.abs(p.largest.amount))}</span>
+                  <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(p.largest.amount))} /></span>
                   <span className="pb-rep-stat-sub">{descriptionTitle(p.largest.description)}</span>
                 </button>
               </dd>
@@ -169,7 +170,7 @@ export function ReportSummary(p: ReportSummaryProps) {
                   <span className="pb-rep-dot" style={{ background: color(p.topCategory.key) }} aria-hidden="true" />
                   <span className="pb-rep-stat-sub is-strong">{name(p.topCategory.key)}</span>
                 </span>
-                <span className="font-mono-tab pb-rep-stat-small">{formatCurrency(p.topCategory.value)}</span>
+                <span className="font-mono-tab pb-rep-stat-small"><RollingAmount value={formatCurrency(p.topCategory.value)} /></span>
               </dd>
             </div>
           )}

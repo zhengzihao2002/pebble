@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import type { CategoryMeta } from '@/types';
@@ -56,7 +57,7 @@ export function UpcomingTimeline({ months, categoryMeta }: { months: UpcomingMon
           )}
         </span>
         <span className="font-mono-tab pb-ana-up-amt" style={{ color: income ? 'var(--pine)' : 'var(--ink)' }}>
-          {income ? '+' : '−'}{formatCurrency(Math.abs(it.amount))}
+          {income ? '+' : '−'}<RollingAmount value={formatCurrency(Math.abs(it.amount))} />
         </span>
       </li>
     );
@@ -76,7 +77,7 @@ export function UpcomingTimeline({ months, categoryMeta }: { months: UpcomingMon
               <span className="font-mono-tab pb-ana-up-tot" aria-label={t(x.monthTotals, { label: m.label })}>
                 {m.expenseTotal > 0 && `−${formatCurrency(m.expenseTotal)}`}
                 {m.expenseTotal > 0 && m.incomeTotal > 0 && ' · '}
-                {m.incomeTotal > 0 && <span style={{ color: 'var(--pine)' }}>+{formatCurrency(m.incomeTotal)}</span>}
+                {m.incomeTotal > 0 && <span style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(m.incomeTotal)} /></span>}
               </span>
               {flow > 0 && (
                 <span className="pb-ana-split pb-chart-fill" aria-hidden="true">

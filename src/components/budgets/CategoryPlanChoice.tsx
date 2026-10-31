@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatCurrency } from '@/lib/format';
 import type { ReactNode } from 'react';
@@ -22,7 +23,7 @@ export function CategoryPlanChoice({ name, suggested, average6, last12, summary,
       ] as const).map(option => <button key={option.method} type="button"
         disabled={option.amount === null}
         onClick={() => { if (option.amount !== null) onFill(option.amount); }}>
-        <span>{option.label}</span>{option.amount !== null && <small className="font-mono-tab">{formatCurrency(option.amount)}</small>}
+        <span>{option.label}</span>{option.amount !== null && <small className="font-mono-tab"><RollingAmount value={formatCurrency(option.amount)} /></small>}
       </button>)}
     </div>
   </div>;

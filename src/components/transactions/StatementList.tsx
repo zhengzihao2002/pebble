@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, type ReactNode } from 'react';
 import { CalendarX2 } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
@@ -69,7 +70,7 @@ export function SignedAmount({ value, className = '' }: { value: number; classNa
   const tone = c > 0 ? 'pb-txn-pos' : c < 0 ? 'pb-txn-neg' : 'pb-txn-zero';
   return (
     <span className={`font-mono-tab ${tone}${className ? ` ${className}` : ''}`}>
-      {c > 0 ? '+' : ''}{formatCurrency(c / 100)}
+      {c > 0 ? '+' : ''}<RollingAmount value={formatCurrency(c / 100)} />
     </span>
   );
 }

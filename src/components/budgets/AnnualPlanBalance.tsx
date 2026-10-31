@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Transaction } from '@/types';
@@ -74,9 +75,9 @@ export function AnnualPlanBalance({ year, budget, transactions, today }: { year:
         <span className="pb-annual-balance-deficit" style={{ width: `${deficitShare}%` }} />
       </div>
       <dl className="pb-annual-balance-figures">
-        <div><dt>{x.balanceIncome}</dt><dd className="font-mono-tab">{known ? formatCurrency(income) : '—'}</dd></div>
-        <div data-tone="budget"><dt><i aria-hidden="true" />{x.balanceBudget}</dt><dd className="font-mono-tab">{formatCurrency(safeBudget)}</dd></div>
-        <div data-tone={shortfall ? 'deficit' : 'saved'}><dt><i aria-hidden="true" />{shortfall ? x.balanceShortfall : x.balanceSavings}</dt><dd className="font-mono-tab">{savings !== null ? formatCurrency(Math.abs(savings)) : '—'}</dd></div>
+        <div><dt>{x.balanceIncome}</dt><dd className="font-mono-tab"><RollingAmount value={known ? formatCurrency(income) : '—'} /></dd></div>
+        <div data-tone="budget"><dt><i aria-hidden="true" />{x.balanceBudget}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(safeBudget)} /></dd></div>
+        <div data-tone={shortfall ? 'deficit' : 'saved'}><dt><i aria-hidden="true" />{shortfall ? x.balanceShortfall : x.balanceSavings}</dt><dd className="font-mono-tab"><RollingAmount value={savings !== null ? formatCurrency(Math.abs(savings)) : '—'} /></dd></div>
       </dl>
       {!known && <p className="pb-annual-balance-note">{x.balanceNeedsIncome}</p>}
     </section>

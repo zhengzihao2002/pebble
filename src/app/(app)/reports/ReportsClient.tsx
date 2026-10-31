@@ -906,10 +906,15 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     const bar = barRef.current;
     const page = pageRef.current;
     if (!bar || !page) return;
-    const set = () => page.style.setProperty('--pb-rep-bar-h', `${bar.offsetHeight}px`);
+    const bottomNav = page.closest('.pebble-root')?.querySelector<HTMLElement>('.pebble-bottom-nav');
+    const set = () => {
+      page.style.setProperty('--pb-rep-bar-h', `${bar.offsetHeight}px`);
+      page.style.setProperty('--pb-rep-bottom-nav-h', `${bottomNav?.getBoundingClientRect().height ?? 0}px`);
+    };
     set();
     const ro = new ResizeObserver(set);
     ro.observe(bar);
+    if (bottomNav) ro.observe(bottomNav);
     return () => ro.disconnect();
   }, [ready]);
 
@@ -1054,7 +1059,6 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             onToggleTag={toggleTag}
             onClearTags={() => setSelectedTags(new Set())}
           />
-          <p className="pb-rep-keys" aria-hidden="true">{ux.shortcutsHint}</p>
           </div>
         </aside>
 

@@ -1,3 +1,4 @@
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { LucideIcon } from 'lucide-react';
 
 interface StatTabProps {
@@ -23,7 +24,7 @@ export function StatTab({ icon: Icon, label, value, sublabel, color, info, value
         <span style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {info}
       </div>
-      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>{value}</div>
+      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>{value.includes('$') ? <RollingAmount value={value} /> : value}</div>
       {sublabel && <div style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 2 }}>{sublabel}</div>}
     </div>
   );

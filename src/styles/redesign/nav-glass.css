@@ -1,0 +1,35 @@
+/* A single, measured glass surface travels between page destinations. */
+.pebble-root .pb-nav-glass-host { isolation: isolate; }
+.pebble-root .pb-nav-glass-indicator {
+  position: absolute; top: 0; left: 0; z-index: 0; flex: none;
+  pointer-events: none; opacity: 0; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--pine) 24%, transparent);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--mist) 72%, transparent), transparent 58%),
+    color-mix(in srgb, var(--pine) 16%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mist) 85%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--pine) 12%, transparent),
+    0 5px 15px -9px color-mix(in srgb, var(--pine) 55%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  backdrop-filter: saturate(1.6) blur(14px);
+}
+.pebble-root .pb-nav-glass-host[data-pb-glass-ready="true"] > .pb-nav-glass-indicator { opacity: 1; }
+.pebble-root .pb-nav-glass-host[data-pb-glass-animated="true"] > .pb-nav-glass-indicator {
+  transition: transform .68s cubic-bezier(.22,.78,.22,1), width .68s cubic-bezier(.22,.78,.22,1),
+    height .68s cubic-bezier(.22,.78,.22,1), opacity .2s ease;
+}
+.pebble-root .pb-nav-glass-host [data-pb-nav-link] { position: relative; z-index: 1; }
+.pebble-root .pb-nav-glass-side nav .nav-btn { font-weight: 600; }
+.pebble-root .pb-nav-glass-side .nav-icon,
+.pebble-root .pb-nav-glass-side .nav-icon.active { transform: none; }
+.pebble-root .pb-nav-glass-side[data-pb-glass-ready="true"] .nav-btn.active,
+.pebble-root .pb-nav-glass-side[data-pb-glass-ready="true"] .nav-btn.active:hover {
+  background: transparent; box-shadow: none; color: var(--pine); font-weight: 600;
+}
+.pebble-root .pb-nav-glass-bottom > .pb-nav-glass-indicator { border-radius: 1rem; }
+.pebble-root .pb-nav-glass-bottom[data-pb-glass-ready="true"] .bottom-nav-btn::before {
+  opacity: 0; transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-nav-glass-host[data-pb-glass-animated="true"] > .pb-nav-glass-indicator { transition: none; }
+}

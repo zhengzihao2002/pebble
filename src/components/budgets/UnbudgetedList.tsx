@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { ChevronDown, Plus, ShieldCheck } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
@@ -24,7 +25,7 @@ function UnbudgetedRow({ e, history, today, max }: { e: BudgetEntry; history: Bu
           <Icon size={16} style={{ color: e.color }} />
         </span>
         <span className="pb-unb-name">{e.name}</span>
-        <span className="font-mono-tab pb-unb-amount">{formatCurrency(e.spent)}</span>
+        <span className="font-mono-tab pb-unb-amount"><RollingAmount value={formatCurrency(e.spent)} /></span>
         {/* NEW: how big this is next to the largest, as a hairline in the
             category's own colour - a magnitude, not a limit against a
             budget, so never pine or wine and never a progress track. */}
@@ -119,7 +120,7 @@ export function UnbudgetedList({ entries, others, history, today = null }: { ent
             title={d.budgetPlan.unbudgetedTitle}
             subtitle={renderTemplate(rows.length === 1 ? ux.unbSummaryOne : ux.unbSummaryOther, {
               count: <span className="pb-tnum">{rows.length}</span>,
-              amount: <span className="font-mono-tab">{formatCurrency(total)}</span>,
+              amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(total)} /></span>,
             })}
           />
           <ul className="pb-unb-list">

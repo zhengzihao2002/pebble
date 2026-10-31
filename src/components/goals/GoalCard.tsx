@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { createElement, useState } from 'react';
 import { CalendarDays, Check, Pencil, Plus, TrendingUp } from 'lucide-react';
 import type { Goal } from '@/types';
@@ -41,7 +42,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
   const pct = (goal.current / goal.target) * 100;
   const when = timeToTarget(d, today, goal.date);
   const pace = monthlyPace(goal, today);
-  const money = (n: number) => <span className="font-mono-tab">{formatCurrency(n)}</span>;
+  const money = (n: number) => <span className="font-mono-tab"><RollingAmount value={formatCurrency(n)} /></span>;
   // overUnderLabel's two phrasings, with the amount as an element so privacy
   // mode blurs it (it was plain text before).
   const rest = renderTemplate(goal.current > goal.target ? d.phrasing.pastTarget : d.phrasing.toGo, {
@@ -69,7 +70,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
           {/* goal.name is USER DATA and renders exactly as stored. */}
           <p className="pb-goal-name">{goal.name}</p>
           <p className="pb-goal-amount">
-            <span className="font-display pb-money">{formatCurrency(goal.current)}</span>{' '}
+            <span className="font-display pb-money"><RollingAmount value={formatCurrency(goal.current)} /></span>{' '}
             <span className="pb-goal-of">{renderTemplate(ux.cardOfTarget, { total: money(goal.target) })}</span>
           </p>
           <p className="pb-goal-there">

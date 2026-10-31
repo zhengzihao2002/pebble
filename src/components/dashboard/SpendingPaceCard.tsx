@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo } from 'react';
 import { ComposedChart, Area, Line, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Gauge } from 'lucide-react';
@@ -50,7 +51,7 @@ function PaceTip({ active, payload, dateOfDay }: { active?: boolean; payload?: R
   const row = (name: string, v: unknown, color: string) => (typeof v === 'number' ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1.25rem' }}>
       <span style={{ color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 6 }}><i className="pb-dash-key-dot" style={{ backgroundColor: color }} />{name}</span>
-      <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(v)}</span>
+      <span className="font-mono-tab" style={{ fontWeight: 600 }}><RollingAmount value={formatCurrency(v)} /></span>
     </div>
   ) : null);
   return (
@@ -111,7 +112,7 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
   let tone = 'var(--ink-soft)';
   if (model && model.pace.todayIndex >= 0) {
     const { spentSoFar, previousAtPoint } = model.pace;
-    const amount = (n: number) => <strong className="pb-money">{formatCurrency(n)}</strong>;
+    const amount = (n: number) => <strong className="pb-money"><RollingAmount value={formatCurrency(n)} /></strong>;
     const spent = renderTemplate(inProgress ? ux.spentSoFar : ux.spentTotal, { amount: amount(spentSoFar) });
     let versus: React.ReactNode = ux.paceNoPrev;
     if (model.hasPrevious) {
@@ -139,9 +140,9 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
   const facts: { key: string; label: string; value: React.ReactNode }[] = [];
   if (model && model.pace.todayIndex >= 0) {
     const elapsed = model.pace.todayIndex + 1;
-    facts.push({ key: 'avg', label: ux.paceDailyAvg, value: <span className="font-mono-tab">{formatCurrency(model.pace.spentSoFar / elapsed)}</span> });
-    if (model.hasPrevious) facts.push({ key: 'last', label: t(ux.paceLastTotal, { unit }), value: <span className="font-mono-tab">{formatCurrency(model.pace.previousTotal)}</span> });
-    if (model.budget > 0) facts.push({ key: 'budget', label: t(ux.paceBudget, { unit }), value: <span className="font-mono-tab">{formatCurrency(model.budget)}</span> });
+    facts.push({ key: 'avg', label: ux.paceDailyAvg, value: <span className="font-mono-tab"><RollingAmount value={formatCurrency(model.pace.spentSoFar / elapsed)} /></span> });
+    if (model.hasPrevious) facts.push({ key: 'last', label: t(ux.paceLastTotal, { unit }), value: <span className="font-mono-tab"><RollingAmount value={formatCurrency(model.pace.previousTotal)} /></span> });
+    if (model.budget > 0) facts.push({ key: 'budget', label: t(ux.paceBudget, { unit }), value: <span className="font-mono-tab"><RollingAmount value={formatCurrency(model.budget)} /></span> });
     // A count of days, not money: readable in privacy mode. Only for a
     // calendar month, quarter or year - a rolling window always ends today,
     // so it would always read 0.

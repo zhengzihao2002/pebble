@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOut } from 'lucide-react';
 import { signOutCompletely } from '@/lib/auth/signOut';
-import { Spinner } from '@/components/shared/Spinner';
+import { LoadingOutline, Spinner } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import { PendingSignOutDialog } from '@/components/offline/PendingSignOutDialog';
@@ -77,6 +77,7 @@ function SigningOutOverlay({ phase, onRetry, onCancel }: { phase: Phase; onRetry
   return (
     <div
       role={working ? 'status' : 'alertdialog'}
+      className={working ? 'pb-loading-screen' : undefined}
       aria-live={working ? 'polite' : 'assertive'}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
@@ -87,6 +88,7 @@ function SigningOutOverlay({ phase, onRetry, onCancel }: { phase: Phase; onRetry
     >
       {working ? (
         <>
+          <LoadingOutline preview />
           <Spinner size={56} color="var(--pine)" />
           <p className="font-display" style={{ fontSize: '2rem', fontWeight: 600, margin: 0 }}>{d.auth.signingOut}</p>
         </>

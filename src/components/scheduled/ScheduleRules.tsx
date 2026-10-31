@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -126,7 +127,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
                 <span>
                   {(() => {
                     const [a, b] = x.perMonthApprox.split('{amount}');
-                    return <>{a}<span className="font-mono-tab">{monthly > 0 ? '+' : ''}{formatCurrency(monthly)}</span>{b}</>;
+                    return <>{a}<span className="font-mono-tab">{monthly > 0 ? '+' : ''}<RollingAmount value={formatCurrency(monthly)} /></span>{b}</>;
                   })()}
                 </span>
               )}
@@ -181,7 +182,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
     : null;
   const [approxA, approxB] = x.perMonthApprox.split('{amount}');
   const approx = monthly !== null && rule.frequency !== 'monthly'
-    ? <>{approxA}<span className="font-mono-tab">{formatCurrency(monthly)}</span>{approxB}</>
+    ? <>{approxA}<span className="font-mono-tab"><RollingAmount value={formatCurrency(monthly)} /></span>{approxB}</>
     : null;
 
   return (
@@ -210,7 +211,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
         </div>
         <div className="pb-sched-rule-money">
           <span className="font-mono-tab pb-sched-rule-amt" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
-            {formatCurrency(rule.amount)}
+            <RollingAmount value={formatCurrency(rule.amount)} />
           </span>
           {approx && <span className="pb-sched-rule-approx">{approx}</span>}
         </div>

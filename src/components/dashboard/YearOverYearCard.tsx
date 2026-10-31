@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, Percent, Wallet } from 'lucide-react';
 import type { CategoryMeta } from '@/types';
 import { SectionHeader } from '@/components/kit/SectionHeader';
@@ -94,7 +95,7 @@ export function YearOverYearCard({ data, categoryMeta, today, inProgress }: Year
                       {/* Category names are USER DATA. */}
                       <span className="pb-dash-row-title">{m.category}</span>
                       <span className="pb-dash-row-sub">
-                        {renderTemplate(ux.yoyLastYearAmount, { amount: <span className="font-mono-tab">{formatCurrency(m.previous)}</span> })}
+                        {renderTemplate(ux.yoyLastYearAmount, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(m.previous)} /></span> })}
                       </span>
                       {/* Two thin bars on one scale: now over last year. The
                           figures beside them say the same, so the colour is
@@ -105,7 +106,7 @@ export function YearOverYearCard({ data, categoryMeta, today, inProgress }: Year
                       </span>
                     </span>
                     <span className="pb-dash-yoy-mover-fig">
-                      <span className="pb-dash-row-amount font-mono-tab">{formatCurrency(m.current)}</span>
+                      <span className="pb-dash-row-amount font-mono-tab"><RollingAmount value={formatCurrency(m.current)} /></span>
                       <DeltaChip
                         delta={m.change} good="down" money
                         text={`${sign}${formatCurrency(Math.abs(m.change))}`}

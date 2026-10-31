@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Plus, ReceiptText } from 'lucide-react';
@@ -80,7 +81,7 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null, a
         {g.date !== continues && (
           <div className="pb-dash-day-head">
             <span>{heading(g.date)}</span>
-            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}{formatCurrency(net)}</span>
+            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
           </div>
         )}
         <div className="pb-dash-rows">

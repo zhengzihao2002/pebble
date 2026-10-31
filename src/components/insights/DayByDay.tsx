@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
@@ -257,9 +258,9 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
             <div className="pb-ins-cal-title">
               <span className="pb-ins-cal-month">{formatMonthYear(y, m, locale)}</span>
               <span className="pb-ins-cal-totals">
-                <span className="font-mono-tab">{t(d.insights.monthTotal, { amount: formatCurrency(total) })}</span>
+                <span className="font-mono-tab"><RollingMoneyText value={t(d.insights.monthTotal, { amount: formatCurrency(total) })} /></span>
                 {busiest && (
-                  <>{' · '}<span className="font-mono-tab">{t(d.insights.busiest, { date: formatDate(busiest, locale), amount: formatCurrency(max) })}</span></>
+                  <>{' · '}<span className="font-mono-tab"><RollingMoneyText value={t(d.insights.busiest, { date: formatDate(busiest, locale), amount: formatCurrency(max) })} /></span></>
                 )}
               </span>
             </div>
@@ -321,7 +322,7 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
                 {pickedDay && (
                   <p className="pb-ins-panel-sub">
                     <span className="pb-tnum">{pickedDay.items.length === 1 ? ux.dayItemsOne : t(ux.dayItems, { count: pickedDay.items.length })}</span>
-                    {' · '}<span className="font-mono-tab">{formatCurrency(pickedDay.spent)}</span>
+                    {' · '}<span className="font-mono-tab"><RollingAmount value={formatCurrency(pickedDay.spent)} /></span>
                   </p>
                 )}
               </div>
@@ -348,12 +349,12 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
         ) : (
           <aside className="pb-ins-day-panel is-summary" aria-label={offset === 0 ? ux.monthSummary : formatMonthYear(y, m, locale)}>
             <p className="pb-ins-mini-head">{offset === 0 ? ux.monthSummary : formatMonthYear(y, m, locale)}</p>
-            <p className="pb-ins-panel-total font-mono-tab">{formatCurrency(total)}</p>
+            <p className="pb-ins-panel-total font-mono-tab"><RollingAmount value={formatCurrency(total)} /></p>
             <dl className="pb-ins-facts">
               {busiest && (
                 <div>
                   <dt>{ux.busiestDay}</dt>
-                  <dd><span className="pb-tnum">{formatDate(busiest, locale)}</span><span className="pb-ins-sep" aria-hidden="true">·</span><span className="font-mono-tab">{formatCurrency(max)}</span></dd>
+                  <dd><span className="pb-tnum">{formatDate(busiest, locale)}</span><span className="pb-ins-sep" aria-hidden="true">·</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(max)} /></span></dd>
                 </div>
               )}
               <div><dt>{ux.noSpendCount}</dt><dd className="pb-tnum">{noSpend}</dd></div>
@@ -364,7 +365,7 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
                   <dd className="pb-ins-fact-cat">
                     <span className="pb-ins-tile is-sm" aria-hidden="true" style={{ ['--pb-ins-cat' as string]: topMeta ? topMeta.color : 'var(--ink-soft)' }}>{TopIcon && <TopIcon size={13} />}</span>
                     <span className="pb-ins-fact-cat-name">{categoryLabel(d, topCat[0])}</span>
-                    <span className="font-mono-tab">{formatCurrency(topCat[1])}</span>
+                    <span className="font-mono-tab"><RollingAmount value={formatCurrency(topCat[1])} /></span>
                   </dd>
                 </div>
               )}

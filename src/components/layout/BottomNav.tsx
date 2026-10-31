@@ -10,6 +10,7 @@ import { pageAction, type PageActionKind } from './pageActions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useBottomNavPanels } from './useBottomNavPanels';
 import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
+import { useNavGlass } from './useNavGlass';
 
 interface BottomNavProps {
   onAddTransactionClick: () => void;
@@ -50,6 +51,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
   const addPanelRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
+  const { ref: navRef, indicatorRef } = useNavGlass<HTMLElement>(`${pathname}:${open}`, true);
 
   // Navigating must collapse both - the destination is a Link away and
   // leaving either expanded would cover the page the user just chose.
@@ -100,6 +102,8 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
       <Link
         key={item.href} href={item.href} prefetch={false}
         className={`bottom-nav-btn ${active ? 'active' : ''}`}
+        aria-current={isNavItemActive(pathname, item.href) ? 'page' : undefined}
+        data-pb-nav-link data-pb-nav-selected={active || undefined}
         style={{ textDecoration: 'none' }}
       >
         <item.icon size={20} className={`bottom-nav-icon ${active ? 'active' : ''}`} />
@@ -125,7 +129,8 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
         }}
       />
 
-      <nav className="pebble-bottom-nav" style={{ position: 'fixed' }}>
+      <nav ref={navRef} className="pebble-bottom-nav pb-nav-glass-host pb-nav-glass-bottom" style={{ position: 'fixed' }}>
+        <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
         {primaryNavItems.slice(0, 2).map(renderLink)}
 
         {/* The centre cell. Same equal width as every other cell; the button
@@ -227,6 +232,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             aria-expanded={open}
             aria-label={open ? d.common.close : d.nav.more}
             className={`bottom-nav-btn ${open || inSecondary ? 'active' : ''}`}
+            data-pb-nav-link data-pb-nav-selected={(open || inSecondary) || undefined}
             style={{ background: 'none', border: 'none', flex: 1, minWidth: 0 }}
           >
             {open

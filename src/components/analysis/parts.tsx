@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { ReactNode } from 'react';
 import { Link2 } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
@@ -51,7 +52,7 @@ export function Tile({ label, value, note, tooltipLabel, children, money = true,
         <span>{label}</span>
         {tooltipLabel && <InfoTooltip label={tooltipLabel}>{children}</InfoTooltip>}
       </p>
-      <p className={`pb-ana-tile-value ${money ? 'font-mono-tab' : 'pb-tnum'}`}>{value}</p>
+      <p className={`pb-ana-tile-value ${money ? 'font-mono-tab' : 'pb-tnum'}`}>{money ? <RollingAmount value={value} /> : value}</p>
       {note && <p className="pb-ana-tile-note">{note}</p>}
       {extra}
     </div>

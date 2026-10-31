@@ -1,3 +1,4 @@
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { Goal } from '@/types';
 import type { Dictionary } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
@@ -90,7 +91,7 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
           {/* formatCurrency stays pinned to en-US in every locale - these
               are the user's actual dollars, not a localized quantity. */}
           <p className="font-display pb-money pb-goals-hero-num">
-            {whole}<span className="pb-hero-cents">{cents}</span>
+            <RollingAmount value={whole + cents} fractionClassName="pb-hero-cents" />
           </p>
         </div>
 
@@ -104,7 +105,7 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
                 />
                 {r.label}
               </dt>
-              <dd className="font-mono-tab" style={r.color ? { color: r.color } : undefined}>{formatCurrency(r.value)}</dd>
+              <dd className="font-mono-tab" style={r.color ? { color: r.color } : undefined}><RollingAmount value={formatCurrency(r.value)} /></dd>
               <dd className="pb-goals-hero-pct pb-tnum" aria-hidden={r.pct === null ? true : undefined}>
                 {r.pct === null ? ' ' : `${r.pct > 0 && r.pct < 1 ? '<1' : Math.round(r.pct)}%`}
               </dd>
@@ -118,7 +119,7 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
       {overAllocated && (
         <p className="pb-goals-over-note">
           {/* Same message as before; its amount now blurs with the others. */}
-          {renderTemplate(d.goals.overAllocated, { amount: <span className="font-mono-tab">{formatCurrency(Math.abs(unallocated))}</span> })}
+          {renderTemplate(d.goals.overAllocated, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(unallocated))} /></span> })}
         </p>
       )}
     </section>

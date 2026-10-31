@@ -1,6 +1,7 @@
 'use client';
 
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';
@@ -9,8 +10,11 @@ import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { NAV_GROUPS, navItems } from './navItems';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useNavGlass } from './useNavGlass';
 
 export function Sidebar() {
+  const pathname = usePathname();
+  const { ref, indicatorRef } = useNavGlass<HTMLElement>(pathname);
   const appearance = usePebbleStore((s) => s.appearance);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const darkMode = useResolvedDark();
@@ -23,7 +27,8 @@ export function Sidebar() {
   const settings = byHref.get('/settings');
 
   return (
-    <aside className="pebble-sidebar">
+    <aside ref={ref} className="pebble-sidebar pb-nav-glass-host pb-nav-glass-side">
+      <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <div className="pb-sidebar-brand">
         <PebbleMark size={34} />
         <span className="font-display pb-sidebar-wordmark">Pebble</span>

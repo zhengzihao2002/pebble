@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { AlertTriangle, Check, FastForward, Tag } from 'lucide-react';
 import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
@@ -63,7 +64,7 @@ export function BudgetPaceList({ variance, pace, categoryMeta }: {
                   </span>
                   <span className="pb-ana-pace-figs">
                     <span className="font-mono-tab" style={{ color: v.overBudget ? 'var(--wine)' : undefined }}>
-                      {formatCurrency(v.spent)} / {formatCurrency(v.budget)}
+                      <RollingAmount value={formatCurrency(v.spent)} /> / <RollingAmount value={formatCurrency(v.budget)} />
                     </span>
                     <span className="pb-tnum" style={{ color: v.overBudget ? 'var(--wine)' : undefined }}> · {pct(v.usedShare)}</span>
                   </span>

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Info } from 'lucide-react';
 import { formatCurrency, formatMonthYear } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
@@ -98,8 +99,8 @@ export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onTog
                 <div className="pb-sched-month-divider">
                   <span>{formatMonthYear(Number(m.key.slice(0, 4)), Number(m.key.slice(5, 7)) - 1, locale)}</span>
                   <span className="pb-sched-month-tot">
-                    {inc > 0 && <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+{formatCurrency(inc)}</span>}
-                    {out > 0 && <span className="font-mono-tab">{formatCurrency(-out)}</span>}
+                    {inc > 0 && <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(inc)} /></span>}
+                    {out > 0 && <span className="font-mono-tab"><RollingAmount value={formatCurrency(-out)} /></span>}
                   </span>
                 </div>
                 {groupByDay(m.items, (it) => it.date).map((g) => {
@@ -110,7 +111,7 @@ export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onTog
                       <div className="pb-sched-day-head">
                         <span className="pb-tnum">{heading(g.date)}</span>
                         <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>
-                          {net > 0 ? '+' : ''}{formatCurrency(net)}
+                          {net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} />
                         </span>
                       </div>
                       <ul className="pb-sched-rows">
@@ -128,7 +129,7 @@ export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onTog
                                 </span>
                               </span>
                               <span className="font-mono-tab pb-sched-row-amt" style={{ color: income ? 'var(--pine)' : 'var(--ink)' }}>
-                                {income ? '+' : ''}{formatCurrency(item.amount)}
+                                {income ? '+' : ''}<RollingAmount value={formatCurrency(item.amount)} />
                               </span>
                             </li>
                           );

@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Percent, Wallet } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { formatCurrency } from '@/lib/format';
@@ -247,7 +248,7 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="pb-dash-tile-value">
-                <div className="font-mono-tab pb-stats-value">{c.value}</div>
+                <div className="font-mono-tab pb-stats-value">{c.metric === 'savingsRate' ? c.value : <RollingAmount value={c.value} />}</div>
               </div>
               {/* Reserved like the note row, so tiles stay level before the
                   comparison resolves and when there is nothing to compare. */}

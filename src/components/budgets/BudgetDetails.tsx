@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useId, useState } from 'react';
 import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatCurrency } from '@/lib/format';
@@ -46,13 +47,13 @@ function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthl
       </span>
       {!p.future && <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
         <span style={{ color: 'var(--ink-soft)' }}>{spentLabel}</span>
-        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.amount ?? 0)}</span>
+        <span className="font-mono-tab" style={{ fontWeight: 600 }}><RollingAmount value={formatCurrency(p.amount ?? 0)} /></span>
       </span>}
-      {p.estimated != null && <><span className="pb-bud-tip-row"><span>{estimatedLabel}</span><span className="font-mono-tab">{formatCurrency(p.estimated)}</span></span><span className="pb-bud-tip-row"><span>{totalLabel}</span><strong className="font-mono-tab">{formatCurrency((p.amount ?? 0) + p.estimated)}</strong></span></>}
+      {p.estimated != null && <><span className="pb-bud-tip-row"><span>{estimatedLabel}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.estimated)} /></span></span><span className="pb-bud-tip-row"><span>{totalLabel}</span><strong className="font-mono-tab"><RollingAmount value={formatCurrency((p.amount ?? 0) + p.estimated)} /></strong></span></>}
       {budget > 0 && (
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
           <span style={{ color: 'var(--ink-soft)' }}>{monthlyLabel}</span>
-          <span className="font-mono-tab">{formatCurrency(budget / 12)}</span>
+          <span className="font-mono-tab"><RollingAmount value={formatCurrency(budget / 12)} /></span>
         </span>
       )}
     </div>
@@ -70,12 +71,12 @@ function CumTip({ active, payload, spentLabel, paceLabel, estimatedLabel }: {
       <span style={{ fontWeight: 600 }}>{p.label}</span>
       <span className="pb-bud-tip-row">
         <span>{p.spent == null ? estimatedLabel : spentLabel}</span>
-        <span className="font-mono-tab" style={{ fontWeight: 600 }}>{formatCurrency(p.spent ?? p.estimated ?? 0)}</span>
+        <span className="font-mono-tab" style={{ fontWeight: 600 }}><RollingAmount value={formatCurrency(p.spent ?? p.estimated ?? 0)} /></span>
       </span>
       {p.pace != null && (
         <span className="pb-bud-tip-row">
           <span>{paceLabel}</span>
-          <span className="font-mono-tab">{formatCurrency(p.pace)}</span>
+          <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.pace)} /></span>
         </span>
       )}
     </div>
@@ -274,12 +275,12 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest, 
             </ResponsiveContainer>
           </div>
         )}
-        {projection && projection.remaining > 0 ? <p className="pb-bud-estimate-note">{renderTemplate(ux.projectionBasis, { count: String(projection.sampleMonths), from: projection.from, through: projection.through, amount: <span className="font-mono-tab">{formatCurrency(projection.averageMonthly)}</span> })}</p> : isCurrent && !projection ? <p className="pb-bud-estimate-note">{ux.projectionNeedsHistory}</p> : null}
-        {isCurrent && projection && projection.remaining > 0 && <div className="pb-bud-projection-key"><span><i className="pb-bud-projection-actual" style={{ backgroundColor: color }} />{d.budgetRow.tipSpent}</span><span><i style={{ borderColor: color }} />{ux.estimatedRemaining}</span><strong>{renderTemplate(ux.projectedYearEnd, { amount: <span className="font-mono-tab">{formatCurrency(spentInYear + projection.remaining)}</span> })}</strong></div>}
+        {projection && projection.remaining > 0 ? <p className="pb-bud-estimate-note">{renderTemplate(ux.projectionBasis, { count: String(projection.sampleMonths), from: projection.from, through: projection.through, amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(projection.averageMonthly)} /></span> })}</p> : isCurrent && !projection ? <p className="pb-bud-estimate-note">{ux.projectionNeedsHistory}</p> : null}
+        {isCurrent && projection && projection.remaining > 0 && <div className="pb-bud-projection-key"><span><i className="pb-bud-projection-actual" style={{ backgroundColor: color }} />{d.budgetRow.tipSpent}</span><span><i style={{ borderColor: color }} />{ux.estimatedRemaining}</span><strong>{renderTemplate(ux.projectedYearEnd, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(spentInYear + projection.remaining)} /></span> })}</strong></div>}
         {shownBudget === null && <p className="pb-bud-det-empty" role="note">{t(ux.noRecordedPlan, { year: String(shown) })}</p>}
         <div className="pb-bud-det-foot">
           <p className="font-mono-tab">
-            {t(d.budgetDetails.spentIn, { year: String(shown), amount: formatCurrency(spentInYear) })}
+            <RollingMoneyText value={t(d.budgetDetails.spentIn, { year: String(shown), amount: formatCurrency(spentInYear) })} />
           </p>
           {hasBudget && (
             <span className="pb-bud-det-key" aria-hidden="true">
@@ -295,10 +296,10 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest, 
           {suggestions.map((s) => (
             <button key={s.key} type="button" className="pb-bud-qs-card" title={s.hint} disabled={s.value === null} onClick={() => { if (s.value !== null) onSuggest(s.value); }}>
               <span className="pb-bud-qs-amt">
-                <span className="font-mono-tab">{s.value === null ? '—' : formatCurrency(s.value)}</span>{' '}
+                <span className="font-mono-tab"><RollingAmount value={s.value === null ? '—' : formatCurrency(s.value)} /></span>{' '}
                 <span className="pb-bud-qs-unit">{d.budgetRow.annually}</span>
               </span>
-              <span className="pb-bud-qs-month font-mono-tab">{t(ux.aboutMonthly, { amount: s.value === null ? '—' : formatCurrency(s.value / 12) })}</span>
+              <span className="pb-bud-qs-month font-mono-tab"><RollingMoneyText value={t(ux.aboutMonthly, { amount: s.value === null ? '—' : formatCurrency(s.value / 12) })} /></span>
               <span className="pb-bud-qs-cap">{s.caption}</span>
             </button>
           ))}

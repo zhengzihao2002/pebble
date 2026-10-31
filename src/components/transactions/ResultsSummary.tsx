@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { CategoryMeta } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -21,8 +22,8 @@ export function FlowFigures({ inn, out }: { inn: number; out: number }) {
   const x = d.ux.transactions;
   return (
     <div className="pb-txn-sum-figs">
-      <span>{renderTemplate(x.inAmount, { amount: <span className="font-mono-tab pb-txn-pos">{formatCurrency(inn)}</span> })}</span>
-      <span>{renderTemplate(x.outAmount, { amount: <span className="font-mono-tab pb-txn-neg">{formatCurrency(out)}</span> })}</span>
+      <span>{renderTemplate(x.inAmount, { amount: <span className="font-mono-tab pb-txn-pos"><RollingAmount value={formatCurrency(inn)} /></span> })}</span>
+      <span>{renderTemplate(x.outAmount, { amount: <span className="font-mono-tab pb-txn-neg"><RollingAmount value={formatCurrency(out)} /></span> })}</span>
       <span>{renderTemplate(x.netAmount, { amount: <SignedAmount value={inn - out} /> })}</span>
     </div>
   );
@@ -70,10 +71,10 @@ export function ResultsSummary({ results, categoryMeta, type }: { results: State
         <div className="pb-txn-sum-figs">
           <span>
             {type === 'expense'
-              ? renderTemplate(x.totalOut, { amount: <span className="font-mono-tab pb-txn-neg">{formatCurrency(out)}</span> })
-              : renderTemplate(x.totalIn, { amount: <span className="font-mono-tab pb-txn-pos">{formatCurrency(inn)}</span> })}
+              ? renderTemplate(x.totalOut, { amount: <span className="font-mono-tab pb-txn-neg"><RollingAmount value={formatCurrency(out)} /></span> })
+              : renderTemplate(x.totalIn, { amount: <span className="font-mono-tab pb-txn-pos"><RollingAmount value={formatCurrency(inn)} /></span> })}
           </span>
-          {count > 1 && <span>{renderTemplate(x.avgAmount, { amount: <span className="font-mono-tab">{formatCurrency(avg)}</span> })}</span>}
+          {count > 1 && <span>{renderTemplate(x.avgAmount, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(avg)} /></span> })}</span>}
         </div>
       )}
       {/* The income split as its own soft line, not more figures in the
@@ -84,7 +85,7 @@ export function ResultsSummary({ results, categoryMeta, type }: { results: State
           {[...byIncome.entries()].sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
             <span key={cat}>
               {categoryLabel(d, cat)}{' '}
-              <span className="font-mono-tab">{formatCurrency(v)}</span>
+              <span className="font-mono-tab"><RollingAmount value={formatCurrency(v)} /></span>
             </span>
           ))}
         </p>

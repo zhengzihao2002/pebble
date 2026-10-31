@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { ChevronDown, Store } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
@@ -150,7 +151,7 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
                       <span className="pb-ins-meta-bit">
                         <span className="pb-tnum">{p.count === 1 ? d.insights.once : t(d.insights.times, { count: p.count })}</span>
                         {p.count > 1 && (
-                          <><span className="pb-ins-sep" aria-hidden="true">·</span>{renderTemplate(ux.placesAvg, { amount: <span className="font-mono-tab">{formatCurrency(p.total / p.count)}</span> })}</>
+                          <><span className="pb-ins-sep" aria-hidden="true">·</span>{renderTemplate(ux.placesAvg, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.total / p.count)} /></span> })}</>
                         )}
                       </span>
                       <span className="pb-ins-meta-bit pb-tnum">{t(ux.placesShare, { pct: `${share}%` })}</span>
@@ -159,7 +160,7 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
                       <span style={{ width: `${max > 0 ? (p.total / max) * 100 : 0}%` }} />
                     </span>
                   </span>
-                  <span className="pb-ins-place-total font-mono-tab">{formatCurrency(p.total)}</span>
+                  <span className="pb-ins-place-total font-mono-tab"><RollingAmount value={formatCurrency(p.total)} /></span>
                   <ChevronDown size={16} aria-hidden="true" className="pb-ins-place-chev" />
                 </button>
                 {isOpen && (
@@ -173,7 +174,7 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
                           ) : (
                             <span className="pb-ins-charge is-static">
                               <span className="pb-ins-charge-text"><span className="pb-ins-charge-sub">{formatDate(x.date, locale)}</span></span>
-                              <span className="font-mono-tab pb-ins-charge-amt is-out">{formatCurrency(x.amount)}</span>
+                              <span className="font-mono-tab pb-ins-charge-amt is-out"><RollingAmount value={formatCurrency(x.amount)} /></span>
                             </span>
                           )}
                         </li>

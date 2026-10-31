@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { Area, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { CalendarDays } from 'lucide-react';
 import { ProgressRing } from '@/components/kit/ProgressRing';
@@ -29,10 +30,10 @@ function DayTip({ active, payload }: { active?: boolean; payload?: ReadonlyArray
     <div className="pb-ana-tip">
       <p className="pb-ana-tip-title pb-tnum">{t(x.dayTick, { day: p.day })}</p>
       {p.spent !== null && (
-        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--wine)' }} />{x.thisMonth}</span><span className="font-mono-tab">{formatCurrency(p.spent)}</span></p>
+        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--wine)' }} />{x.thisMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.spent)} /></span></p>
       )}
       {p.typical !== null && (
-        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--ink-soft)' }} />{x.typicalMonth}</span><span className="font-mono-tab">{formatCurrency(p.typical)}</span></p>
+        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--ink-soft)' }} />{x.typicalMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.typical)} /></span></p>
       )}
     </div>
   );
@@ -84,17 +85,17 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
         <div className="pb-ana-now-figs">
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.spent}</span>
-            <span className="font-mono-tab pb-ana-now-amt">{formatCurrency(current.spending)}</span>
+            <span className="font-mono-tab pb-ana-now-amt"><RollingAmount value={formatCurrency(current.spending)} /></span>
             <span className="pb-ana-now-note pb-tnum">{countNote(current.expenseCount, d, t)}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.earned}</span>
-            <span className="font-mono-tab pb-ana-now-amt">{formatCurrency(current.income)}</span>
+            <span className="font-mono-tab pb-ana-now-amt"><RollingAmount value={formatCurrency(current.income)} /></span>
             <span className="pb-ana-now-note">{cm.earnedNote}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.net}</span>
-            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(current.net)}</span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}><RollingAmount value={formatCurrency(current.net)} /></span>
             <span className="pb-ana-now-note">{current.net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}</span>
           </div>
         </div>
@@ -105,7 +106,7 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
           <div className="pb-ana-now-pace-head">
             <span>
               {same ? x.aboutUsual : renderTemplate(gap > 0 ? x.moreThanUsual : x.lessThanUsual, {
-                amount: <span className="font-mono-tab">{wholeDollars(Math.abs(gap))}</span>,
+                amount: <span className="font-mono-tab"><RollingAmount value={wholeDollars(Math.abs(gap))} /></span>,
               })}
             </span>
             <ScopeBadge>{x.estimate}</ScopeBadge>

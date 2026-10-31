@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { Check, ChevronDown, CircleAlert, ListChecks, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
@@ -68,9 +69,9 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         <span className="pb-bud-row-title">
           <span className="pb-bud-row-name">{e.name}</span>
           <span className="pb-bud-row-sub">
-            <span className="font-mono-tab">{t(d.budgetRow.yearly, { amount: formatCurrency(e.budget) })}</span>
+            <span className="font-mono-tab"><RollingMoneyText value={t(d.budgetRow.yearly, { amount: formatCurrency(e.budget) })} /></span>
             <span aria-hidden="true">{' · '}</span>
-            <span className="font-mono-tab">{t(d.budgetRow.monthly, { amount: formatCurrency(e.budget / 12) })}</span>
+            <span className="font-mono-tab"><RollingMoneyText value={t(d.budgetRow.monthly, { amount: formatCurrency(e.budget / 12) })} /></span>
           </span>
         </span>
       </div>
@@ -85,7 +86,7 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
           <span className="pb-bud-row-figs">
             <span className={`font-mono-tab pb-bud-row-left${over ? ' is-over' : ''}`}>
               {renderTemplate(over ? d.budgetEdit.over : d.budgetEdit.left, {
-                amount: <span className="pb-bud-row-amt">{formatCurrency(Math.abs(e.budget - e.spent))}</span>,
+                amount: <span className="pb-bud-row-amt"><RollingAmount value={formatCurrency(Math.abs(e.budget - e.spent))} /></span>,
               })}
             </span>
             <button
@@ -113,9 +114,9 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
       {/* Under the bar: what has been spent, then the pace. */}
       <div className="pb-row-left">
         <span className="font-mono-tab" style={{ color: 'var(--ink)' }}>
-          {t(d.budgetRow.spent, { amount: formatCurrency(e.spent) })}
+          <RollingMoneyText value={t(d.budgetRow.spent, { amount: formatCurrency(e.spent) })} />
         </span>
-        {pace && <span className="pb-bud-row-pace">{' · '}<span className="font-mono-tab">{pace}</span></span>}
+        {pace && <span className="pb-bud-row-pace">{' · '}<span className="font-mono-tab"><RollingMoneyText value={pace} /></span></span>}
       </div>
       <div className="pb-row-more">
         <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -233,7 +234,7 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
                 <span className="pb-bud-group-count pb-tnum">{g.rows.length}</span>
               </span>
               <span className="pb-bud-group-sum font-mono-tab">
-                {t(g.status === 'over' ? d.budgetEdit.over : d.budgetEdit.left, { amount: formatCurrency(total) })}
+                <RollingMoneyText value={t(g.status === 'over' ? d.budgetEdit.over : d.budgetEdit.left, { amount: formatCurrency(total) })} />
               </span>
             </div>
             {g.rows.map((e) => <BudgetRow key={e.name} e={e} fraction={fraction} history={history} today={today} />)}
