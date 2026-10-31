@@ -108,7 +108,9 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
     const el = headerRef.current;
     const root = el?.closest<HTMLElement>('.pebble-root');
     if (!el || !root || typeof ResizeObserver === 'undefined') return;
-    const write = () => root.style.setProperty('--pb-header-h', `${el.offsetHeight}px`);
+    // offsetHeight rounds to whole pixels, leaving a seam at fractional text
+    // sizes/zoom. Sticky bars need the header's actual rendered border box.
+    const write = () => root.style.setProperty('--pb-header-h', `${el.getBoundingClientRect().height}px`);
     write();
     const ro = new ResizeObserver(write);
     ro.observe(el);

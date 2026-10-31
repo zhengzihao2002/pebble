@@ -1,5 +1,7 @@
 /* Match the annual planner's anchored shelf, retaining each bar's glass layer. */
 .pebble-root .pb-sticky-shelf {
+  /* Tuck the top border under the header instead of drawing a second seam. */
+  top: calc(var(--pb-header-h, 0px) - 1px);
   transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out),
     border-radius .32s var(--pb-ease-out), box-shadow .32s ease, border-color .32s ease;
 }
