@@ -50,9 +50,15 @@ export function snapshotTools() {
   function restore(host: HTMLElement, layout?: PageLayout | null) {
     const main = host.closest<HTMLElement>('.pebble-main');
     const surface = host.querySelector<HTMLElement>('.pb-layout-restored');
-    if (!main || !surface) return;
+    // Streamed React segments can be parsed in a hidden staging container.
+    // That is not a cache miss: wait until the real main column has a width.
+    if (!main || !surface || main.clientWidth < 100 || !owner()) return false;
     const saved = layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
-    if (!saved) { host.removeAttribute('data-layout-restored'); surface.replaceChildren(); delete surface.dataset.geometry; return; }
+    if (!saved) {
+      host.removeAttribute('data-layout-restored'); surface.replaceChildren(); delete surface.dataset.geometry;
+      host.setAttribute('data-layout-ready','true');
+      return true;
+    }
     // Repeated observer notifications should not restart the pulse.
     const signature = JSON.stringify(saved);
     if (surface.dataset.geometry !== signature) {
@@ -78,10 +84,29 @@ export function snapshotTools() {
       surface.dataset.geometry=signature;
     }
     host.setAttribute('data-layout-restored','true');
+    host.setAttribute('data-layout-ready','true');
+    return true;
   }
-  return {prefix,owner,profile,valid,entries,read,restore};
+  function prepare(host: HTMLElement): () => void {
+    if (restore(host)) return () => {};
+    // A later stream chunk moves the host into AppShell. Restore in that
+    // mutation's microtask, before the browser can paint the fallback.
+    const changes = new MutationObserver(retry);
+    const sizes = new ResizeObserver(retry);
+    let observed: HTMLElement | null = null;
+    const stop = () => { changes.disconnect(); sizes.disconnect(); };
+    function retry() {
+      if (!host.isConnected || restore(host)) { stop(); return; }
+      const main = host.closest<HTMLElement>('.pebble-main');
+      if (main && main !== observed) { sizes.disconnect(); sizes.observe(main); observed=main; }
+    }
+    changes.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','style','class']});
+    retry();
+    return stop;
+  }
+  return {prefix,owner,profile,valid,entries,read,restore,prepare};
 }
 export const layoutTools = snapshotTools();
 // An empty, React-unmanaged surface lets streamed HTML restore the saved
 // geometry before its first paint, without waiting for the React bundle.
-export const layoutBootstrap = `(${snapshotTools.toString()})().restore(document.currentScript.parentElement);`;
+export const layoutBootstrap = `(${snapshotTools.toString()})().prepare(document.currentScript.parentElement);`;

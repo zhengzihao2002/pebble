@@ -48,6 +48,10 @@
 .pebble-root .pb-cached-layout-box.is-hero { background:linear-gradient(130deg,color-mix(in srgb,var(--pine) 8%,var(--mist)),var(--mist)); }
 @media(prefers-reduced-motion:reduce) { .pebble-root .pb-cached-layout-box { animation:none; } }
 
+/* A stream may pause between any two tags. The estimate is opt-in only
+   after the cache decision; otherwise it can flash before bootstrap runs. */
+.pb-layout-skeleton-host > .pb-layout-estimate { display:none; }
+.pebble-root .pb-layout-skeleton-host[data-layout-ready] > .pb-layout-estimate { display:block; }
 .pebble-root .pb-layout-restored { display:none; }
 .pebble-root .pb-layout-skeleton-host[data-layout-restored] > .pb-layout-estimate { display:none; }
 .pebble-root .pb-layout-skeleton-host[data-layout-restored] > .pb-layout-restored { display:block; }

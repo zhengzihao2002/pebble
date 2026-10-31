@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { buildSync } = require('esbuild');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'pebble-layout-'));
-buildSync({entryPoints:[path.resolve('src/components/loading/layoutCache.ts')],bundle:true,platform:'node',format:'cjs',outfile:path.join(temp,'cache.cjs')});
+buildSync({entryPoints:{cache:path.resolve('src/components/loading/layoutCache.ts'),snapshot:path.resolve('src/components/loading/layoutSnapshot.ts')},bundle:true,platform:'node',format:'cjs',outdir:temp,outExtension:{'.js':'.cjs'}});
 const cache = require(path.join(temp,'cache.cjs'));
 process.on('exit',()=>fs.rmSync(temp,{recursive:true,force:true}));
 const values = new Map();
@@ -55,7 +55,6 @@ test('keeps full-width bars and space below the final card without clipping',()=
 });
 test('streamed pre-paint restoration uses the same validated numeric geometry',()=>{
  setup('bootstrap');seed(entry());
- buildSync({entryPoints:[path.resolve('src/components/loading/layoutSnapshot.ts')],bundle:true,platform:'node',format:'cjs',outfile:path.join(temp,'snapshot.cjs')});
  const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
  const node=()=>({style:{},dataset:{},children:[],setAttribute(key,value){this[key]=value},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
  const surface=node(),host=node();host.dataset.layoutPath='/accounts';host.closest=()=>main;host.querySelector=()=>surface;
@@ -66,4 +65,22 @@ test('streamed pre-paint restoration uses the same validated numeric geometry',(
  values.set(cache.LAYOUT_CACHE_PREFIX+owner,'invalid');host.removeAttribute=key=>delete host[key];
  require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date});
  assert.equal(host['data-layout-restored'],undefined);assert.equal(surface.children.length,0);
+ assert.equal(host['data-layout-ready'],'true','a genuine miss enables the ordinary page skeleton');
+});
+test('streamed hosts wait for attachment and a measurable main before choosing a skeleton',()=>{
+ setup('staged-stream');seed(entry());
+ const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
+ const node=()=>({style:{},dataset:{},children:[],setAttribute(key,value){this[key]=value},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
+ const surface=node(),host=node();host.dataset.layoutPath='/accounts';host.isConnected=true;host.querySelector=()=>surface;
+ let attached=null,notify,stopped=0;host.closest=()=>attached;
+ class Changes {constructor(callback){notify=callback}observe(){}disconnect(){stopped++}}
+ class Sizes {observe(){}disconnect(){stopped++}}
+ const doc={...document,currentScript:{parentElement:host},createElement:node};
+ require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date,MutationObserver:Changes,ResizeObserver:Sizes});
+ assert.equal(host['data-layout-ready'],undefined,'detached HTML is not a cache miss');
+ attached=main;main.clientWidth=0;notify();
+ assert.equal(host['data-layout-ready'],undefined,'a hidden staging container is not a cache miss');
+ main.clientWidth=600;notify();
+ assert.equal(host['data-layout-restored'],'true');assert.equal(host['data-layout-ready'],'true');
+ assert.equal(surface.children[0].style.height,'640px');assert(stopped>=2,'temporary observers disconnect after restoration');
 });

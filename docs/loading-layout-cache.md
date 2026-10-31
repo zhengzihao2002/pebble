@@ -14,7 +14,11 @@ unavailable storage is an optional cache miss, never a page-loading failure.
 Navigation previews, streamed route fallbacks and browser-only initialization use
 the same cache surface. A small self-contained inline restore runs in streamed
 HTML before React downloads; hydration keeps this DOM surface unmanaged and
-uses the same numeric validation. Full-width bars retain their negative inset
+uses the same numeric validation. The chooser runs before the estimate's HTML;
+CSS enables that estimate only after a confirmed cache miss. A hidden or detached
+streamed segment waits for AppShell's measurable main column, then restores via a
+temporary observer before paint. It never interprets a zero-width staging
+container as a cache miss. Full-width bars retain their negative inset
 and the page retains its trailing space. Version 2 replaces the older clipped
 geometry; each page needs one completed visit to record a fresh profile.
 
@@ -36,5 +40,8 @@ expiry, user separation, content-free capture and sign-out cleanup. Browser
 fixtures render the real app clients with synthetic props and stubbed actions.
 They compare every visible card's bounds on repeat visits and each reveal frame
 on desktop and mobile, and delay React JavaScript to verify pre-hydration refresh
-restoration. All verification is isolated from Neon.
+restoration. A split-stream check pauses just before the inline bootstrap and
+records every paint to reject any default-skeleton frame on a cached visit;
+staged-segment tests also cover attachment and zero-width layout. All
+verification is isolated from Neon.
 Bump the cache version/prefix when changing this geometry format.

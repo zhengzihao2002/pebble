@@ -23,8 +23,9 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
     };
     const inspect = () => {
       const host = [...stage.querySelectorAll<HTMLElement>('.pb-layout-skeleton-host')]
-        .find(el=>!el.closest('[hidden]') && el.getBoundingClientRect().height>0);
+        .find(el=>!el.closest('[hidden]') && (!el.hasAttribute('data-layout-ready') || el.getBoundingClientRect().height>0));
       if (host) {
+        if (!host.hasAttribute('data-layout-ready')) return;
         reset();
         const source = host.hasAttribute('data-layout-restored')
           ? host.querySelector<HTMLElement>('.pb-cached-layout')
@@ -66,7 +67,7 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
       },80);
     };
     const observer = new MutationObserver(inspect);
-    observer.observe(stage,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','data-layout-restored','aria-busy']});
+    observer.observe(stage,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','data-layout-restored','data-layout-ready','aria-busy']});
     document.fonts?.addEventListener('loadingdone',inspect);
     document.fonts?.addEventListener('loadingerror',inspect);
     inspect();
