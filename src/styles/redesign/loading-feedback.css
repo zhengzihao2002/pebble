@@ -39,3 +39,10 @@
   .pebble-root .pb-accounts-skel > .pb-skel,
   .pebble-root .pb-accounts-skel-tiles > .pb-skel { animation:none; }
 }
+/* Cached contours keep the previously loaded positions and sizes. */
+.pebble-root .pb-layout-skeleton-host { min-width:0; }
+.pebble-root .pb-cached-layout { position:relative; width:100%; }
+.pebble-root .pb-cached-layout-box { position:absolute; display:flex; flex-direction:column; gap:1rem; padding:1.25rem; min-width:0; overflow:hidden; outline:1px solid transparent; outline-offset:-1px; animation:pb-container-breathe 2.8s ease-in-out infinite; }
+.pebble-root .pb-cached-layout-box.is-bar { justify-content:center; padding:.5rem 1rem; }
+.pebble-root .pb-cached-layout-box.is-hero { background:linear-gradient(130deg,color-mix(in srgb,var(--pine) 8%,var(--mist)),var(--mist)); }
+@media(prefers-reduced-motion:reduce) { .pebble-root .pb-cached-layout-box { animation:none; } }

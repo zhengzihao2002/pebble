@@ -1,3 +1,4 @@
+import { CachedPageSkeleton } from './CachedPageSkeleton';
 import DashboardLoading from '@/app/(app)/dashboard/loading';
 import TransactionsLoading from '@/app/(app)/transactions/loading';
 import { AnalysisSkeleton } from '@/components/analysis/AnalysisSkeleton';
@@ -5,7 +6,7 @@ import { ReportSkeleton } from '@/components/reports/ReportSkeleton';
 import { AccountsSkeleton, InsightsSkeleton, BudgetsSkeleton, GoalsSkeleton, ScheduledSkeleton, SettingsSkeleton, PlannerSkeleton, AccountSettingsSkeleton } from './PageSkeletons';
 import { LoadingStatus } from '@/components/dashboard/LoadingStatus';
 
-export function PageSkeleton({ pathname }: { pathname: string }) {
+function DefaultPageSkeleton({ pathname }: { pathname: string }) {
   let content;
   switch (pathname.split('/')[1]) {
     case 'dashboard': return <DashboardLoading/>;
@@ -22,4 +23,8 @@ export function PageSkeleton({ pathname }: { pathname: string }) {
     default: return null;
   }
   return <><LoadingStatus/>{content}</>;
+}
+
+export function PageSkeleton({ pathname }: { pathname:string }) {
+  return <CachedPageSkeleton pathname={pathname}><DefaultPageSkeleton pathname={pathname}/></CachedPageSkeleton>;
 }

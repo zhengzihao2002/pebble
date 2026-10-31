@@ -1,5 +1,6 @@
 'use client';
 import { useSyncExternalStore } from 'react';
+import { capturePageLayout } from './layoutCache';
 import { usePathname } from 'next/navigation';
 
 let destination: { pathname: string; id: number } | null = null;
@@ -12,6 +13,7 @@ export const useNavigationDestination = () => useSyncExternalStore(subscribe, sn
 export function beginNavigation(href: string) {
   const url = new URL(href, window.location.href);
   if (url.origin !== window.location.origin || url.pathname === window.location.pathname || !document.querySelector('.pebble-main') || !/^\/(dashboard|transactions|accounts|analysis|insights|reports|budgets|goals|scheduled|settings|account)(\/|$)/.test(url.pathname)) return;
+  capturePageLayout(window.location.pathname);
   destination = { pathname: url.pathname, id: ++sequence };
   listeners.forEach(listener => listener());
 }
