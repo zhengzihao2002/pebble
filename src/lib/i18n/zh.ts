@@ -799,7 +799,13 @@ export const zh: typeof en = {
   },
 
   sessionsStale: {
-    hint: '登录状态过期时可能出现这种情况，请退出登录后重新登录。',
+    title: '确认是你本人',
+    hint: '出于安全考虑，查看登录会话需要近期登录。请输入密码确认身份，无需退出登录。',
+    password: '当前密码',
+    confirm: '确认并加载会话',
+    confirming: '正在确认…',
+    invalidPassword: '密码未通过验证，请重试。',
+    confirmFailed: '暂时无法确认登录状态，请重试。',
   },
 
   budgetEdit: {

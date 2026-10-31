@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Laptop, MapPin, Smartphone } from 'lucide-react';
 import { authClient } from '@/lib/auth/client';
+import { isInvalidPassword, requiresFreshSignIn } from '@/lib/auth/sessionErrors';
 import { getSessionLocationsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { SessionLocation } from '@/lib/data/sessionLocation';
@@ -25,48 +26,121 @@ interface ListedSession {
  * cannot show a location. The list and revoke still come from the library's
  * own client (listSessions / revokeSession) - no second auth path. Locations
  * come from Pebble's getSessionLocationsAction, which returns ONLY the
- * signed-in user's rows. The session token stays inside the auth client,
- * used only to revoke.
+ * signed-in user's rows. Tokens are used only for revocation and are never
+ * persisted or logged by this component.
  */
 export function PebbleSessionsCard() {
   const { d, t, locale } = useTranslation();
-  const { data: current } = authClient.useSession();
+  const { data: current, refetch } = authClient.useSession();
   const currentId = current?.session?.id;
+  const passwordId = useId();
 
   const [sessions, setSessions] = useState<ListedSession[] | null>(null);
   const [locations, setLocations] = useState<Record<string, SessionLocation>>({});
   const [error, setError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setError(null);
     try {
-      const [list, locs] = await Promise.all([
-        authClient.listSessions(),
-        callAction(getSessionLocationsAction, d.sessions.loadFailed),
-      ]);
-      if (list.error || !list.data) {
-        setError(`${d.sessions.loadFailed} ${d.sessionsStale.hint}`);
+      // Refresh both Neon’s independent memory cache and the React hook.
+      // This also makes a retry after successful confirmation use the new ID.
+      await authClient.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } });
+      await refetch();
+      const list = await authClient.listSessions();
+      setError(null);
+      // Freshness is based on sign-in time, not session expiry. Refreshing
+      // cookies cannot satisfy this check; the user must confirm credentials.
+      if (requiresFreshSignIn(list.error)) {
+        setNeedsConfirmation(true);
+        setSessions(null);
+        setLocations({});
+        return;
+      }
+      if (list.error || !Array.isArray(list.data)) {
+        setError(d.sessions.loadFailed);
         setSessions((prev) => prev ?? []);
         return;
       }
+      setNeedsConfirmation(false);
+      setConfirmationError(null);
       const rows = [...(list.data as unknown as ListedSession[])].sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
       );
       setSessions(rows);
+      const locs = await callAction(getSessionLocationsAction, d.sessions.loadFailed);
       if (locs.ok) {
         setLocations(Object.fromEntries(locs.locations.map((l) => [l.sessionId, l])));
       } else {
         setError(translateActionError(d, locale, locs));
       }
-    } catch {
-      setError(`${d.sessions.loadFailed} ${d.sessionsStale.hint}`);
-      setSessions((prev) => prev ?? []);
+    } catch (failure) {
+      if (requiresFreshSignIn(failure)) {
+        setError(null);
+        setNeedsConfirmation(true);
+        setSessions(null);
+        setLocations({});
+      } else {
+        setError(d.sessions.loadFailed);
+        setSessions((prev) => prev ?? []);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [d, locale, refetch]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    // Strict Mode's discarded mount must not start a duplicate auth request.
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) void load(); });
+    return () => { cancelled = true; };
+  }, [load]);
+
+  const confirmAccess = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const email = current?.user?.email;
+    if (!email || confirming) return;
+    const form = event.currentTarget;
+    const password = String(new FormData(form).get('password') ?? '');
+    if (!password) return;
+    form.reset();
+    const previousId = current?.session?.id;
+    setConfirming(true);
+    setConfirmationError(null);
+    try {
+      // Use the normal auth gate, keeping the same account and app state.
+      // No sign-out, cache clearing, navigation, or weakened freshness policy.
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error || !result.data?.token) {
+        setConfirmationError(isInvalidPassword(result.error)
+          ? d.sessionsStale.invalidPassword : d.sessionsStale.confirmFailed);
+        return;
+      }
+      // Sign-in creates a new session. Retire the replaced one after success
+      // so each confirmation does not leave another active session behind.
+      let revokeFailed = false;
+      if (previousId) {
+        try {
+          // useSession().session.token can be a JWT injected by Neon. The
+          // now-authorized list supplies the revocation token for the old ID.
+          const list = await authClient.listSessions();
+          if (list.error || !Array.isArray(list.data)) throw new Error('Session list unavailable');
+          const previous = list.data.find(session => session.id === previousId);
+          if (previous && previous.token !== result.data.token) {
+            const revoked = await authClient.revokeSession({ token: previous.token });
+            revokeFailed = Boolean(revoked.error);
+          }
+        } catch { revokeFailed = true; }
+      }
+      setNeedsConfirmation(false);
+      await load();
+      if (revokeFailed) setError(d.sessions.revokeFailed);
+    } catch (failure) {
+      setConfirmationError(isInvalidPassword(failure) ? d.sessionsStale.invalidPassword : d.sessionsStale.confirmFailed);
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const revoke = async (s: ListedSession) => {
     setRevoking(s.id);
@@ -138,9 +212,23 @@ export function PebbleSessionsCard() {
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.sessions.title}</h3>
       <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '1.1rem', lineHeight: 1.5 }}>{d.sessions.blurb}</p>
 
-      {error && <ActionError message={error} onRetry={() => void load()} style={{ marginBottom: '0.9rem' }} />}
+      {error && <ActionError message={error} kind="auth" onRetry={() => void load()} style={{ marginBottom: '0.9rem' }} />}
 
-      {sessions === null ? (
+      {needsConfirmation ? (
+        <form onSubmit={confirmAccess} aria-busy={confirming} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{d.sessionsStale.title}</h4>
+          <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--ink-soft)', lineHeight: 1.5 }}>{d.sessionsStale.hint}</p>
+          <input type="hidden" name="email" autoComplete="username" value={current?.user?.email ?? ''} />
+          <label htmlFor={passwordId} style={{ fontSize: '0.84rem', fontWeight: 600 }}>{d.sessionsStale.password}</label>
+          <input id={passwordId} name="password" type="password" autoComplete="current-password" required disabled={confirming}
+            aria-describedby={confirmationError ? `${passwordId}-error` : undefined}
+            style={{ width: '100%', maxWidth: '24rem', padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)' }} />
+          {confirmationError && <p id={`${passwordId}-error`} role="alert" style={{ margin: 0, color: 'var(--wine)', fontSize: '0.8rem' }}>{confirmationError}</p>}
+          <button type="submit" className="btn-primary" disabled={confirming || !current?.user?.email}>
+            {confirming ? d.sessionsStale.confirming : d.sessionsStale.confirm}
+          </button>
+        </form>
+      ) : sessions === null ? (
         <LoadingBlock label={d.sessions.loading} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>

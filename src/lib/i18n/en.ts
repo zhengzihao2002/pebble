@@ -883,7 +883,13 @@ export const en = {
   },
 
   sessionsStale: {
-    hint: 'This can happen when a sign-in has gone stale. Please sign out and back in again.',
+    title: 'Confirm it’s you',
+    hint: 'For security, viewing sessions requires a recent sign-in. Confirm your password to continue without signing out.',
+    password: 'Current password',
+    confirm: 'Confirm and load sessions',
+    confirming: 'Confirming…',
+    invalidPassword: 'That password wasn’t accepted. Please try again.',
+    confirmFailed: 'Couldn’t confirm your sign-in right now. Please try again.',
   },
 
   budgetEdit: {
