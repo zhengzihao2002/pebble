@@ -16,8 +16,8 @@
 .pebble-root .pb-txn-card-shadows { display: none; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
 .pebble-root .pb-txn-card-shadow { position: absolute; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); }
 .pebble-root .pb-txn-card-shadow[hidden] { display: none; }
-.pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; }
-.pebble-root .pb-txn-page[data-txn-panes] .pb-txn-rail > .card { box-shadow: none; }
+.pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; scrollbar-gutter: auto; }
+.pebble-root .pb-txn-page[data-txn-panes] [data-pb-pane-shadow] { box-shadow: none; }
 .pebble-root .pb-txn-rail {
   display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
   container-type: inline-size; container-name: content;
@@ -43,11 +43,16 @@
     overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
   }
   .pebble-root .pb-txn-pane:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+  .pebble-root .pb-txn-pane-right {
+    --pb-txn-bar-bleed: 0.65rem;
+    margin-left: calc(-1 * var(--pb-txn-bar-bleed)); padding-left: var(--pb-txn-bar-bleed);
+    margin-right: calc(-1 * var(--pb-txn-right-reach, 0px)); padding-right: var(--pb-txn-right-reach, 0px);
+  }
   .pebble-root .pb-txn-rail, .pebble-root .pb-txn-main {
     margin-top: var(--pb-main-pad-top); margin-bottom: var(--pb-main-pad-bottom);
   }
   .pebble-root .pb-txn-rail { gap: 1.25rem; }
-  .pebble-root .pb-txn-pane .pb-txn-bar { top: 0; }
+  .pebble-root .pb-txn-pane .pb-txn-bar { top: 0; margin-inline: calc(-1 * var(--pb-txn-bar-bleed, 0px)); }
   .pebble-root .pb-txn-pane .pb-txn-day-head { top: var(--pb-txn-bar-h, 0px); }
   .pebble-root .pb-txn-pane .pb-txn-day { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
 }

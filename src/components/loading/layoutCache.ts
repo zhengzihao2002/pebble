@@ -55,7 +55,7 @@ export function capturePageLayout(pathname: string): void {
     boxes.push({ x, y, width:rounded(rect.width), height:Math.min(20000,rounded(rect.height)),
       radius:Math.min(200,parseFloat(s.borderTopLeftRadius)||0),
       kind:el.matches('.pb-dash-hero') ? 'hero' : el.matches('.pb-ins-bar,.pb-ana-bar,.pb-rep-bar,.pb-rep-rail,.pb-settings-jump,.pb-annual-footer,.account-subnav') ? 'bar' : 'card',
-      flat:s.boxShadow === 'none' && !(panes && el.matches('.pb-txn-rail > .card')) });
+      flat:s.boxShadow === 'none' && !(panes && el.matches('[data-pb-pane-shadow]')) });
     if (boxes.length === MAX_BOXES) break;
   }
   if (!boxes.length) return;
