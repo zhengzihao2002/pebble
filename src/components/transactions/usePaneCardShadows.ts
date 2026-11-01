@@ -9,6 +9,8 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
     const page = pageRef.current;
     const panes = page ? [...page.querySelectorAll<HTMLElement>('.pb-txn-pane')] : [];
     const pane = panes[0];
+    const rightPane = panes[1];
+    const toolbar = page?.querySelector<HTMLElement>('.pb-txn-bar');
     const root = page?.closest<HTMLElement>('.pebble-root');
     if (!page || !pane || !root) return;
     // A fixed layer in the app root inherits its theme without contributing
@@ -24,6 +26,11 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
       const split = page.getClientRects().length > 0 && getComputedStyle(pane).display !== 'contents';
       page.toggleAttribute('data-txn-panes', split);
       layer.style.display = split ? 'block' : 'none';
+      if (toolbar && rightPane) {
+        const stuck = split && toolbar.getBoundingClientRect().top <= rightPane.getBoundingClientRect().top + .5;
+        const state = String(stuck);
+        if (toolbar.getAttribute('data-stuck') !== state) toolbar.setAttribute('data-stuck', state);
+      }
       if (!split) return;
       // Extend only the scrollport; its padding preserves the centered rows.
       page.style.setProperty('--pb-txn-right-reach', `${Math.max(0, window.innerWidth - page.getBoundingClientRect().right)}px`);

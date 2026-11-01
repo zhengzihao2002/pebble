@@ -44,7 +44,7 @@
   }
   .pebble-root .pb-txn-pane:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
   .pebble-root .pb-txn-pane-right {
-    --pb-txn-bar-bleed: 0.65rem;
+    --pb-txn-bar-bleed: 1rem;
     margin-left: calc(-1 * var(--pb-txn-bar-bleed)); padding-left: var(--pb-txn-bar-bleed);
     margin-right: calc(-1 * var(--pb-txn-right-reach, 0px)); padding-right: var(--pb-txn-right-reach, 0px);
   }
@@ -52,9 +52,16 @@
     margin-top: var(--pb-main-pad-top); margin-bottom: var(--pb-main-pad-bottom);
   }
   .pebble-root .pb-txn-rail { gap: 1.25rem; }
-  .pebble-root .pb-txn-pane .pb-txn-bar { top: 0; margin-inline: calc(-1 * var(--pb-txn-bar-bleed, 0px)); }
+  .pebble-root .pb-txn-pane .pb-txn-bar {
+    position: sticky; top: 0; z-index: 6; margin-inline: 0;
+    transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out);
+  }
+  .pebble-root .pb-txn-pane .pb-txn-bar[data-stuck="true"] { margin-inline: calc(-1 * var(--pb-txn-bar-bleed, 0px)); }
   .pebble-root .pb-txn-pane .pb-txn-day-head { top: var(--pb-txn-bar-h, 0px); }
   .pebble-root .pb-txn-pane .pb-txn-day { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-txn-pane .pb-txn-bar { transition: none; }
 }
 
 /* Card padding: 1.25rem 1.5rem, 1.1rem on a phone. */
