@@ -15,8 +15,8 @@ export const dynamic = 'force-dynamic';
 // below are GoalsView, a client island that owns the Cards / Timeline switch
 // and the zone-aware today the countdowns need. GoalCard resolves its own icon
 // from goal.iconKey, so no LucideIcon crosses the server/client boundary. The
-// add-goal trigger is the last tile in the grid (AddGoalTile, which owns its
-// own dialog); on a phone the centre + menu opens the AppShell copy of the
+// add-goal trigger is the last tile in the grid (GoalsView keeps its dialog
+// mounted across refreshed views); on a phone the centre + menu opens the AppShell copy of the
 // same dialog.
 //
 // That also makes this the ONLY page whose user-visible text is (partly)

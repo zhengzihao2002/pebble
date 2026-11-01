@@ -9,6 +9,7 @@ import { resolveThemeChoice, type ThemeChoice } from '@/lib/themeChoice';
 import type { Appearance } from '@/lib/appearance';
 import { DEFAULT_SAFETY_LOCKS, type SafetyLockKey, type SafetyLocks } from '@/lib/safetyLocks';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
+import { clearManualIncomeDraft } from '@/lib/budgets/manualIncomeDraft';
 
 /**
  * UI state only.
@@ -81,9 +82,9 @@ interface PebblePrefs {
   // silence - no error, no cleanup needed.
   soundPrefs: Record<SoundEvent, string | null>;
   incomeEstimateMode: IncomeEstimateMode;
-  // How often the manually entered paycheck arrives. The AMOUNT itself is
-  // deliberately NOT stored - it lives in ModifyBudgetModal's own state and
-  // is re-imported each time it opens.
+  // How often the manually entered paycheck arrives. Its display-only amount
+  // is remembered separately by server-authenticated user (manualIncomeDraft),
+  // so the previous viewer's theme preferences can never supply that amount.
   manualIncomeFrequency: ManualIncomeFrequency;
   // Read through SelectField, never by individual call sites. Any stored
   // value other than 'plain' is treated as 'searchable' there.
@@ -328,6 +329,7 @@ export async function switchPebbleUser(userId: string): Promise<void> {
 
 /** Removes the active user's saved preferences (their account was deleted). */
 export function forgetActivePebbleUser(): void {
+  if (activeUserId) clearManualIncomeDraft(activeUserId);
   if (typeof window === 'undefined' || !activeUserId) return;
   try {
     window.localStorage.removeItem(userStorageKey(activeUserId));

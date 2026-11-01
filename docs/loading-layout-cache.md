@@ -3,7 +3,11 @@
 The browser records the loaded page's card rectangles and reuses them as pulsing
 skeleton contours on later visits. It stores numbers and small shape enums only:
 no text, HTML, amounts, transaction/account IDs, or financial records are read.
-The current server-authenticated user ID scopes the localStorage key.
+The current server-authenticated user ID scopes the localStorage key:
+`pebble-layout-sizes:v2:<userId>`. Both capture and pre-hydration restoration
+read that identity from the server-rendered `pebble-session` metadata. They
+never fall back to the last user's preferences or another user's cache. This
+is per signed-in person, rather than per bank account within that person's app.
 
 Profiles separate each page, exact content/viewport width and viewport height,
 text size, language and font choices. A new device size or unmatched profile uses

@@ -43,6 +43,26 @@ test('sign-out clearing and storage keys keep users separate',()=>{
  owner='first';cache.clearLayoutCache();assert.equal(cache.readPageLayout('/accounts',main),null);
  owner='second';assert(cache.readPageLayout('/accounts',main));
 });
+test('the same page restores each signed-in user\'s own dimensions without a last-user fallback',()=>{
+ setup('account-a');seed(entry());
+ owner='account-b';assert.equal(cache.readPageLayout('/accounts',main),null);
+ const second=entry();second.height=920;second.boxes[0].height=920;seed(second);
+ assert.equal(cache.readPageLayout('/accounts',main).height,920);
+ owner='account-a';assert.equal(cache.readPageLayout('/accounts',main).height,640);
+ // The pre-hydration path must obey the same account boundary.
+ const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
+ const node=()=>({style:{},dataset:{},children:[],setAttribute(key,value){this[key]=value},removeAttribute(key){delete this[key]},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
+ const surface=node(),host=node();host.dataset.layoutPath='/accounts';host.closest=()=>main;host.querySelector=()=>surface;
+ const doc={...document,currentScript:{parentElement:host},createElement:node};
+ for(const [user,height] of [['account-a','640px'],['account-b','920px'],['new-account',null]]) {
+   owner=user;
+   require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date});
+   assert.equal(surface.children[0]?.style.height??null,height);
+   assert.equal(host['data-layout-restored'],height?'true':undefined);
+ }
+ owner='account-a';cache.clearLayoutCache();
+ owner='account-b';assert.equal(cache.readPageLayout('/accounts',main).height,920,'sign-out clears only the departing user');
+});
 test('unavailable storage is a harmless cache miss',()=>{
  setup('private');const original=localStorage.getItem;localStorage.getItem=()=>{throw Error('Blocked')};
  try { assert.equal(cache.readPageLayout('/accounts',main),null); } finally { localStorage.getItem=original; }

@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Transaction } from '@/types';
 import { usePebbleStore, type IncomeEstimateMode } from '@/store/usePebbleStore';
 import { estimateAnnualIncomeTrailing12 } from '@/lib/analysis/annualIncome';
 import { MANUAL_FREQUENCY_MULTIPLIER } from './IncomeControl';
+import { useManualIncomeAmount } from './useManualIncomeAmount';
 
 /** Same income basis and controls for this year's budgets and the next-year planner. */
 export function useBudgetIncome(transactions: Transaction[], today: string) {
@@ -13,7 +14,7 @@ export function useBudgetIncome(transactions: Transaction[], today: string) {
   const onModeChange = usePebbleStore(s => s.setIncomeEstimateMode);
   const frequency = usePebbleStore(s => s.manualIncomeFrequency);
   const onFrequencyChange = usePebbleStore(s => s.setManualIncomeFrequency);
-  const [manualAmount, onManualAmountChange] = useState('');
+  const [manualAmount, onManualAmountChange] = useManualIncomeAmount();
   const manualAnnual = (Number(manualAmount) || 0) * (MANUAL_FREQUENCY_MULTIPLIER[frequency] ?? 12);
   const effectiveAnnual = mode === 'manual' ? Number.isFinite(manualAnnual) && manualAnnual > 0 ? manualAnnual : null : estimate?.annual ?? null;
   const latestStandardIncomeNet = useMemo(() => {

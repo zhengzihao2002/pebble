@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { GoalCard } from './GoalCard';
+import { GoalModal } from '@/components/modals/GoalModal';
 import { AddGoalTile } from './AddGoalTile';
 import { GoalTimeline } from './GoalTimeline';
 import { orderGoals } from './goalMath';
@@ -43,6 +44,9 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
   // choice: no hydration mismatch, and storage that throws (private mode)
   // just keeps cards. A choice made here wins over what was stored.
   const stored = useSyncExternalStore(noSubscribe, readStoredView, () => null);
+  // Keep creation outside the view branch: the first save can replace the
+  // empty grid with a remembered timeline while its success is still showing.
+  const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<View | null>(null);
   const view: View = picked ?? stored ?? 'cards';
   const choose = (v: View) => {
@@ -82,7 +86,7 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
         <>
           <div className="goals-grid pb-goals-grid">
             {inProgress.map((g, i) => <GoalCard key={g.id} goal={g} today={today} index={i} />)}
-            <AddGoalTile empty={empty} />
+            <AddGoalTile empty={empty} onAdd={() => setAdding(true)} />
           </div>
           {reached.length > 0 && (
             <>
@@ -98,6 +102,7 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
           )}
         </>
       )}
+      {adding && <GoalModal onClose={() => setAdding(false)} />}
     </section>
   );
 }

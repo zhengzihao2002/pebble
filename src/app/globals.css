@@ -540,7 +540,7 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
    .font-code keeps the monospace face for paths, commands and error codes. */
 .pebble-root .font-mono-tab { font-family: inherit; font-variant-numeric: tabular-nums lining-nums; }
 .pebble-root .font-code { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; }
-.pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow); }
+.pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); }
 .pebble-root button { font-family: inherit; cursor: pointer; }
 .pebble-root input, .pebble-root select { font-family: inherit; }
 .pebble-root input::placeholder { color: var(--ink-soft); opacity: 0.7; }
@@ -657,7 +657,7 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
 @container content (min-width: 420px) { .add-btn-label { display: inline; } }
 
 .stat-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.65rem; min-width: 0; }
-.stat-tab { background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.85rem; padding: 0.8rem 0.95rem; box-shadow: var(--shadow); min-width: 0; overflow: hidden; }
+.stat-tab { background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.85rem; padding: 0.8rem 0.95rem; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); min-width: 0; overflow: hidden; }
 .stat-tab * { min-width: 0; overflow-wrap: anywhere; }
 
 /* Transactions shows five stat cards, which auto-fit leaves with one card
@@ -956,7 +956,7 @@ html.pebble-welcoming::after {
 }
 .pebble-account [data-slot="card"] {
   background-color: var(--mist); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow);
+  border: 1px solid var(--line); border-radius: 1rem; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent);
 }
 .pebble-account [data-slot="card-footer"] { background-color: var(--paper); border-top: 1px solid var(--line); }
 .pebble-account [data-slot="input"] { background-color: var(--paper); color: var(--ink); border-color: var(--line); }
@@ -1167,7 +1167,7 @@ html.pebble-welcoming::after {
   position: relative; width: 100%; margin: auto; box-sizing: border-box;
   display: flex; flex-direction: column; max-height: calc(100dvh - 2rem);
   padding: 1.75rem; container: pb-modal / inline-size;
-  border-radius: 2rem; box-shadow: var(--shadow-float);
+  border-radius: 2rem; box-shadow: var(--shadow-float), var(--pb-card-halo, 0 0 transparent);
   animation: pb-modal-in 260ms var(--pb-ease-out) both;
 }
 /* The part of a dialog that scrolls when it is taller than the screen.
@@ -1742,6 +1742,7 @@ html.pebble-welcoming::after {
   min-height: 220px; width: 100%; box-sizing: border-box; padding: 1.5rem;
   background: transparent; border: 1.5px dashed var(--line); border-radius: 1rem;
   color: var(--ink-soft); cursor: pointer;
+  box-shadow: var(--pb-card-halo, 0 0 transparent);
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .add-goal-tile-badge {
@@ -2118,7 +2119,7 @@ html.pebble-welcoming::after {
 }
 .pebble-root .pb-import-split > .pb-import-pane {
   min-width: 0; display: flex; flex-direction: column;
-  padding: 1.75rem; border-radius: 2rem; box-shadow: var(--shadow-float);
+  padding: 1.75rem; border-radius: 2rem; box-shadow: var(--shadow-float), var(--pb-card-halo, 0 0 transparent);
 }
 .pebble-root .pb-import-split > .pb-import-pane:first-child { flex: 1 1 640px; }
 .pebble-root .pb-import-split > .pb-import-pane + .pb-import-pane {
@@ -2289,7 +2290,7 @@ input[data-pb-eye]::-ms-clear { display: none; }
 
 /* Cards in dark mode: a hairline of light along the top edge. */
 .pebble-root.dark .card,
-.pebble-dark .pebble-root .card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), var(--shadow); }
+.pebble-dark .pebble-root .card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), var(--shadow), var(--pb-card-halo, 0 0 transparent); }
 
 /* Dashboard hero: depth in the gradient - a warm glow top right, shade
    bottom left - and a soft coloured shadow. In dark mode pine is a light
@@ -2322,7 +2323,7 @@ input[data-pb-eye]::-ms-clear { display: none; }
     inset 0 1px 0 rgba(255, 255, 255, calc(0.14 * (1 - var(--pb-hero-dark)))),
     inset 0 0 0 1px color-mix(in srgb, var(--pine) calc(24% * var(--pb-hero-dark)), transparent),
     0 24px 48px -28px color-mix(in srgb, var(--pine) calc(80% * (1 - var(--pb-hero-dark))), rgba(0, 0, 0, calc(0.7 * var(--pb-hero-dark)))),
-    var(--shadow);
+    var(--shadow), var(--pb-card-halo, 0 0 transparent);
   transition: --pb-hero-dark var(--pb-dur-theme) ease;
 }
 .pebble-root.dark .pb-hero,
