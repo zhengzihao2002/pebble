@@ -37,7 +37,7 @@ test('records geometry without reading card text, HTML, IDs or financial data',(
  assert.deepEqual(Object.keys(result.boxes[0]).sort(),['flat','height','kind','radius','width','x','y']);
  cache.clearLayoutCache();cache.capturePageLayout('/accounts');assert.equal(localStorage.getItem(cache.LAYOUT_CACHE_PREFIX+owner),null);
 });
-test('sign-out clearing and storage keys keep users separate',()=>{
+test('explicit clearing and storage keys keep users separate',()=>{
  setup('first');seed(entry());assert(cache.readPageLayout('/accounts',main));
  owner='second';assert.equal(cache.readPageLayout('/accounts',main),null);seed(entry());
  owner='first';cache.clearLayoutCache();assert.equal(cache.readPageLayout('/accounts',main),null);
@@ -61,7 +61,7 @@ test('the same page restores each signed-in user\'s own dimensions without a las
    assert.equal(host['data-layout-restored'],height?'true':undefined);
  }
  owner='account-a';cache.clearLayoutCache();
- owner='account-b';assert.equal(cache.readPageLayout('/accounts',main).height,920,'sign-out clears only the departing user');
+ owner='account-b';assert.equal(cache.readPageLayout('/accounts',main).height,920,'explicit clearing only removes the selected user');
 });
 test('unavailable storage is a harmless cache miss',()=>{
  setup('private');const original=localStorage.getItem;localStorage.getItem=()=>{throw Error('Blocked')};

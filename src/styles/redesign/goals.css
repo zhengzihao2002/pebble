@@ -361,6 +361,10 @@
 .pebble-root .pb-goal-prev-figs .font-mono-tab:first-child { color: var(--ink); font-weight: 600; }
 .pebble-root .pb-goal-prev-meta { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
 
+/* Grid stretches the labels equally; keep their controls on the same bottom
+   line even when large text makes one heading (including Optional) wrap. */
+.pebble-root .pb-goal-paired-fields > label > :last-child { margin-top: auto; }
+
 /* Larger pickers: 44px targets, a check on the chosen colour. */
 .pebble-root .pb-goal-pick-row { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 3px; }
 .pebble-root .pb-goal-pick-icon,

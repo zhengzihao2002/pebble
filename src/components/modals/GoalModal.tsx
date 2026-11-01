@@ -239,7 +239,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   <input value={name} onChange={(e) => setName(e.target.value)} placeholder={d.goalModal.namePlaceholder} required style={inputStyle} />
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                <div className="pb-goal-paired-fields" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                   <label style={{ ...labelStyle, minWidth: 0 }}>
                     <span>{isEdit ? d.goalModal.setAsideSoFar : d.goalModal.alreadySaved} <span style={{ opacity: 0.7 }}>{d.goalModal.optional}</span></span>
                     <div style={{ position: 'relative' }}>
@@ -252,7 +252,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   </label>
 
                   <label style={{ ...labelStyle, minWidth: 0 }}>
-                    {d.goalModal.targetDate}
+                    <span>{d.goalModal.targetDate}</span>
                     {/* The browser localizes its own picker from <html lang>; the
                         value stays 'YYYY-MM-DD', which is what reaches the action. */}
                     <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={rowInputStyle} />

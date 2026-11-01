@@ -1,4 +1,4 @@
-import { clearLayoutCache } from '@/components/loading/layoutCache';
+import { pauseLayoutCapture } from '@/components/loading/layoutCache';
 import { authClient } from './client';
 import { clearAllSnapshots } from '@/lib/offline/queueStore';
 import { clearAllQuickPicks } from '@/lib/quickPicks';
@@ -33,10 +33,12 @@ export async function signOutCompletely(beforeLeaving?: () => Promise<void>): Pr
   } catch {
     return false;
   }
+  // Numeric card geometry is already user-scoped and should survive returning
+  // to this account. Freeze departing-page observers without deleting it.
+  pauseLayoutCapture();
   // Failures here must never block leaving: the session is already gone.
   try { await clearOfflineCaches(); } catch { /* best effort */ }
   try { await clearAllSnapshots(); } catch { /* best effort */ }
-  clearLayoutCache();
   // Quick-pick habits are per user and live in localStorage.
   clearAllQuickPicks();
   try { await beforeLeaving?.(); } catch { /* best effort */ }

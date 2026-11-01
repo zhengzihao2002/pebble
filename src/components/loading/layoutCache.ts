@@ -6,20 +6,20 @@ const MAX_ENTRIES = 48;
 const MAX_BOXES = 80;
 export const LAYOUT_CONTOUR_SELECTOR = '.pb-ana-tile, [data-slot="card"], .add-goal-tile, .pb-annual-footer, .card, .pb-dash-hero, .pb-accounts-tile, .pb-ins-bar, .pb-ana-bar, .pb-rep-bar, .pb-rep-rail, .pb-settings-jump, .account-subnav';
 const loading = '.pb-page-skeleton,.pb-dash-loading,.pb-txn-skel-page,.pb-rep-skel,.pb-ana-skel,[data-slot="skeleton"],.pb-accounts-skel,.pb-cached-layout,[aria-busy="true"]';
-const clearedOwners = new Set<string>();
+const pausedOwners = new Set<string>();
 const rounded = (value: number) => Math.round(value * 100) / 100;
 const { owner, valid } = layoutTools;
 export const layoutProfile = layoutTools.profile;
 export function readPageLayout(pathname: string, main: HTMLElement): PageLayout | null {
   const user = owner(), key = layoutProfile(pathname,main);
-  if (!user || !key || clearedOwners.has(user)) return null;
+  if (!user || !key) return null;
   return layoutTools.read(pathname,main);
 }
 export function capturePageLayout(pathname: string): void {
   const content = document.querySelector<HTMLElement>('.pb-navigation-content');
   const main = content?.closest<HTMLElement>('.pebble-main');
   const user = owner();
-  if (!content || !main || !user || clearedOwners.has(user) || content.hidden || pathname !== window.location.pathname
+  if (!content || !main || !user || pausedOwners.has(user) || content.hidden || pathname !== window.location.pathname
     || document.fonts?.status==='loading' || content.querySelector(loading) || (main.closest('.pebble-root')?.scrollTop ?? 0) > 2) return;
   const key = layoutProfile(pathname,main);
   if (!key || [...content.querySelectorAll('.pb-rise')].some(el=>el.getAnimations().some(a=>a.playState==='running'))) return;
@@ -55,10 +55,16 @@ export function capturePageLayout(pathname: string): void {
   const raw = JSON.stringify({version:2,entries});
   try { localStorage.setItem(LAYOUT_CACHE_PREFIX+user,raw); } catch { /* quota/private browsing: keep the normal fallback */ }
 }
+/** Freeze this document's geometry on sign-out; a fresh sign-in starts a new
+ * document and can restore and update the user's retained numeric layouts. */
+export function pauseLayoutCapture() {
+  const user = owner();
+  if (user) pausedOwners.add(user);
+}
 export function clearLayoutCache() {
   const user = owner();
   if (!user) return;
-  // The pagehide observer must not recreate the cache after sign-out.
-  clearedOwners.add(user);
+  // Explicit deletion must not be undone by a late pagehide observer.
+  pausedOwners.add(user);
   try { localStorage.removeItem(LAYOUT_CACHE_PREFIX+user); localStorage.removeItem('pebble-layout-sizes:v1:'+user); } catch { /* optional cache */ }
 }

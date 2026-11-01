@@ -35,14 +35,20 @@ geometry never forces financial content into stale dimensions.
 Loaded content is observed for card and viewport resizes, animation completion,
 font completion and DOM changes. Only loaded, visible pages at their initial scroll position are
 recorded, avoiding the displaced coordinates of pinned/sticky cards. Navigation
-also captures the outgoing page before it is hidden. Sign-out clears the active
-user's cache and prevents pagehide from recreating it. Dimensions never constrain
-the loaded page itself; newly loaded data replaces the estimate and updates it.
+also captures the outgoing page before it is hidden. Sign-out retains each
+user's geometry and pauses departing-page captures so late pagehide, resize or
+animation events cannot overwrite it. Returning to that account restores the
+same layouts in the fresh document; other users read only their own entries.
+Offline financial pages and reference-data snapshots still clear on sign-out.
+Dimensions never constrain the loaded page itself; newly loaded data replaces
+the estimate and updates it.
 
 `node --test tests/layoutCache.test.cjs tests/loadingRoutes.test.mjs` checks
 profile isolation, validation, expiry, user separation, content-free capture and
-sign-out cleanup. It also renders the actual Reports and Analysis route
-fallbacks and executes their cache bootstrap against a saved layout.
+explicit cache clearing. `tests/signOutLayoutCache.test.cjs` also checks the
+real sign-out flow's geometry retention, late-capture freeze, user switching
+and fresh-sign-in restoration. The route tests render the actual Reports and
+Analysis fallbacks and execute their cache bootstrap against a saved layout.
 
 Browser fixtures render the real app clients with synthetic props and stubbed
 actions, and import each route's actual loading.tsx. They compare card bounds and
