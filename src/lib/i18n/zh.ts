@@ -463,6 +463,10 @@ export const zh: typeof en = {
     sakura: '樱花',
     slate: '石板',
     sand: '沙丘',
+    lavender: '薰衣草',
+    lagoon: '潟湖',
+    graphite: '石墨',
+    amber: '琥珀',
   },
 
   authBrand: {

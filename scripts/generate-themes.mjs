@@ -37,8 +37,8 @@ const THEMES = {
     dark: { paper: '#0F1A22', mist: '#16242F', ink: '#E8EEF2', inkSoft: '#8DA0AF', pine: '#5FA8D8', pineSoft: '#16303F', gold: '#E0A85A', goldSoft: '#372A18', wine: '#E0898F', wineSoft: '#3B2226', line: '#253643', overlay: 'rgba(15, 26, 34, 0.6)' },
   },
   sakura: {
-    light: { paper: '#F9F1F3', mist: '#FFFFFF', ink: '#2B1B21', inkSoft: '#735C65', pine: '#2F6B5E', pineSoft: '#E1EEEA', gold: '#B8577A', goldSoft: '#F6E0E8', wine: '#9C3B30', wineSoft: '#F5E1DD', line: '#EEDFE3', shadowRgb: '43,27,33', overlay: 'rgba(249, 241, 243, 0.6)' },
-    dark: { paper: '#1C1418', mist: '#261B20', ink: '#F2E8EB', inkSoft: '#A8939B', pine: '#66B3A1', pineSoft: '#1F332E', gold: '#E68AAB', goldSoft: '#3A2229', wine: '#E08C7F', wineSoft: '#3B231F', line: '#3A2A30', overlay: 'rgba(28, 20, 24, 0.6)' },
+    light: { paper: '#F9F1F3', mist: '#FFFAFC', ink: '#2B1B21', inkSoft: '#735C65', pine: '#7D4D88', pineSoft: '#F1E4F3', gold: '#B8577A', goldSoft: '#F6E0E8', wine: '#9C3B30', wineSoft: '#F5E1DD', line: '#EEDFE3', shadowRgb: '43,27,33', overlay: 'rgba(249, 241, 243, 0.6)' },
+    dark: { paper: '#1C1418', mist: '#261B20', ink: '#F2E8EB', inkSoft: '#A8939B', pine: '#D0A2D4', pineSoft: '#3A263C', gold: '#E68AAB', goldSoft: '#3A2229', wine: '#E08C7F', wineSoft: '#3B231F', line: '#3A2A30', overlay: 'rgba(28, 20, 24, 0.6)' },
   },
   slate: {
     light: { paper: '#F2F3F5', mist: '#FFFFFF', ink: '#16191F', inkSoft: '#5D6470', pine: '#3D56A6', pineSoft: '#E3E8F5', gold: '#A9853A', goldSoft: '#F3EAD6', wine: '#A63F3F', wineSoft: '#F5E2E2', line: '#E0E3E8', shadowRgb: '22,25,31', overlay: 'rgba(242, 243, 245, 0.6)' },
@@ -47,6 +47,22 @@ const THEMES = {
   sand: {
     light: { paper: '#F5F0E6', mist: '#FFFDF8', ink: '#2A2217', inkSoft: '#6F6454', pine: '#4F6B34', pineSoft: '#E6EDDC', gold: '#B7862C', goldSoft: '#F4E8CF', wine: '#9E3B34', wineSoft: '#F4E0DC', line: '#E6DDCB', shadowRgb: '42,34,23', overlay: 'rgba(245, 240, 230, 0.6)' },
     dark: { paper: '#1A1611', mist: '#241E17', ink: '#F1EADF', inkSoft: '#A89C8A', pine: '#93B06E', pineSoft: '#26301B', gold: '#E0B25C', goldSoft: '#3A2E17', wine: '#DE8A80', wineSoft: '#3B2320', line: '#3A3226', overlay: 'rgba(26, 22, 17, 0.6)' },
+  },
+  lavender: {
+    light: { paper: '#F2EFF9', mist: '#FFFFFF', ink: '#282039', inkSoft: '#686078', pine: '#674FA3', pineSoft: '#E9E2F6', gold: '#A07129', goldSoft: '#F4E7D1', wine: '#A43F50', wineSoft: '#F7E1E5', line: '#E2DBEC', shadowRgb: '40,32,57', overlay: 'rgba(242, 239, 249, 0.6)' },
+    dark: { paper: '#171320', mist: '#221D2E', ink: '#F0EAF7', inkSoft: '#A49AB5', pine: '#B7A0E8', pineSoft: '#332945', gold: '#DFC184', goldSoft: '#3D321D', wine: '#E59AA8', wineSoft: '#422731', line: '#383043', overlay: 'rgba(23, 19, 32, 0.6)' },
+  },
+  lagoon: {
+    light: { paper: '#EDF5F4', mist: '#FAFEFD', ink: '#142D30', inkSoft: '#536E70', pine: '#176C70', pineSoft: '#DDF0EE', gold: '#A37329', goldSoft: '#F4E8D2', wine: '#A03F4E', wineSoft: '#F7E1E6', line: '#D5E5E3', shadowRgb: '20,45,48', overlay: 'rgba(237, 245, 244, 0.6)' },
+    dark: { paper: '#101D20', mist: '#18292D', ink: '#E7F3F1', inkSoft: '#91ACA9', pine: '#70BFC1', pineSoft: '#203C40', gold: '#E1BC77', goldSoft: '#3C311E', wine: '#E998A5', wineSoft: '#422933', line: '#2B4144', overlay: 'rgba(16, 29, 32, 0.6)' },
+  },
+  graphite: {
+    light: { paper: '#F2F2F2', mist: '#FFFFFF', ink: '#202124', inkSoft: '#64656B', pine: '#4C505C', pineSoft: '#E6E7EB', gold: '#8C713D', goldSoft: '#F0E9DC', wine: '#A13E46', wineSoft: '#F5E1E3', line: '#DDDFE3', shadowRgb: '32,33,36', overlay: 'rgba(242, 242, 242, 0.6)' },
+    dark: { paper: '#141517', mist: '#1F2024', ink: '#F0F0F2', inkSoft: '#A0A2AB', pine: '#B9BECE', pineSoft: '#333743', gold: '#D2BB88', goldSoft: '#393223', wine: '#E59BA2', wineSoft: '#402A30', line: '#35373E', overlay: 'rgba(20, 21, 23, 0.6)' },
+  },
+  amber: {
+    light: { paper: '#FAF4E8', mist: '#FFFDFA', ink: '#30281A', inkSoft: '#71644C', pine: '#75601D', pineSoft: '#F2E8C9', gold: '#3B7180', goldSoft: '#DFECEF', wine: '#A04438', wineSoft: '#F6E1DC', line: '#E8DDC6', shadowRgb: '48,40,26', overlay: 'rgba(250, 244, 232, 0.6)' },
+    dark: { paper: '#1E1A12', mist: '#292318', ink: '#F5ECDC', inkSoft: '#B6A88D', pine: '#D8BD70', pineSoft: '#3B321B', gold: '#78B6BE', goldSoft: '#1D3539', wine: '#E99E92', wineSoft: '#432A24', line: '#443A27', overlay: 'rgba(30, 26, 18, 0.6)' },
   },
 };
 
@@ -224,7 +240,7 @@ if (mode === 'check') {
   const probs = mirrorProblems(css);
   if (current !== generated) probs.unshift('globals.css: generated block is out of date - run npm run themes');
   if (probs.length) { console.error('CHECK FAILED:\n  ' + probs.join('\n  ')); process.exit(1); }
-  console.log('Themes OK: 10 palettes pass every rule; globals.css and all mirrors match the table.');
+  console.log(`Themes OK: ${Object.keys(THEMES).length * 2} palettes pass every rule; globals.css and all mirrors match the table.`);
   process.exit(0);
 }
 

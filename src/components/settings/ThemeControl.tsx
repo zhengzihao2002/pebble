@@ -16,9 +16,13 @@ interface ThemeControlProps {
 export const THEME_PREVIEW: Record<ThemeChoice, { paper: string; mist: string; pine: string; gold: string; wine: string }> = {
   original: { paper: '#F1F3EE', mist: '#FFFFFF', pine: '#1F5A45', gold: '#AD7B2E', wine: '#8C3D42' },
   ocean: { paper: '#EEF3F6', mist: '#FFFFFF', pine: '#1E5F8C', gold: '#B7792B', wine: '#A33D48' },
-  sakura: { paper: '#F9F1F3', mist: '#FFFFFF', pine: '#2F6B5E', gold: '#B8577A', wine: '#9C3B30' },
+  sakura: { paper: '#F9F1F3', mist: '#FFFAFC', pine: '#7D4D88', gold: '#B8577A', wine: '#9C3B30' },
   slate: { paper: '#F2F3F5', mist: '#FFFFFF', pine: '#3D56A6', gold: '#A9853A', wine: '#A63F3F' },
   sand: { paper: '#F5F0E6', mist: '#FFFDF8', pine: '#4F6B34', gold: '#B7862C', wine: '#9E3B34' },
+  lavender: { paper: '#F2EFF9', mist: '#FFFFFF', pine: '#674FA3', gold: '#A07129', wine: '#A43F50' },
+  lagoon: { paper: '#EDF5F4', mist: '#FAFEFD', pine: '#176C70', gold: '#A37329', wine: '#A03F4E' },
+  graphite: { paper: '#F2F2F2', mist: '#FFFFFF', pine: '#4C505C', gold: '#8C713D', wine: '#A13E46' },
+  amber: { paper: '#FAF4E8', mist: '#FFFDFA', pine: '#75601D', gold: '#3B7180', wine: '#A04438' },
 };
 
 export function ThemeControl({ theme, onChange }: ThemeControlProps) {

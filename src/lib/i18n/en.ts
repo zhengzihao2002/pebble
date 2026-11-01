@@ -521,6 +521,10 @@ export const en = {
     sakura: 'Sakura',
     slate: 'Slate',
     sand: 'Sand',
+    lavender: 'Lavender',
+    lagoon: 'Lagoon',
+    graphite: 'Graphite',
+    amber: 'Amber',
   },
 
   authBrand: {

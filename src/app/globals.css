@@ -388,16 +388,16 @@ html[data-pebble-theme="ocean"] .pebble-root.dark {
 html[data-pebble-theme="sakura"] { background-color: #F9F1F3; }
 html.pebble-dark[data-pebble-theme="sakura"] { background-color: #1C1418; }
 html[data-pebble-theme="sakura"] .pebble-root {
-  --paper: #F9F1F3; --mist: #FFFFFF; --ink: #2B1B21; --ink-soft: #735C65; --pine: #2F6B5E; --pine-soft: #E1EEEA; --gold: #B8577A; --gold-soft: #F6E0E8; --wine: #9C3B30; --wine-soft: #F5E1DD; --line: #EEDFE3;
-  --ink-faint: #94888C; --pine-strong: #2E5E54; --backdrop: rgba(43, 27, 33, 0.28);
+  --paper: #F9F1F3; --mist: #FFFAFC; --ink: #2B1B21; --ink-soft: #735C65; --pine: #7D4D88; --pine-soft: #F1E4F3; --gold: #B8577A; --gold-soft: #F6E0E8; --wine: #9C3B30; --wine-soft: #F5E1DD; --line: #EEDFE3;
+  --ink-faint: #94888C; --pine-strong: #704578; --backdrop: rgba(43, 27, 33, 0.28);
   --shadow: 0 1px 2px rgba(43,27,33,0.04), 0 10px 28px -14px rgba(43,27,33,0.18);
   --shadow-float: 0 2px 6px rgba(43,27,33,0.06), 0 28px 64px -24px rgba(43,27,33,0.38);
   --overlay-tint: rgba(249, 241, 243, 0.6);
 }
 html.pebble-dark[data-pebble-theme="sakura"] .pebble-root,
 html[data-pebble-theme="sakura"] .pebble-root.dark {
-  --paper: #1C1418; --mist: #261B20; --ink: #F2E8EB; --ink-soft: #A8939B; --pine: #66B3A1; --pine-soft: #1F332E; --gold: #E68AAB; --gold-soft: #3A2229; --wine: #E08C7F; --wine-soft: #3B231F; --line: #3A2A30;
-  --ink-faint: #72696C; --pine-strong: #7CBBAD; --backdrop: rgba(0, 0, 0, 0.5);
+  --paper: #1C1418; --mist: #261B20; --ink: #F2E8EB; --ink-soft: #A8939B; --pine: #D0A2D4; --pine-soft: #3A263C; --gold: #E68AAB; --gold-soft: #3A2229; --wine: #E08C7F; --wine-soft: #3B231F; --line: #3A2A30;
+  --ink-faint: #72696C; --pine-strong: #D5ADD8; --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
   --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(28, 20, 24, 0.6);
@@ -435,6 +435,74 @@ html[data-pebble-theme="sand"] .pebble-root.dark {
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
   --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(26, 22, 17, 0.6);
+}
+html[data-pebble-theme="lavender"] { background-color: #F2EFF9; }
+html.pebble-dark[data-pebble-theme="lavender"] { background-color: #171320; }
+html[data-pebble-theme="lavender"] .pebble-root {
+  --paper: #F2EFF9; --mist: #FFFFFF; --ink: #282039; --ink-soft: #686078; --pine: #674FA3; --pine-soft: #E9E2F6; --gold: #A07129; --gold-soft: #F4E7D1; --wine: #A43F50; --wine-soft: #F7E1E5; --line: #E2DBEC;
+  --ink-faint: #8B8597; --pine-strong: #5D4792; --backdrop: rgba(40, 32, 57, 0.28);
+  --shadow: 0 1px 2px rgba(40,32,57,0.04), 0 10px 28px -14px rgba(40,32,57,0.18);
+  --shadow-float: 0 2px 6px rgba(40,32,57,0.06), 0 28px 64px -24px rgba(40,32,57,0.38);
+  --overlay-tint: rgba(242, 239, 249, 0.6);
+}
+html.pebble-dark[data-pebble-theme="lavender"] .pebble-root,
+html[data-pebble-theme="lavender"] .pebble-root.dark {
+  --paper: #171320; --mist: #221D2E; --ink: #F0EAF7; --ink-soft: #A49AB5; --pine: #B7A0E8; --pine-soft: #332945; --gold: #DFC184; --gold-soft: #3D321D; --wine: #E59AA8; --wine-soft: #422731; --line: #383043;
+  --ink-faint: #6E6976; --pine-strong: #C0ACEA; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(23, 19, 32, 0.6);
+}
+html[data-pebble-theme="lagoon"] { background-color: #EDF5F4; }
+html.pebble-dark[data-pebble-theme="lagoon"] { background-color: #101D20; }
+html[data-pebble-theme="lagoon"] .pebble-root {
+  --paper: #EDF5F4; --mist: #FAFEFD; --ink: #142D30; --ink-soft: #536E70; --pine: #176C70; --pine-soft: #DDF0EE; --gold: #A37329; --gold-soft: #F4E8D2; --wine: #A03F4E; --wine-soft: #F7E1E6; --line: #D5E5E3;
+  --ink-faint: #7E8F90; --pine-strong: #176266; --backdrop: rgba(20, 45, 48, 0.28);
+  --shadow: 0 1px 2px rgba(20,45,48,0.04), 0 10px 28px -14px rgba(20,45,48,0.18);
+  --shadow-float: 0 2px 6px rgba(20,45,48,0.06), 0 28px 64px -24px rgba(20,45,48,0.38);
+  --overlay-tint: rgba(237, 245, 244, 0.6);
+}
+html.pebble-dark[data-pebble-theme="lagoon"] .pebble-root,
+html[data-pebble-theme="lagoon"] .pebble-root.dark {
+  --paper: #101D20; --mist: #18292D; --ink: #E7F3F1; --ink-soft: #91ACA9; --pine: #70BFC1; --pine-soft: #203C40; --gold: #E1BC77; --gold-soft: #3C311E; --wine: #E998A5; --wine-soft: #422933; --line: #2B4144;
+  --ink-faint: #667374; --pine-strong: #83C7C9; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(16, 29, 32, 0.6);
+}
+html[data-pebble-theme="graphite"] { background-color: #F2F2F2; }
+html.pebble-dark[data-pebble-theme="graphite"] { background-color: #141517; }
+html[data-pebble-theme="graphite"] .pebble-root {
+  --paper: #F2F2F2; --mist: #FFFFFF; --ink: #202124; --ink-soft: #64656B; --pine: #4C505C; --pine-soft: #E6E7EB; --gold: #8C713D; --gold-soft: #F0E9DC; --wine: #A13E46; --wine-soft: #F5E1E3; --line: #DDDFE3;
+  --ink-faint: #898A8B; --pine-strong: #454853; --backdrop: rgba(32, 33, 36, 0.28);
+  --shadow: 0 1px 2px rgba(32,33,36,0.04), 0 10px 28px -14px rgba(32,33,36,0.18);
+  --shadow-float: 0 2px 6px rgba(32,33,36,0.06), 0 28px 64px -24px rgba(32,33,36,0.38);
+  --overlay-tint: rgba(242, 242, 242, 0.6);
+}
+html.pebble-dark[data-pebble-theme="graphite"] .pebble-root,
+html[data-pebble-theme="graphite"] .pebble-root.dark {
+  --paper: #141517; --mist: #1F2024; --ink: #F0F0F2; --ink-soft: #A0A2AB; --pine: #B9BECE; --pine-soft: #333743; --gold: #D2BB88; --gold-soft: #393223; --wine: #E59BA2; --wine-soft: #402A30; --line: #35373E;
+  --ink-faint: #6C6D6F; --pine-strong: #C2C6D4; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(20, 21, 23, 0.6);
+}
+html[data-pebble-theme="amber"] { background-color: #FAF4E8; }
+html.pebble-dark[data-pebble-theme="amber"] { background-color: #1E1A12; }
+html[data-pebble-theme="amber"] .pebble-root {
+  --paper: #FAF4E8; --mist: #FFFDFA; --ink: #30281A; --ink-soft: #71644C; --pine: #75601D; --pine-soft: #F2E8C9; --gold: #3B7180; --gold-soft: #DFECEF; --wine: #A04438; --wine-soft: #F6E1DC; --line: #E8DDC6;
+  --ink-faint: #918A7D; --pine-strong: #6A571D; --backdrop: rgba(48, 40, 26, 0.28);
+  --shadow: 0 1px 2px rgba(48,40,26,0.04), 0 10px 28px -14px rgba(48,40,26,0.18);
+  --shadow-float: 0 2px 6px rgba(48,40,26,0.06), 0 28px 64px -24px rgba(48,40,26,0.38);
+  --overlay-tint: rgba(250, 244, 232, 0.6);
+}
+html.pebble-dark[data-pebble-theme="amber"] .pebble-root,
+html[data-pebble-theme="amber"] .pebble-root.dark {
+  --paper: #1E1A12; --mist: #292318; --ink: #F5ECDC; --ink-soft: #B6A88D; --pine: #D8BD70; --pine-soft: #3B321B; --gold: #78B6BE; --gold-soft: #1D3539; --wine: #E99E92; --wine-soft: #432A24; --line: #443A27;
+  --ink-faint: #746E63; --pine-strong: #DDC581; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(30, 26, 18, 0.6);
 }
 /* @generated-themes:end */
 /* No universal transition: theme switches fade through the registered colour
@@ -2081,7 +2149,7 @@ input[data-pb-eye]::-ms-clear { display: none; }
    Visual refresh: brand mark, depth and glass.
 
    Appended last so it layers over the rules above without rewriting them.
-   Built only from the theme tokens, so all five palettes, light and dark,
+   Built only from the theme tokens, so all palettes, light and dark,
    follow on their own. Nothing here changes layout, touch-target sizes or
    behaviour; the global reduced-motion rule covers every transition.
    ============================================================ */

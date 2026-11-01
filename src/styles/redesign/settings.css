@@ -3,7 +3,7 @@
    Every rule is scoped under .pebble-root and a class this area owns
    (.pb-settings-*). Shared classes reused here (.card, .pill, .icon-btn,
    .btn-primary, .settings-*, the kit) only change inside .pb-settings.
-   Theme tokens only, so all five palettes in light and dark follow, and no
+   Theme tokens only, so all palettes in light and dark follow, and no
    rule swaps a look between a light and a dark selector (every token fades
    with the theme).
 
@@ -223,12 +223,12 @@
 /* Theme and appearance tiles. One border width in both states (the active
    ring is a box-shadow), so choosing a tile never nudges the grid. */
 .pebble-root .pb-settings-tiles {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.6rem; width: 100%;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.375rem), 1fr)); gap: 0.6rem; width: 100%;
 }
-/* Phones: three abreast, so five themes make two tidy rows and the three
-   appearances one. */
+/* Rem-sized columns keep names readable when the text-size setting grows.
+   At the default size, phones fit three compact tiles across. */
 @container content (max-width: 559.98px) {
-  .pebble-root .pb-settings-tiles { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 0.5rem; }
+  .pebble-root .pb-settings-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 5.5rem), 1fr)); gap: 0.5rem; }
 }
 .pebble-root .pb-settings-tile {
   display: flex; flex-direction: column; gap: 0.5rem; padding: 0.55rem; min-width: 0;

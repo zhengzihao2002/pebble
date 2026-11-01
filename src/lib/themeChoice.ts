@@ -9,7 +9,7 @@
  * effectively permanent. Labels live in the dictionary, indexed by value.
  * Independent of dark mode: every theme has a light and a dark palette.
  */
-export const THEME_CHOICES = ['original', 'ocean', 'sakura', 'slate', 'sand'] as const;
+export const THEME_CHOICES = ['original', 'ocean', 'sakura', 'slate', 'sand', 'lavender', 'lagoon', 'graphite', 'amber'] as const;
 
 export type ThemeChoice = (typeof THEME_CHOICES)[number];
 
