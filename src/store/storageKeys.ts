@@ -64,6 +64,9 @@ export const TEXT_SIZE_FIELD = 'textSize';
 /** Field the pre-paint script reads: false means no welcome animation. */
 export const SHOW_WELCOME_FIELD = 'showWelcome';
 
+/** Field the pre-paint script reads to avoid flashing card highlights on load. */
+export const CARD_GLOW_FIELD = 'showCardGlow';
+
 /**
  * sessionStorage flag set by the auth pages (WelcomeArm): the next app page
  * plays the welcome animation once, then clears it.

@@ -7,7 +7,7 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.pebble-root .pb-rolling-cell { display: inline-grid; grid-template-areas: 'digit'; overflow: clip; }
+.pebble-root .pb-rolling-cell { display: inline-grid; grid-template-areas: 'digit'; vertical-align: baseline; overflow: clip; }
 .pebble-root .pb-rolling-old, .pebble-root .pb-rolling-next { grid-area: digit; }
 .pebble-root .pb-rolling-old { animation: pb-money-old-up 680ms cubic-bezier(.22,.61,.36,1) both; }
 .pebble-root .pb-rolling-next { animation: pb-money-next-up 680ms cubic-bezier(.22,.61,.36,1) both; }

@@ -28,8 +28,10 @@ export function RollingAmount({ value, className = '', fractionClassName }: { va
     const changed = hadDigits && /\d/.test(character) && (old !== character || (fewerDigits && index === firstDigit));
     if (!changed) return <span key={current.length - index}>{character}</span>;
     return <span className={`pb-rolling-cell${down ? ' is-down' : ''}`} key={current.length - index}>
-      <span className="pb-rolling-old" key={`old-${frame.revision}`}>{old}</span>
+      {/* The first grid item supplies the inline baseline. It must always
+          contain a glyph, including newly added leading places. */}
       <span className="pb-rolling-next" key={`next-${frame.revision}`}>{character}</span>
+      <span className="pb-rolling-old" key={`old-${frame.revision}`}>{old}</span>
     </span>;
   });
 

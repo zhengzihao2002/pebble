@@ -415,6 +415,11 @@ export const zh: typeof en = {
     cjk: { sans: '黑体', serif: '宋体', kai: '楷体' },
   },
 
+  cardGlow: {
+    title: '卡片微光',
+    hint: '为应用中的卡片添加柔和的主题色微光。',
+  },
+
   healthBar: {
     title: '健康状态',
     hp: 'HP {value}%',

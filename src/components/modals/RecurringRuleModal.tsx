@@ -54,7 +54,7 @@ export interface RecurringRulePrefill {
   startDate: string;
   kind?: RecurringKind;
   frequency?: RecurringFrequency;
-  /** Income only: pre-fills Gross (the form requires one); defaults to the net amount. */
+  /** Standard Income only: pre-fills Gross; defaults to the net amount. */
   grossAmount?: number;
 }
 
@@ -189,6 +189,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   // Each sentence is its own key, chosen by kind (Chinese cannot take a noun
   // in that position).
   const isIncome = kind === 'income';
+  const showGrossAmount = isIncome && category !== 'Side Cash';
+  const incomeGross = isIncome ? (showGrossAmount ? Number(grossAmount) : Number(amount)) : null;
   const titleText = isEdit
     ? (isIncome ? d.recurring.titleEditIncome : d.recurring.titleEditExpense)
     : (isIncome ? d.recurring.titleNewIncome : d.recurring.titleNewExpense);
@@ -212,7 +214,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     (kind === 'expense' ? (tag.trim() || null) : null) !== rule.tag ||
     accountId !== rule.accountId ||
     Number(amount) !== Math.abs(rule.amount) ||
-    (kind === 'income' ? Number(grossAmount) : null) !== rule.grossAmount ||
+    incomeGross !== rule.grossAmount ||
     frequency !== rule.frequency ||
     startDate !== rule.startDate ||
     endMode !== rule.endMode ||
@@ -299,7 +301,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
       tag: kind === 'expense' ? tag.trim() || undefined : undefined,
       accountId,
       amount: Number(amount),
-      grossAmount: kind === 'income' ? Number(grossAmount) : undefined,
+      grossAmount: incomeGross ?? undefined,
       frequency,
       startDate,
       endMode,
@@ -432,7 +434,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
             <div className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
               <form id="rule-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <label style={labelStyle}>
-                  {isIncome ? d.recurring.netAmount : d.recurring.amount}
+                  {showGrossAmount ? d.recurring.netAmount : d.recurring.amount}
                   <div style={{ position: 'relative' }}>
                     {/* Stays '$' in every locale - the user's real US dollars. */}
                     <span className="font-display" style={{ ...prefixStyle, left: 14, fontSize: '1.5rem' }}>$</span>
@@ -442,10 +444,10 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                       style={{ ...inputStyle, padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', fontSize: '1.6rem', fontWeight: 600 }}
                     />
                   </div>
-                  {isIncome && <p style={hintStyle}>{d.recurring.netHint}</p>}
+                  {showGrossAmount && <p style={hintStyle}>{d.recurring.netHint}</p>}
                 </label>
 
-                {isIncome && (
+                {showGrossAmount && (
                   <label style={labelStyle}>
                     {d.recurring.grossAmount}
                     <div style={{ position: 'relative' }}>

@@ -1647,7 +1647,7 @@ export interface RecurringRuleActionInput {
    * never has to reason about sign. For income this is the NET amount.
    */
   amount: number;
-  /** Income only, and required there. */
+  /** Required for Standard Income; Side Cash always derives gross from amount. */
   grossAmount?: number;
   frequency: RecurringFrequency;
   startDate: string;
@@ -1780,7 +1780,9 @@ async function normalizeRuleInput(
     if (!INCOME_CATEGORIES.includes(input.category)) {
       return { ok: false, error: 'Income must be Standard Income or Side Cash.', code: 'validation.ruleIncomeCategory' };
     }
-    const gross = input.grossAmount;
+    // Side Cash has one amount, as in ordinary income transactions. Never
+    // retain a hidden/stale paycheck gross when its category changes.
+    const gross = input.category === 'Side Cash' ? input.amount : input.grossAmount;
     if (!isFiniteNumber(gross) || gross <= 0) {
       return { ok: false, error: 'Gross amount must be greater than zero.', code: 'validation.ruleGrossAmountPositive' };
     }

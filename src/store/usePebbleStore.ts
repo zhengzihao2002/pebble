@@ -94,6 +94,8 @@ interface PebblePrefs {
   cjkFontChoice: CjkFontChoice;
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
+  // The theme-coloured rim on app cards; enabled unless explicitly disabled.
+  showCardGlow: boolean;
   themeChoice: ThemeChoice;
   // Per-user switches disabling risky buttons. Read through isLocked(), so a
   // lock missing from older saved settings takes its default.
@@ -135,6 +137,7 @@ interface PebbleUIState extends PebblePrefs {
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
+  setShowCardGlow: (value: boolean) => void;
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
@@ -161,6 +164,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   fontChoice: 'default',
   cjkFontChoice: 'sans',
   showHealthBar: false,
+  showCardGlow: true,
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
@@ -219,6 +223,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
+      setShowCardGlow: (value) => set({ showCardGlow: value }),
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
@@ -264,7 +269,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         }
         return state as unknown as PebbleUIState;
       },
-      // appearance, locale, fontChoice, cjkFontChoice and themeChoice MUST stay
+      // appearance, locale, fonts, themeChoice and showCardGlow MUST stay
       // here - the pre-paint script reads them (see storageKeys.ts).
       partialize: (state): PebblePrefs => ({
         appearance: state.appearance,
@@ -282,6 +287,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         fontChoice: state.fontChoice,
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
+        showCardGlow: state.showCardGlow,
         themeChoice: state.themeChoice,
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).

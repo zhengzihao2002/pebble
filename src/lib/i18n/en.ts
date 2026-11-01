@@ -470,6 +470,11 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
+  cardGlow: {
+    title: 'Card glow',
+    hint: 'Give cards across the app a soft highlight in your theme colour.',
+  },
+
   healthBar: {
     // Dashboard bar.
     title: 'Health status',
