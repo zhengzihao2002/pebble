@@ -1,7 +1,7 @@
 const activePulses = new WeakMap<HTMLElement, () => void>();
 
-/** Draw outside the sticky shelf's stacking/clipping contexts. The normal
- * content width and four rounded corners stay constant after it expands. */
+/** Draw outside the sticky shelf's stacking/clipping contexts, following its
+ * actual bounds while keeping four rounded corners, including when expanded. */
 export function pulseAnalysisPeriod(bar: HTMLElement) {
   activePulses.get(bar)?.();
   const halo = document.createElement('span');
@@ -30,21 +30,23 @@ export function pulseAnalysisPeriod(bar: HTMLElement) {
   const follow = () => {
     if (!bar.isConnected) { stop(); return; }
     const rect = bar.getBoundingClientRect();
-    const content = bar.parentElement?.getBoundingClientRect() ?? rect;
     Object.assign(halo.style, {
-      left: content.left + 'px', top: rect.top + 'px',
-      width: content.width + 'px', height: rect.height + 'px',
+      left: rect.left + 'px', top: rect.top + 'px',
+      width: rect.width + 'px', height: rect.height + 'px',
     });
     frame = requestAnimationFrame(follow);
   };
   follow();
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    halo.style.boxShadow = `0 0 0 3px ${color}`;
+    halo.style.boxShadow = `inset 0 0 0 3px ${color}`;
     timer = window.setTimeout(stop, 1800);
   } else {
+    // Travel outward to the card's edge from inside it. A full-width sticky
+    // card touches the viewport, so an outside shadow would lose its sides.
     animation = halo.animate([
-      { boxShadow: `0 0 0 0 ${color}`, opacity: .45 },
-      { boxShadow: `0 0 0 16px ${color}`, opacity: 0 },
+      { boxShadow: `inset 0 0 0 16px ${color}`, opacity: 0, offset: 0 },
+      { boxShadow: `inset 0 0 0 12px ${color}`, opacity: .45, offset: .2 },
+      { boxShadow: `inset 0 0 0 0 ${color}`, opacity: 0, offset: 1 },
     ], { duration: 1800, easing: 'ease-out' });
     animation.onfinish = stop;
   }

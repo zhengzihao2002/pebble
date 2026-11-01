@@ -27,11 +27,19 @@
   .pebble-root .pb-txn-page {
     display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start; gap: 1.5rem;
   }
-  /* Flush with the header, with no scroll box to clip the cards' glows.
-     A tall rail follows the page until its bottom fits in the viewport. */
+  /* Keep the left pane independently scrollable, flush under the header.
+     No padding or negative margins around the cards. */
   .pebble-root .pb-txn-rail {
-    position: sticky; top: var(--pb-txn-rail-top, calc(var(--pb-header-h) - 1px));
+    position: sticky; top: calc(var(--pb-header-h) - 1px);
+    max-height: calc(100dvh - var(--pb-header-h) + 1px);
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
     gap: 1.25rem;
+  }
+  /* Recreate the frosted spill after the scroll contents are clipped. This
+     rail's tooltips portal to the app root, outside this filter's context. */
+  html:not([data-pb-card-glow="off"]) .pebble-root .pb-txn-rail {
+    filter: drop-shadow(0 0 9px color-mix(in srgb, var(--pine) 14%, transparent))
+      drop-shadow(0 0 20px color-mix(in srgb, var(--pine) 10%, transparent));
   }
 }
 
