@@ -293,6 +293,23 @@ export function TransactionsClient({
   // under both, so its live height is published for them.
   const barRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  // A tall rail scrolls up with the page until its foot reaches the viewport.
+  // Keeping it out of a scroll box lets card glows spill beyond every edge.
+  useLayoutEffect(() => {
+    const rail = railRef.current;
+    const root = rail?.closest<HTMLElement>('.pebble-root');
+    const header = root?.querySelector<HTMLElement>('.pebble-header');
+    if (!rail || !root || !header) return;
+    const measure = () => rail.style.setProperty('--pb-txn-rail-top',
+      `${Math.min(header.offsetHeight - 1, root.clientHeight - rail.offsetHeight)}px`);
+    const observer = new ResizeObserver(measure);
+    observer.observe(rail);
+    observer.observe(root);
+    observer.observe(header);
+    measure();
+    return () => observer.disconnect();
+  }, []);
   useLayoutEffect(() => {
     const bar = barRef.current;
     const main = mainRef.current;
@@ -324,7 +341,7 @@ export function TransactionsClient({
       {/* The side rail on a wide Mac (sticky, its own 'content' container so
           the five-figure tiers and the ledger stacking follow the rail's
           width); simply the top of the page everywhere else. */}
-      <div className="pb-txn-rail themed-scroll">
+      <div ref={railRef} className="pb-txn-rail">
         <TodayLedger
           currentBalance={currentBalance}
           accounts={sortedAccounts}

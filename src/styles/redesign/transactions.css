@@ -27,14 +27,11 @@
   .pebble-root .pb-txn-page {
     display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start; gap: 1.5rem;
   }
-  /* Sticky under the glass header. Taller than the window (many accounts,
-     large text) it scrolls on its own rather than hiding its foot; the
-     padding gives the cards' shadows room inside the scroll box. */
+  /* Flush with the header, with no scroll box to clip the cards' glows.
+     A tall rail follows the page until its bottom fits in the viewport. */
   .pebble-root .pb-txn-rail {
-    position: sticky; top: calc(var(--pb-header-h) + 1rem);
-    max-height: calc(100dvh - var(--pb-header-h) - 2rem);
-    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-    gap: 1.25rem; margin: -0.5rem; padding: 0.5rem 0.5rem 1rem;
+    position: sticky; top: var(--pb-txn-rail-top, calc(var(--pb-header-h) - 1px));
+    gap: 1.25rem;
   }
 }
 

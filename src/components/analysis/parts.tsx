@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { Link2 } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import { PeriodDot } from '@/components/shared/PeriodLink';
+import { pulseAnalysisPeriod } from './periodPulse';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Dictionary } from '@/lib/i18n';
 import type { t as translate } from '@/lib/i18n';
@@ -91,9 +92,6 @@ export function ScopeBadge({ children }: { children: ReactNode }) {
   return <span className="pb-ana-badge">{children}</span>;
 }
 
-/** One pending clean-up per element, so repeat taps never cut a ring short. */
-const pulseTimers = new WeakMap<HTMLElement, number>();
-
 /**
  * A card that follows the period wears this chip (the same pine dot and
  * chip as the Dashboard's and Accounts' followers). Tapping it pulses the
@@ -110,11 +108,7 @@ export function PeriodChip({ range }: { range: string }) {
   const pulse = () => {
     const el = document.getElementById(PERIOD_BAR_ID);
     if (!el) return;
-    globalThis.clearTimeout(pulseTimers.get(el));
-    el.classList.remove('pb-period-pulse');
-    void el.offsetWidth; // restart the animation
-    el.classList.add('pb-period-pulse');
-    pulseTimers.set(el, globalThis.setTimeout(() => el.classList.remove('pb-period-pulse'), 2000) as unknown as number);
+    pulseAnalysisPeriod(el);
   };
   return (
     <button type="button" className="pb-period-chip pb-ana-chip" onClick={pulse} aria-label={t(x.periodLinkAria, { label })}>
