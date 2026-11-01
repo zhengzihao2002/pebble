@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Upload } from 'lucide-react';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -27,6 +27,9 @@ import { ColumnPreview, type ColumnRole, type ReadRow } from '@/components/impor
 import { BalanceDelta, ReviewFilterBar, StatusChip, type ReviewFilter, type RowStatus } from '@/components/importCsv/ReviewParts';
 import { useLeavingRows } from '@/components/importCsv/useLeavingRows';
 import { useScrollPin } from '@/components/importCsv/useScrollPin';
+import { useImportLayoutMotion } from '@/components/importCsv/useImportLayoutMotion';
+import { DeferredImportRows } from '@/components/importCsv/DeferredImportRows';
+import { ImportTitleField } from '@/components/importCsv/ImportTitleField';
 
 const MAX_ROWS = 500;
 const MAX_SKIP = 100;
@@ -226,11 +229,14 @@ function useNarrowImport(): boolean {
 // On PC the dialog renders two cards side by side inside ONE ModalFrame, so
 // the focus trap, Escape and the backdrop behave as one dialog. Elsewhere it
 // renders the import exactly as before.
-function ImportLayout({ split, side, children }: { split: boolean; side: React.ReactNode; children: React.ReactNode }) {
+function ImportLayout({ split, side, children, paneRef, ready }: {
+  split: boolean; side: React.ReactNode; children: React.ReactNode;
+  paneRef: RefObject<HTMLDivElement | null>; ready: boolean;
+}) {
   if (!split) return <>{children}</>;
   return (
     <>
-      <div className="card pb-import-pane">{children}</div>
+      <div ref={paneRef} className="card pb-import-pane" data-import-moving={!ready || undefined} aria-busy={!ready || undefined}>{children}</div>
       {side}
     </>
   );
@@ -395,7 +401,7 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
 
   return (
     <section className="card pb-import-pane pb-tdlg-preview" aria-labelledby="pb-import-preview-title">
-      <div className="pb-modal-head">
+      <div className="pb-modal-head pb-import-content-ready">
         <div>
           <h2 id="pb-import-preview-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
@@ -405,11 +411,11 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
       {/* Rows run edge to edge, like the statement card. The scroller is
           always this one element (never swapped for the empty note), so its
           scroll position survives every change. */}
-      <div ref={bodyRef} className="pb-modal-body themed-scroll pb-tdlg-preview-body" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
+      <div ref={bodyRef} className="pb-modal-body themed-scroll pb-tdlg-preview-body pb-import-content-ready" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
         {shown.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.importCsv.previewEmpty}</p>
         )}
-        {shown.map(({ key, value: { e, p }, leaving }) => {
+        <DeferredImportRows>{shown.map(({ key, value: { e, p }, leaving }) => {
           const motion = leaving ? ' pb-tdlg-prow-leave' : p && !initialKeys.has(key) ? ' pb-tdlg-prow-enter' : '';
           return (
             <div
@@ -427,7 +433,7 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
               </div>
             </div>
           );
-        })}
+        })}</DeferredImportRows>
       </div>
       {jump && (
         <button type="button" className="pb-tdlg-preview-jump" onClick={goToJump}>
@@ -814,6 +820,8 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
   // PC: the If imported pane appears only at the Preview step, and goes away
   // once the import has finished.
   const showPreview = split && step === 'preview' && done === null;
+  const importPaneRef = useRef<HTMLDivElement>(null);
+  const reviewReady = useImportLayoutMotion(importPaneRef, showPreview, split);
 
   // A file dropped anywhere but the drop zone - the dialog head, a later step,
   // the backdrop - would make the browser open the CSV in place of the app and
@@ -849,9 +857,19 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
       onClose={onClose} busy={saving} labelledBy="pb-import-title"
       maxWidth={showPreview ? 1240 : 640}
       cardClassName={split ? `pb-import-split${showPreview ? ' pb-import-open' : ''}` : undefined}
+      animateResize={!showPreview}
     >
       {(close) => (
-        <ImportLayout split={split} side={showPreview && preview ? <ImportPreviewPane preview={preview} pending={previewPending} /> : null}>
+        <ImportLayout split={split} paneRef={importPaneRef} ready={reviewReady} side={showPreview && preview ? (
+          reviewReady ? <ImportPreviewPane preview={preview} pending={previewPending} /> : (
+            <section className="card pb-import-pane pb-tdlg-preview" aria-busy="true">
+              <div className="pb-modal-head">
+                <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
+              </div>
+            </section>
+          )
+        ) : null}>
           {saving && <LoadingOverlay label={d.importCsv.importing} />}
           <div className="pb-modal-head">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -946,8 +964,8 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
             </>
           ) : (
             <>
-              <div key={step} className="pb-modal-body themed-scroll" style={{ overflowX: 'hidden' }}>
-                {rows.length === 0 ? (
+              <div key={step} className={`pb-modal-body themed-scroll${reviewReady ? ' pb-import-content-ready' : ''}`} inert={!reviewReady} style={{ overflowX: 'hidden' }}>
+                {!reviewReady ? null : rows.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.importCsv.noRows}</p>
                 ) : (
                   <>
@@ -973,7 +991,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                       </div>
                     )}
                     <ul className={`pb-tdlg-review${narrow ? ' pb-tdlg-review-compact' : ''}`}>
-                      {visibleRows.map((r) => {
+                      <DeferredImportRows list>{visibleRows.map((r) => {
                         const on = isIncluded(r);
                         const income = (r.cents ?? 0) > 0;
                         const dup = isDup(r);
@@ -992,11 +1010,10 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                           </label>
                         );
                         const titleInput = (
-                          <input
-                            type="text" value={titleOverride[r.idx] ?? r.description} maxLength={200}
-                            onChange={(e) => setTitleOverride((m) => ({ ...m, [r.idx]: e.target.value }))}
-                            placeholder={d.importCsv.titlePlaceholder} aria-label={d.importCsv.titlePlaceholder}
-                            style={{ ...smallField, fontSize: '0.86rem', height: '2.1rem', marginBottom: '0.2rem' }}
+                          <ImportTitleField
+                            value={titleOverride[r.idx] ?? r.description}
+                            onChange={(value) => setTitleOverride((m) => ({ ...m, [r.idx]: value }))}
+                            label={d.importCsv.titlePlaceholder} style={smallField}
                           />
                         );
                         // The chip beside it already names an unreadable row
@@ -1128,12 +1145,12 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                             )}
                           </li>
                         );
-                      })}
+                      })}</DeferredImportRows>
                     </ul>
                   </>
                 )}
               </div>
-              <div className="pb-modal-foot">
+              <div className="pb-modal-foot" inert={!reviewReady}>
                 {balanceCents !== null && <BalanceDelta beforeCents={balanceCents} afterCents={balanceCents + netCents} />}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.84rem' }}>
                   {balanceCents !== null && (

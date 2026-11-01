@@ -2104,17 +2104,16 @@ html.pebble-welcoming::after {
    One dialog, so the focus trap, Escape and the backdrop behave as one. The
    class is only applied at 1024px+ with a fine pointer, so phones keep the
    normal card and its bottom-sheet rules. */
-.pebble-root .pb-modal-card.pb-import-split {
+.pebble-root .card.pb-modal-card.pb-import-split {
   flex-direction: row; gap: 0; padding: 0;
   background: transparent; border: 0; box-shadow: none;
-  /* Widening when the preview opens. A layout property, an accepted exception
-     like the grid-template-rows collapse; the pane itself moves by transform
-     and opacity. The global reduced-motion rule makes both instant. */
-  transition: max-width var(--pb-dur-emph) var(--pb-ease-out), gap var(--pb-dur-emph) var(--pb-ease-out);
+  /* The wrapper never paints a shared glow, including the dark-mode card
+     override. Pane transforms animate one final layout instead of repeatedly
+     squeezing and reflowing both populated cards through a growing frame. */
 }
-/* Preview step: both cards take the full available height. ModalFrame
-   animates the height change itself. */
-.pebble-root .pb-import-split.pb-import-open {
+/* Preview step: both cards take the full available height before their
+   surfaces move; review fields wait until that movement has finished. */
+.pebble-root .pb-modal-card.pb-import-split.pb-import-open {
   gap: 1rem; height: calc(var(--pb-vvh, 100dvh) - 2rem);
 }
 .pebble-root .pb-import-split > .pb-import-pane {
@@ -2124,9 +2123,19 @@ html.pebble-welcoming::after {
 .pebble-root .pb-import-split > .pb-import-pane:first-child { flex: 1 1 640px; }
 .pebble-root .pb-import-split > .pb-import-pane + .pb-import-pane {
   flex: 1 1 584px;
-  animation: pb-import-pane-in var(--pb-dur-emph) var(--pb-ease-out) both;
 }
-@keyframes pb-import-pane-in { from { opacity: 0; transform: translateX(2.5rem); } }
+.pebble-root .pb-import-pane[data-import-moving] > :not(.pb-modal-head) { visibility: hidden; }
+.pebble-root .pb-import-content-ready { animation: pb-fade-in 180ms var(--pb-ease-out) both; }
+.pebble-root .pb-import-title-field { position: relative; min-width: 0; height: 2.1rem; margin-bottom: .2rem; font-size: .86rem; }
+.pebble-root .pb-import-title-text { position: absolute; inset: 1px; box-sizing: border-box; overflow: hidden; white-space: pre; pointer-events: none; color: var(--ink); }
+/* Offscreen rows keep a remembered intrinsic size instead of laying out all
+   their fields and money glyphs whenever the next CSV batch mounts. */
+.pebble-root .pb-import-split .pb-tdlg-review-row { content-visibility: auto; contain-intrinsic-block-size: auto 9rem; }
+.pebble-root .pb-import-split .pb-tdlg-prow { content-visibility: auto; contain-intrinsic-block-size: auto 5rem; }
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-import-title-field { --pb-import-title-ink: var(--ink); }
+  .pebble-root .pb-import-title-text { display: none; }
+}
 
 /* CSV import preview (If imported): its rows are read-only, so they do not
    take the app's green row hover. A neutral tint instead. */

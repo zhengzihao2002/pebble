@@ -60,10 +60,12 @@ interface ModalFrameProps {
   followPan?: boolean;
   /** Extra class on the card, for one dialog's own layout rules. */
   cardClassName?: string;
+  /** A specialized layout can animate its own surfaces without resizing its contents. */
+  animateResize?: boolean;
   children: (close: () => void) => ReactNode;
 }
 
-export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, followPan = true, cardClassName, children }: ModalFrameProps) {
+export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, followPan = true, cardClassName, animateResize = true, children }: ModalFrameProps) {
   const [closing, setClosing] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -104,7 +106,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
   // and skipped under reduced motion.
   useEffect(() => {
     const card = cardRef.current;
-    if (!card || typeof ResizeObserver === 'undefined') return;
+    if (!animateResize || !card || typeof ResizeObserver === 'undefined') return;
     let last = card.offsetHeight;
     let running: Animation | null = null;
     // The animation resizes the card on every frame, and the observer sees
@@ -129,8 +131,8 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       running.onfinish = () => card.classList.remove('pb-resizing');
     });
     observer.observe(card);
-    return () => { observer.disconnect(); running?.cancel(); };
-  }, []);
+    return () => { observer.disconnect(); running?.cancel(); card.classList.remove('pb-resizing'); };
+  }, [animateResize]);
 
   // Phones: the on-screen keyboard shrinks the visual viewport but not dvh, so
   // a pinned submit button would sit behind it. The overlay's height and top
@@ -250,6 +252,8 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
         tabIndex={-1}
         style={{ maxWidth, ...cardStyle }}
       >
+        {/* close reads its refs only when an event invokes it. */}
+        {/* eslint-disable-next-line react-hooks/refs */}
         {children(close)}
       </div>
     </div>
