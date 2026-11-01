@@ -20,8 +20,8 @@ function watch(element: Element, notify: (visible: boolean) => void) {
 
 /** The input always owns the complete value. Only its decorative text reveals,
  * without changing the import model or re-rendering the review per character. */
-export function ImportTitleField({ value, onChange, label, style }: {
-  value: string; onChange: (value: string) => void; label: string; style: CSSProperties;
+export function ImportTitleField({ value, onChange, label, style, revealDelay = 0 }: {
+  value: string; onChange: (value: string) => void; label: string; style: CSSProperties; revealDelay?: number;
 }) {
   const [revealing, setRevealing] = useState(value.length > 0);
   const field = useRef<HTMLDivElement>(null);
@@ -42,7 +42,7 @@ export function ImportTitleField({ value, onChange, label, style }: {
     text.current.replaceChildren(target);
     let frame = 0, elapsed = 0, started = 0;
     const draw = (now: number) => {
-      const count = Math.min(characters.length, Math.floor((elapsed + now - started) / duration * characters.length));
+      const count = Math.min(characters.length, Math.max(0, Math.floor((elapsed + now - started - revealDelay) / duration * characters.length)));
       target.data = characters.slice(0, count).join('');
       if (count < characters.length) frame = requestAnimationFrame(draw);
       else { frame = 0; setRevealing(false); }
@@ -52,7 +52,7 @@ export function ImportTitleField({ value, onChange, label, style }: {
       else if (!visible && frame) { cancelAnimationFrame(frame); frame = 0; elapsed += performance.now() - started; }
     });
     return () => { stop(); cancelAnimationFrame(frame); media.removeEventListener('change', finish); };
-  }, [revealing, value]);
+  }, [revealing, value, revealDelay]);
 
   return <div ref={field} className="pb-import-title-field">
     <input type="text" value={value} maxLength={200} placeholder={label} aria-label={label}

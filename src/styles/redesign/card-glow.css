@@ -21,3 +21,6 @@ html:not([data-pb-card-glow="off"]) .pebble-root :where(.card, [data-slot="card"
     inset 0 3px 10px -6px color-mix(in srgb, var(--mist) 75%, white),
     inset 0 -2px 10px -7px color-mix(in srgb, var(--pine) 30%, transparent);
 }
+/* The CSV wrapper only arranges two cards. Its reflection otherwise draws a
+   large rounded outline across their gap even with border/shadow removed. */
+.pebble-root .pb-modal-card.pb-import-split::after { content: none; }

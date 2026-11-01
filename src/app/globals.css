@@ -2112,20 +2112,24 @@ html.pebble-welcoming::after {
      squeezing and reflowing both populated cards through a growing frame. */
 }
 /* Preview step: both cards take the full available height before their
-   surfaces move; review fields wait until that movement has finished. */
+   surfaces move; rows enter in sequence as that movement settles. */
 .pebble-root .pb-modal-card.pb-import-split.pb-import-open {
   gap: 1rem; height: calc(var(--pb-vvh, 100dvh) - 2rem);
 }
 .pebble-root .pb-import-split > .pb-import-pane {
   min-width: 0; display: flex; flex-direction: column;
-  padding: 1.75rem; border-radius: 2rem; box-shadow: var(--shadow-float), var(--pb-card-halo, 0 0 transparent);
+  padding: 1.75rem; border-radius: 2rem; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent);
 }
 .pebble-root .pb-import-split > .pb-import-pane:first-child { flex: 1 1 640px; }
 .pebble-root .pb-import-split > .pb-import-pane + .pb-import-pane {
   flex: 1 1 584px;
 }
 .pebble-root .pb-import-pane[data-import-moving] > :not(.pb-modal-head) { visibility: hidden; }
-.pebble-root .pb-import-content-ready { animation: pb-fade-in 180ms var(--pb-ease-out) both; }
+.pebble-root .pb-import-row-reveal {
+  animation: pb-import-row-in 220ms var(--pb-ease-out) both;
+  animation-delay: calc(var(--pb-import-row-order, 0) * 35ms);
+}
+@keyframes pb-import-row-in { from { opacity: 0; } to { opacity: var(--pb-import-row-opacity, 1); } }
 .pebble-root .pb-import-title-field { position: relative; min-width: 0; height: 2.1rem; margin-bottom: .2rem; font-size: .86rem; }
 .pebble-root .pb-import-title-text { position: absolute; inset: 1px; box-sizing: border-box; overflow: hidden; white-space: pre; pointer-events: none; color: var(--ink); }
 /* Offscreen rows keep a remembered intrinsic size instead of laying out all

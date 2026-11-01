@@ -286,8 +286,23 @@ function pendingRecord(p: PendingImport, id: string): ExpenseTransaction | Incom
 // with the ticked rows added. Balances come from the same computeRecentTransactions
 // the Transactions page uses - never a second calculation. Same StatementRow,
 // read-only: a row opens nothing.
-function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; pending: PendingImport[] }) {
+function ImportPreviewHeading({ older = 0 }: { older?: number }) {
   const { d, t } = useTranslation();
+  return <div className="pb-modal-head"><div>
+    <h2 id="pb-import-preview-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
+    <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
+    {older > 0 && <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.25rem 0 0' }}>{t(d.importCsv.previewOlder, { count: older })}</p>}
+  </div></div>;
+}
+
+function ImportPreviewPane({ preview, pending, ready }: { preview: ImportPreviewData; pending: PendingImport[]; ready: boolean }) {
+  return <section className="card pb-import-pane pb-tdlg-preview" aria-labelledby="pb-import-preview-title" aria-busy={!ready || undefined}>
+    {ready ? <ImportPreviewContents preview={preview} pending={pending} /> : <ImportPreviewHeading />}
+  </section>;
+}
+
+function ImportPreviewContents({ preview, pending }: { preview: ImportPreviewData; pending: PendingImport[] }) {
+  const { d } = useTranslation();
   const x = d.ux.transactionDialogs;
   // The device's local date, the same basis the Transactions navigator uses.
   const windowStart = useMemo(() => {
@@ -397,31 +412,24 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
     el?.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
   };
 
-  const noteStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.25rem 0 0' };
-
   return (
-    <section className="card pb-import-pane pb-tdlg-preview" aria-labelledby="pb-import-preview-title">
-      <div className="pb-modal-head pb-import-content-ready">
-        <div>
-          <h2 id="pb-import-preview-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
-          {older > 0 && <p style={noteStyle}>{t(d.importCsv.previewOlder, { count: older })}</p>}
-        </div>
-      </div>
+    <>
+      <ImportPreviewHeading older={older} />
       {/* Rows run edge to edge, like the statement card. The scroller is
           always this one element (never swapped for the empty note), so its
           scroll position survives every change. */}
-      <div ref={bodyRef} className="pb-modal-body themed-scroll pb-tdlg-preview-body pb-import-content-ready" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
+      <div ref={bodyRef} className="pb-modal-body themed-scroll pb-tdlg-preview-body" style={{ margin: '0 -1.75rem', padding: 0, borderTop: '1px solid var(--line)' }}>
         {shown.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.importCsv.previewEmpty}</p>
         )}
-        <DeferredImportRows>{shown.map(({ key, value: { e, p }, leaving }) => {
+        <DeferredImportRows>{shown.map(({ key, value: { e, p }, leaving }, order) => {
           const motion = leaving ? ' pb-tdlg-prow-leave' : p && !initialKeys.has(key) ? ' pb-tdlg-prow-enter' : '';
           return (
             <div
               key={key} data-row-key={key} data-leaving={leaving ? 'true' : undefined}
               data-pending-idx={p && !leaving ? p.idx : undefined}
-              className={`pb-tdlg-prow${motion}`}
+              className={`pb-tdlg-prow pb-import-row-reveal${motion}`}
+              style={{ '--pb-import-row-order': Math.min(order, 6) } as React.CSSProperties}
               aria-hidden={leaving || undefined} inert={leaving || undefined}
             >
               <div style={p ? { background: PENDING_TINT } : undefined}>
@@ -441,7 +449,7 @@ function ImportPreviewPane({ preview, pending }: { preview: ImportPreviewData; p
           {x.previewShowAdded}
         </button>
       )}
-    </section>
+    </>
   );
 }
 
@@ -861,14 +869,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
     >
       {(close) => (
         <ImportLayout split={split} paneRef={importPaneRef} ready={reviewReady} side={showPreview && preview ? (
-          reviewReady ? <ImportPreviewPane preview={preview} pending={previewPending} /> : (
-            <section className="card pb-import-pane pb-tdlg-preview" aria-busy="true">
-              <div className="pb-modal-head">
-                <h2 className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
-                <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
-              </div>
-            </section>
-          )
+          <ImportPreviewPane preview={preview} pending={previewPending} ready={reviewReady} />
         ) : null}>
           {saving && <LoadingOverlay label={d.importCsv.importing} />}
           <div className="pb-modal-head">
@@ -964,7 +965,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
             </>
           ) : (
             <>
-              <div key={step} className={`pb-modal-body themed-scroll${reviewReady ? ' pb-import-content-ready' : ''}`} inert={!reviewReady} style={{ overflowX: 'hidden' }}>
+              <div key={step} className="pb-modal-body themed-scroll" inert={!reviewReady} style={{ overflowX: 'hidden' }}>
                 {!reviewReady ? null : rows.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.importCsv.noRows}</p>
                 ) : (
@@ -991,7 +992,12 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                       </div>
                     )}
                     <ul className={`pb-tdlg-review${narrow ? ' pb-tdlg-review-compact' : ''}`}>
-                      <DeferredImportRows list>{visibleRows.map((r) => {
+                      <DeferredImportRows list>{visibleRows.map((r, order) => {
+                        const rowStyle = {
+                          opacity: r.problem ? 0.6 : 1,
+                          '--pb-import-row-order': Math.min(order, 6),
+                          '--pb-import-row-opacity': r.problem ? 0.6 : 1,
+                        } as React.CSSProperties;
                         const on = isIncluded(r);
                         const income = (r.cents ?? 0) > 0;
                         const dup = isDup(r);
@@ -1013,7 +1019,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                           <ImportTitleField
                             value={titleOverride[r.idx] ?? r.description}
                             onChange={(value) => setTitleOverride((m) => ({ ...m, [r.idx]: value }))}
-                            label={d.importCsv.titlePlaceholder} style={smallField}
+                            label={d.importCsv.titlePlaceholder} style={smallField} revealDelay={Math.min(order, 6) * 35}
                           />
                         );
                         // The chip beside it already names an unreadable row
@@ -1085,7 +1091,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
 
                         if (!narrow) {
                           return (
-                            <li key={r.idx} className="pb-tdlg-review-row" style={{ opacity: r.problem ? 0.6 : 1 }}>
+                            <li key={r.idx} className="pb-tdlg-review-row pb-import-row-reveal" style={rowStyle}>
                               <div className="pb-tdlg-review-top">
                                 {checkbox}
                                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -1107,7 +1113,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                         // Phone: one line - tick, title and date, amount and
                         // status - that unfolds to the title field and choices.
                         return (
-                          <li key={r.idx} className="pb-tdlg-review-row" style={{ opacity: r.problem ? 0.6 : 1 }}>
+                          <li key={r.idx} className="pb-tdlg-review-row pb-import-row-reveal" style={rowStyle}>
                             <div className="pb-tdlg-review-top">
                               {checkbox}
                               <span style={{ flex: 1, minWidth: 0 }}>

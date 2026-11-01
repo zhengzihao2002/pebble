@@ -2,11 +2,12 @@
 
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-const DURATION = 420;
+const DURATION = 260;
+const REVEAL_AFTER = 100;
 const EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
-/** Lay out the split once, then move its surfaces with transforms. Review
- * controls mount only after the cards settle, at their final usable width. */
+/** Lay out the split once, then move its surfaces with transforms. Start the
+ * rows early in that motion, already using their final layout width. */
 export function useImportLayoutMotion(paneRef: RefObject<HTMLDivElement | null>, open: boolean, enabled: boolean) {
   const previous = useRef<DOMRect | null>(null);
   const animations = useRef<Animation[]>([]);
@@ -48,14 +49,18 @@ export function useImportLayoutMotion(paneRef: RefObject<HTMLDivElement | null>,
     const active = entering ? [motion, entering] : [motion];
     animations.current = active;
     let cancelled = false;
+    const revealTimer = open ? window.setTimeout(() => {
+      if (!cancelled) setPhase({ open, settled: true });
+    }, REVEAL_AFTER) : undefined;
     void Promise.all(active.map(animation => animation.finished)).then(() => {
       if (cancelled) return;
       animations.current = [];
       previous.current = pane.getBoundingClientRect();
-      setPhase({ open, settled: true });
+      setPhase(current => current.open === open && current.settled ? current : { open, settled: true });
     }).catch(() => {}); // Cancellation belongs to a newer layout or an unmount.
     return () => {
       cancelled = true;
+      window.clearTimeout(revealTimer);
       active.forEach(animation => animation.cancel());
       animations.current = [];
     };
