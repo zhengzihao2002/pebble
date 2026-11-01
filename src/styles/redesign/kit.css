@@ -114,7 +114,7 @@
 
 /* The header's live height, published by Header.tsx; the fallback covers the
    first frame. Sticky elements under the header use top: var(--pb-header-h). */
-.pebble-root { --pb-header-h: 4.6rem; }
+.pebble-root { --pb-header-h: var(--pb-header-layout-h, 4.6rem); }
 
 /* Delta chip. */
 .pebble-root .pb-delta {

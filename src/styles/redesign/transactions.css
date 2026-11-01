@@ -17,7 +17,9 @@
 .pebble-root .pb-txn-card-shadows { display: none; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
 .pebble-root .pb-txn-card-shadow { position: absolute; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); }
 .pebble-root .pb-txn-card-shadow[hidden] { display: none; }
-.pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; scrollbar-gutter: auto; }
+/* Keep the route's width stable through streamed loading and hydration. */
+.pebble-root:has(.pb-navigation-content:not([hidden]) [data-layout-path="/transactions"], .pb-navigation-preview [data-layout-path="/transactions"]) { scrollbar-gutter: auto; }
+.pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; }
 .pebble-root .pb-txn-page[data-txn-panes] [data-pb-pane-shadow] { box-shadow: none; }
 .pebble-root .pb-txn-rail {
   display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
@@ -31,6 +33,13 @@
    rail still gets its ledger grid (>= 720px). Below it the single column
    keeps the waterfall, the whole month strip and the grid. */
 @container content (min-width: 1220px) {
+  /* Contours already end at the viewport; cancel the main's trailing padding
+     so the fallback cannot introduce a temporary outer scrollbar. */
+  .pebble-root .pb-layout-skeleton-host[data-layout-path="/transactions"] { margin-bottom: calc(-1 * var(--pb-main-pad-bottom)); }
+  .pebble-root .pb-txn-skel-page.pb-txn-skel-page {
+    display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start;
+    height: calc(100dvh - var(--pb-header-h) - var(--pb-main-pad-top)); min-height: 0; overflow: clip;
+  }
   .pebble-root .pb-txn-page {
     position: relative; display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); gap: 1.5rem;
     height: calc(100dvh - var(--pb-header-h)); min-height: 0;
@@ -569,6 +578,9 @@
    Route loading skeleton (loading.tsx).
    ============================================================ */
 .pebble-root .pb-txn-skel-page { animation: pb-fade-in 0.2s ease 0.18s both; }
+.pebble-root .pb-txn-skel-page, .pebble-root .pb-txn-skel-summary, .pebble-root .pb-txn-skel-statement { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.pebble-root .pb-txn-skel-summary { gap: 1.25rem; }
+.pebble-root .pb-txn-skel-search { display: flex; align-items: center; gap: .65rem; padding: .85rem 1rem; }
 .pebble-root .pb-txn-skel-card { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .pebble-root .pb-txn-skel-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1.5rem; border-bottom: 1px solid var(--line); }
 .pebble-root .pb-txn-skel-chips { display: flex; gap: 0.5rem; overflow: hidden; }

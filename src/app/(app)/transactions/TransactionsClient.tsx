@@ -324,12 +324,12 @@ export function TransactionsClient({
   const scrollSummaryDown = () => {
     const pane = pageRef.current?.querySelector<HTMLElement>('.pb-txn-pane-left');
     if (!pane) return;
-    pane.scrollBy({ top: Math.max(180, pane.clientHeight * .65),
+    pane.scrollTo({ top: pane.scrollHeight,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   };
 
   return (
-    <div ref={pageRef} className="pb-txn-page">
+    <div ref={pageRef} className="pb-txn-page" data-layout-path="/transactions">
       {/* The left pane on a wide Mac (its own 'content' container so
           the five-figure tiers and the ledger stacking follow the rail's
           width); simply the top of the page everywhere else. */}

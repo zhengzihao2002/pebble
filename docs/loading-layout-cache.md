@@ -39,6 +39,11 @@ Transactions is recorded only while both panes are at their initial scroll
 positions, and clips its contours to the pane viewports. Offscreen statement
 rows cannot turn its skeleton into a full-page-height card. The separate pane
 shadow layer stores no additional content or data.
+Transactions keeps the same outer scrollbar gutter during its fallback and
+loaded states, so both use the same profile width. Its inline restore measures
+the rendered header before hydration to stabilize the pane height. The default
+estimate follows the summary/search/statement columns without the loaded
+frame's negative margins, keeping the handoff from applying its top offset twice.
 Navigation also captures the outgoing page before it is hidden. Sign-out retains each
 user's geometry and pauses departing-page captures so late pagehide, resize or
 animation events cannot overwrite it. Returning to that account restores the
@@ -51,8 +56,9 @@ the estimate and updates it.
 profile isolation, validation, expiry, user separation, content-free capture and
 explicit cache clearing. `tests/signOutLayoutCache.test.cjs` also checks the
 real sign-out flow's geometry retention, late-capture freeze, user switching
-and fresh-sign-in restoration. The route tests render the actual Reports and
-Analysis fallbacks and execute their cache bootstrap against a saved layout.
+and fresh-sign-in restoration. The route tests render the actual Reports,
+Analysis and Transactions fallbacks and execute their cache bootstrap against
+a saved layout, including Transactions' header calibration before hydration.
 
 Browser fixtures render the real app clients with synthetic props and stubbed
 actions, and import each route's actual loading.tsx. They compare card bounds and
