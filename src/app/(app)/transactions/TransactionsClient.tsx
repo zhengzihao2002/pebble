@@ -31,6 +31,7 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 import { ImportCsvButton } from '@/components/shared/ImportCsv';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { EmptyState } from '@/components/kit/EmptyState';
+import { usePaneCardShadows } from '@/components/transactions/usePaneCardShadows';
 
 interface TransactionsClientProps {
   transactions: Transaction[];
@@ -59,6 +60,8 @@ export function TransactionsClient({
 }: TransactionsClientProps) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.transactions;
+  const pageRef = useRef<HTMLDivElement>(null);
+  usePaneCardShadows(pageRef);
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
@@ -320,11 +323,12 @@ export function TransactionsClient({
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />;
 
   return (
-    <div className="pb-txn-page">
-      {/* The side rail on a wide Mac (sticky, its own 'content' container so
+    <div ref={pageRef} className="pb-txn-page">
+      {/* The left pane on a wide Mac (its own 'content' container so
           the five-figure tiers and the ledger stacking follow the rail's
           width); simply the top of the page everywhere else. */}
-      <div className="pb-txn-rail themed-scroll">
+      <div className="pb-txn-pane pb-txn-pane-left themed-scroll" role="region" aria-label={`${x.todayZone} · ${x.thisMonth}`} tabIndex={0}>
+      <div className="pb-txn-rail">
         <TodayLedger
           currentBalance={currentBalance}
           accounts={sortedAccounts}
@@ -385,7 +389,9 @@ export function TransactionsClient({
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
         />
       </div>
+      </div>
 
+      <div className="pb-txn-pane pb-txn-pane-right themed-scroll" role="region" aria-label={x.statement} tabIndex={0}>
       <div className="pb-txn-main" id="pb-txn-statement-col" ref={mainRef}>
         <SearchToolbar
           ref={barRef}
@@ -468,6 +474,7 @@ export function TransactionsClient({
             />
           )}
         </div>
+      </div>
       </div>
 
       {selectedEntry && (

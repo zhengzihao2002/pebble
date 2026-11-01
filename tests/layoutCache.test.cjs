@@ -117,3 +117,21 @@ test('captures the four standalone Analysis income tiles without duplicating til
  assert.equal(saved.boxes.filter(box=>box.width===200).length,0,'an existing outer card covers its own nested tiles');
  window.location.pathname='/accounts';
 });
+test('desktop Transactions captures only visible pane contours and ignores independently scrolled panes',()=>{
+ setup('transaction-panes');window.location.pathname='/transactions';
+ const pane={scrollTop:0,getBoundingClientRect:()=>({top:20,bottom:500})};
+ const split={querySelectorAll:()=>[pane]};
+ content={hidden:false,closest:()=>main,querySelector:selector=>selector==='.pb-txn-page[data-txn-panes]'?split:null,children:[{getBoundingClientRect:()=>({bottom:500})}]};
+ const shape=(left,top,width,height,virtual=false)=>({parentElement:content,getBoundingClientRect:()=>({left,top,width,height}),closest:selector=>selector==='.pb-txn-pane'?pane:null,matches:selector=>virtual&&selector==='.pb-txn-rail > .card'});
+ const cards=[shape(20,20,260,200,true),shape(20,250,260,200,true),shape(20,600,260,200,true),shape(310,20,270,1800)];
+ content.querySelectorAll=selector=>selector==='.pb-rise'?[]:cards;
+ cache.capturePageLayout('/transactions');
+ const saved=cache.readPageLayout('/transactions',main);
+ assert.equal(saved.height,480);assert.equal(saved.boxes.length,3);
+ assert.equal(saved.boxes.at(-1).height,480,'the long statement is clipped to its viewport');
+ assert.equal(saved.boxes[0].flat,false,'the external shadow layer is part of the visible card');
+ const before=localStorage.getItem(cache.LAYOUT_CACHE_PREFIX+owner);
+ pane.scrollTop=80;cache.capturePageLayout('/transactions');
+ assert.equal(localStorage.getItem(cache.LAYOUT_CACHE_PREFIX+owner),before,'pane scrolling cannot replace the initial layout');
+ window.location.pathname='/accounts';
+});

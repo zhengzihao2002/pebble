@@ -21,6 +21,8 @@ export function capturePageLayout(pathname: string): void {
   const user = owner();
   if (!content || !main || !user || pausedOwners.has(user) || content.hidden || pathname !== window.location.pathname
     || document.fonts?.status==='loading' || content.querySelector(loading) || (main.closest('.pebble-root')?.scrollTop ?? 0) > 2) return;
+  const panes = content.querySelector<HTMLElement>('.pb-txn-page[data-txn-panes]');
+  if (panes && [...panes.querySelectorAll<HTMLElement>('.pb-txn-pane')].some(pane => pane.scrollTop > 2)) return;
   const key = layoutProfile(pathname,main);
   if (!key || [...content.querySelectorAll('.pb-rise')].some(el=>el.getAnimations().some(a=>a.playState==='running'))) return;
   const bounds = main.getBoundingClientRect(), style = getComputedStyle(main);
@@ -36,13 +38,24 @@ export function capturePageLayout(pathname: string): void {
       if (visibleSet.has(parent)) { nested = true; break; }
     }
     if (nested) continue;
-    const rect = el.getBoundingClientRect();
+    let rect = el.getBoundingClientRect();
+    // Desktop statements are clipped by independent pane viewports. Save
+    // the visible contours, rather than an offscreen multi-page statement.
+    const pane = panes ? el.closest<HTMLElement>('.pb-txn-pane') : null;
+    if (pane) {
+      const viewport = pane.getBoundingClientRect();
+      const top = Math.max(rect.top, viewport.top);
+      const height = Math.min(rect.top + rect.height, viewport.bottom) - top;
+      if (height <= 1) continue;
+      rect = { ...rect, left: rect.left, top, width: rect.width, height };
+    }
     const x = rounded(rect.left-origin.x), y = Math.max(0,rounded(rect.top-origin.y));
     if (x < -100 || x >= width || y > 180000) continue;
     const s = getComputedStyle(el);
     boxes.push({ x, y, width:rounded(rect.width), height:Math.min(20000,rounded(rect.height)),
       radius:Math.min(200,parseFloat(s.borderTopLeftRadius)||0),
-      kind:el.matches('.pb-dash-hero') ? 'hero' : el.matches('.pb-ins-bar,.pb-ana-bar,.pb-rep-bar,.pb-rep-rail,.pb-settings-jump,.pb-annual-footer,.account-subnav') ? 'bar' : 'card', flat:s.boxShadow === 'none' });
+      kind:el.matches('.pb-dash-hero') ? 'hero' : el.matches('.pb-ins-bar,.pb-ana-bar,.pb-rep-bar,.pb-rep-rail,.pb-settings-jump,.pb-annual-footer,.account-subnav') ? 'bar' : 'card',
+      flat:s.boxShadow === 'none' && !(panes && el.matches('.pb-txn-rail > .card')) });
     if (boxes.length === MAX_BOXES) break;
   }
   if (!boxes.length) return;

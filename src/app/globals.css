@@ -642,10 +642,10 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
 
 /* Phones: a slimmer title bar - vertical space is precious there. */
 .pebble-header { padding: 0.7rem 1.25rem; }
-.pebble-main { padding: 1.25rem 1.25rem 6rem; flex: 1; }
+.pebble-main { --pb-main-pad-top: 1.25rem; --pb-main-pad-bottom: 6rem; padding: 1.25rem 1.25rem 6rem; flex: 1; }
 @media (min-width: 760px) and (min-height: 600px) {
   .pebble-header { padding: 1.3rem 2.5rem; }
-  .pebble-main { padding: 2.5rem; }
+  .pebble-main { --pb-main-pad-top: 2.5rem; --pb-main-pad-bottom: 2.5rem; padding: 2.5rem; }
 }
 
 .hero-balance { font-size: 2.5rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; margin: 0 0 1.1rem; }

@@ -2,8 +2,8 @@
 
 /* ============================================================
    Page frame. One column in priority order (Today, This month, the balance
-   chart, search, statement). On a wide Mac (content >= 1180px) a two-pane
-   grid: the summary in a sticky left rail, the statement on the right.
+   chart, search, statement). On a wide Mac (content >= 1220px), independent
+   summary and statement panes both scroll directly beneath the header.
 
    The rail is a container named `content`, so every existing
    `@container content` rule inside it - the five-figure tiers, the Today
@@ -12,6 +12,12 @@
    column is its own container (pb-txn-col) for the search bar and ledger.
    ============================================================ */
 .pebble-root .pb-txn-page { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.pebble-root .pb-txn-pane { display: contents; }
+.pebble-root .pb-txn-card-shadows { display: none; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.pebble-root .pb-txn-card-shadow { position: absolute; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); }
+.pebble-root .pb-txn-card-shadow[hidden] { display: none; }
+.pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; }
+.pebble-root .pb-txn-page[data-txn-panes] .pb-txn-rail > .card { box-shadow: none; }
 .pebble-root .pb-txn-rail {
   display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
   container-type: inline-size; container-name: content;
@@ -25,22 +31,25 @@
    keeps the waterfall, the whole month strip and the grid. */
 @container content (min-width: 1220px) {
   .pebble-root .pb-txn-page {
-    display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start; gap: 1.5rem;
+    position: relative; display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); gap: 1.5rem;
+    height: calc(100dvh - var(--pb-header-h)); min-height: 0;
+    margin-top: calc(-1 * var(--pb-main-pad-top));
+    margin-bottom: calc(-1 * var(--pb-main-pad-bottom));
   }
-  /* Keep the left pane independently scrollable, flush under the header.
-     No padding or negative margins around the cards. */
-  .pebble-root .pb-txn-rail {
-    position: sticky; top: calc(var(--pb-header-h) - 1px);
-    max-height: calc(100dvh - var(--pb-header-h) + 1px);
+  /* Both scrollports begin at the header. Initial card spacing belongs to
+     the scrolling content, so cards move directly under the header. */
+  .pebble-root .pb-txn-pane {
+    display: block; height: 100%; min-height: 0; min-width: 0;
     overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-    gap: 1.25rem;
   }
-  /* Recreate the frosted spill after the scroll contents are clipped. This
-     rail's tooltips portal to the app root, outside this filter's context. */
-  html:not([data-pb-card-glow="off"]) .pebble-root .pb-txn-rail {
-    filter: drop-shadow(0 0 9px color-mix(in srgb, var(--pine) 14%, transparent))
-      drop-shadow(0 0 20px color-mix(in srgb, var(--pine) 10%, transparent));
+  .pebble-root .pb-txn-pane:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
+  .pebble-root .pb-txn-rail, .pebble-root .pb-txn-main {
+    margin-top: var(--pb-main-pad-top); margin-bottom: var(--pb-main-pad-bottom);
   }
+  .pebble-root .pb-txn-rail { gap: 1.25rem; }
+  .pebble-root .pb-txn-pane .pb-txn-bar { top: 0; }
+  .pebble-root .pb-txn-pane .pb-txn-day-head { top: var(--pb-txn-bar-h, 0px); }
+  .pebble-root .pb-txn-pane .pb-txn-day { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
 }
 
 /* Card padding: 1.25rem 1.5rem, 1.1rem on a phone. */

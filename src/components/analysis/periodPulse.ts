@@ -12,7 +12,7 @@ export function pulseAnalysisPeriod(bar: HTMLElement) {
   Object.assign(halo.style, {
     position: 'fixed', display: 'block', pointerEvents: 'none', zIndex: '30',
     borderRadius: style.getPropertyValue('--pb-ana-pulse-radius').trim() || '1.15rem',
-    boxSizing: 'border-box', opacity: '.45',
+    boxSizing: 'border-box', border: `1px solid ${color}`, opacity: '.45',
   });
   // All styling is explicit: the body is outside the themed app root.
   document.body.append(halo);
@@ -38,15 +38,14 @@ export function pulseAnalysisPeriod(bar: HTMLElement) {
   };
   follow();
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    halo.style.boxShadow = `inset 0 0 0 3px ${color}`;
+    halo.style.boxShadow = `0 0 0 3px ${color}`;
     timer = window.setTimeout(stop, 1800);
   } else {
-    // Travel outward to the card's edge from inside it. A full-width sticky
-    // card touches the viewport, so an outside shadow would lose its sides.
+    // Start on the actual border and spread outward. The rounded border
+    // keeps a complete outline visible even beside a physical screen edge.
     animation = halo.animate([
-      { boxShadow: `inset 0 0 0 16px ${color}`, opacity: 0, offset: 0 },
-      { boxShadow: `inset 0 0 0 12px ${color}`, opacity: .45, offset: .2 },
-      { boxShadow: `inset 0 0 0 0 ${color}`, opacity: 0, offset: 1 },
+      { boxShadow: `0 0 0 0 ${color}`, opacity: .45 },
+      { boxShadow: `0 0 0 16px ${color}`, opacity: 0 },
     ], { duration: 1800, easing: 'ease-out' });
     animation.onfinish = stop;
   }

@@ -34,8 +34,12 @@ geometry never forces financial content into stale dimensions.
 
 Loaded content is observed for card and viewport resizes, animation completion,
 font completion and DOM changes. Only loaded, visible pages at their initial scroll position are
-recorded, avoiding the displaced coordinates of pinned/sticky cards. Navigation
-also captures the outgoing page before it is hidden. Sign-out retains each
+recorded, avoiding the displaced coordinates of pinned/sticky cards. Desktop
+Transactions is recorded only while both panes are at their initial scroll
+positions, and clips its contours to the pane viewports. Offscreen statement
+rows cannot turn its skeleton into a full-page-height card. The separate left
+shadow layer stores no additional content or data.
+Navigation also captures the outgoing page before it is hidden. Sign-out retains each
 user's geometry and pauses departing-page captures so late pagehide, resize or
 animation events cannot overwrite it. Returning to that account restores the
 same layouts in the fresh document; other users read only their own entries.
