@@ -65,8 +65,6 @@ export function TransactionsClient({
   // The whole ledger entry, not only the record, so the dialog can later show
   // where the record sits in the running balance. Today it reads the record.
   const [selectedEntry, setSelectedEntry] = useState<StatementEntry | null>(null);
-  // Month changes slide the statement in from the side the month came from.
-  const [slide, setSlide] = useState<'older' | 'newer' | null>(null);
 
   // Search and filters. Client only: they run over the ledger already on the
   // page, so nothing is fetched.
@@ -179,11 +177,8 @@ export function TransactionsClient({
 
   const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
   const canGoNewer = selectedMonthIndex > 0;
-  // The slide direction is worked out here, outside the state updater:
-  // updaters must stay pure (StrictMode runs them twice).
   const goToMonth = useCallback((i: number) => {
     if (i === selectedMonthIndex || i < 0 || i >= monthOptions.length) return;
-    setSlide(i > selectedMonthIndex ? 'older' : 'newer');
     setSelectedMonthIndex(i);
   }, [selectedMonthIndex, monthOptions.length]);
 
@@ -323,8 +318,6 @@ export function TransactionsClient({
   const statementCount = fig.entries.length;
 
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />;
-  const monthKey = `${selectedMonthInfo.year}-${selectedMonthInfo.month}-${lensId ?? ''}-${searching ? 's' : ''}`;
-  const slideClass = slide ? ` pb-txn-slide-${slide}` : '';
 
   return (
     <div className="pb-txn-page">
@@ -405,14 +398,9 @@ export function TransactionsClient({
           accountOptions={accountOptions}
         />
 
-        {/* The key also changes when search starts or ends and when the lens
-            changes; the direction is cleared once the slide has played, so
-            those remount in place instead of sliding sideways. */}
-        <div
-          key={monthKey}
-          className={`pb-txn-swap${slideClass}`}
-          onAnimationEnd={(e) => { if (e.target === e.currentTarget) setSlide(null); }}
-        >
+        {/* Keep the statement mounted as months change. Recreating it replayed
+            a fade and sideways slide on the entire card and its glow. */}
+        <div>
           {searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">

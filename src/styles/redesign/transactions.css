@@ -512,15 +512,6 @@
 .pebble-root .pb-txn-older-hint { display: none; }
 @media (hover: hover) and (pointer: fine) { .pebble-root .pb-txn-older-hint { display: inline; } }
 
-/* Month change: the statement slides in 6px from the side the month came
-   from. `backwards`, not `both`: a transform left in place after the
-   animation would make this box the containing block for the rows' fixed
-   balance tooltips. Reduced motion: the global rule makes it instant. */
-.pebble-root .pb-txn-slide-older { animation: pb-txn-from-left var(--pb-dur-std) var(--pb-ease-out) backwards; }
-.pebble-root .pb-txn-slide-newer { animation: pb-txn-from-right var(--pb-dur-std) var(--pb-ease-out) backwards; }
-@keyframes pb-txn-from-left { from { opacity: 0; transform: translateX(-6px); } }
-@keyframes pb-txn-from-right { from { opacity: 0; transform: translateX(6px); } }
-
 /* ============================================================
    Route loading skeleton (loading.tsx).
    ============================================================ */
