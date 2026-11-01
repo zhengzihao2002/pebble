@@ -11,6 +11,8 @@ export const transactionsEn = {
   // Zone labels: today's figures and the month's are different things.
   todayZone: 'Today',
   thisMonth: 'This month',
+  moreBelow: 'More below',
+  scrollSummaryDown: 'Scroll the account and month summary down',
   lensEyebrow: 'This month · {account}',
   deltaThisMonth: '{amount} this month',
   bridgeLabel: 'How the balance moved this month',
@@ -61,6 +63,8 @@ export const transactionsEn = {
 export const transactionsZh: typeof transactionsEn = {
   todayZone: '今天',
   thisMonth: '本月',
+  moreBelow: '下方还有内容',
+  scrollSummaryDown: '向下滚动账户与月份概览',
   lensEyebrow: '本月 · {account}',
   deltaThisMonth: '本月 {amount}',
   bridgeLabel: '本月余额变动',

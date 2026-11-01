@@ -25,6 +25,7 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
       frame = 0;
       const split = page.getClientRects().length > 0 && getComputedStyle(pane).display !== 'contents';
       page.toggleAttribute('data-txn-panes', split);
+      page.toggleAttribute('data-txn-more-below', split && pane.scrollHeight - pane.scrollTop - pane.clientHeight > 2);
       layer.style.display = split ? 'block' : 'none';
       if (toolbar && rightPane) {
         const stuck = split && toolbar.getBoundingClientRect().top <= rightPane.getBoundingClientRect().top + .5;

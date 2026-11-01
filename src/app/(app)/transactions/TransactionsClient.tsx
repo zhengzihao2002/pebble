@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX } from 'lucide-react';
+import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX, ChevronDown } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -321,13 +321,19 @@ export function TransactionsClient({
   const statementCount = fig.entries.length;
 
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />;
+  const scrollSummaryDown = () => {
+    const pane = pageRef.current?.querySelector<HTMLElement>('.pb-txn-pane-left');
+    if (!pane) return;
+    pane.scrollBy({ top: Math.max(180, pane.clientHeight * .65),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
 
   return (
     <div ref={pageRef} className="pb-txn-page">
       {/* The left pane on a wide Mac (its own 'content' container so
           the five-figure tiers and the ledger stacking follow the rail's
           width); simply the top of the page everywhere else. */}
-      <div className="pb-txn-pane pb-txn-pane-left themed-scroll" role="region" aria-label={`${x.todayZone} · ${x.thisMonth}`} tabIndex={0}>
+      <div id="pb-txn-summary-pane" className="pb-txn-pane pb-txn-pane-left themed-scroll" role="region" aria-label={`${x.todayZone} · ${x.thisMonth}`} tabIndex={0}>
       <div className="pb-txn-rail">
         <TodayLedger
           currentBalance={currentBalance}
@@ -388,6 +394,12 @@ export function TransactionsClient({
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
         />
+      </div>
+      <div className="pb-txn-scroll-hint">
+        <button type="button" className="pb-txn-more-button" onClick={scrollSummaryDown}
+          aria-label={x.scrollSummaryDown} aria-controls="pb-txn-summary-pane">
+          <span>{x.moreBelow}</span><ChevronDown size={14} aria-hidden="true" />
+        </button>
       </div>
       </div>
 
