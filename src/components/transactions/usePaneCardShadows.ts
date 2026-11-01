@@ -49,7 +49,9 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
         shadow.className = 'pb-txn-card-shadow';
         card.setAttribute('data-pb-pane-shadow', '');
         layer.append(shadow); records.set(card, { shadow, pane: host });
-        observer.observe(card);
+        // Sticky surfaces expand their padding while their content stays fixed.
+        // Follow the painted border through that animation, not the content box.
+        observer.observe(card, { box: 'border-box' });
       }
       for (const [card, { shadow, pane: host }] of records) {
         const rect = card.getBoundingClientRect();

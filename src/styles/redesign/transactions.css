@@ -89,9 +89,16 @@
   .pebble-root .pb-txn-rail { gap: 1.25rem; }
   .pebble-root .pb-txn-pane .pb-txn-bar {
     position: sticky; top: 0; z-index: 6; margin-inline: 0;
-    transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out);
+    transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out),
+      padding-inline-start .32s var(--pb-ease-out), padding-inline-end .32s var(--pb-ease-out);
   }
-  .pebble-root .pb-txn-pane .pb-txn-bar[data-stuck="true"] { margin-inline: calc(-1 * var(--pb-txn-bar-bleed, 0px)); }
+  /* Grow the surface, keeping the controls at their original width. Reflowing
+     them while sticky can shorten the pane and clamp its scroll position back
+     above the sticky threshold, repeatedly expanding and collapsing the bar. */
+  .pebble-root .pb-txn-pane .pb-txn-bar[data-stuck="true"] {
+    margin-inline: calc(-1 * var(--pb-txn-bar-bleed, 0px));
+    padding-inline: calc(1rem + var(--pb-txn-bar-bleed, 0px));
+  }
   .pebble-root .pb-txn-pane .pb-txn-day-head { top: var(--pb-txn-bar-h, 0px); }
   .pebble-root .pb-txn-pane .pb-txn-day { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
 }
