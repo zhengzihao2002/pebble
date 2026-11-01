@@ -460,13 +460,13 @@ export const zh: typeof en = {
     blurb: '选择配色。每个主题都有浅色和深色版本，收入与支出的颜色在所有主题中都清晰可辨。',
     original: '原版',
     ocean: '海洋',
+    glacier: '冰川',
     sakura: '樱花',
     slate: '石板',
     sand: '沙丘',
     lavender: '薰衣草',
     lagoon: '潟湖',
     graphite: '石墨',
-    amber: '琥珀',
   },
 
   authBrand: {

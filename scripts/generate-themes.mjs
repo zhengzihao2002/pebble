@@ -36,6 +36,10 @@ const THEMES = {
     light: { paper: '#EEF3F6', mist: '#FFFFFF', ink: '#142230', inkSoft: '#56687A', pine: '#1E5F8C', pineSoft: '#E0ECF5', gold: '#B7792B', goldSoft: '#F5E7D2', wine: '#A33D48', wineSoft: '#F6E1E3', line: '#DCE4EA', shadowRgb: '20,34,48', overlay: 'rgba(238, 243, 246, 0.6)' },
     dark: { paper: '#0F1A22', mist: '#16242F', ink: '#E8EEF2', inkSoft: '#8DA0AF', pine: '#5FA8D8', pineSoft: '#16303F', gold: '#E0A85A', goldSoft: '#372A18', wine: '#E0898F', wineSoft: '#3B2226', line: '#253643', overlay: 'rgba(15, 26, 34, 0.6)' },
   },
+  glacier: {
+    light: { paper: '#EDF8FE', mist: '#FBFEFF', ink: '#193145', inkSoft: '#5A6F7D', pine: '#2B7099', pineSoft: '#DDF2FF', gold: '#7771AF', goldSoft: '#ECE8F8', wine: '#A03F61', wineSoft: '#F6E1E9', line: '#D6E8F2', shadowRgb: '25,49,69', overlay: 'rgba(237, 248, 254, 0.6)' },
+    dark: { paper: '#111E2A', mist: '#1A2B3A', ink: '#ECF6FC', inkSoft: '#9FB9CC', pine: '#8DCEEF', pineSoft: '#203F54', gold: '#C1B4EB', goldSoft: '#342D4A', wine: '#EEA0B8', wineSoft: '#442837', line: '#30485B', overlay: 'rgba(17, 30, 42, 0.6)' },
+  },
   sakura: {
     light: { paper: '#F9F1F3', mist: '#FFFAFC', ink: '#2B1B21', inkSoft: '#735C65', pine: '#7D4D88', pineSoft: '#F1E4F3', gold: '#B8577A', goldSoft: '#F6E0E8', wine: '#9C3B30', wineSoft: '#F5E1DD', line: '#EEDFE3', shadowRgb: '43,27,33', overlay: 'rgba(249, 241, 243, 0.6)' },
     dark: { paper: '#1C1418', mist: '#261B20', ink: '#F2E8EB', inkSoft: '#A8939B', pine: '#D0A2D4', pineSoft: '#3A263C', gold: '#E68AAB', goldSoft: '#3A2229', wine: '#E08C7F', wineSoft: '#3B231F', line: '#3A2A30', overlay: 'rgba(28, 20, 24, 0.6)' },
@@ -60,10 +64,7 @@ const THEMES = {
     light: { paper: '#F2F2F2', mist: '#FFFFFF', ink: '#202124', inkSoft: '#64656B', pine: '#4C505C', pineSoft: '#E6E7EB', gold: '#8C713D', goldSoft: '#F0E9DC', wine: '#A13E46', wineSoft: '#F5E1E3', line: '#DDDFE3', shadowRgb: '32,33,36', overlay: 'rgba(242, 242, 242, 0.6)' },
     dark: { paper: '#141517', mist: '#1F2024', ink: '#F0F0F2', inkSoft: '#A0A2AB', pine: '#B9BECE', pineSoft: '#333743', gold: '#D2BB88', goldSoft: '#393223', wine: '#E59BA2', wineSoft: '#402A30', line: '#35373E', overlay: 'rgba(20, 21, 23, 0.6)' },
   },
-  amber: {
-    light: { paper: '#FAF4E8', mist: '#FFFDFA', ink: '#30281A', inkSoft: '#71644C', pine: '#75601D', pineSoft: '#F2E8C9', gold: '#3B7180', goldSoft: '#DFECEF', wine: '#A04438', wineSoft: '#F6E1DC', line: '#E8DDC6', shadowRgb: '48,40,26', overlay: 'rgba(250, 244, 232, 0.6)' },
-    dark: { paper: '#1E1A12', mist: '#292318', ink: '#F5ECDC', inkSoft: '#B6A88D', pine: '#D8BD70', pineSoft: '#3B321B', gold: '#78B6BE', goldSoft: '#1D3539', wine: '#E99E92', wineSoft: '#432A24', line: '#443A27', overlay: 'rgba(30, 26, 18, 0.6)' },
-  },
+
 };
 
 const TOKENS = ['paper', 'mist', 'ink', 'inkSoft', 'pine', 'pineSoft', 'gold', 'goldSoft', 'wine', 'wineSoft', 'line'];

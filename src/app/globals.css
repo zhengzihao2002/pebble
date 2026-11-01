@@ -385,6 +385,23 @@ html[data-pebble-theme="ocean"] .pebble-root.dark {
   --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(15, 26, 34, 0.6);
 }
+html[data-pebble-theme="glacier"] { background-color: #EDF8FE; }
+html.pebble-dark[data-pebble-theme="glacier"] { background-color: #111E2A; }
+html[data-pebble-theme="glacier"] .pebble-root {
+  --paper: #EDF8FE; --mist: #FBFEFF; --ink: #193145; --ink-soft: #5A6F7D; --pine: #2B7099; --pine-soft: #DDF2FF; --gold: #7771AF; --gold-soft: #ECE8F8; --wine: #A03F61; --wine-soft: #F6E1E9; --line: #D6E8F2;
+  --ink-faint: #7D8F9C; --pine-strong: #28668C; --backdrop: rgba(25, 49, 69, 0.28);
+  --shadow: 0 1px 2px rgba(25,49,69,0.04), 0 10px 28px -14px rgba(25,49,69,0.18);
+  --shadow-float: 0 2px 6px rgba(25,49,69,0.06), 0 28px 64px -24px rgba(25,49,69,0.38);
+  --overlay-tint: rgba(237, 248, 254, 0.6);
+}
+html.pebble-dark[data-pebble-theme="glacier"] .pebble-root,
+html[data-pebble-theme="glacier"] .pebble-root.dark {
+  --paper: #111E2A; --mist: #1A2B3A; --ink: #ECF6FC; --ink-soft: #9FB9CC; --pine: #8DCEEF; --pine-soft: #203F54; --gold: #C1B4EB; --gold-soft: #342D4A; --wine: #EEA0B8; --wine-soft: #442837; --line: #30485B;
+  --ink-faint: #6B7780; --pine-strong: #9CD4F1; --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
+  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
+  --overlay-tint: rgba(17, 30, 42, 0.6);
+}
 html[data-pebble-theme="sakura"] { background-color: #F9F1F3; }
 html.pebble-dark[data-pebble-theme="sakura"] { background-color: #1C1418; }
 html[data-pebble-theme="sakura"] .pebble-root {
@@ -486,23 +503,6 @@ html[data-pebble-theme="graphite"] .pebble-root.dark {
   --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
   --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
   --overlay-tint: rgba(20, 21, 23, 0.6);
-}
-html[data-pebble-theme="amber"] { background-color: #FAF4E8; }
-html.pebble-dark[data-pebble-theme="amber"] { background-color: #1E1A12; }
-html[data-pebble-theme="amber"] .pebble-root {
-  --paper: #FAF4E8; --mist: #FFFDFA; --ink: #30281A; --ink-soft: #71644C; --pine: #75601D; --pine-soft: #F2E8C9; --gold: #3B7180; --gold-soft: #DFECEF; --wine: #A04438; --wine-soft: #F6E1DC; --line: #E8DDC6;
-  --ink-faint: #918A7D; --pine-strong: #6A571D; --backdrop: rgba(48, 40, 26, 0.28);
-  --shadow: 0 1px 2px rgba(48,40,26,0.04), 0 10px 28px -14px rgba(48,40,26,0.18);
-  --shadow-float: 0 2px 6px rgba(48,40,26,0.06), 0 28px 64px -24px rgba(48,40,26,0.38);
-  --overlay-tint: rgba(250, 244, 232, 0.6);
-}
-html.pebble-dark[data-pebble-theme="amber"] .pebble-root,
-html[data-pebble-theme="amber"] .pebble-root.dark {
-  --paper: #1E1A12; --mist: #292318; --ink: #F5ECDC; --ink-soft: #B6A88D; --pine: #D8BD70; --pine-soft: #3B321B; --gold: #78B6BE; --gold-soft: #1D3539; --wine: #E99E92; --wine-soft: #432A24; --line: #443A27;
-  --ink-faint: #746E63; --pine-strong: #DDC581; --backdrop: rgba(0, 0, 0, 0.5);
-  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 28px -14px rgba(0,0,0,0.6);
-  --shadow-float: 0 2px 6px rgba(0,0,0,0.4), 0 28px 64px -24px rgba(0,0,0,0.75);
-  --overlay-tint: rgba(30, 26, 18, 0.6);
 }
 /* @generated-themes:end */
 /* No universal transition: theme switches fade through the registered colour

@@ -518,13 +518,13 @@ export const en = {
     blurb: 'Choose a colour palette. Every theme has a light and a dark version, and money in and money out stay clearly distinct in all of them.',
     original: 'Original',
     ocean: 'Ocean',
+    glacier: 'Glacier',
     sakura: 'Sakura',
     slate: 'Slate',
     sand: 'Sand',
     lavender: 'Lavender',
     lagoon: 'Lagoon',
     graphite: 'Graphite',
-    amber: 'Amber',
   },
 
   authBrand: {

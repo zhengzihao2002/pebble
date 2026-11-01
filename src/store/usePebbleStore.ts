@@ -5,7 +5,7 @@ import type { ReportFilterPrefs } from '@/components/reports/types';
 import type { Locale } from '@/lib/i18n/locale';
 import { LAST_USER_KEY, PEBBLE_UI_STORAGE_KEY, userStorageKey } from './storageKeys';
 import type { CjkFontChoice, FontChoice } from '@/lib/fontChoice';
-import type { ThemeChoice } from '@/lib/themeChoice';
+import { resolveThemeChoice, type ThemeChoice } from '@/lib/themeChoice';
 import type { Appearance } from '@/lib/appearance';
 import { DEFAULT_SAFETY_LOCKS, type SafetyLockKey, type SafetyLocks } from '@/lib/safetyLocks';
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
@@ -238,11 +238,10 @@ export const usePebbleStore = create<PebbleUIState>()(
       // Defaults FIRST, then what is saved. The default merge started from
       // the current in-memory state, which after switching users is the
       // PREVIOUS user's - a user with nothing saved would have inherited it.
-      merge: (persisted, current) => ({
-        ...current,
-        ...DEFAULT_PREFS,
-        ...((persisted ?? {}) as Partial<PebblePrefs>),
-      }),
+      merge: (persisted, current) => {
+        const merged = { ...current, ...DEFAULT_PREFS, ...((persisted ?? {}) as Partial<PebblePrefs>) };
+        return { ...merged, themeChoice: resolveThemeChoice(merged.themeChoice) };
+      },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.
       version: 2,
