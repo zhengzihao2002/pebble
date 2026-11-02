@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { HTML_LANG } from '@/lib/i18n';
@@ -31,6 +31,19 @@ export function HtmlPreferenceSync() {
   const onAuth = pathname?.startsWith('/auth/') ?? false;
   const dark = useResolvedDark(onAuth);
   const locale = usePebbleStore((s) => s.locale);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (onAuth) { root.removeAttribute('data-pb-loading-style'); return; }
+    // Read the hydrated store directly: the static SSR snapshot must not
+    // undo the spinner chosen by the pre-paint script for even one frame.
+    const apply = () => {
+      const style = usePebbleStore.getState().loadingStyle === 'spinner' ? 'spinner' : 'cached';
+      if (root.getAttribute('data-pb-loading-style') !== style) root.setAttribute('data-pb-loading-style', style);
+    };
+    apply();
+    return usePebbleStore.subscribe(apply);
+  }, [onAuth]);
 
   useEffect(() => {
     const root = document.documentElement;

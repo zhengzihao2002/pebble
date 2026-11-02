@@ -11,6 +11,7 @@ import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { HealthBarControl } from '@/components/settings/HealthBarControl';
 import { ChartTypeControl } from '@/components/settings/ChartTypeControl';
 import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
+import { LoadingStyleControl } from '@/components/settings/LoadingStyleControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
 import { PrivacyControl } from '@/components/settings/PrivacyControl';
@@ -146,6 +147,7 @@ export function SettingsClient({
             <CardGlowControl />
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
             <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
+            <LoadingStyleControl />
             <WelcomeAnimationControl />
           </div>
         </>

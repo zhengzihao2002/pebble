@@ -1,5 +1,14 @@
 # Remembered loading layouts
 
+Settings > Appearance > Page loading offers **Cached cards** (the default)
+or **Traditional spinner**, a large centered circle with Loading underneath.
+The per-user device preference also applies to initial streamed fallbacks and
+client initialization. It is restored before paint, so spinner mode never
+flashes cached contours. Spinner mode skips restoring cached geometry; recording
+loaded layouts continues so returning to Cached cards can reuse them. Both
+styles stay visible through the handoff until incoming content is ready, and
+respect reduced motion.
+
 The browser records the loaded page's card rectangles and reuses them as pulsing
 skeleton contours on later visits. It stores numbers and small shape enums only:
 no text, HTML, amounts, transaction/account IDs, or financial records are read.

@@ -27,7 +27,9 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
       if (host) {
         if (!host.hasAttribute('data-layout-ready')) return;
         reset();
-        const source = host.hasAttribute('data-layout-restored')
+        const source = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner'
+          ? host.querySelector<HTMLElement>('.pb-loading-traditional')
+          : host.hasAttribute('data-layout-restored')
           ? host.querySelector<HTMLElement>('.pb-cached-layout')
           : host.querySelector<HTMLElement>('.pb-layout-estimate');
         if (source) {

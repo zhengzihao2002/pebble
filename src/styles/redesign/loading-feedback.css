@@ -59,3 +59,30 @@
 /* A rise-in would move the incoming cards away from their saved contours. */
 .pebble-root .pb-page-arriving .pb-rise { animation:none; }
 @media(prefers-reduced-motion:reduce) { .pebble-root .pb-page-handoff { display:none; } }
+
+/* Both choices are in the streamed HTML. The pre-paint preference selects
+   one immediately, without flashing card contours before React hydrates. */
+.pb-loading-traditional { display:none; }
+@keyframes pb-page-loading-spin { to { transform:rotate(360deg); } }
+html[data-pb-loading-style="spinner"] .pebble-root .pb-layout-skeleton-host > :is(.pb-layout-estimate,.pb-layout-restored) { display:none; }
+html[data-pb-loading-style="spinner"] .pebble-root .pb-loading-traditional {
+  display:grid;
+  min-height:max(0px,calc(100svh - var(--pb-header-h,var(--pb-header-layout-h,6rem)) - var(--pb-main-pad-top,2.5rem) - var(--pb-main-pad-bottom,2.5rem)));
+  align-content:center;
+  justify-items:center;
+  gap:1.25rem;
+  color:var(--ink-soft);
+}
+.pebble-root .pb-loading-traditional-circle {
+  width:clamp(4rem,8vw,5.5rem);
+  aspect-ratio:1;
+  border:.3rem solid color-mix(in srgb,var(--pine) 18%,transparent);
+  border-top-color:var(--pine);
+  border-radius:50%;
+  animation:pb-page-loading-spin .9s linear infinite;
+}
+.pebble-root .pb-loading-traditional p { margin:0; font-size:1rem; }
+@media(prefers-reduced-motion:reduce) {
+  .pebble-root .pb-loading-traditional-circle { animation:none; }
+  .pebble-root .pb-page-handoff:has(.pb-loading-traditional) { display:block; }
+}

@@ -67,6 +67,9 @@ export const SHOW_WELCOME_FIELD = 'showWelcome';
 /** Field the pre-paint script reads to avoid flashing card highlights on load. */
 export const CARD_GLOW_FIELD = 'showCardGlow';
 
+/** Field the pre-paint script reads to choose the page loading surface. */
+export const LOADING_STYLE_FIELD = 'loadingStyle';
+
 /**
  * sessionStorage flag set by the auth pages (WelcomeArm): the next app page
  * plays the welcome animation once, then clears it.

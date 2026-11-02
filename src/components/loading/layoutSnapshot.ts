@@ -63,7 +63,8 @@ export function snapshotTools() {
         if (html.style.getPropertyValue('--pb-header-layout-h') !== value) html.style.setProperty('--pb-header-layout-h', value);
       }
     }
-    const saved = layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
+    const saved = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner'
+      ? null : layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
     if (!saved) {
       host.removeAttribute('data-layout-restored'); surface.replaceChildren(); delete surface.dataset.geometry;
       host.setAttribute('data-layout-ready','true');

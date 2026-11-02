@@ -60,6 +60,8 @@ export type SelectMode = 'searchable' | 'plain';
 // How the Dashboard's "Where it went" card draws its categories.
 export type BreakdownChart = 'donut' | 'bar';
 
+export type LoadingStyle = 'cached' | 'spinner';
+
 interface PebblePrefs {
   // Light, Dark, or System (follows the device live - useResolvedDark).
   appearance: Appearance;
@@ -103,6 +105,8 @@ interface PebblePrefs {
   safetyLocks: Partial<SafetyLocks>;
   // Welcome animation after signing in. On by default.
   showWelcome: boolean;
+  // Page loading: remembered card contours by default, or a centered spinner.
+  loadingStyle: LoadingStyle;
   // Read as 'bar' only when exactly 'bar'; anything else is the donut.
   breakdownChart: BreakdownChart;
   // Privacy mode: whether amounts start blurred when the app opens.
@@ -142,6 +146,7 @@ interface PebbleUIState extends PebblePrefs {
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
+  setLoadingStyle: (value: LoadingStyle) => void;
   setBreakdownChart: (value: BreakdownChart) => void;
 }
 
@@ -169,6 +174,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
+  loadingStyle: 'cached',
   breakdownChart: 'donut',
   privacyOnLaunch: false,
   allowTextSelect: false,
@@ -228,6 +234,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
+      setLoadingStyle: (value) => set({ loadingStyle: value }),
       setBreakdownChart: (value) => set({ breakdownChart: value }),
       privacyOn: false,
       setPrivacyOn: (value) => set({ privacyOn: value }),
@@ -270,7 +277,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         }
         return state as unknown as PebbleUIState;
       },
-      // appearance, locale, fonts, themeChoice and showCardGlow MUST stay
+      // appearance, locale, fonts, themeChoice, showCardGlow and loadingStyle MUST stay
       // here - the pre-paint script reads them (see storageKeys.ts).
       partialize: (state): PebblePrefs => ({
         appearance: state.appearance,
@@ -293,6 +300,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).
         showWelcome: state.showWelcome,
+        loadingStyle: state.loadingStyle,
         breakdownChart: state.breakdownChart,
         privacyOnLaunch: state.privacyOnLaunch,
         allowTextSelect: state.allowTextSelect,
