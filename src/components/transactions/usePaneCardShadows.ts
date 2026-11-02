@@ -25,7 +25,11 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
       frame = 0;
       const split = page.getClientRects().length > 0 && getComputedStyle(pane).display !== 'contents';
       page.toggleAttribute('data-txn-panes', split);
-      page.toggleAttribute('data-txn-more-below', split && pane.scrollHeight - pane.scrollTop - pane.clientHeight > 2);
+      // The cue ends with the cards, while the rail's trailing space remains
+      // scrollable. Padding alone is not more content to discover.
+      const lastCard = [...pane.querySelectorAll<HTMLElement>('.pb-txn-rail > .card')].at(-1);
+      page.toggleAttribute('data-txn-more-below', split && !!lastCard
+        && lastCard.getBoundingClientRect().bottom > pane.getBoundingClientRect().bottom + 2);
       layer.style.display = split ? 'block' : 'none';
       if (toolbar && rightPane) {
         const stuck = split && toolbar.getBoundingClientRect().top <= rightPane.getBoundingClientRect().top + .5;
