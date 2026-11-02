@@ -36,28 +36,26 @@
 /* Resolve the initial theme without interpolating registered light defaults. */
 .pebble-root:not([data-pb-theme-ready]):has(.pb-nav-glass-host) { transition: none; }
 .pebble-root .pb-shell-side-pinned .nav-btn.active,
-.pebble-root .pb-shell-side-pinned .nav-btn.active:hover,
-.pebble-root .account-tabs-thumb {
+.pebble-root .pb-shell-side-pinned .nav-btn.active:hover {
   background: linear-gradient(145deg, color-mix(in srgb, var(--mist) 55%, transparent), transparent 58%), color-mix(in srgb, var(--pine) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--pine) 24%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mist) 70%, transparent), 0 5px 15px -9px color-mix(in srgb, var(--pine) 45%, transparent);
   color: var(--pine);
   -webkit-backdrop-filter: saturate(1.6) blur(14px); backdrop-filter: saturate(1.6) blur(14px);
 }
-.pebble-root .account-tabs a[aria-current="page"] { color: var(--pine); }
-.pebble-root .account-tabs-thumb.pb-sliding { transition-duration: .6s; }
+.pebble-root .account-tabs a[aria-current="page"] { color: var(--pine); font-weight: 600; }
+.pebble-root .account-tabs[data-pb-glass-ready="true"] a[aria-current="page"] { background: transparent; box-shadow: none; }
 .pebble-root .pb-settings-glass { position: relative; }
 .pebble-root .pb-settings-glass[data-pb-glass-ready="true"] [data-pb-nav-selected="true"] {
   background: transparent; box-shadow: none; color: var(--pine);
 }
 
-.pebble-root .account-tabs:not(.pb-thumb-ready) a[aria-current="page"] { background: color-mix(in srgb,var(--pine) 16%,transparent); }
-
 /* The server-rendered selected link must already look like the measured glass.
    Otherwise hydration replaces a solid legacy pill with a different surface. */
 .pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active,
 .pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active:hover,
-.pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before {
+.pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before,
+.pebble-root .account-tabs:not([data-pb-glass-ready="true"]) a[aria-current="page"] {
   background:linear-gradient(145deg,color-mix(in srgb,var(--mist) 72%,transparent),transparent 58%),color-mix(in srgb,var(--pine) 16%,transparent);
   box-shadow:inset 0 1px 0 color-mix(in srgb,var(--mist) 85%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--pine) 12%,transparent),0 5px 15px -9px color-mix(in srgb,var(--pine) 55%,transparent);
   outline:1px solid color-mix(in srgb,var(--pine) 24%,transparent); outline-offset:-1px;
@@ -67,7 +65,7 @@
 .pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before { border-radius:1rem; }
 .pebble-root .pb-settings-glass[data-pb-glass-ready] .settings-nav-btn[data-pb-nav-selected="true"]:hover,
 .pebble-root .pb-settings-glass[data-pb-glass-ready] .pb-settings-jump-btn[data-pb-nav-selected="true"]:hover,
-.pebble-root .account-tabs.pb-thumb-ready a[aria-current="page"]:hover {
+.pebble-root .account-tabs[data-pb-glass-ready="true"] a[aria-current="page"]:hover {
   background:transparent; box-shadow:none; color:var(--pine);
 }
 

@@ -49,7 +49,10 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
         content.style.opacity='0'; content.inert=true;
         stage.append(overlay);
       }
-      if (content.querySelector('[aria-busy="true"],[data-slot="skeleton"]') || document.fonts?.status==='loading') return;
+      // Preloaded, hidden panels must not hold the visible page's handoff.
+      const busy = [...content.querySelectorAll('[aria-busy="true"],[data-slot="skeleton"]')]
+        .some(element => !element.closest('[hidden]'));
+      if (busy || document.fonts?.status==='loading') return;
       // Allow mount effects, saved views and chart ResizeObservers to settle
       // behind the existing contours before making any data visible.
       timer=window.setTimeout(() => {

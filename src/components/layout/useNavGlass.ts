@@ -3,7 +3,8 @@
 import { useLayoutEffect, useRef } from 'react';
 
 /** One persistent selection surface follows the committed destination. */
-export function useNavGlass<T extends HTMLElement>(selection: string, compact = false) {
+export function useNavGlass<T extends HTMLElement>(selection: string, compact = false,
+  selector = '[data-pb-nav-selected="true"]:not([href="/settings"]):not([href^="/account/"])') {
   const ref = useRef<T>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
 
@@ -15,7 +16,7 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
     let readyFrame = 0;
     const measure = () => {
       frame = 0;
-      const target = host.querySelector<HTMLElement>('[data-pb-nav-selected="true"]:not([href="/settings"]):not([href^="/account/"])');
+      const target = host.querySelector<HTMLElement>(selector);
       const bounds = host.getBoundingClientRect();
       if (!target || bounds.width < 1 || bounds.height < 1) {
         delete host.dataset.pbGlassReady;
@@ -23,6 +24,11 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
         return;
       }
       const item = target.getBoundingClientRect();
+      if (item.width < 1 || item.height < 1) {
+        delete host.dataset.pbGlassReady;
+        delete host.dataset.pbGlassAnimated;
+        return;
+      }
       const width = compact ? Math.min(item.width, parseFloat(getComputedStyle(document.documentElement).fontSize) * 4.75) : item.width;
       const left = item.left - bounds.left - host.clientLeft + host.scrollLeft + (item.width - width) / 2;
       const top = item.top - bounds.top - host.clientTop + host.scrollTop;
@@ -52,7 +58,7 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
       window.removeEventListener('resize', queue);
       host.removeEventListener('scroll', queue);
     };
-  }, [selection, compact]);
+  }, [selection, compact, selector]);
 
   return { ref, indicatorRef };
 }
