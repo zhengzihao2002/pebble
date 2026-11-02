@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { IMPORT_ROW_REVEALED } from './useImportRowReveal';
 
 // One observer for the whole review, so offscreen descriptions do no animation
 // work. Intersection also respects the modal's clipped, scrolling body.
@@ -20,8 +21,8 @@ function watch(element: Element, notify: (visible: boolean) => void) {
 
 /** The input always owns the complete value. Only its decorative text reveals,
  * without changing the import model or re-rendering the review per character. */
-export function ImportTitleField({ value, onChange, label, style, revealDelay = 0 }: {
-  value: string; onChange: (value: string) => void; label: string; style: CSSProperties; revealDelay?: number;
+export function ImportTitleField({ value, onChange, label, style }: {
+  value: string; onChange: (value: string) => void; label: string; style: CSSProperties;
 }) {
   const [revealing, setRevealing] = useState(value.length > 0);
   const field = useRef<HTMLDivElement>(null);
@@ -40,19 +41,27 @@ export function ImportTitleField({ value, onChange, label, style, revealDelay = 
     // page layout/shadow observers must not run for every revealed character.
     const target = document.createTextNode('');
     text.current.replaceChildren(target);
+    const row = field.current.closest<HTMLElement>('.pb-import-row-reveal');
+    let faded = !row || row.hasAttribute('data-import-revealed'), visible = false;
     let frame = 0, elapsed = 0, started = 0;
     const draw = (now: number) => {
-      const count = Math.min(characters.length, Math.max(0, Math.floor((elapsed + now - started - revealDelay) / duration * characters.length)));
+      const count = Math.min(characters.length, Math.floor((elapsed + now - started) / duration * characters.length));
       target.data = characters.slice(0, count).join('');
       if (count < characters.length) frame = requestAnimationFrame(draw);
       else { frame = 0; setRevealing(false); }
     };
-    const stop = watch(field.current, visible => {
-      if (visible && !frame) { started = performance.now(); frame = requestAnimationFrame(draw); }
-      else if (!visible && frame) { cancelAnimationFrame(frame); frame = 0; elapsed += performance.now() - started; }
+    const begin = () => {
+      if (visible && faded && !frame) { started = performance.now(); frame = requestAnimationFrame(draw); }
+    };
+    const revealed = () => { faded = true; begin(); };
+    row?.addEventListener(IMPORT_ROW_REVEALED, revealed);
+    const stop = watch(field.current, onScreen => {
+      visible = onScreen;
+      if (!visible && frame) { cancelAnimationFrame(frame); frame = 0; elapsed += performance.now() - started; }
+      begin();
     });
-    return () => { stop(); cancelAnimationFrame(frame); media.removeEventListener('change', finish); };
-  }, [revealing, value, revealDelay]);
+    return () => { stop(); cancelAnimationFrame(frame); row?.removeEventListener(IMPORT_ROW_REVEALED, revealed); media.removeEventListener('change', finish); };
+  }, [revealing, value]);
 
   return <div ref={field} className="pb-import-title-field">
     <input type="text" value={value} maxLength={200} placeholder={label} aria-label={label}

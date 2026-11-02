@@ -2125,11 +2125,9 @@ html.pebble-welcoming::after {
   flex: 1 1 584px;
 }
 .pebble-root .pb-import-pane[data-import-moving] > :not(.pb-modal-head) { visibility: hidden; }
-.pebble-root .pb-import-row-reveal {
-  animation: pb-import-row-in 220ms var(--pb-ease-out) both;
-  animation-delay: calc(var(--pb-import-row-order, 0) * 35ms);
-}
-@keyframes pb-import-row-in { from { opacity: 0; } to { opacity: var(--pb-import-row-opacity, 1); } }
+.pebble-root .pb-import-row-reveal { opacity: 0; }
+.pebble-root .pb-import-row-reveal[data-import-revealed],
+.pebble-root .pb-import-row-reveal:is(.pb-tdlg-prow-enter,.pb-tdlg-prow-leave) { opacity: var(--pb-import-row-opacity, 1); }
 .pebble-root .pb-import-title-field { position: relative; min-width: 0; height: 2.1rem; margin-bottom: .2rem; font-size: .86rem; }
 .pebble-root .pb-import-title-text { position: absolute; inset: 1px; box-sizing: border-box; overflow: hidden; white-space: pre; pointer-events: none; color: var(--ink); }
 /* Offscreen rows keep a remembered intrinsic size instead of laying out all
@@ -2137,6 +2135,7 @@ html.pebble-welcoming::after {
 .pebble-root .pb-import-split .pb-tdlg-review-row { content-visibility: auto; contain-intrinsic-block-size: auto 9rem; }
 .pebble-root .pb-import-split .pb-tdlg-prow { content-visibility: auto; contain-intrinsic-block-size: auto 5rem; }
 @media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-import-row-reveal { opacity: var(--pb-import-row-opacity, 1); }
   .pebble-root .pb-import-title-field { --pb-import-title-ink: var(--ink); }
   .pebble-root .pb-import-title-text { display: none; }
 }

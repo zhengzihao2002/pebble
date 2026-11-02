@@ -30,6 +30,7 @@ import { useScrollPin } from '@/components/importCsv/useScrollPin';
 import { useImportLayoutMotion } from '@/components/importCsv/useImportLayoutMotion';
 import { DeferredImportRows } from '@/components/importCsv/DeferredImportRows';
 import { ImportTitleField } from '@/components/importCsv/ImportTitleField';
+import { useImportRowReveal } from '@/components/importCsv/useImportRowReveal';
 
 const MAX_ROWS = 500;
 const MAX_SKIP = 100;
@@ -362,6 +363,7 @@ function ImportPreviewContents({ preview, pending }: { preview: ImportPreviewDat
   // to it; it goes away once that row is in view or the list changes again.
   // Set all (several rows at once) offers nothing, as before.
   const bodyRef = useRef<HTMLDivElement>(null);
+  useImportRowReveal(bodyRef);
   const rows = useMemo(() => entries.map((e) => {
     const p = pendingById.get(e.transId);
     return { key: p ? `p${p.idx}` : e.transId, value: { e, p } };
@@ -422,14 +424,13 @@ function ImportPreviewContents({ preview, pending }: { preview: ImportPreviewDat
         {shown.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '2rem 1.5rem', margin: 0 }}>{d.importCsv.previewEmpty}</p>
         )}
-        <DeferredImportRows>{shown.map(({ key, value: { e, p }, leaving }, order) => {
+        <DeferredImportRows>{shown.map(({ key, value: { e, p }, leaving }) => {
           const motion = leaving ? ' pb-tdlg-prow-leave' : p && !initialKeys.has(key) ? ' pb-tdlg-prow-enter' : '';
           return (
             <div
               key={key} data-row-key={key} data-leaving={leaving ? 'true' : undefined}
               data-pending-idx={p && !leaving ? p.idx : undefined}
               className={`pb-tdlg-prow pb-import-row-reveal${motion}`}
-              style={{ '--pb-import-row-order': Math.min(order, 6) } as React.CSSProperties}
               aria-hidden={leaving || undefined} inert={leaving || undefined}
             >
               <div style={p ? { background: PENDING_TINT } : undefined}>
@@ -830,6 +831,8 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
   const showPreview = split && step === 'preview' && done === null;
   const importPaneRef = useRef<HTMLDivElement>(null);
   const reviewReady = useImportLayoutMotion(importPaneRef, showPreview, split);
+  const reviewBodyRef = useRef<HTMLDivElement>(null);
+  useImportRowReveal(reviewBodyRef, step === 'preview' && done === null && reviewReady, split);
 
   // A file dropped anywhere but the drop zone - the dialog head, a later step,
   // the backdrop - would make the browser open the CSV in place of the app and
@@ -965,7 +968,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
             </>
           ) : (
             <>
-              <div key={step} className="pb-modal-body themed-scroll" inert={!reviewReady} style={{ overflowX: 'hidden' }}>
+              <div ref={reviewBodyRef} key={step} className="pb-modal-body themed-scroll" inert={!reviewReady} style={{ overflowX: 'hidden' }}>
                 {!reviewReady ? null : rows.length === 0 ? (
                   <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.importCsv.noRows}</p>
                 ) : (
@@ -992,10 +995,8 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                       </div>
                     )}
                     <ul className={`pb-tdlg-review${narrow ? ' pb-tdlg-review-compact' : ''}`}>
-                      <DeferredImportRows list>{visibleRows.map((r, order) => {
+                      <DeferredImportRows list>{visibleRows.map((r) => {
                         const rowStyle = {
-                          opacity: r.problem ? 0.6 : 1,
-                          '--pb-import-row-order': Math.min(order, 6),
                           '--pb-import-row-opacity': r.problem ? 0.6 : 1,
                         } as React.CSSProperties;
                         const on = isIncluded(r);
@@ -1019,7 +1020,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                           <ImportTitleField
                             value={titleOverride[r.idx] ?? r.description}
                             onChange={(value) => setTitleOverride((m) => ({ ...m, [r.idx]: value }))}
-                            label={d.importCsv.titlePlaceholder} style={smallField} revealDelay={Math.min(order, 6) * 35}
+                            label={d.importCsv.titlePlaceholder} style={smallField}
                           />
                         );
                         // The chip beside it already names an unreadable row
