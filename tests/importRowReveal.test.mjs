@@ -58,11 +58,11 @@ test('rows fade one at a time and signal typing only after their fade finishes',
   assert.equal(second.animations[0].startsAt, first.animations[0].options.duration);
   assert.deepEqual(first.events, []);
   assert.equal(second.hasAttribute('data-import-revealed'), false);
-  f.now(360); first.animations[0].finish(); await Promise.resolve();
+  f.now(180); first.animations[0].finish(); await Promise.resolve();
   assert.deepEqual(first.events, [f.event]);
   assert.equal(first.hasAttribute('data-import-revealed'), true);
   assert.deepEqual(second.events, []);
-  f.now(720); second.animations[0].finish(); await Promise.resolve();
+  f.now(360); second.animations[0].finish(); await Promise.resolve();
   assert.equal(f.root.hasAttribute('data-import-reveal-busy'), false);
   f.cleanup();
 });
@@ -70,7 +70,7 @@ test('rows fade one at a time and signal typing only after their fade finishes',
 test('a later DOM batch joins the existing sequence without a gap', async () => {
   const f = fixture({ count: 8 });
   f.io.emit(f.elements.map(row => [row, true]));
-  f.now(360); f.elements[0].animations[0].finish(); await Promise.resolve();
+  f.now(180); f.elements[0].animations[0].finish(); await Promise.resolve();
   f.now(450);
   const later = [f.makeRow(8), f.makeRow(9)];
   f.elements.push(...later); f.discover(); f.io.emit(later.map(row => [row, true]));
@@ -86,7 +86,7 @@ test('scrolling past queued rows promotes the newly visible rows immediately', (
   f.now(100); f.elements[3].top = 0; f.elements[4].top = 80;
   f.io.emit([...f.elements.slice(0, 3).map(row => [row, false]), [f.elements[4], true]]);
   assert.equal(f.elements[3].animations.at(-1).startsAt, 100);
-  assert.equal(f.elements[4].animations.at(-1).startsAt, 460);
+  assert.equal(f.elements[4].animations.at(-1).startsAt, 280);
   assert.equal(f.elements[1].animations[0].cancelled, true);
   assert.equal(f.elements[1].hasAttribute('data-import-revealed'), false);
   f.cleanup();
@@ -112,7 +112,7 @@ test('closing cancels queued work and cannot send a late typing signal', async (
 test('finishing the initial viewport leaves offscreen and later-mounted rows readable', async () => {
   const f = fixture({ count: 3 });
   f.io.emit([[f.elements[0], true]]);
-  f.now(360); f.elements[0].animations[0].finish(); await Promise.resolve();
+  f.now(180); f.elements[0].animations[0].finish(); await Promise.resolve();
   assert(f.elements.every(row => row.hasAttribute('data-import-revealed')));
   const later = f.makeRow(3); f.elements.push(later); f.discover();
   assert.equal(later.hasAttribute('data-import-revealed'), true);

@@ -4,7 +4,7 @@ import { useLayoutEffect, type RefObject } from 'react';
 
 export const IMPORT_ROW_REVEALED = 'pb-import-row-revealed';
 export const IMPORT_ROW_QUEUE_CHANGED = 'pb-import-row-queue-changed';
-const DURATION = 360;
+const DURATION = 180;
 const SELECTOR = '.pb-import-row-reveal';
 type Row = { visible: boolean; done: boolean; startsAt: number; animation: Animation | null };
 

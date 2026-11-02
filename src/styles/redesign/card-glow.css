@@ -4,9 +4,8 @@
 .pebble-root { --pb-card-halo: 0 0 0 0 transparent; }
 html:not([data-pb-card-glow="off"]) .pebble-root {
   --pb-card-halo:
-    0 0 26px 2px color-mix(in srgb, var(--pine) 24%, transparent),
-    0 0 58px 4px color-mix(in srgb, var(--pine) 17%, transparent),
-    0 0 88px 0 color-mix(in srgb, var(--pine) 10%, transparent);
+    0 0 20px 1px color-mix(in srgb, var(--pine) 17%, transparent),
+    0 0 44px 1px color-mix(in srgb, var(--pine) 11%, transparent);
 }
 :where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) {
   position: relative;
@@ -19,8 +18,8 @@ html:not([data-pb-card-glow="off"]) .pebble-root :where(.card, [data-slot="card"
   border-radius: inherit;
   pointer-events: none;
   box-shadow:
-    inset 0 5px 18px -8px color-mix(in srgb, var(--mist) 65%, white),
-    inset 0 -4px 18px -10px color-mix(in srgb, var(--pine) 40%, transparent);
+    inset 0 4px 14px -7px color-mix(in srgb, var(--mist) 74%, white),
+    inset 0 -3px 14px -9px color-mix(in srgb, var(--pine) 30%, transparent);
 }
 /* The CSV wrapper only arranges two cards. Its reflection otherwise draws a
    large rounded outline across their gap even with border/shadow removed. */

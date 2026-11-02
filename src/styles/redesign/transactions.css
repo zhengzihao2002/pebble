@@ -61,10 +61,8 @@
     transition: opacity .18s ease, visibility .18s ease;
   }
   .pebble-root .pb-txn-page[data-txn-more-below] .pb-txn-scroll-hint { opacity: 1; visibility: visible; }
-  .pebble-root .pb-txn-scroll-hint::before {
-    content: ''; position: absolute; inset-inline: 0; bottom: 0; height: 4.5rem;
-    background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--paper) 90%, transparent) 75%, var(--paper));
-  }
+  /* The pill supplies its own glass background. A pane-wide gradient here
+     would cover the exterior card halos with a sharp rectangular cutoff. */
   .pebble-root .pb-txn-more-button {
     position: absolute; left: 50%; bottom: .75rem; transform: translateX(-50%);
     display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem;
