@@ -20,7 +20,8 @@ for(const route of ['reports','analysis','transactions'])for(const style of ['ca
  const node=()=>({dataset:{},style:{},children:[],setAttribute(key,value){this[key]=value},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
  const values=new Map();
  const host=node(),surface=node(),main={clientWidth:600,closest:()=>({querySelector:()=>({getBoundingClientRect:()=>({height:112.5})})})},root={lang:'en',getAttribute:key=>key==='data-pb-loading-style'?style:null,style:{getPropertyValue:key=>values.get(key),setProperty:(key,value)=>values.set(key,value)}};
- host.dataset.layoutPath='/'+route;host.closest=()=>main;host.querySelector=()=>surface;
+ const stage=node();
+ host.dataset.layoutPath='/'+route;host.closest=selector=>selector==='.pebble-main'?main:selector==='.pb-navigation-stage'?stage:null;host.querySelector=()=>surface;host.getBoundingClientRect=()=>({width:600});
  const layout={key:JSON.stringify([route,560,1024,768,'16px','en',null,null]),savedAt:Date.now(),width:560,height:480,boxes:[{x:0,y:0,width:560,height:480,radius:16,kind:'card',flat:true}]};
  let cacheReads=0;
  const context={document:{documentElement:root,currentScript:{parentElement:host},querySelector:()=>({content:'route-user|test'}),createElement:node},window:{innerWidth:1024,innerHeight:768},localStorage:{getItem:()=>{cacheReads++;return JSON.stringify({version:2,entries:[layout]})}},getComputedStyle:e=>e===root?{fontSize:'16px'}:{paddingLeft:'20px',paddingRight:'20px'}};
@@ -29,6 +30,7 @@ for(const route of ['reports','analysis','transactions'])for(const style of ['ca
  assert(html.includes('class="pb-loading-traditional" role="status"'),'streamed HTML must contain the accessible spinner without waiting for React');
  assert.equal(host['data-layout-ready'],'true');
  if(style==='spinner') {
+   assert.equal(stage['data-pb-spinner-loading'],'true','streamed fallback must show the persistent spinner before hydration');
    assert.equal(host['data-layout-restored'],undefined);
    assert.equal(surface.children.length,0,'spinner must not create hidden cached cards');
    assert.equal(cacheReads,0,'spinner must skip the layout cache entirely');

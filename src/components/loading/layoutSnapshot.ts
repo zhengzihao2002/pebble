@@ -63,8 +63,14 @@ export function snapshotTools() {
         if (html.style.getPropertyValue('--pb-header-layout-h') !== value) html.style.setProperty('--pb-header-layout-h', value);
       }
     }
-    const saved = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner'
-      ? null : layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
+    const spinner = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner';
+    if (spinner) {
+      const stage = host.closest<HTMLElement>('.pb-navigation-stage');
+      // Show the persistent ring in streamed HTML before React starts. A
+      // hidden staging segment must not start a second loading sequence.
+      if (stage && host.getBoundingClientRect().width > 0 && !host.closest('[hidden]')) stage.setAttribute('data-pb-spinner-loading','true');
+    }
+    const saved = spinner ? null : layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
     if (!saved) {
       host.removeAttribute('data-layout-restored'); surface.replaceChildren(); delete surface.dataset.geometry;
       host.setAttribute('data-layout-ready','true');

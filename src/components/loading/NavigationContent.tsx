@@ -5,6 +5,7 @@ import { finishNavigation, useNavigationDestination } from './navigation';
 import { useRememberedLayout } from './useRememberedLayout';
 import { usePageReveal } from './usePageReveal';
 import { PageSkeleton } from './PageSkeleton';
+import { TraditionalPageLoader } from './TraditionalPageLoader';
 
 export function NavigationContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -14,7 +15,9 @@ export function NavigationContent({ children }: { children: ReactNode }) {
   useRememberedLayout(contentRef, pathname);
   const pending = useNavigationDestination();
   useLayoutEffect(() => { finishNavigation(pathname); }, [pathname]);
-  return <div ref={stageRef} className="pb-navigation-stage">
+  return <div ref={stageRef} className="pb-navigation-stage" suppressHydrationWarning>
+    {/* One ring survives previews, streamed fallbacks and the final reveal. */}
+    <div className="pb-page-spinner"><TraditionalPageLoader /></div>
     {pending && <div className="pb-navigation-preview"><PageSkeleton pathname={pending.pathname}/></div>}
     <div ref={contentRef} className="pb-navigation-content" hidden={pending !== null}>{children}</div>
   </div>;

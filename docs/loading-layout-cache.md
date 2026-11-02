@@ -8,6 +8,9 @@ flashes cached contours. Spinner mode skips restoring cached geometry; recording
 loaded layouts continues so returning to Cached cards can reuse them. Both
 styles stay visible through the handoff until incoming content is ready, and
 respect reduced motion.
+Inside the app shell, one spinner stays mounted from the navigation preview
+through streamed fallbacks and the final fade. Replacing those page segments
+does not replace or clone the ring, so its linear rotation never restarts.
 
 The browser records the loaded page's card rectangles and reuses them as pulsing
 skeleton contours on later visits. It stores numbers and small shape enums only:

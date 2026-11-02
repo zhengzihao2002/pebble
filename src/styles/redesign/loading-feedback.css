@@ -63,11 +63,17 @@
 /* Both choices are in the streamed HTML. The pre-paint preference selects
    one immediately, without flashing card contours before React hydrates. */
 .pb-loading-traditional { display:none; }
+.pebble-root :is(.pb-navigation-stage,.pb-layout-skeleton-host) {
+  --pb-page-loading-height:max(0px,calc(100svh - var(--pb-header-h,var(--pb-header-layout-h,6rem)) - var(--pb-main-pad-top,2.5rem) - var(--pb-main-pad-bottom,2.5rem)));
+}
+.pebble-root .pb-page-spinner { display:none; position:absolute; inset:0 0 auto; z-index:6; pointer-events:none; }
+html[data-pb-loading-style="spinner"] .pebble-root .pb-navigation-stage[data-pb-spinner-loading="true"] { min-height:var(--pb-page-loading-height); }
+html[data-pb-loading-style="spinner"] .pebble-root .pb-navigation-stage[data-pb-spinner-loading="true"] > .pb-page-spinner { display:block; }
 @keyframes pb-page-loading-spin { to { transform:rotate(360deg); } }
 html[data-pb-loading-style="spinner"] .pebble-root .pb-layout-skeleton-host > :is(.pb-layout-estimate,.pb-layout-restored) { display:none; }
 html[data-pb-loading-style="spinner"] .pebble-root .pb-loading-traditional {
   display:grid;
-  min-height:max(0px,calc(100svh - var(--pb-header-h,var(--pb-header-layout-h,6rem)) - var(--pb-main-pad-top,2.5rem) - var(--pb-main-pad-bottom,2.5rem)));
+  min-height:var(--pb-page-loading-height);
   align-content:center;
   justify-items:center;
   gap:1.25rem;
@@ -76,12 +82,16 @@ html[data-pb-loading-style="spinner"] .pebble-root .pb-loading-traditional {
 .pebble-root .pb-loading-traditional-circle {
   width:clamp(4rem,8vw,5.5rem);
   aspect-ratio:1;
-  border:.3rem solid color-mix(in srgb,var(--pine) 18%,transparent);
+  border:.45rem solid color-mix(in srgb,var(--pine) 18%,transparent);
   border-top-color:var(--pine);
   border-radius:50%;
   animation:pb-page-loading-spin .9s linear infinite;
+  will-change:transform;
 }
-.pebble-root .pb-loading-traditional p { margin:0; font-size:1rem; }
+.pebble-root .pb-loading-traditional p { margin:0; font-size:1.25rem; font-weight:500; }
+/* Route-local loaders remain useful outside AppShell. Inside it, the single
+   persistent ring owns loading, so replacing a page cannot restart rotation. */
+.pebble-root .pb-navigation-stage .pb-layout-skeleton-host > .pb-loading-traditional { display:none; }
 @media(prefers-reduced-motion:reduce) {
   .pebble-root .pb-loading-traditional-circle { animation:none; }
   .pebble-root .pb-page-handoff:has(.pb-loading-traditional) { display:block; }

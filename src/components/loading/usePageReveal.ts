@@ -7,13 +7,16 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
   useLayoutEffect(() => {
     const stage = stageRef.current, content = contentRef.current;
     if (!stage || !content) return;
+    const spinner = stage.querySelector<HTMLElement>(':scope > .pb-page-spinner');
     let snapshot: HTMLElement | null = null;
     let overlay: HTMLElement | null = null;
     let animation: Animation | null = null;
+    let ghostAnimation: Animation | null = null;
     let timer = 0, revealing = false;
     const reset = () => {
       clearTimeout(timer);
       if (animation) { animation.onfinish=null; animation.cancel(); animation=null; }
+      ghostAnimation?.cancel(); ghostAnimation=null;
       overlay?.remove(); overlay=null;
       stage.style.removeProperty('min-height');
       content.style.removeProperty('opacity');
@@ -21,15 +24,22 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
       content.classList.remove('pb-page-arriving');
       revealing=false;
     };
+    const hideSpinner = () => { stage.removeAttribute('data-pb-spinner-loading'); };
+    const finish = () => { reset(); hideSpinner(); };
     const inspect = () => {
+      const traditional = !!spinner && document.documentElement.getAttribute('data-pb-loading-style') === 'spinner';
       const host = [...stage.querySelectorAll<HTMLElement>('.pb-layout-skeleton-host')]
-        .find(el=>!el.closest('[hidden]') && (!el.hasAttribute('data-layout-ready') || el.getBoundingClientRect().height>0));
+        .find(el=>!el.closest('[hidden]') && (!el.hasAttribute('data-layout-ready') || (traditional ? el.getBoundingClientRect().width>0 : el.getBoundingClientRect().height>0)));
       if (host) {
         if (!host.hasAttribute('data-layout-ready')) return;
         reset();
-        const source = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner'
-          ? host.querySelector<HTMLElement>('.pb-loading-traditional')
-          : host.hasAttribute('data-layout-restored')
+        if (traditional) {
+          snapshot=null;
+          stage.setAttribute('data-pb-spinner-loading','true');
+          return;
+        }
+        hideSpinner();
+        const source = host.hasAttribute('data-layout-restored')
           ? host.querySelector<HTMLElement>('.pb-cached-layout')
           : host.querySelector<HTMLElement>('.pb-layout-estimate');
         if (source) {
@@ -43,9 +53,11 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
         }
         return;
       }
-      if (content.hidden || revealing || (!snapshot && !overlay)) return;
+      if (content.hidden || revealing || (traditional ? !stage.hasAttribute('data-pb-spinner-loading') : !snapshot && !overlay)) return;
       clearTimeout(timer);
-      if (!overlay && snapshot) {
+      if (traditional) {
+        content.style.opacity='0'; content.inert=true;
+      } else if (!overlay && snapshot) {
         overlay=snapshot; snapshot=null;
         stage.style.minHeight=overlay.style.height;
         content.style.opacity='0'; content.inert=true;
@@ -58,17 +70,17 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
       // Allow mount effects, saved views and chart ResizeObservers to settle
       // behind the existing contours before making any data visible.
       timer=window.setTimeout(() => {
-        if (!overlay || content.hidden) return;
+        const ghost=traditional ? spinner : overlay;
+        if (!ghost || content.hidden) return;
         revealing=true;
-        const ghost=overlay;
         // A completed fade must not restart the old card rise-in animation.
         content.querySelectorAll<HTMLElement>('.pb-rise').forEach(el=>{ el.style.animation='none'; });
         content.classList.add('pb-page-arriving');
         content.style.removeProperty('opacity'); content.inert=false;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { reset(); return; }
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
         animation=content.animate([{opacity:0},{opacity:1}],{duration:300,easing:'ease-out'});
-        ghost.animate([{opacity:1},{opacity:0}],{duration:300,easing:'ease-out',fill:'forwards'});
-        animation.onfinish=reset;
+        ghostAnimation=ghost.animate([{opacity:1},{opacity:0}],{duration:300,easing:'ease-out',fill:'forwards'});
+        animation.onfinish=finish;
       },80);
     };
     const observer = new MutationObserver(inspect);
@@ -77,7 +89,7 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
     document.fonts?.addEventListener('loadingerror',inspect);
     inspect();
     return () => {
-      observer.disconnect(); reset();
+      observer.disconnect(); finish();
       document.fonts?.removeEventListener('loadingdone',inspect);
       document.fonts?.removeEventListener('loadingerror',inspect);
     };
