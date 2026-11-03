@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 /**
  * One transaction as a tappable row: the category's tinted tile, the title
@@ -27,7 +28,7 @@ export function ChargeRow({ txn, categoryMeta, sub, onOpen }: {
   return (
     <button type="button" className="pb-ins-charge" onClick={() => onOpen(txn)}>
       <span className="pb-ins-tile" aria-hidden="true" style={{ ['--pb-ins-cat' as string]: color }}>
-        {Icon && <Icon size={16} />}
+        <TransactionIcon description={txn.description} fallback={Icon && <Icon size={16} />} />
       </span>
       <span className="pb-ins-charge-text">
         {/* Description and category are USER DATA. */}

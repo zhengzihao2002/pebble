@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { highlight as markHits } from '@/components/transactions/highlight';
 import { BalanceFigure } from '@/components/transactions/BalanceFigure';
+import { TransactionIcon } from './TransactionIcon';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -170,7 +171,7 @@ export function StatementRow({
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backgroundColor: accentBg,
     }}>
-      <Icon size={16} style={{ color: accentColor }} />
+      <TransactionIcon description={isAdjustment ? undefined : txn.description} fallback={<Icon size={16} style={{ color: accentColor }} />} />
     </div>
   );
   // The highlight marks sit one level inside the ellipsis elements, so the

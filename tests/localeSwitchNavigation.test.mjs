@@ -2,19 +2,27 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import ts from 'typescript';
+import { parse } from '@babel/parser';
 import { buildSync } from 'esbuild';
 
 // Exercise the actual AppShell locale effect without mounting unrelated
 // authentication, dialogs and data providers. A route refresh can replay an
 // existing /settings#settings-money destination after a language change.
 const path = 'src/components/layout/AppShell.tsx';
-const source = ts.createSourceFile(path, fs.readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const text = fs.readFileSync(path, 'utf8');
+const source = parse(text, { sourceType: 'module', plugins: ['typescript', 'jsx'] });
 let effect;
 function visit(node) {
-  if (ts.isCallExpression(node) && node.expression.getText(source) === 'useEffect'
-    && node.arguments[0]?.getText(source).includes('LOCALE_COOKIE')) effect = node.arguments[0].getText(source);
-  ts.forEachChild(node, visit);
+  if (!node || typeof node !== 'object') return;
+  if (node.type === 'CallExpression' && node.callee.name === 'useEffect') {
+    const callback = node.arguments[0];
+    const body = text.slice(callback.start, callback.end);
+    if (body.includes('LOCALE_COOKIE')) effect = body;
+  }
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === 'object' && typeof value.type === 'string') visit(value);
+  }
 }
 visit(source);
 assert(effect, 'AppShell must synchronize the locale cookie');

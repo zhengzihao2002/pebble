@@ -1,5 +1,7 @@
 'use client';
 
+import { TransactionIcon } from '@/components/shared/TransactionIcon';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -110,7 +112,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
           aria-hidden="true" className="pb-dash-tile-icon"
           style={{ backgroundColor: meta ? `${meta.color}20` : 'var(--pine-soft)' }}
         >
-          <Icon size={16} style={{ color: meta ? meta.color : 'var(--pine)' }} />
+          <TransactionIcon description={it.description} fallback={<Icon size={16} style={{ color: meta ? meta.color : 'var(--pine)' }} />} />
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
           {/* Description and category are USER DATA; only the two

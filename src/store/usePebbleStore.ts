@@ -99,6 +99,8 @@ interface PebblePrefs {
   showHealthBar: boolean;
   // The theme-coloured rim on app cards; enabled unless explicitly disabled.
   showCardGlow: boolean;
+  // Recognized merchant logos in transaction tiles. On unless disabled.
+  showBrandIcons: boolean;
   themeChoice: ThemeChoice;
   // Per-user switches disabling risky buttons. Read through isLocked(), so a
   // lock missing from older saved settings takes its default.
@@ -143,6 +145,7 @@ interface PebbleUIState extends PebblePrefs {
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
   setShowCardGlow: (value: boolean) => void;
+  setShowBrandIcons: (value: boolean) => void;
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
@@ -171,6 +174,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   cjkFontChoice: 'sans',
   showHealthBar: false,
   showCardGlow: true,
+  showBrandIcons: true,
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
@@ -231,6 +235,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setShowCardGlow: (value) => set({ showCardGlow: value }),
+      setShowBrandIcons: (value) => set({ showBrandIcons: value }),
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
@@ -296,6 +301,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
         showCardGlow: state.showCardGlow,
+        showBrandIcons: state.showBrandIcons,
         themeChoice: state.themeChoice,
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).

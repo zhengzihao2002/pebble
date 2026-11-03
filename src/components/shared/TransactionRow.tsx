@@ -6,6 +6,7 @@ import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel, paymentMethodLabel } from '@/lib/i18n/enumLabels';
+import { TransactionIcon } from './TransactionIcon';
 
 // Rows are selectable text now that long-press is gone, so a drag that ends
 // inside the row would otherwise fire onClick and open the modal mid-selection.
@@ -84,7 +85,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         backgroundColor: isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`,
       }}>
-        <Icon size={16} style={{ color: isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)') }} />
+        <TransactionIcon description={txn.description} fallback={<Icon size={16} style={{ color: isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)') }} />} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

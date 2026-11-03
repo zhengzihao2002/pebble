@@ -2,15 +2,16 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import ts from 'typescript';
+import { parse } from '@babel/parser';
+import { transformSync } from 'esbuild';
 
 // Exercise the real private validator with in-memory ownership reads. Exporting
 // it from the server-action module would expose a new callable server action.
 const source=fs.readFileSync('src/lib/actions/pebble.ts','utf8');
-const ast=ts.createSourceFile('pebble.ts',source,ts.ScriptTarget.Latest,true);
-const fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='normalizeRuleInput');
+const ast=parse(source,{sourceType:'module',plugins:['typescript']});
+const fn=ast.program.body.find(n=>n.type==='FunctionDeclaration'&&n.id?.name==='normalizeRuleInput');
 assert(fn);
-const compiled=ts.transpileModule(fn.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+const compiled=transformSync(source.slice(fn.start,fn.end),{loader:'ts',target:'es2022'}).code;
 const account={id:'owned-bank',status:'active',name:'Fixture bank'};
 const scope={db:{select:()=>({from:()=>({where:()=>({limit:async()=>[account]})})})},account:{},and:()=>null,eq:()=>null,loadCards:async()=>new Set(),RECURRING_FREQUENCIES:['once','weekly','biweekly','monthly','yearly'],RECURRING_END_MODES:['never','after','on'],DATE_PATTERN:/^\d{4}-\d{2}-\d{2}$/,MAX_END_COUNT:1000,INCOME_CATEGORIES:['Standard Income','Side Cash'],isFiniteNumber:value=>typeof value==='number'&&Number.isFinite(value)};
 const validate=vm.runInNewContext(compiled+'\nnormalizeRuleInput;',scope);

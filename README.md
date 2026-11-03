@@ -164,7 +164,7 @@ current_total    = current_checking + current_cash
 ## Getting started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 24.x
 - A [Neon](https://neon.tech) account (free tier is fine)
 
 ### 1. Clone and install
@@ -208,6 +208,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign up.
 ```bash
 npm run dev      # dev server
 npm run build    # production build
+npm run deps:update # refresh all app dependencies from npm's latest tags
 npm run start    # serve the production build
 npm run lint     # eslint
 npm run sounds   # regenerate src/lib/sound/manifest.ts from public/sounds/
@@ -341,6 +342,29 @@ Installable on iOS and Android via `public/manifest.json` — standalone display
 ## Deployment
 
 Deployed on Vercel, auto-deploying from `main`.
+
+Every `npm run dev` and `npm run build` checks npm's `latest` tag for all
+dependencies and dev dependencies, updates `package.json`, and refreshes
+`package-lock.json` and the installed packages. `vercel.json` runs the same
+updater during installation, including when Vercel restores a dependency cache.
+Nested dependencies update within the compatibility constraints declared by
+their owning libraries. Internet access is required; an update failure stops
+startup/build rather than silently using older dependencies. New upstream
+major releases can require code changes before the app will build again.
+
+The Auth UI override follows the root Neon Auth version: Auth 0.7.0-beta itself
+ships UI 0.4.0-beta, whose peer declaration still names Auth 0.6.0-beta.
+`npm run lint` isolates the newest TypeScript compiler API supported by the
+installed linter under `node_modules/.cache/pebble-eslint-api`. This currently
+requires the TypeScript 6 API; the app compiles and type-checks with TypeScript 7.
+
+**Brand icons:** Settings → Appearance → Brand icons is on by default, including
+for existing users. Supported merchant titles use locally bundled logos from
+the free [theSVG React library](https://github.com/glincker/thesvg/tree/main/packages/react).
+Unknown titles and the off setting retain category icons. Matching uses only
+the first line of the title and never calls an external logo/matching service.
+Categories, amounts and stored titles are unchanged. Logos remain the trademarks
+of their respective owners; the library's code is MIT licensed.
 
 1. Import the repo into Vercel
 2. Add `DATABASE_URL`, `NEON_AUTH_BASE_URL`, and `NEON_AUTH_COOKIE_SECRET` as environment variables

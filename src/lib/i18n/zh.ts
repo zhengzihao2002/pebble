@@ -420,6 +420,11 @@ export const zh: typeof en = {
     hint: '为应用中的卡片添加柔和的主题色微光。',
   },
 
+  brandIcons: {
+    title: '品牌图标',
+    hint: '交易标题匹配已支持的商家时显示品牌标志，否则使用分类图标。',
+  },
+
   healthBar: {
     title: '健康状态',
     hp: 'HP {value}%',

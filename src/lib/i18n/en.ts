@@ -475,6 +475,11 @@ export const en = {
     hint: 'Give cards across the app a soft highlight in your theme colour.',
   },
 
+  brandIcons: {
+    title: 'Brand icons',
+    hint: 'Show a brand logo when a transaction title matches a supported merchant. Otherwise, use its category icon.',
+  },
+
   healthBar: {
     // Dashboard bar.
     title: 'Health status',

@@ -4,6 +4,8 @@ const { buildSync } = require('esbuild');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { createRequire } = require('node:module');
+const { pathToFileURL } = require('node:url');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'pebble-session-access-'));
 buildSync({ entryPoints: [path.resolve('src/lib/auth/sessionErrors.ts')], bundle: true, platform: 'node', format: 'cjs', outfile: path.join(temp, 'errors.cjs') });
 const { requiresFreshSignIn, isInvalidPassword } = require(path.join(temp, 'errors.cjs'));
@@ -33,8 +35,11 @@ test('recognizes both password error formats without blaming service outages on 
 });
 
 test('an active 15-day sign-in needs confirmation; same-account sign-in restores access and retires only the replaced session', async () => {
-  const { betterAuth } = await import('better-auth');
-  const { memoryAdapter } = await import('better-auth/adapters/memory');
+  // Test the Better Auth version Neon actually uses, including when npm
+  // nests it rather than hoisting it to our project's node_modules root.
+  const fromNeon = createRequire(require.resolve('@neondatabase/auth/next'));
+  const { betterAuth } = await import(pathToFileURL(fromNeon.resolve('better-auth')).href);
+  const { memoryAdapter } = await import(pathToFileURL(fromNeon.resolve('better-auth/adapters/memory')).href);
   const store = { user: [], session: [], account: [], verification: [] };
   const origin = 'http://localhost:4180';
   const auth = betterAuth({ baseURL: origin, secret: 'isolated-session-test-secret-at-least-32-characters',

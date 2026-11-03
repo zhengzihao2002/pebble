@@ -1,5 +1,7 @@
 'use client';
 
+import { TransactionIcon } from '@/components/shared/TransactionIcon';
+
 import { useEffect, useRef, useState } from 'react';
 import { beginNavigation } from '@/components/loading/navigation';
 import { useRouter } from 'next/navigation';
@@ -346,7 +348,7 @@ export function CommandPalette({
                                 className="pb-shell-pal-icon" aria-hidden="true"
                                 style={m ? { color: m.color, backgroundColor: `color-mix(in srgb, ${m.color} 13%, transparent)` } : undefined}
                               >
-                                <Icon size={16} />
+                                <TransactionIcon description={x.description} fallback={<Icon size={16} />} />
                               </span>
                               <span className="pb-shell-pal-text">
                                 <span className="pb-shell-pal-title">{highlight(title, q)}</span>

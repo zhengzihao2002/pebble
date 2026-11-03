@@ -1,5 +1,7 @@
 'use client';
 
+import { TransactionIcon } from '@/components/shared/TransactionIcon';
+
 import { useUndoDelete } from '@/components/shared/UndoDelete';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
@@ -586,7 +588,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
         <div className="pb-modal-head">
           <div className="pb-tdlg-head">
             <span className="pb-tdlg-tile" style={{ '--pb-tdlg-hue': tileHue } as React.CSSProperties} aria-hidden="true">
-              <Icon size={24} style={{ color: iconColor }} />
+              <TransactionIcon description={isAdjustment ? undefined : txn.description} size={24} fallback={<Icon size={24} style={{ color: iconColor }} />} />
             </span>
             <h2 id="txn-detail-title" className="font-display pb-tdlg-title">{headingText}</h2>
             <ModalCloseButton onClick={close} disabled={busy} />
