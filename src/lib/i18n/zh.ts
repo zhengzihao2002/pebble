@@ -423,6 +423,10 @@ export const zh: typeof en = {
   brandIcons: {
     title: '品牌图标',
     hint: '交易标题匹配已支持的商家时显示品牌标志，否则使用分类图标。',
+    sizeTitle: '品牌标志大小',
+    sizeHint: '选择当前大小，或使用占据更多交易行空间的大标志。',
+    default: '默认',
+    large: '大',
   },
 
   healthBar: {

@@ -14,9 +14,11 @@ function fixture(values = new Map()) {
 
 test('brand icons default ON for new and existing users whose preferences predate the setting', () => {
   assert.equal(fixture().usePebbleStore.getState().showBrandIcons, true);
+  assert.equal(fixture().usePebbleStore.getState().brandIconSize, 'default');
   const values = new Map([['pebble-ui', JSON.stringify({ state: { locale: 'zh', showCardGlow: false }, version: 2 })]]);
   const store = fixture(values).usePebbleStore;
   assert.equal(store.getState().showBrandIcons, true);
+  assert.equal(store.getState().brandIconSize, 'default');
   assert.equal(store.getState().locale, 'zh');
   assert.equal(store.getState().showCardGlow, false);
 });
@@ -35,4 +37,17 @@ test('one account disabling brand icons cannot change another account preference
   assert.equal(f.usePebbleStore.getState().showBrandIcons, true);
   await f.switchPebbleUser('alice');
   assert.equal(f.usePebbleStore.getState().showBrandIcons, false);
+});
+
+test('large logos persist across reloads and remain separate per account', async () => {
+  const f = fixture();
+  await f.switchPebbleUser('alice');
+  f.usePebbleStore.getState().setBrandIconSize('large');
+  assert.equal(fixture(f.values).usePebbleStore.getState().brandIconSize, 'large');
+  await f.switchPebbleUser('bob');
+  assert.equal(f.usePebbleStore.getState().brandIconSize, 'default');
+  await f.switchPebbleUser('alice');
+  assert.equal(f.usePebbleStore.getState().brandIconSize, 'large');
+  f.usePebbleStore.getState().setBrandIconSize('default');
+  assert.equal(fixture(f.values).usePebbleStore.getState().brandIconSize, 'default');
 });

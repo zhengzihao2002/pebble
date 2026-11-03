@@ -478,6 +478,10 @@ export const en = {
   brandIcons: {
     title: 'Brand icons',
     hint: 'Show a brand logo when a transaction title matches a supported merchant. Otherwise, use its category icon.',
+    sizeTitle: 'Brand logo size',
+    sizeHint: 'Choose the current size or larger logos that fill more of each transaction row.',
+    default: 'Default',
+    large: 'Large',
   },
 
   healthBar: {

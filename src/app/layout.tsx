@@ -25,6 +25,7 @@ import "@/styles/redesign/loading-feedback.css";
 import "@/styles/redesign/nav-glass.css";
 import "@/styles/redesign/rolling-amounts.css";
 import "@/styles/redesign/card-glow.css";
+import "@/styles/redesign/brand-icons.css";
 import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
 import { HtmlPreferenceSync } from "@/components/providers/HtmlPreferenceSync";
 import { CARD_GLOW_FIELD, APPEARANCE_FIELD, CJK_FONT_FIELD, FONT_FIELD, LAST_USER_KEY, LOCALE_FIELD, LOADING_STYLE_FIELD, PEBBLE_UI_STORAGE_KEY, SHOW_WELCOME_FIELD, TEXT_SIZE_FIELD, THEME_FIELD, WELCOME_PENDING_KEY } from "@/store/storageKeys";

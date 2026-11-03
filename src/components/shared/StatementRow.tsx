@@ -166,7 +166,7 @@ export function StatementRow({
   const hasSubtitle = categoryText !== '' || restText !== '';
 
   const tile = (
-    <div style={{
+    <div className="pb-transaction-icon-tile" style={{
       width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       backgroundColor: accentBg,

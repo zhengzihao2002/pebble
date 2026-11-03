@@ -366,6 +366,10 @@ the first line of the title and never calls an external logo/matching service.
 Categories, amounts and stored titles are unchanged. Logos remain the trademarks
 of their respective owners; the library's code is MIT licensed.
 
+The adjacent Brand logo size setting offers Default (the original size) and
+Large (larger logos with roomier rows). The size is remembered per user on the
+device and does not resize category fallback icons.
+
 1. Import the repo into Vercel
 2. Add `DATABASE_URL`, `NEON_AUTH_BASE_URL`, and `NEON_AUTH_COOKIE_SECRET` as environment variables
 3. Register the production domain in **Neon Console → Auth → Configuration → Domains**, or sign-in fails with an `invalid origin` error

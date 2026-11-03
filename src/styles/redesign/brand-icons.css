@@ -1,0 +1,10 @@
+/* Large logos expand their existing tiles and rows rather than overflowing
+   a fixed 36px box. Category fallbacks keep their original dimensions. */
+.pebble-root :is(.pb-transaction-icon-tile, .pb-dash-tile-icon, .pb-ins-tile, .pb-shell-pal-icon):has(> [data-pb-brand-size="large"]) {
+  min-width: 56px;
+  min-height: 56px;
+}
+.pebble-root .pb-tdlg-tile:has(> [data-pb-brand-size="large"]) {
+  min-width: 64px;
+  min-height: 64px;
+}

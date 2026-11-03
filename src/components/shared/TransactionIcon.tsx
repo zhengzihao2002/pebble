@@ -51,12 +51,13 @@ export function TransactionIcon({ description, fallback, size = 16 }: {
   size?: number;
 }) {
   const enabled = usePebbleStore(s => s.showBrandIcons) !== false;
+  const large = usePebbleStore(s => s.brandIconSize) === 'large';
   const brand = enabled && description ? detectTransactionBrand(description) : null;
   if (!brand) return fallback;
   const Logo = LOGOS[brand];
-  return <span data-pb-transaction-brand={brand} aria-hidden="true" style={{
+  return <span data-pb-transaction-brand={brand} data-pb-brand-size={large ? 'large' : 'default'} aria-hidden="true" style={{
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: size + 12, height: size + 12, padding: 3, boxSizing: 'border-box',
+    width: size + (large ? 32 : 12), height: size + (large ? 32 : 12), padding: large ? 2 : 3, boxSizing: 'border-box',
     flexShrink: 0, borderRadius: 5, backgroundColor: '#fff', color: '#202020',
   }}>
     <Logo width="100%" height="100%" focusable="false" aria-hidden="true" />
