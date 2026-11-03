@@ -865,7 +865,7 @@
 .pebble-root .pb-dash-yoy-period { font-family: inherit; font-size: 0.7rem; font-weight: 500; line-height: 1.4; color: var(--ink-soft); white-space: normal; }
 .pebble-root .pb-dash-yoy-was { display: flex; flex-direction: column; font-size: 0.88rem; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-dash-yoy-chip { display: flex; margin-top: 0.15rem !important; min-height: 1.4rem; }
-.pebble-root .pb-dash-yoy-movers { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.pebble-root .pb-dash-yoy-movers { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .pebble-root .pb-dash-yoy-movers-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
 .pebble-root .pb-dash-yoy-list { --pb-inset: 48px; }
 .pebble-root .pb-dash-yoy-mover { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem; padding: 0.6rem 0; min-width: 0; }
@@ -874,12 +874,15 @@
 .pebble-root .pb-dash-yoy-bars { display: grid; gap: 3px; margin-top: 5px; }
 .pebble-root .pb-dash-yoy-bars > i { display: block; height: 4px; border-radius: 2px; }
 .pebble-root .pb-dash-yoy-bars > i.is-was { background-color: color-mix(in srgb, var(--ink) 22%, transparent); }
-/* Wide card: the four figures side by side, the movers beside them. */
+/* Metrics get the full card width; a taller spending list must not leave
+   a large empty panel underneath them. */
 @container pb-yoy (min-width: 560px) {
   .pebble-root .pb-dash-yoy-figs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
   .pebble-root .pb-dash-yoy-fig + .pb-dash-yoy-fig { padding-left: 1rem; margin-left: 1rem; border-left: 1px solid var(--line); }
 }
 @container pb-yoy (min-width: 900px) {
-  .pebble-root .pb-dash-yoy-body { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
-  .pebble-root .pb-dash-yoy-movers { padding-left: 2rem; border-left: 1px solid var(--line); }
+  .pebble-root .pb-dash-yoy-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+  .pebble-root .pb-dash-yoy-mover { align-items: start; }
+  .pebble-root .pb-dash-yoy-mover + .pb-dash-yoy-mover { padding-left: 1.25rem; border-left: 1px solid var(--line); }
+  .pebble-root .pb-dash-yoy-list > * + *::before { display: none; }
 }

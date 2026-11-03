@@ -68,10 +68,14 @@ export function useScrollAnchor(changeKey: string, { anchors, content, scroller 
     // its ORIGINAL offset. Re-picking one every step would let sub-pixel
     // rounding add up to a slow drift over a long drag.
     const running = activeRef.current;
-    if (stopRef.current && running?.el.isConnected) {
+    if (stopRef.current && running?.el.isConnected
+      && Math.abs(running.el.getBoundingClientRect().top - running.top) < 1) {
       pendingRef.current = { ...running, at: performance.now() };
       return;
     }
+    // A section jump or keyboard scroll may have moved away during the
+    // settling window. Never reuse that old position for the next change.
+    stopRef.current?.();
     const { anchors: sel, scroller: scrollSel } = optsRef.current;
     const root = document.querySelector<HTMLElement>(scrollSel);
     if (!root) { pendingRef.current = null; return; }
@@ -137,14 +141,17 @@ export function useScrollAnchor(changeKey: string, { anchors, content, scroller 
       root.removeEventListener('wheel', stop);
       root.removeEventListener('touchmove', stop);
       root.removeEventListener('pointerdown', onPointer);
+      root.removeEventListener('keydown', stop, true);
       if (stopRef.current === stop) { stopRef.current = null; activeRef.current = null; }
     };
-    // The reader taking over the scroll (wheel, touch, or the scrollbar
-    // itself) ends the correction at once.
-    const onPointer = (e: PointerEvent) => { if (e.target === root) stop(); };
+    // A new interaction can jump to another section or move keyboard focus.
+    // End the old correction before its handler runs. A continuous slider
+    // drag has no new pointerdown, so it still keeps the original anchor.
+    const onPointer = () => stop();
     root.addEventListener('wheel', stop, { passive: true });
     root.addEventListener('touchmove', stop, { passive: true });
     root.addEventListener('pointerdown', onPointer);
+    root.addEventListener('keydown', stop, true);
     const timer = window.setTimeout(stop, SETTLE_MS);
     stopRef.current = stop;
   }, [changeKey]);

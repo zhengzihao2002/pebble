@@ -70,7 +70,7 @@ export function SegmentedControl<T extends string>({
       : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i === 0 ? last : i - 1)
       : (i === last ? 0 : i + 1);
     onChange(options[next].value);
-    rootRef.current?.querySelector<HTMLElement>(`[data-index="${next}"]`)?.focus();
+    rootRef.current?.querySelector<HTMLElement>(`[data-index="${next}"]`)?.focus({ preventScroll: true });
   };
 
   return (
