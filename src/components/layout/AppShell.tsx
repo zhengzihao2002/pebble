@@ -332,7 +332,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   const tzRef = useRef(false);
 
-  // OFFLINE. Both effects below end in router.refresh(). With no connection
+  // OFFLINE. Timezone discovery below ends in router.refresh(). With no connection
   // that request fails, and Next answers a failed refresh with a hard
   // navigation to the same URL - which, over and over, is a reload loop
   // (the installed app's web view can freeze). So while navigator.onLine is
@@ -375,16 +375,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     refreshSoon();
   }, [refreshSoon]);
 
-  // Tells the server which language to render the one server-rendered page in
-  // (goals), and keeps <html lang> truthful after a toggle - the pre-paint
-  // script sets it before React exists, this maintains it afterwards.
-  //
-  // NOT guarded by a run-once ref, unlike the timezone effect above: a zone is
-  // discovered once and never changes mid-session, whereas the language is a
-  // control the user can flip at any moment. The equality check is what keeps
-  // the common case free, and it cannot loop - router.refresh() re-renders
-  // Server Components without remounting this client component or touching
-  // the store, so the deps do not change and the effect does not re-run.
+  // Client text already follows the locale store. Mirror the preference for
+  // future server requests without refreshing the current route: Settings
+  // may have been opened with #settings-money, which a refresh can revisit
+  // after the reader has moved to Language & region. Internal navigation is
+  // not prefetched, so the next server-rendered page reads the updated cookie.
   useEffect(() => {
     document.documentElement.lang = HTML_LANG[locale];
 
@@ -396,8 +391,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (existing === locale) return;
 
     document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    refreshSoon();
-  }, [locale, refreshSoon]);
+  }, [locale]);
 
   // Click feedback, delegated from one listener rather than wired into every
   // button. Scoped to interactive elements: clicking blank space and hearing a

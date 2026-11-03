@@ -15,8 +15,8 @@ import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
  * WHY: the pre-paint script in layout.tsx adds pebble-dark (and sets lang)
  * before first paint, but <html className> belongs to React. Whenever the
  * root layout re-renders on the client - router.refresh(), which the auth
- * library does after sign-up, and AppShell after a timezone or language
- * cookie change - React rewrites className from the server's version, which
+ * library does after sign-up, and AppShell after discovering the timezone
+ * cookie - React rewrites className from the server's version, which
  * never contains pebble-dark.
  *
  * A MutationObserver puts the class back whenever something strips it, as a

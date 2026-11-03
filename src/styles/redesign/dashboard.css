@@ -878,7 +878,8 @@
    a large empty panel underneath them. */
 @container pb-yoy (min-width: 560px) {
   .pebble-root .pb-dash-yoy-figs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
-  .pebble-root .pb-dash-yoy-fig + .pb-dash-yoy-fig { padding-left: 1rem; margin-left: 1rem; border-left: 1px solid var(--line); }
+  .pebble-root .pb-dash-yoy-fig { position: relative; box-sizing: border-box; padding-inline: 1rem; }
+  .pebble-root .pb-dash-yoy-fig + .pb-dash-yoy-fig::before { content: ''; position: absolute; inset-block: 0; left: 0; border-left: 1px solid var(--line); }
 }
 @container pb-yoy (min-width: 900px) {
   .pebble-root .pb-dash-yoy-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
