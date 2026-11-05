@@ -29,6 +29,7 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
       if (!target || bounds.width < 1 || bounds.height < 1) {
         delete host.dataset.pbGlassReady;
         delete host.dataset.pbGlassAnimated;
+        delete host.dataset.pbGlassNavigated;
         placement.current = null;
         return;
       }
@@ -36,6 +37,7 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
       if (item.width < 1 || item.height < 1) {
         delete host.dataset.pbGlassReady;
         delete host.dataset.pbGlassAnimated;
+        delete host.dataset.pbGlassNavigated;
         placement.current = null;
         return;
       }
@@ -56,8 +58,10 @@ export function useNavGlass<T extends HTMLElement>(selection: string, compact = 
       // Ignore the observer's first, unchanged notification after navigation:
       // cancelling its transition there would interrupt the intended glide.
       if (!moved && host.dataset.pbGlassReady === 'true') return;
-      if (navigate && host.dataset.pbGlassReady === 'true') host.dataset.pbGlassAnimated = 'true';
-      else delete host.dataset.pbGlassAnimated;
+      if (navigate && host.dataset.pbGlassReady === 'true') {
+        host.dataset.pbGlassAnimated = 'true';
+        host.dataset.pbGlassNavigated = 'true';
+      } else delete host.dataset.pbGlassAnimated;
       indicator.style.width = nextWidth;
       indicator.style.height = nextHeight;
       indicator.style.transform = nextTransform;

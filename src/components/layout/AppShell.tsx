@@ -7,7 +7,6 @@ import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';
 import { authClient } from '@/lib/auth/client';
-import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
 import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
@@ -26,15 +25,14 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 import { SHELL_EVENTS } from './shellEvents';
+import { useTypographyPreferences } from './useTypographyPreferences';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   // Resolved: Light, Dark, or the device's setting when on System.
   const darkMode = useResolvedDark();
-  const textSize = usePebbleStore((s) => s.textSize);
   const locale = usePebbleStore((s) => s.locale);
-  const fontChoice = usePebbleStore((s) => s.fontChoice);
-  const cjkFontChoice = usePebbleStore((s) => s.cjkFontChoice);
+  useTypographyPreferences();
   const themeChoice = usePebbleStore((s) => s.themeChoice);
   useLayoutEffect(() => {
     const html = document.documentElement;
@@ -235,13 +233,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => handlers.forEach(([name, h]) => window.removeEventListener(name, h));
   }, []);
 
-  // Same effect the original top-level App component had: text-size
-  // setting scales the document's root font size, which every rem-based
-  // measurement throughout Pebble is relative to.
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${(textSize / 100) * 16}px`;
-  }, [textSize]);
-
   // Mirrors darkMode onto <html> (so the class the pre-paint script set stays
   // truthful after a toggle) and onto the .pebble-root div. Both change in ONE
   // step, inside runThemeChange, so the switch is a single cross-fade rather
@@ -272,22 +263,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     runThemeChange(apply);
   }, [darkMode]);
-
-  // Mirrors the font choice onto <html>, as darkMode is above: the pre-paint
-  // script sets it before first paint, this keeps it truthful after a change.
-  // An unknown stored value falls back to the default font.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isFontChoice(fontChoice) && fontChoice !== 'default') root.setAttribute(FONT_ATTRIBUTE, fontChoice);
-    else root.removeAttribute(FONT_ATTRIBUTE);
-  }, [fontChoice]);
-
-  // Same for the Chinese face. Unknown stored values fall back to sans.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isCjkFontChoice(cjkFontChoice) && cjkFontChoice !== 'sans') root.setAttribute(CJK_FONT_ATTRIBUTE, cjkFontChoice);
-    else root.removeAttribute(CJK_FONT_ATTRIBUTE);
-  }, [cjkFontChoice]);
 
   // Same for the colour theme. Unknown stored values fall back to Original.
   useEffect(() => {

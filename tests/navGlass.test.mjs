@@ -55,14 +55,17 @@ test('main navigation retains its exclusions for the separated Settings destinat
 test('initial placement and late font/layout changes do not animate the selected pill',()=>{
  const f=fixture();f.flush();
  assert.equal(f.host.dataset.pbGlassAnimated,undefined);
+ assert.equal(f.host.dataset.pbGlassNavigated,undefined);
  f.item.top+=2;f.item.width+=1;f.resize();
  assert.equal(f.host.dataset.pbGlassAnimated,undefined);
+ assert.equal(f.host.dataset.pbGlassNavigated,undefined);
  assert.equal(f.style.width,'101px');assert.equal(f.style.transform,'translate3d(109px, 5px, 0)');f.cleanup();
 });
 
 test('only destination changes animate, and an unchanged observer notification keeps the glide',()=>{
  const f=fixture();f.flush();f.item.top+=40;f.select('profile');
  assert.equal(f.host.dataset.pbGlassAnimated,'true');
+ assert.equal(f.host.dataset.pbGlassNavigated,'true');
  // CSSStyleDeclaration normalizes style strings independently of layout.
  f.style.transform=f.style.transform.replace(', 0)',', 0px)');f.style.height='32.0000px';
  f.resize();assert.equal(f.host.dataset.pbGlassAnimated,'true');

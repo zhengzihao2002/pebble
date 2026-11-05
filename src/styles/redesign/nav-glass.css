@@ -15,9 +15,13 @@
   backdrop-filter: saturate(1.6) blur(14px);
 }
 .pebble-root .pb-nav-glass-host[data-pb-glass-ready="true"] > .pb-nav-glass-indicator { opacity: 1; }
+/* Keep the server-rendered link's own surface through refresh. Even identical
+   dimensions can rasterize a pixel differently on a separate transformed
+   layer. Hand over to that moving layer only when a page is actually chosen. */
+.pebble-root .pb-nav-glass-side:not([data-pb-glass-navigated="true"]) > .pb-nav-glass-indicator { opacity: 0; }
 .pebble-root .pb-nav-glass-host[data-pb-glass-animated="true"] > .pb-nav-glass-indicator {
   transition: transform .68s cubic-bezier(.22,.78,.22,1), width .68s cubic-bezier(.22,.78,.22,1),
-    height .68s cubic-bezier(.22,.78,.22,1), opacity .2s ease;
+    height .68s cubic-bezier(.22,.78,.22,1);
 }
 .pebble-root .pb-nav-glass-host [data-pb-nav-link] { position: relative; z-index: 1; }
 .pebble-root .pb-nav-glass-side nav .nav-btn { font-weight: 600; }
@@ -26,8 +30,8 @@
 .pebble-root .pb-nav-glass-side nav .nav-btn.active { transition-property: color; }
 .pebble-root .pb-nav-glass-side .nav-icon,
 .pebble-root .pb-nav-glass-side .nav-icon.active { transform: none; }
-.pebble-root .pb-nav-glass-side[data-pb-glass-ready="true"] nav:not(.pb-shell-side-pinned) .nav-btn.active,
-.pebble-root .pb-nav-glass-side[data-pb-glass-ready="true"] nav:not(.pb-shell-side-pinned) .nav-btn.active:hover {
+.pebble-root .pb-nav-glass-side[data-pb-glass-navigated="true"] nav:not(.pb-shell-side-pinned) .nav-btn.active,
+.pebble-root .pb-nav-glass-side[data-pb-glass-navigated="true"] nav:not(.pb-shell-side-pinned) .nav-btn.active:hover {
   background: transparent; box-shadow: none; color: var(--pine); font-weight: 600;
 }
 .pebble-root .pb-nav-glass-bottom > .pb-nav-glass-indicator { border-radius: 1rem; }
@@ -56,8 +60,8 @@
 
 /* The server-rendered selected link must already look like the measured glass.
    Otherwise hydration replaces a solid legacy pill with a different surface. */
-.pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active,
-.pebble-root .pb-nav-glass-side:not([data-pb-glass-ready]) nav:not(.pb-shell-side-pinned) .nav-btn.active:hover,
+.pebble-root .pb-nav-glass-side:not([data-pb-glass-navigated="true"]) nav:not(.pb-shell-side-pinned) .nav-btn.active,
+.pebble-root .pb-nav-glass-side:not([data-pb-glass-navigated="true"]) nav:not(.pb-shell-side-pinned) .nav-btn.active:hover,
 .pebble-root .pb-nav-glass-bottom .bottom-nav-btn::before,
 .pebble-root .account-tabs:not([data-pb-glass-ready="true"]) a[aria-current="page"] {
   background:linear-gradient(145deg,color-mix(in srgb,var(--mist) 72%,transparent),transparent 58%),color-mix(in srgb,var(--pine) 16%,transparent);
