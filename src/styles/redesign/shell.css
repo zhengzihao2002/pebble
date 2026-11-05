@@ -420,5 +420,29 @@
 .pebble-root .pb-sidebar-profile { flex: none; min-height: 3.25rem; }
 .pebble-root .pb-sidebar-profile-name { height: 1.25rem; line-height: 1.25rem; }
 .pebble-root .pb-sidebar-profile-email { height: 1rem; line-height: 1rem; }
-.pebble-root .pb-shell-side-foot > .nav-btn { flex: none; height: 2.75rem; }
-.pebble-root nav.pb-shell-side-pinned > .nav-btn { min-height: 2.75rem; }
+
+/* One text line box for anchors and buttons; SVGs share its visual center. */
+.pebble-root .pebble-sidebar .nav-btn { line-height: 1.25rem; align-items: center; }
+.pebble-root .pebble-sidebar .nav-btn > svg { display: block; flex-shrink: 0; align-self: center; }
+.pebble-root .pebble-sidebar .nav-label { display: block; line-height: inherit; }
+.pebble-root .pebble-sidebar { --pb-sidebar-row-py: .5rem; }
+.pebble-root .pebble-sidebar :is(nav, .pb-shell-side-foot) .nav-btn {
+  padding-block: var(--pb-sidebar-row-py);
+  min-height: calc(1.25rem + 2 * var(--pb-sidebar-row-py));
+}
+.pebble-root .pebble-sidebar .nav-label {
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+.pebble-root .pebble-sidebar .pb-shell-side-pinned .nav-btn.active,
+.pebble-root .pebble-sidebar .pb-shell-side-pinned .nav-btn.active:hover {
+  border: 0;
+  outline: 1px solid color-mix(in srgb, var(--pine) 24%, transparent);
+  outline-offset: -1px;
+}
+@media (max-height: 820px) and (pointer: fine) {
+  .pebble-root .pebble-sidebar { --pb-sidebar-row-py: .4rem; }
+}
+@media (pointer: coarse) {
+  .pebble-root .pebble-sidebar { --pb-sidebar-row-py: .75rem; }
+}

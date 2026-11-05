@@ -47,7 +47,7 @@ export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: S
     <>
       <button onClick={() => (offlineQueue.items.length > 0 ? setConfirmPending(true) : void run(false))} className={className} style={style} disabled={phase !== 'idle'}>
         <LogOut size={iconSize} />
-        {d.auth.signOut}
+        <span className="nav-label">{d.auth.signOut}</span>
       </button>
       {root && createPortal(
         <SigningOutOverlay phase={phase} onRetry={() => void run()} onCancel={() => setPhase('idle')} />,

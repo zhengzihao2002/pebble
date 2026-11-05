@@ -145,8 +145,6 @@
 
 /* ---------- Hero: figure | trajectory | accounts ---------- */
 .pebble-root .pb-dash .pb-hero { margin-bottom: 0; grid-template-areas: "main" "trend" "acct"; }
-/* Keep chart hover/SVG repaint damage inside the hero in Edge. */
-.pebble-root .pb-dash .pb-dash-hero { isolation: isolate; contain: paint; }
 .pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; }
 .pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 44px; align-self: end; }
 .pebble-root .pb-dash .pb-hero-accounts { grid-area: acct; }
@@ -187,14 +185,19 @@
   color: var(--pb-hero-fg);
   background-color: color-mix(in srgb, var(--pb-hero-fg) 16%, transparent);
 }
-/* Keep navigation to the full balance chart, without anchor previews or
-   hover animations that trigger Edge compositor damage beneath the hero. */
+/* Full-width, keyboard-accessible balance history with hover feedback. */
 .pebble-root .pb-dash-hero-trend-link {
   display: flex; flex-direction: column; gap: 0.3rem; min-width: 0;
   margin: -0.55rem -0.7rem; padding: 0.55rem 0.7rem; border-radius: 0.9rem;
   color: inherit; text-decoration: none;
-  border: 0; background: none; appearance: none; text-align: inherit; font: inherit; cursor: pointer;
+  width: calc(100% + 1.4rem); box-sizing: border-box; align-items: stretch;
+  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
+.pebble-root .pb-dash-hero-trend-link:hover { background-color: color-mix(in srgb, var(--pb-hero-fg) 9%, transparent); }
+.pebble-root .pb-dash-hero-trend-chev { transition: transform var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-dash-hero-trend-link:hover .pb-dash-hero-trend-chev { transform: translateX(2px); }
+.pebble-root .pb-dash-hero-spark .pb-spark-grid { stroke: var(--pb-hero-fg); stroke-opacity: .15; stroke-dasharray: 2 3; }
+.pebble-root .pb-dash-hero-spark .pb-spark-tick { fill: var(--pb-hero-fg); font-size: 10px; font-variant-numeric: tabular-nums; }
 .pebble-root .pb-dash-hero-trend-link:focus-visible { outline: 2px solid var(--pb-hero-fg); outline-offset: 2px; }
 .pebble-root .pb-dash-hero-trend-head {
   display: inline-flex; align-items: center; gap: 2px; align-self: flex-start;
@@ -884,5 +887,3 @@
   .pebble-root .pb-dash-yoy-mover + .pb-dash-yoy-mover { padding-left: 1.25rem; border-left: 1px solid var(--line); }
   .pebble-root .pb-dash-yoy-list > * + *::before { display: none; }
 }
-
-.pebble-root .pb-dash-hero-trend-link svg { pointer-events: none; }

@@ -1,7 +1,6 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import { useRouter } from 'next/navigation';
 import Link from '@/components/loading/PendingLink';
 import { ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -43,7 +42,6 @@ const MAX_ROWS = 5;
  */
 export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocated = 0, trend = null }: BalanceHeroProps) {
   const { d, t, locale } = useTranslation();
-  const router = useRouter();
   const ux = d.ux.dashboard;
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
 
@@ -128,12 +126,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
 
       <div className="pb-dash-hero-trend">
         {trend && trend.length > 1 && (
-          // Keep SVG navigation free of anchor previews and hover repaint effects.
-          <button type="button" role="link" className="pb-dash-hero-trend-link"
-            onClick={event => {
-              if (event.ctrlKey || event.metaKey) window.open('/accounts', '_blank', 'noopener,noreferrer');
-              else router.push('/accounts');
-            }}
+          <Link href="/accounts" prefetch={false} className="pb-dash-hero-trend-link"
             aria-label={t(ux.balanceHistoryLink, { period })}
           >
             <span className="pb-dash-hero-trend-head" aria-hidden="true">
@@ -142,7 +135,8 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
             </span>
             <Sparkline
               values={trend.map((p) => p.total)}
-              height={44}
+              height={80}
+              yTicks
               color="var(--pb-hero-fg)"
               area
               endDot
@@ -154,7 +148,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-tnum">{formatDate(trend[0].date, locale)}</span>
               <span>{d.upcomingCard.today}</span>
             </span>
-          </button>
+          </Link>
         )}
       </div>
 

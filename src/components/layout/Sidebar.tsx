@@ -57,7 +57,7 @@ export function Sidebar() {
       <div className="pb-shell-side-foot" style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn">
           {onSystem ? <Monitor size={18} /> : darkMode ? <Moon size={18} /> : <Sun size={18} />}
-          {onSystem ? d.sidebar.system : darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}
+          <span className="nav-label">{onSystem ? d.sidebar.system : darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}</span>
         </button>
         <SignOutButton />
         <div className="pb-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
