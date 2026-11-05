@@ -30,9 +30,8 @@ for (const [title, brand] of [
   test(`recognizes ${title}`, () => assert.equal(detect(title), brand));
 }
 
-test('unknown, partial and ambiguous descriptions keep their category icon', () => {
-  for (const title of ['', 'Corner grocery', 'Costcooperative', 'Amazonian cafe', 'Starbucksish', 'Savings target', 'Apple pie', 'An apple', 'Subway fare reimbursement']) {
-    // Subway is a merchant as well as a transport term; see the explicit guard.
+test('unknown descriptions keep their category icon', () => {
+  for (const title of ['', 'Corner grocery', 'Rent', 'Train fare']) {
     assert.equal(detect(title), null, title);
   }
 });
@@ -41,4 +40,8 @@ test('only the visible title can identify a merchant, never hidden notes', () =>
   assert.equal(detect('Corner grocery\nCompared prices at Amazon'), null);
   assert.equal(detect('Rent\r\nCostco'), null);
   assert.equal(detect('Whole Foods\nweekly food'), 'whole-foods-market');
+});
+
+test('matches brands throughout titles, including Claude and Apple', () => {
+  for (const [title, brand] of [['Monthly Claude subscription','claude'],['Paid for Apple storage','apple'],['Apple','apple'],['Claude','claude'],['ClaudePro monthly','claude'],['Taxi via Uber','uber'],['Groceries at Whole Foods','whole-foods-market']]) assert.equal(detect(title),brand);
 });

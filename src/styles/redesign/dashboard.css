@@ -145,6 +145,8 @@
 
 /* ---------- Hero: figure | trajectory | accounts ---------- */
 .pebble-root .pb-dash .pb-hero { margin-bottom: 0; grid-template-areas: "main" "trend" "acct"; }
+/* Keep chart hover/SVG repaint damage inside the hero in Edge. */
+.pebble-root .pb-dash .pb-dash-hero { isolation: isolate; contain: paint; }
 .pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; }
 .pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 44px; align-self: end; }
 .pebble-root .pb-dash .pb-hero-accounts { grid-area: acct; }

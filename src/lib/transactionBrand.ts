@@ -22,7 +22,8 @@ const BRANDS = [
   ['netflix', ['netflix']],
   ['spotify', ['spotify']],
   ['hulu', ['hulu']],
-  ['apple', ['apple com bill', 'apple store', 'apple services', 'itunes']],
+  ['claude', ['claude', 'anthropic']],
+  ['apple', ['apple', 'itunes']],
   ['youtube', ['youtube', 'you tube']],
   ['ikea', ['ikea', '宜家']],
   ['home-depot', ['home depot', 'the home depot']],
@@ -38,16 +39,11 @@ function normalize(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
-/** Require a merchant at the start of the title, allowing common bank/payment
- * prefixes. This avoids treating "savings target" or notes about Amazon as a
- * purchase there. Unknown or ambiguous titles keep their category icon.
- */
+/** Match supported names wherever their text appears in the visible title. */
 export function detectTransactionBrand(description: string): TransactionBrand | null {
   const title = normalize(description.split(/\r?\n/, 1)[0]);
-  const merchant = title.replace(/^(?:(?:sq|tst|sp|paypal|pp|pos|debit card purchase|card purchase|purchase|payment to)\s+)+/, '');
-  if (/^subway (?:fare|ticket|train|ride|pass|metro)\b/.test(merchant)) return null;
   for (const [brand, aliases] of BRANDS) {
-    if (aliases.some(alias => merchant === alias || merchant.startsWith(`${alias} `))) return brand;
+    if (aliases.some(alias => title.includes(alias))) return brand;
   }
   return null;
 }

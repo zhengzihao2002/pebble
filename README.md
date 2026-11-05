@@ -361,13 +361,13 @@ requires the TypeScript 6 API; the app compiles and type-checks with TypeScript 
 **Brand icons:** Settings → Appearance → Brand icons is on by default, including
 for existing users. Supported merchant titles use locally bundled logos from
 the free [theSVG React library](https://github.com/glincker/thesvg/tree/main/packages/react).
-Unknown titles and the off setting retain category icons. Matching uses only
+Unknown titles and the off setting retain category icons. Matching finds supported names anywhere in
 the first line of the title and never calls an external logo/matching service.
 Categories, amounts and stored titles are unchanged. Logos remain the trademarks
 of their respective owners; the library's code is MIT licensed.
 
 The adjacent Brand logo size setting offers Default (the original size) and
-Large (larger logos with roomier rows). The size is remembered per user on the
+Large (larger logos centered on the original icon position). The size is remembered per user on the
 device and does not resize category fallback icons.
 
 1. Import the repo into Vercel

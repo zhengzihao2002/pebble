@@ -16,6 +16,7 @@ import Subway from '@thesvg/react/subway';
 import DoorDash from '@thesvg/react/doordash';
 import Instacart from '@thesvg/react/instacart';
 import Uber from '@thesvg/react/uber';
+import Claude from '@thesvg/react/claude';
 import Lyft from '@thesvg/react/lyft';
 import Netflix from '@thesvg/react/netflix';
 import Spotify from '@thesvg/react/spotify';
@@ -36,15 +37,12 @@ const LOGOS: Record<TransactionBrand, ComponentType<SVGProps<SVGSVGElement>>> = 
   starbucks: Starbucks, walmart: Walmart, target: Target, kroger: Kroger,
   'aldi-sud': Aldi, mcdonalds: McDonalds, 'burger-king': BurgerKing,
   'taco-bell': TacoBell, subway: Subway, doordash: DoorDash,
-  instacart: Instacart, uber: Uber, lyft: Lyft, netflix: Netflix,
+  instacart: Instacart, uber: Uber, claude: Claude, lyft: Lyft, netflix: Netflix,
   spotify: Spotify, hulu: Hulu, apple: Apple, youtube: YouTube, ikea: Ikea,
   'home-depot': HomeDepot, 'best-buy': BestBuy, walgreens: Walgreens, cvs: Cvs,
 };
 
-/** The existing tile owns its layout/tint. Only its icon changes. A white
- * inset keeps original brand colours readable in every light/dark theme.
- * Omit description for balance adjustments and other non-merchant records.
- */
+/** Keep the tile center fixed; branded artwork has no added background. */
 export function TransactionIcon({ description, fallback, size = 16 }: {
   description?: string;
   fallback: ReactNode;
@@ -56,10 +54,11 @@ export function TransactionIcon({ description, fallback, size = 16 }: {
   if (!brand) return fallback;
   const Logo = LOGOS[brand];
   return <span data-pb-transaction-brand={brand} data-pb-brand-size={large ? 'large' : 'default'} aria-hidden="true" style={{
+    position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     width: size + (large ? 32 : 12), height: size + (large ? 32 : 12), padding: large ? 2 : 3, boxSizing: 'border-box',
-    flexShrink: 0, borderRadius: 5, backgroundColor: '#fff', color: '#202020',
+    color: 'var(--ink)',
   }}>
-    <Logo width="100%" height="100%" focusable="false" aria-hidden="true" />
+    <Logo {...(brand === 'uber' ? { variant: 'mono' } : {})} width="100%" height="100%" focusable="false" aria-hidden="true" />
   </span>;
 }

@@ -1,10 +1,8 @@
-/* Large logos expand their existing tiles and rows rather than overflowing
-   a fixed 36px box. Category fallbacks keep their original dimensions. */
-.pebble-root :is(.pb-transaction-icon-tile, .pb-dash-tile-icon, .pb-ins-tile, .pb-shell-pal-icon):has(> [data-pb-brand-size="large"]) {
-  min-width: 56px;
-  min-height: 56px;
+/* Both sizes use the original tile center. Only the artwork expands. */
+.pebble-root :is(.pb-transaction-icon-tile, .pb-dash-tile-icon, .pb-ins-tile, .pb-shell-pal-icon, .pb-tdlg-tile):has(> [data-pb-transaction-brand]) {
+  position: relative;
+  background: none !important;
+  box-shadow: none !important;
 }
-.pebble-root .pb-tdlg-tile:has(> [data-pb-brand-size="large"]) {
-  min-width: 64px;
-  min-height: 64px;
-}
+/* Search results need a little extra vertical clearance for large artwork. */
+.pebble-root .pb-shell-pal-opt:has([data-pb-brand-size="large"]) { min-height: 56px; }
