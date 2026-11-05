@@ -22,6 +22,8 @@ const BRANDS = [
   ['netflix', ['netflix']],
   ['spotify', ['spotify']],
   ['hulu', ['hulu']],
+  ['supercell', ['supercell']],
+  ['qq', ['qq']],
   ['claude', ['claude', 'anthropic']],
   ['apple', ['apple', 'itunes']],
   ['youtube', ['youtube', 'you tube']],
@@ -42,8 +44,17 @@ function normalize(value: string): string {
 /** Match supported names wherever their text appears in the visible title. */
 export function detectTransactionBrand(description: string): TransactionBrand | null {
   const title = normalize(description.split(/\r?\n/, 1)[0]);
+  let first: { brand: TransactionBrand; at: number; length: number } | null = null;
   for (const [brand, aliases] of BRANDS) {
-    if (aliases.some(alias => title.includes(alias))) return brand;
+    for (const alias of aliases) {
+      // Chinese can directly follow QQ, but English ticker suffixes cannot.
+      const at = brand === 'qq'
+        ? (/(?<![a-z0-9])qq(?![a-z0-9])/u.exec(title)?.index ?? -1)
+        : title.indexOf(alias);
+      if (at >= 0 && (!first || at < first.at || (at === first.at && alias.length > first.length))) {
+        first = { brand, at, length: alias.length };
+      }
+    }
   }
-  return null;
+  return first?.brand ?? null;
 }

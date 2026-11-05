@@ -415,3 +415,10 @@
 
 /* Trim the text box to the capitals rather than centering font leading. */
 .pebble-root .pb-sidebar-initials { display: block; line-height: 1; text-box-trim: trim-both; text-box-edge: cap alphabetic; }
+
+/* Reserve the same two-line identity footprint before and after session load. */
+.pebble-root .pb-sidebar-profile { flex: none; min-height: 3.25rem; }
+.pebble-root .pb-sidebar-profile-name { height: 1.25rem; line-height: 1.25rem; }
+.pebble-root .pb-sidebar-profile-email { height: 1rem; line-height: 1rem; }
+.pebble-root .pb-shell-side-foot > .nav-btn { flex: none; height: 2.75rem; }
+.pebble-root nav.pb-shell-side-pinned > .nav-btn { min-height: 2.75rem; }

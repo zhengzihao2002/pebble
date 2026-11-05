@@ -1,8 +1,13 @@
 /* Both sizes use the original tile center. Only the artwork expands. */
-.pebble-root :is(.pb-transaction-icon-tile, .pb-dash-tile-icon, .pb-ins-tile, .pb-shell-pal-icon, .pb-tdlg-tile):has(> [data-pb-transaction-brand]) {
+.pebble-root :is(.pb-transaction-icon-tile, .pb-dash-tile-icon, .pb-ins-tile, .pb-shell-pal-icon):has(> [data-pb-transaction-brand]) {
   position: relative;
   background: none !important;
   box-shadow: none !important;
 }
 /* Search results need a little extra vertical clearance for large artwork. */
 .pebble-root .pb-shell-pal-opt:has([data-pb-brand-size="large"]) { min-height: 56px; }
+
+/* Details retain their normal category tint and have room for large artwork. */
+.pebble-root .pb-tdlg-tile:has(> [data-pb-transaction-brand]) {
+  position: relative; min-width: 64px; min-height: 64px;
+}

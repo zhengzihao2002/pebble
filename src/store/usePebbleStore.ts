@@ -61,7 +61,6 @@ export type SelectMode = 'searchable' | 'plain';
 export type BreakdownChart = 'donut' | 'bar';
 
 export type LoadingStyle = 'cached' | 'spinner';
-export type BrandIconSize = 'default' | 'large';
 
 interface PebblePrefs {
   // Light, Dark, or System (follows the device live - useResolvedDark).
@@ -102,7 +101,6 @@ interface PebblePrefs {
   showCardGlow: boolean;
   // Recognized merchant logos in transaction tiles. On unless disabled.
   showBrandIcons: boolean;
-  brandIconSize: BrandIconSize;
   themeChoice: ThemeChoice;
   // Per-user switches disabling risky buttons. Read through isLocked(), so a
   // lock missing from older saved settings takes its default.
@@ -148,7 +146,6 @@ interface PebbleUIState extends PebblePrefs {
   setShowHealthBar: (value: boolean) => void;
   setShowCardGlow: (value: boolean) => void;
   setShowBrandIcons: (value: boolean) => void;
-  setBrandIconSize: (value: BrandIconSize) => void;
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
@@ -178,7 +175,6 @@ const DEFAULT_PREFS: PebblePrefs = {
   showHealthBar: false,
   showCardGlow: true,
   showBrandIcons: true,
-  brandIconSize: 'default',
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
@@ -240,7 +236,6 @@ export const usePebbleStore = create<PebbleUIState>()(
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setShowCardGlow: (value) => set({ showCardGlow: value }),
       setShowBrandIcons: (value) => set({ showBrandIcons: value }),
-      setBrandIconSize: (value) => set({ brandIconSize: value }),
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
@@ -307,7 +302,6 @@ export const usePebbleStore = create<PebbleUIState>()(
         showHealthBar: state.showHealthBar,
         showCardGlow: state.showCardGlow,
         showBrandIcons: state.showBrandIcons,
-        brandIconSize: state.brandIconSize,
         themeChoice: state.themeChoice,
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).

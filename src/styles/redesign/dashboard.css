@@ -187,24 +187,19 @@
   color: var(--pb-hero-fg);
   background-color: color-mix(in srgb, var(--pb-hero-fg) 16%, transparent);
 }
-/* The trajectory is a link to the Accounts page's full balance chart. A
-   quiet label says so, a soft band shows on hover, and the line keeps just
-   two words of context - where it starts, and that it ends today. Background
-   and transform only, so the still hero stays still until pointed at. */
+/* Keep navigation to the full balance chart, without anchor previews or
+   hover animations that trigger Edge compositor damage beneath the hero. */
 .pebble-root .pb-dash-hero-trend-link {
   display: flex; flex-direction: column; gap: 0.3rem; min-width: 0;
   margin: -0.55rem -0.7rem; padding: 0.55rem 0.7rem; border-radius: 0.9rem;
   color: inherit; text-decoration: none;
-  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+  border: 0; background: none; appearance: none; text-align: inherit; font: inherit; cursor: pointer;
 }
-.pebble-root .pb-dash-hero-trend-link:hover { background-color: color-mix(in srgb, var(--pb-hero-fg) 9%, transparent); }
 .pebble-root .pb-dash-hero-trend-link:focus-visible { outline: 2px solid var(--pb-hero-fg); outline-offset: 2px; }
 .pebble-root .pb-dash-hero-trend-head {
   display: inline-flex; align-items: center; gap: 2px; align-self: flex-start;
   font-size: 0.74rem; font-weight: 600; color: var(--ink-soft);
 }
-.pebble-root .pb-dash-hero-trend-chev { transition: transform var(--pb-dur-micro) var(--pb-ease-out); }
-.pebble-root .pb-dash-hero-trend-link:hover .pb-dash-hero-trend-chev { transform: translateX(2px); }
 .pebble-root .pb-dash-hero-trend-axis {
   display: flex; justify-content: space-between; gap: 1rem;
   font-size: 0.68rem; color: var(--ink-soft); line-height: 1.2;
@@ -889,3 +884,5 @@
   .pebble-root .pb-dash-yoy-mover + .pb-dash-yoy-mover { padding-left: 1.25rem; border-left: 1px solid var(--line); }
   .pebble-root .pb-dash-yoy-list > * + *::before { display: none; }
 }
+
+.pebble-root .pb-dash-hero-trend-link svg { pointer-events: none; }

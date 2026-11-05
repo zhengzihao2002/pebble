@@ -1,6 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
+import { useRouter } from 'next/navigation';
 import Link from '@/components/loading/PendingLink';
 import { ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -42,6 +43,7 @@ const MAX_ROWS = 5;
  */
 export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocated = 0, trend = null }: BalanceHeroProps) {
   const { d, t, locale } = useTranslation();
+  const router = useRouter();
   const ux = d.ux.dashboard;
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
 
@@ -126,13 +128,12 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
 
       <div className="pb-dash-hero-trend">
         {trend && trend.length > 1 && (
-          // The line has no axes on purpose (it is a glance), so it is also
-          // the way in to the full chart: the Accounts page draws the same
-          // total over 1M-All with axes and a scrubber, at the top of the
-          // page. A real link - keyboard reachable, opens in a new tab with a
-          // modifier - labelled by what it opens, never by an amount.
-          <Link
-            href="/accounts" prefetch={false} className="pb-dash-hero-trend-link"
+          // Keep SVG navigation free of anchor previews and hover repaint effects.
+          <button type="button" role="link" className="pb-dash-hero-trend-link"
+            onClick={event => {
+              if (event.ctrlKey || event.metaKey) window.open('/accounts', '_blank', 'noopener,noreferrer');
+              else router.push('/accounts');
+            }}
             aria-label={t(ux.balanceHistoryLink, { period })}
           >
             <span className="pb-dash-hero-trend-head" aria-hidden="true">
@@ -153,7 +154,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-tnum">{formatDate(trend[0].date, locale)}</span>
               <span>{d.upcomingCard.today}</span>
             </span>
-          </Link>
+          </button>
         )}
       </div>
 

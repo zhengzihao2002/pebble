@@ -16,6 +16,8 @@ import Subway from '@thesvg/react/subway';
 import DoorDash from '@thesvg/react/doordash';
 import Instacart from '@thesvg/react/instacart';
 import Uber from '@thesvg/react/uber';
+import Supercell from '@thesvg/react/supercell';
+import Qq from '@thesvg/react/qq';
 import Claude from '@thesvg/react/claude';
 import Lyft from '@thesvg/react/lyft';
 import Netflix from '@thesvg/react/netflix';
@@ -33,6 +35,7 @@ import { detectTransactionBrand, type TransactionBrand } from '@/lib/transaction
 
 // Per-icon imports: only these logos enter the app bundle, not the catalog.
 const LOGOS: Record<TransactionBrand, ComponentType<SVGProps<SVGSVGElement>>> = {
+  supercell: Supercell, qq: Qq,
   'whole-foods-market': WholeFoods, costco: Costco, amazon: Amazon,
   starbucks: Starbucks, walmart: Walmart, target: Target, kroger: Kroger,
   'aldi-sud': Aldi, mcdonalds: McDonalds, 'burger-king': BurgerKing,
@@ -49,16 +52,15 @@ export function TransactionIcon({ description, fallback, size = 16 }: {
   size?: number;
 }) {
   const enabled = usePebbleStore(s => s.showBrandIcons) !== false;
-  const large = usePebbleStore(s => s.brandIconSize) === 'large';
   const brand = enabled && description ? detectTransactionBrand(description) : null;
   if (!brand) return fallback;
   const Logo = LOGOS[brand];
-  return <span data-pb-transaction-brand={brand} data-pb-brand-size={large ? 'large' : 'default'} aria-hidden="true" style={{
+  return <span data-pb-transaction-brand={brand} data-pb-brand-size="large" aria-hidden="true" style={{
     position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: size + (large ? 32 : 12), height: size + (large ? 32 : 12), padding: large ? 2 : 3, boxSizing: 'border-box',
+    width: size + 32, height: size + 32, padding: 2, boxSizing: 'border-box',
     color: 'var(--ink)',
   }}>
-    <Logo {...(brand === 'uber' ? { variant: 'mono' } : {})} width="100%" height="100%" focusable="false" aria-hidden="true" />
+    <Logo {...(brand === 'uber' || brand === 'apple' ? { variant: 'mono' } : {})} width="100%" height="100%" focusable="false" aria-hidden="true" />
   </span>;
 }

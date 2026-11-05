@@ -45,3 +45,17 @@ test('only the visible title can identify a merchant, never hidden notes', () =>
 test('matches brands throughout titles, including Claude and Apple', () => {
   for (const [title, brand] of [['Monthly Claude subscription','claude'],['Paid for Apple storage','apple'],['Apple','apple'],['Claude','claude'],['ClaudePro monthly','claude'],['Taxi via Uber','uber'],['Groceries at Whole Foods','whole-foods-market']]) assert.equal(detect(title),brand);
 });
+
+test('the first brand in title order wins, independent of registry order', () => {
+  assert.equal(detect('Uber DoorDash'), 'uber');
+  assert.equal(detect('DoorDash Uber'), 'doordash');
+  assert.equal(detect('Apple Supercell'), 'apple');
+  assert.equal(detect('Supercell Apple'), 'supercell');
+});
+
+test('QQ recognizes Tencent subscriptions in English and Chinese without matching tickers', () => {
+  for (const title of ['QQ', 'QQ Music SVIP', 'QQ音乐绿钻年卡（双11特惠）', '充值 QQ音乐', 'qq music']) assert.equal(detect(title), 'qq', title);
+  for (const title of ['QQQ', 'QQQM', 'Buy QQQM', 'NASDAQ QQQ', 'SQQQ']) assert.equal(detect(title), null, title);
+  assert.equal(detect('Buy QQQM then QQ Music SVIP'), 'qq');
+  assert.equal(detect('Supercell gems'), 'supercell');
+});
