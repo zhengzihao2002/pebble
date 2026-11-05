@@ -3,7 +3,8 @@
 .pebble-root .pb-nav-glass-indicator {
   position: absolute; top: 0; left: 0; z-index: 0; flex: none;
   pointer-events: none; opacity: 0; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--pine) 24%, transparent);
+  border: 0;
+  outline: 1px solid color-mix(in srgb, var(--pine) 24%, transparent); outline-offset: -1px;
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--mist) 72%, transparent), transparent 58%),
     color-mix(in srgb, var(--pine) 16%, transparent);
@@ -20,6 +21,9 @@
 }
 .pebble-root .pb-nav-glass-host [data-pb-nav-link] { position: relative; z-index: 1; }
 .pebble-root .pb-nav-glass-side nav .nav-btn { font-weight: 600; }
+/* The initial link and measured surface exchange in one paint. A fading
+   link background would stack two fills during hydration and change its rim. */
+.pebble-root .pb-nav-glass-side nav .nav-btn.active { transition-property: color; }
 .pebble-root .pb-nav-glass-side .nav-icon,
 .pebble-root .pb-nav-glass-side .nav-icon.active { transform: none; }
 .pebble-root .pb-nav-glass-side[data-pb-glass-ready="true"] nav:not(.pb-shell-side-pinned) .nav-btn.active,
@@ -43,7 +47,7 @@
   color: var(--pine);
   -webkit-backdrop-filter: saturate(1.6) blur(14px); backdrop-filter: saturate(1.6) blur(14px);
 }
-.pebble-root .account-tabs a[aria-current="page"] { color: var(--pine); font-weight: 600; }
+.pebble-root .account-tabs a[aria-current="page"] { color: var(--pine); font-weight: 600; transition-property: color; }
 .pebble-root .account-tabs[data-pb-glass-ready="true"] a[aria-current="page"] { background: transparent; box-shadow: none; }
 .pebble-root .pb-settings-glass { position: relative; }
 .pebble-root .pb-settings-glass[data-pb-glass-ready="true"] [data-pb-nav-selected="true"] {

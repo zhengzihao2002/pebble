@@ -14,14 +14,17 @@ function fixture({visible=true,width=100,selector}={}) {
   getBoundingClientRect:()=>bounds,querySelector:s=>{lastSelector=s;return target;},querySelectorAll:()=>[target],addEventListener(){},removeEventListener(){}};
  const refs=[{current:host},{current:{style}}];
  vm.runInNewContext(source,{module:compiled,exports:compiled.exports,
-  require:()=>({useRef:()=>refs[refIndex++],useLayoutEffect:fn=>{effect=fn;}}),
+  require:()=>({useRef:initial=>{const index=refIndex++;return refs[index]??(refs[index]={current:initial});},useLayoutEffect:fn=>{effect=fn;}}),
   ResizeObserver:class{constructor(fn){resize=fn;}observe(){}disconnect(){}},
   window:{addEventListener(){},removeEventListener(){}},
   document:{documentElement:{}},getComputedStyle:()=>({fontSize:'16px'}),
   requestAnimationFrame:fn=>{frames.set(++sequence,fn);return sequence;},cancelAnimationFrame:id=>frames.delete(id)});
- compiled.exports.useNavGlass('security',false,selector);const cleanup=effect();
+ let dispose;
+ const render=selection=>{refIndex=0;compiled.exports.useNavGlass(selection,false,selector);dispose?.();dispose=effect();};
+ render('security');
+ const cleanup=()=>dispose?.();
  const flush=()=>{for(let i=0;frames.size&&i<10;i++){const current=[...frames.values()];frames.clear();current.forEach(fn=>fn());}};
- return {host,style,bounds,item,cleanup,selector:()=>lastSelector,flush,resize:()=>{resize();flush();}};
+ return {host,style,bounds,item,cleanup,select:render,selector:()=>lastSelector,flush,resize:()=>{resize();flush();}};
 }
 
 test('an initially hidden account selector places a full pill when it becomes visible',()=>{
@@ -47,4 +50,22 @@ test('label or text-size changes remeasure the existing account pill',()=>{
 
 test('main navigation retains its exclusions for the separated Settings destination',()=>{
  const f=fixture();assert(f.selector().includes(':not([href="/settings"])'));assert(f.selector().includes(':not([href^="/account/"])'));f.cleanup();
+});
+
+test('initial placement and late font/layout changes do not animate the selected pill',()=>{
+ const f=fixture();f.flush();
+ assert.equal(f.host.dataset.pbGlassAnimated,undefined);
+ f.item.top+=2;f.item.width+=1;f.resize();
+ assert.equal(f.host.dataset.pbGlassAnimated,undefined);
+ assert.equal(f.style.width,'101px');assert.equal(f.style.transform,'translate3d(109px, 5px, 0)');f.cleanup();
+});
+
+test('only destination changes animate, and an unchanged observer notification keeps the glide',()=>{
+ const f=fixture();f.flush();f.item.top+=40;f.select('profile');
+ assert.equal(f.host.dataset.pbGlassAnimated,'true');
+ // CSSStyleDeclaration normalizes style strings independently of layout.
+ f.style.transform=f.style.transform.replace(', 0)',', 0px)');f.style.height='32.0000px';
+ f.resize();assert.equal(f.host.dataset.pbGlassAnimated,'true');
+ f.item.width+=20;f.resize();assert.equal(f.host.dataset.pbGlassAnimated,undefined);
+ assert.equal(f.style.width,'120px');f.cleanup();
 });

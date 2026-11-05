@@ -191,9 +191,13 @@
   margin: -0.55rem -0.7rem; padding: 0.55rem 0.7rem; border-radius: 0.9rem;
   color: inherit; text-decoration: none;
   width: calc(100% + 1.4rem); box-sizing: border-box; align-items: stretch;
-  transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
+  /* Keep the hover wash on the normal paint path. Chromium's composited
+     background-color transitions can flash an incorrect fill (crbug.com/574705530).
+     An inset shadow preserves the same wash and timing without that path. */
+  box-shadow: inset 0 0 0 100vmax transparent;
+  transition: box-shadow var(--pb-dur-micro) var(--pb-ease-out);
 }
-.pebble-root .pb-dash-hero-trend-link:hover { background-color: color-mix(in srgb, var(--pb-hero-fg) 9%, transparent); }
+.pebble-root .pb-dash-hero-trend-link:hover { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--pb-hero-fg) 9%, transparent); }
 .pebble-root .pb-dash-hero-trend-chev { transition: transform var(--pb-dur-micro) var(--pb-ease-out); }
 .pebble-root .pb-dash-hero-trend-link:hover .pb-dash-hero-trend-chev { transform: translateX(2px); }
 .pebble-root .pb-dash-hero-spark .pb-spark-grid { stroke: var(--pb-hero-fg); stroke-opacity: .15; stroke-dasharray: 2 3; }
