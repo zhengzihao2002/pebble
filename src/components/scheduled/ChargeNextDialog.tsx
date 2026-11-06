@@ -138,8 +138,8 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
                 const date = basis === 'processed' ? plan.transactionDate : plan.occurrenceDate;
                 return <label key={basis}>
                   <input type="radio" name="shortcut-date" value={basis} checked={textDateBasis === basis} onChange={() => setTextDateBasis(basis)} />
-                  <span><strong>{basis === 'processed' ? x.shortcutDateToday : x.shortcutDateScheduled} · {formatDate(date, locale)}</strong>
-                    <span className="pb-sched-shortcut-text">{expandScheduledText(rule.description, date)}</span></span>
+                  <strong>{basis === 'processed' ? x.shortcutDateToday : x.shortcutDateScheduled} · {formatDate(date, locale)}</strong>
+                  <span className="pb-sched-shortcut-text">{expandScheduledText(rule.description, date)}</span>
                 </label>;
               })}
               <p>{x.shortcutDateNote}</p>

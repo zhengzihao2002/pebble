@@ -62,9 +62,9 @@ export function capturePageLayout(pathname: string): void {
   const entry: PageLayout = { key, width, height:rounded(Math.max(...boxes.map(b=>b.y+b.height), ...[...content.children].map(el=>el.getBoundingClientRect().bottom-origin.y))), savedAt:Date.now(), boxes };
   if (!valid(entry)) return;
   const saved = {entries:layoutTools.entries(user)};
-  const previous = saved.entries.find(e=>e.key===key);
+  const previous = saved.entries.filter(e=>layoutTools.sameProfile(e.key,key)).sort((a,b)=>b.savedAt-a.savedAt)[0];
   if (previous && Date.now()-previous.savedAt < 86400000 && previous.width===width && previous.height===entry.height && JSON.stringify(previous.boxes)===JSON.stringify(boxes)) return;
-  const entries = [entry,...saved.entries.filter(e=>e.key!==key && Date.now()-e.savedAt<TTL)].slice(0,MAX_ENTRIES);
+  const entries = [entry,...saved.entries.filter(e=>!layoutTools.sameProfile(e.key,key) && Date.now()-e.savedAt<TTL)].slice(0,MAX_ENTRIES);
   const raw = JSON.stringify({version:2,entries});
   try { localStorage.setItem(LAYOUT_CACHE_PREFIX+user,raw); } catch { /* quota/private browsing: keep the normal fallback */ }
 }

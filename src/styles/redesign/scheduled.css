@@ -422,10 +422,10 @@
 
 .pebble-root .pb-sched-shortcut-options { border:0; padding:0; margin:1.1rem 0 0; min-width:0; }
 .pebble-root .pb-sched-shortcut-options legend { font-size:.875rem; font-weight:600; margin-bottom:.6rem; color:var(--ink); }
-.pebble-root .pb-sched-shortcut-options label { display:flex; align-items:flex-start; gap:.65rem; padding:.8rem; margin:.45rem 0; border:1px solid var(--line); border-radius:.85rem; background:var(--mist); cursor:pointer; }
+.pebble-root .pb-sched-shortcut-options label { display:grid; grid-template-columns:1rem minmax(0,1fr); column-gap:.65rem; row-gap:.35rem; align-items:start; padding:.8rem; margin:.45rem 0; border:1px solid var(--line); border-radius:.85rem; background:var(--mist); cursor:pointer; }
 .pebble-root .pb-sched-shortcut-options label:has(input:checked) { border-color:var(--pine); background:color-mix(in srgb,var(--pine) 7%,var(--mist)); }
-.pebble-root .pb-sched-shortcut-options input { accent-color:var(--pine); margin-top:.2rem; flex:none; }
+.pebble-root .pb-sched-shortcut-options input { grid-column:1; grid-row:1; accent-color:var(--pine); width:1rem; height:1rem; margin:.1rem 0 0; }
 .pebble-root .pb-sched-shortcut-options label > span { min-width:0; }
-.pebble-root .pb-sched-shortcut-options strong { font-size:.8rem; font-weight:600; }
-.pebble-root .pb-sched-shortcut-text { display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; color:var(--ink-soft); line-height:1.5; margin-top:.35rem; }
+.pebble-root .pb-sched-shortcut-options strong { grid-column:2; grid-row:1; min-width:0; font-size:.8rem; line-height:1.2rem; font-weight:600; }
+.pebble-root .pb-sched-shortcut-text { grid-column:2; display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; color:var(--ink-soft); line-height:1.5; }
 .pebble-root .pb-sched-shortcut-options > p { font-size:.75rem; color:var(--ink-soft); line-height:1.5; }

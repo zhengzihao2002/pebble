@@ -21,8 +21,13 @@ read that identity from the server-rendered `pebble-session` metadata. They
 never fall back to the last user's preferences or another user's cache. This
 is per signed-in person, rather than per bank account within that person's app.
 
-Profiles separate each page, exact content/viewport width and viewport height,
-text size, language and font choices. A new device size or unmatched profile uses
+Profiles separate each page, exact content/viewport width, text size, language
+and font choices. Desktop profiles also require the same viewport height for
+height-dependent pane layouts. Phone profiles (viewport width below 760px) reuse
+their flowing card geometry across height changes from browser chrome, the
+keyboard or a full app relaunch. Existing v2 entries with an exact phone height
+remain readable; the most recently saved compatible layout wins, and a new
+capture consolidates those height variants. A new width or unmatched profile uses
 the ordinary page-specific skeleton. Entries expire after 30 days; each user's
 cache retains at most 48 profiles and 80 rectangles per profile. Invalid or
 unavailable storage is an optional cache miss, never a page-loading failure.
@@ -45,7 +50,9 @@ motion removes the fade. Fresh data can still change the natural layout; cached
 geometry never forces financial content into stale dimensions.
 
 Loaded content is observed for card and viewport resizes, animation completion,
-font completion and DOM changes. Only loaded, visible pages at their initial scroll position are
+font completion and DOM changes. Entering the background also flushes a capture
+synchronously on `visibilitychange`, since iOS may terminate an app without a
+`pagehide` event. Only loaded, visible pages at their initial scroll position are
 recorded, avoiding the displaced coordinates of pinned/sticky cards. Desktop
 Transactions is recorded only while both panes are at their initial scroll
 positions, and clips its contours to the pane viewports. Offscreen statement
@@ -83,3 +90,10 @@ Split-stream checks delay React JavaScript and pause just before the inline
 bootstrap to reject any default-skeleton frame on a cached visit. Staged-segment
 tests also cover attachment and zero-width layout. All verification is isolated
 from Neon. Bump the cache version/prefix when changing this geometry format.
+
+Cold-start verification closes Chromium completely, then opens the same on-disk
+profile in a new process with a different phone viewport height. The actual
+Dashboard route bootstrap must restore the saved rectangles before hydration
+without painting the default skeleton. No React module or tab memory survives
+that test; only localStorage does. Width/user isolation and spinner mode remain
+covered separately.

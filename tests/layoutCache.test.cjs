@@ -25,6 +25,42 @@ test('reuses card sizes only for the same page, viewport and text layout',()=>{
  main.clientWidth=375;assert.equal(cache.readPageLayout('/accounts',main),null);main.clientWidth=600;
  html.lang='zh';assert.equal(cache.readPageLayout('/accounts',main),null);
 });
+test('mobile profiles survive launch-height changes and restore legacy localStorage entries',()=>{
+ setup('mobile-relaunch');window.innerWidth=390;window.innerHeight=844;main.clientWidth=390;html.lang='zh-CN';
+ const saved=entry();saved.width=350;saved.boxes[0].width=350;
+ // Existing installs have v2 keys with an exact viewport height. Preserve
+ // those entries even before a completed visit can write the new key.
+ const legacyKey=JSON.parse(saved.key);legacyKey[3]=844;saved.key=JSON.stringify(legacyKey);seed(saved);
+ window.innerHeight=763;
+ const {snapshotTools}=require(path.join(temp,'snapshot.cjs'));
+ assert.equal(snapshotTools().read('/accounts',main).height,640,'a fresh factory restores persisted geometry, without memory from the prior visit');
+ assert.equal(cache.readPageLayout('/accounts',main).height,640);
+ assert.equal(JSON.parse(cache.layoutProfile('/accounts',main))[3],null);
+ for(const [index,value]of [[4,'18px'],[6,'rounded'],[7,'kai']]) {
+   const changed=structuredClone(saved),key=JSON.parse(changed.key);key[index]=value;changed.key=JSON.stringify(key);seed(changed);
+   assert.equal(cache.readPageLayout('/accounts',main),null,'text size and both font choices remain isolated');
+ }
+ seed(saved);
+ window.innerWidth=430;assert.equal(cache.readPageLayout('/accounts',main),null,'device width remains part of the profile');window.innerWidth=390;
+ main.clientWidth=380;assert.equal(cache.readPageLayout('/accounts',main),null,'content width remains exact');main.clientWidth=390;
+ html.lang='en';assert.equal(cache.readPageLayout('/accounts',main),null,'language remains exact');
+});
+test('mobile restoration selects the newest matching legacy height profile',()=>{
+ setup('mobile-newest');window.innerWidth=390;main.clientWidth=390;
+ const older=entry();older.width=350;older.boxes[0].width=350;older.savedAt-=1000;
+ const newer=structuredClone(older);newer.savedAt+=1000;newer.height=920;newer.boxes[0].height=920;
+ for(const [item,height]of [[older,700],[newer,844]]) {const key=JSON.parse(item.key);key[3]=height;item.key=JSON.stringify(key);}
+ values.set(cache.LAYOUT_CACHE_PREFIX+owner,JSON.stringify({version:2,entries:[older,newer]}));
+ window.innerHeight=763;
+ assert.equal(cache.readPageLayout('/accounts',main).height,920);
+ const card={getBoundingClientRect:()=>({left:20,top:20,width:350,height:1000}),closest:()=>null,matches:()=>false};
+ content={hidden:false,closest:()=>main,querySelector:()=>null,children:[],querySelectorAll:selector=>selector==='.pb-rise'?[]:[card]};
+ cache.capturePageLayout('/accounts');
+ const consolidated=JSON.parse(values.get(cache.LAYOUT_CACHE_PREFIX+owner)).entries;
+ assert.equal(consolidated.length,1,'new captures replace equivalent old height variants');
+ assert.equal(consolidated[0].boxes[0].height,1000);
+ assert.equal(JSON.parse(consolidated[0].key)[3],null);
+});
 test('corrupt, expired, oversized and invalid geometry fall back safely',()=>{
  setup('validation');values.set(cache.LAYOUT_CACHE_PREFIX+owner,'not json');assert.equal(cache.readPageLayout('/accounts',main),null);
  for(const change of [e=>e.savedAt=Date.now()-31*86400000,e=>e.boxes[0].height=Infinity,e=>e.boxes[0].width=9000,e=>e.boxes[0].x=-101,e=>e.boxes[0].kind='HTML',e=>e.boxes=Array(81).fill(e.boxes[0])]) {const e=entry();change(e);seed(e);assert.equal(cache.readPageLayout('/accounts',main),null);}

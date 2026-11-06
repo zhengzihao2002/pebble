@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { sheetReleaseVelocity, shouldDismissSheet, type SheetMotionSample } from '@/lib/mobileSheetGesture';
 
 /**
  * The one frame every Pebble dialog sits in: themed backdrop, the card, and
@@ -243,9 +244,11 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     let start: { x: number; y: number; height: number } | null = null;
     let distance = 0;
     let dragging = false;
+    let motion: SheetMotionSample[] = [];
     let suppressClickUntil = 0;
     const reset = () => {
       start = null; dragging = false; distance = 0;
+      motion = [];
       delete card.dataset.dragging;
       card.style.removeProperty('--pb-modal-drag-y');
     };
@@ -260,6 +263,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       }
       const touch = event.touches[0];
       start = { x: touch.clientX, y: touch.clientY, height: card.offsetHeight };
+      motion = [{ distance: 0, time: event.timeStamp }];
     };
     const onMove = (event: TouchEvent) => {
       if (!start) return;
@@ -273,12 +277,16 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       event.preventDefault();
       dragging = true;
       distance = Math.max(0, dy);
+      const now = event.timeStamp;
+      motion.push({ distance, time: now });
+      while (motion.length > 2 && motion[1].time < now - 120) motion.shift();
       card.dataset.dragging = 'true';
       card.style.setProperty('--pb-modal-drag-y', `${distance}px`);
     };
-    const onEnd = () => {
+    const onEnd = (event: TouchEvent) => {
       if (!start) return;
-      const dismiss = dragging && distance >= start.height / 2 && !busyRef.current && !closingRef.current;
+      const dismiss = dragging && shouldDismissSheet(distance, start.height, sheetReleaseVelocity(motion, event.timeStamp))
+        && !busyRef.current && !closingRef.current;
       if (dragging) suppressClickUntil = performance.now() + 350;
       if (dismiss) {
         // Keep the finger's offset while the existing exit animation continues

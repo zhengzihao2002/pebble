@@ -13,14 +13,30 @@ export function snapshotTools() {
   function owner() {
     return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"]')?.content.split('|')[0].slice(0,128) || null;
   }
+  function canonicalProfile(key: string): string {
+    try {
+      const parts: unknown = JSON.parse(key);
+      // Phone pages flow vertically. Browser chrome, the keyboard and PWA
+      // launches change height without changing any card's layout. Normalize
+      // existing v2 profiles too, so a saved visit survives the next launch.
+      if (Array.isArray(parts) && parts.length === 8 && typeof parts[2] === 'number' && parts[2] < 760) {
+        parts[3] = null;
+        return JSON.stringify(parts);
+      }
+    } catch { /* Unrecognized keys cannot match a generated profile. */ }
+    return key;
+  }
+  function sameProfile(first: string, second: string) {
+    return canonicalProfile(first) === canonicalProfile(second);
+  }
   function profile(pathname: string, main: HTMLElement): string | null {
     if (!/^\/(dashboard|transactions|accounts|analysis|insights|reports|budgets(?:\/plan)?|goals|scheduled|settings|account\/(?:settings|security))\/?$/.test(pathname)) return null;
     const style = getComputedStyle(main);
     const width = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     if (width < 100) return null;
     const html = document.documentElement;
-    return JSON.stringify([pathname.replace(/^\/+|\/+$/g,''), Math.round(width), window.innerWidth, window.innerHeight,
-      getComputedStyle(html).fontSize, html.lang, html.getAttribute('data-pebble-font'), html.getAttribute('data-pebble-cjk')]);
+    return canonicalProfile(JSON.stringify([pathname.replace(/^\/+|\/+$/g,''), Math.round(width), window.innerWidth, window.innerHeight,
+      getComputedStyle(html).fontSize, html.lang, html.getAttribute('data-pebble-font'), html.getAttribute('data-pebble-cjk')]));
   }
   function valid(entry: unknown): entry is PageLayout {
     if (!entry || typeof entry !== 'object') return false;
@@ -45,7 +61,7 @@ export function snapshotTools() {
   }
   function read(pathname: string, main: HTMLElement): PageLayout | null {
     const user = owner(), key = profile(pathname,main);
-    return user && key ? entries(user).find(e=>e.key===key) ?? null : null;
+    return user && key ? entries(user).filter(e=>sameProfile(e.key,key)).sort((a,b)=>b.savedAt-a.savedAt)[0] ?? null : null;
   }
   function restore(host: HTMLElement, layout?: PageLayout | null) {
     const main = host.closest<HTMLElement>('.pebble-main');
@@ -121,7 +137,7 @@ export function snapshotTools() {
     retry();
     return stop;
   }
-  return {prefix,owner,profile,valid,entries,read,restore,prepare};
+  return {prefix,owner,profile,sameProfile,valid,entries,read,restore,prepare};
 }
 export const layoutTools = snapshotTools();
 // An empty, React-unmanaged surface lets streamed HTML restore the saved

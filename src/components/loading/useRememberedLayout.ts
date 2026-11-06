@@ -29,6 +29,10 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
     content.addEventListener('animationend',schedule);
     content.addEventListener('transitionend',schedule);
     document.fonts?.addEventListener('loadingdone',schedule);
+    // iOS can terminate a backgrounded app without firing pagehide. Save
+    // synchronously as it becomes hidden, while the loaded geometry remains.
+    const onVisibility = () => { if (document.visibilityState === 'hidden') measure(); };
+    document.addEventListener('visibilitychange',onVisibility);
     window.addEventListener('pagehide',measure);
     schedule();
     return () => {
@@ -36,7 +40,8 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
       content.removeEventListener('animationend',schedule);
       content.removeEventListener('transitionend',schedule);
       root?.removeEventListener('scroll',schedule); window.removeEventListener('resize',schedule);
-      document.fonts?.removeEventListener('loadingdone',schedule); window.removeEventListener('pagehide',measure);
+      document.fonts?.removeEventListener('loadingdone',schedule); document.removeEventListener('visibilitychange',onVisibility);
+      window.removeEventListener('pagehide',measure);
     };
   },[ref,pathname]);
 }
