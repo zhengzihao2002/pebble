@@ -71,6 +71,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
   const closingRef = useRef(false);
   const timerRef = useRef<number | null>(null);
   const pressOnBackdrop = useRef(false);
+  const frameIdRef = useRef<symbol | null>(null);
 
   // Refs, not props, inside close(): the page hands a new onClose on every
   // re-render, and close() must stay stable for the Escape listener.
@@ -184,6 +185,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
 
   useEffect(() => {
     const id = Symbol('modal');
+    frameIdRef.current = id;
     openFrames.push(id);
     // Focus trap: Tab and Shift+Tab wrap inside the topmost frame. Focus in
     // a dropdown list that portals outside the card is left alone; focus
@@ -228,8 +230,77 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       document.removeEventListener('keydown', onKey);
       const i = openFrames.indexOf(id);
       if (i >= 0) openFrames.splice(i, 1);
+      if (frameIdRef.current === id) frameIdRef.current = null;
     };
   }, [close]);
+
+  // Touch sheets follow the finger. Start only on non-interactive content,
+  // and only at the top of every containing scroll area. Upward/horizontal
+  // gestures remain ordinary scrolling; a cancelled gesture never dismisses.
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    let start: { x: number; y: number; height: number } | null = null;
+    let distance = 0;
+    let dragging = false;
+    let suppressClickUntil = 0;
+    const reset = () => {
+      start = null; dragging = false; distance = 0;
+      delete card.dataset.dragging;
+      card.style.removeProperty('--pb-modal-drag-y');
+    };
+    const onStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) { reset(); return; }
+      if (busyRef.current || closingRef.current || !window.matchMedia('(max-width: 559.98px)').matches) return;
+      if (openFrames.at(-1) !== frameIdRef.current) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest('input,textarea,select,button,a,[contenteditable="true"],[role="button"],[role="slider"],[role="combobox"],.recharts-wrapper,[data-no-sheet-drag]')) return;
+      for (let node: Element | null = target; node && node !== card; node = node.parentElement) {
+        if (node instanceof HTMLElement && /auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollTop > 0) return;
+      }
+      const touch = event.touches[0];
+      start = { x: touch.clientX, y: touch.clientY, height: card.offsetHeight };
+    };
+    const onMove = (event: TouchEvent) => {
+      if (!start) return;
+      if (event.touches.length !== 1 || busyRef.current || closingRef.current) { reset(); return; }
+      const touch = event.touches[0];
+      const dy = touch.clientY - start.y;
+      const dx = Math.abs(touch.clientX - start.x);
+      if (!dragging && (dy < -8 || (dx > 8 && dx > Math.abs(dy)))) { reset(); return; }
+      if (!dragging && dy <= 8) return;
+      if (!event.cancelable) { reset(); return; }
+      event.preventDefault();
+      dragging = true;
+      distance = Math.max(0, dy);
+      card.dataset.dragging = 'true';
+      card.style.setProperty('--pb-modal-drag-y', `${distance}px`);
+    };
+    const onEnd = () => {
+      if (!start) return;
+      const dismiss = dragging && distance >= start.height / 2 && !busyRef.current && !closingRef.current;
+      if (dragging) suppressClickUntil = performance.now() + 350;
+      if (dismiss) {
+        // Keep the finger's offset while the existing exit animation continues
+        // downwards. Never submit the form or change its unsaved fields.
+        start = null; dragging = false;
+        close();
+      } else reset();
+    };
+    const onClick = (event: MouseEvent) => {
+      if (event.detail > 0 && performance.now() < suppressClickUntil) { event.preventDefault(); event.stopPropagation(); }
+    };
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove', onMove, { passive: false });
+    card.addEventListener('touchend', onEnd);
+    card.addEventListener('touchcancel', reset);
+    card.addEventListener('click', onClick, true);
+    return () => {
+      card.removeEventListener('touchstart', onStart); card.removeEventListener('touchmove', onMove);
+      card.removeEventListener('touchend', onEnd); card.removeEventListener('touchcancel', reset);
+      card.removeEventListener('click', onClick, true); reset();
+    };
+  }, [close, busy]);
 
   return (
     <div
@@ -252,6 +323,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
         tabIndex={-1}
         style={{ maxWidth, ...cardStyle }}
       >
+        <div className="pb-modal-drag-handle" aria-hidden="true" />
         {/* close reads its refs only when an event invokes it. */}
         {/* eslint-disable-next-line react-hooks/refs */}
         {children(close)}

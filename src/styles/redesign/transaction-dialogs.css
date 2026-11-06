@@ -465,3 +465,13 @@
 .pebble-root .pb-tdlg-preview-jump:hover { background-color: color-mix(in srgb, var(--pine) 8%, var(--mist)); }
 .pebble-root .pb-tdlg-preview-jump:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
 @keyframes pb-tdlg-jump-in { from { opacity: 0; transform: translate(-50%, 0.5rem); } }
+
+/* Shared mobile sheets: direct finger tracking, then spring back or exit. */
+.pebble-root .pb-modal-drag-handle { display:none; }
+@media (max-width:559.98px) {
+  .pebble-root .pb-modal-card { translate:0 var(--pb-modal-drag-y,0px); transition:translate 300ms cubic-bezier(.22,1,.36,1); }
+  .pebble-root .pb-modal-card[data-dragging="true"] { transition:none; }
+  .pebble-root .pb-modal-drag-handle { display:block; position:absolute; top:4px; left:50%; width:3rem; height:12px; transform:translateX(-50%); z-index:2; touch-action:none; }
+  .pebble-root .pb-modal-drag-handle::before { content:''; position:absolute; top:4px; left:50%; width:2rem; height:4px; transform:translateX(-50%); border-radius:99px; background:var(--ink-soft); opacity:.4; }
+}
+@media (prefers-reduced-motion:reduce) { .pebble-root .pb-modal-card { transition:none; } }
