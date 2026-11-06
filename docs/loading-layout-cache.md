@@ -97,3 +97,13 @@ Dashboard route bootstrap must restore the saved rectangles before hydration
 without painting the default skeleton. No React module or tab memory survives
 that test; only localStorage does. Width/user isolation and spinner mode remain
 covered separately.
+
+The mobile bottom navigation also keeps numeric height and selected-tab geometry
+in `pebble-bottom-nav:v1:<userId>`. Its inline bootstrap restores those dimensions
+before hydration for the same route, width, typography, language and bottom
+safe-area padding. Height changes at app launch do not invalidate it. Entries
+expire after 30 days and are limited to 32 profiles. Only a closed bar at the
+committed destination is recorded; Add/More state and personal text are never
+stored. Hydration releases the temporary minimum height, so live font, orientation
+and accessibility changes retain their natural layout. Invalid/unavailable
+storage falls back to the ordinary server-rendered navigation.

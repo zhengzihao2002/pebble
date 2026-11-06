@@ -11,6 +11,8 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useBottomNavPanels } from './useBottomNavPanels';
 import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 import { useNavGlass } from './useNavGlass';
+import { bottomNavBootstrap } from './bottomNavSnapshot';
+import { useRememberedBottomNav } from './useRememberedBottomNav';
 
 interface BottomNavProps {
   onAddTransactionClick: () => void;
@@ -52,6 +54,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
   const morePanelRef = useRef<HTMLDivElement>(null);
   const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
   const { ref: navRef, indicatorRef } = useNavGlass<HTMLElement>(`${pathname}:${open}`, true);
+  useRememberedBottomNav(navRef, pathname, engaged);
 
   // Navigating must collapse both - the destination is a Link away and
   // leaving either expanded would cover the page the user just chose.
@@ -129,8 +132,8 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
         }}
       />
 
-      <nav ref={navRef} className="pebble-bottom-nav pb-nav-glass-host pb-nav-glass-bottom" style={{ position: 'fixed' }}>
-        <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
+      <nav ref={navRef} className="pebble-bottom-nav pb-nav-glass-host pb-nav-glass-bottom" style={{ position: 'fixed' }} suppressHydrationWarning>
+        <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" suppressHydrationWarning />
         {primaryNavItems.slice(0, 2).map(renderLink)}
 
         {/* The centre cell. Same equal width as every other cell; the button
@@ -241,6 +244,9 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
             <span className="bottom-nav-label">{d.nav.more}</span>
           </button>
         </div>
+        {/* The one-shot bootstrap is already executed. Server/client bundles
+            can stringify its equivalent helper with different formatting. */}
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{__html:bottomNavBootstrap}} />
       </nav>
     </>
   );
