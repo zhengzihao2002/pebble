@@ -3,42 +3,32 @@ void main(){gl_Position=vec4(a_position,0.,1.);}`;
 const fragment = `precision mediump float;
 uniform vec2 u_resolution;
 uniform float u_time;
-uniform vec3 u_colors[4];
-uniform vec3 u_base;
+uniform vec3 u_tint;
+uniform float u_strength;
 const float TAU=6.2831853;
-vec3 palette(float t){
-  vec3 primary=u_colors[0], accent=u_colors[1];
-  vec3 contrast=u_colors[2], bridge=u_colors[3];
-  float p=mod(t,4.);
-  if(p<1.)return mix(primary,accent,smoothstep(0.,1.,p));
-  if(p<2.)return mix(accent,contrast,smoothstep(0.,1.,p-1.));
-  if(p<3.)return mix(contrast,bridge,smoothstep(0.,1.,p-2.));
-  return mix(bridge,primary,smoothstep(0.,1.,p-3.));
-}
 void main(){
   // Distances in units of the shorter edge keep every Gaussian circular.
   vec2 aspect=u_resolution/min(u_resolution.x,u_resolution.y);
   vec2 uv=gl_FragCoord.xy/u_resolution;
-  vec3 sum=vec3(0.);float density=0.;
+  float density=0.;
   for(int i=0;i<5;i++){
     float f=float(i), phase=f*TAU/5.;
     vec2 center=.5+.62*vec2(sin(u_time*TAU/(91.+f*17.)+phase),cos(u_time*TAU/(113.+f*19.)+phase*1.73+.6));
     vec2 d=(uv-center)*aspect;
     float sigma=.36+.05*sin(f*1.7+u_time*.025);
     float weight=exp(-dot(d,d)/(2.*sigma*sigma));
-    density+=weight;
-    sum+=weight*palette(f*.8+u_time/67.);
+    density+=weight*(.8+.2*sin(f*1.3+u_time/67.));
   }
-  vec3 baseTone=u_base;
-  vec3 hue=sum/max(density,.0001);
-  gl_FragColor=vec4(mix(baseTone,hue,.88*(1.-exp(-density))),1.);
+  // Transparent primary-colour light leaves the actual theme paper intact.
+  // Coverage changes spatially; the shader never paints an opaque base wash.
+  gl_FragColor=vec4(u_tint,u_strength*(1.-exp(-density)));
 }`;
 
 /** One low-power, bounded framebuffer. Hidden/reduced-motion states never
  * keep a RAF loop alive. Animation time advances only while visible. */
 export function startFluidBackground(canvas: HTMLCanvasElement): () => void {
   canvas.style.opacity='0';
-  const gl = canvas.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'low-power'});
+  const gl = canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,powerPreference:'low-power'});
   if (!gl) return () => {};
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let program: WebGLProgram | null = null, buffer: WebGLBuffer | null = null;
@@ -55,13 +45,11 @@ export function startFluidBackground(canvas: HTMLCanvasElement): () => void {
     if (!program || !root || lost) return;
     const style=getComputedStyle(root);
     const pine=readColor(style.getPropertyValue('--pine').trim());
-    const gold=readColor(style.getPropertyValue('--gold').trim());
-    const wine=readColor(style.getPropertyValue('--wine').trim());
     const paper=readColor(style.getPropertyValue('--paper').trim());
-    const muted=(color: number[])=>color.map((n,i)=>Math.min(.68,n*.82+pine[i]*.07));
-    const colors=[muted(pine),muted(gold),muted(wine),muted(pine.map((n,i)=>n*.65+gold[i]*.35))];
-    gl.useProgram(program); gl.uniform3fv(gl.getUniformLocation(program,'u_colors[0]'),new Float32Array(colors.flat()));
-    gl.uniform3fv(gl.getUniformLocation(program,'u_base'),new Float32Array(paper.map((n,i)=>n*.10+pine[i]*.045)));
+    const luminance=paper[0]*.2126+paper[1]*.7152+paper[2]*.0722;
+    gl.useProgram(program);
+    gl.uniform3fv(gl.getUniformLocation(program,'u_tint'),new Float32Array(pine));
+    gl.uniform1f(gl.getUniformLocation(program,'u_strength'),luminance<.5 ? .07 : .06);
   };
   let raf = 0, last = 0, time = 0, lost = false, disposed = false;
   const release = () => { if (buffer) gl.deleteBuffer(buffer); if (program) gl.deleteProgram(program); shaders.forEach(s=>gl.deleteShader(s)); shaders=[]; buffer=null; program=null; };
@@ -93,6 +81,7 @@ export function startFluidBackground(canvas: HTMLCanvasElement): () => void {
     gl.useProgram(program); gl.uniform2f(resolution,canvas.width,canvas.height); gl.uniform1f(clock,time);
     gl.drawArrays(gl.TRIANGLES,0,6);
     canvas.style.opacity='1';
+    canvas.dataset.fluidReady='true';
   };
   const frame = (now: number) => {
     raf=0;
@@ -113,7 +102,7 @@ export function startFluidBackground(canvas: HTMLCanvasElement): () => void {
     if (canvas.width!==width || canvas.height!==height) { canvas.width=width; canvas.height=height; gl.viewport(0,0,width,height); }
     sync();
   };
-  const onLost = (event: Event) => { event.preventDefault(); lost=true; canvas.style.opacity='0'; cancelAnimationFrame(raf); raf=0; };
+  const onLost = (event: Event) => { event.preventDefault(); lost=true; canvas.style.opacity='0'; delete canvas.dataset.fluidReady; cancelAnimationFrame(raf); raf=0; };
   const onRestored = () => { if (!disposed) { lost=false; if (init()) resize(); } };
   const observer=new ResizeObserver(resize);
   let themeFrame=0;

@@ -5,11 +5,13 @@ persisted in the existing per-user UI preferences, with no database access.
 
 AppShell owns a single WebGL canvas that survives route changes. Five circular
 Gaussian glows follow independent sine/cosine paths with different periods and
-slowly blend the selected theme's primary and accent colours. Their broad paths
+vary the intensity of the selected theme's primary colour. Their broad paths
 spread colour across the screen instead of focusing it at a few corners. The
-palette uses the current `--pine`, `--gold`, `--wine` and `--paper` values, including
-theme and appearance changes. Colour brightness is bounded and the layer blends
-gently with the existing surface so page labels remain legible in light mode.
+palette uses only `--pine`; it never mixes in gold, warning pink or a separate
+base colour. The canvas is transparent over the unchanged theme paper. Gaussian
+opacity is capped at 7% in dark appearances and 6% in light appearances, so the
+background retains its original tone instead of becoming a grey/purple wash.
+Theme and appearance changes update the tint without recolouring the app's cards.
 
 The layer ignores pointer events, overscans by 84 CSS pixels on every side and
 uses CSS blur(26px). The framebuffer's longest edge is at most 700 pixels,
