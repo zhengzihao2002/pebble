@@ -38,5 +38,5 @@ for(const route of ['reports','analysis','transactions'])for(const style of ['ca
    assert.equal(host['data-layout-restored'],'true');
    assert.equal(surface.children[0].children[0].style.height,'480px');
  }
- if(route==='transactions')assert.equal(values.get('--pb-header-layout-h'),'112.5px','pane height must use the rendered header before hydration');
+ assert.equal(values.get('--pb-header-layout-h'),'112.5px','every loader must use the rendered header before hydration');
 });

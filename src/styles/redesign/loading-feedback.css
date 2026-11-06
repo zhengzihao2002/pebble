@@ -66,7 +66,14 @@
 .pebble-root :is(.pb-navigation-stage,.pb-layout-skeleton-host) {
   --pb-page-loading-height:max(0px,calc(100svh - var(--pb-header-h,var(--pb-header-layout-h,6rem)) - var(--pb-main-pad-top,2.5rem) - var(--pb-main-pad-bottom,2.5rem)));
 }
-.pebble-root .pb-page-spinner { display:none; position:absolute; inset:0 0 auto; z-index:6; pointer-events:none; }
+/* Keep the loading frame anchored below the header while the scroll container
+   adjusts to the incoming page's height. Zero height keeps it out of layout;
+   its child retains the same viewport-centred ring and label through handoff. */
+.pebble-root .pb-page-spinner {
+  display:none; position:sticky; height:0;
+  top:calc(var(--pb-header-h,var(--pb-header-layout-h,6rem)) + var(--pb-main-pad-top,2.5rem));
+  z-index:6; pointer-events:none;
+}
 html[data-pb-loading-style="spinner"] .pebble-root .pb-navigation-stage[data-pb-spinner-loading="true"] { min-height:var(--pb-page-loading-height); }
 html[data-pb-loading-style="spinner"] .pebble-root .pb-navigation-stage[data-pb-spinner-loading="true"] > .pb-page-spinner { display:block; }
 @keyframes pb-page-loading-spin { to { transform:rotate(360deg); } }

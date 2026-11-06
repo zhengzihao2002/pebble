@@ -69,15 +69,14 @@ export function snapshotTools() {
     // Streamed React segments can be parsed in a hidden staging container.
     // That is not a cache miss: wait until the real main column has a width.
     if (!main || !surface || main.clientWidth < 100 || !owner()) return false;
-    // Transactions uses viewport-height panes even before React hydrates.
-    // Calibrate the header now so its fallback and first data frame agree.
-    if (host.dataset.layoutPath === '/transactions') {
-      const header = main.closest<HTMLElement>('.pebble-root')?.querySelector<HTMLElement>('.pebble-header');
-      const height = header?.getBoundingClientRect().height;
-      if (height && height > 0) {
-        const html = document.documentElement, value = height + 'px';
-        if (html.style.getPropertyValue('--pb-header-layout-h') !== value) html.style.setProperty('--pb-header-layout-h', value);
-      }
+    // Every spinner uses the available viewport height. Measure the rendered
+    // header before showing it, rather than recentering after Header hydrates.
+    // Transactions' viewport-height panes use the same calibration.
+    const header = main.closest<HTMLElement>('.pebble-root')?.querySelector<HTMLElement>('.pebble-header');
+    const height = header?.getBoundingClientRect().height;
+    if (height && height > 0) {
+      const html = document.documentElement, value = height + 'px';
+      if (html.style.getPropertyValue('--pb-header-layout-h') !== value) html.style.setProperty('--pb-header-layout-h', value);
     }
     const spinner = document.documentElement.getAttribute('data-pb-loading-style') === 'spinner';
     if (spinner) {

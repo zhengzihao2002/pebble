@@ -9,7 +9,7 @@ process.on('exit',()=>fs.rmSync(temp,{recursive:true,force:true}));
 const values = new Map();
 let owner, content;
 const html = { lang:'en', getAttribute:()=>null };
-const main = { clientWidth:600, getBoundingClientRect:()=>({left:0,top:0}), closest:()=>({scrollTop:0}) };
+const main = { clientWidth:600, getBoundingClientRect:()=>({left:0,top:0}), closest:()=>({scrollTop:0,querySelector:()=>null}) };
 global.window = {innerWidth:1024,innerHeight:768,location:{pathname:'/accounts'}};
 global.document = {documentElement:html,querySelector:selector=>selector.startsWith('meta')?{content:owner+'|test'}:content};
 global.localStorage = { getItem:key=>values.get(key)??null, setItem:(key,value)=>values.set(key,value), removeItem:key=>values.delete(key) };

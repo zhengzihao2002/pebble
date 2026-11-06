@@ -11,6 +11,12 @@ respect reduced motion.
 Inside the app shell, one spinner stays mounted from the navigation preview
 through streamed fallbacks and the final fade. Replacing those page segments
 does not replace or clone the ring, so its linear rotation never restarts.
+Every route calibrates the rendered header height before showing its streamed
+loader, so hydration does not recenter the spinner from an estimated height.
+The persistent spinner uses a zero-height sticky frame: root scrolling and scroll
+adjustments caused by incoming content cannot carry the ring or label up/down.
+It stays in the main column and adds no layout space. A genuinely changed header
+(for example, an offline status strip) still updates its available space normally.
 
 The browser records the loaded page's card rectangles and reuses them as pulsing
 skeleton contours on later visits. It stores numbers and small shape enums only:
