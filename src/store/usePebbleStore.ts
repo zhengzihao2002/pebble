@@ -99,6 +99,7 @@ interface PebblePrefs {
   showHealthBar: boolean;
   // The theme-coloured rim on app cards; enabled unless explicitly disabled.
   showCardGlow: boolean;
+  ambientBackground: boolean;
   // Recognized merchant logos in transaction tiles. On unless disabled.
   showBrandIcons: boolean;
   themeChoice: ThemeChoice;
@@ -145,6 +146,7 @@ interface PebbleUIState extends PebblePrefs {
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
   setShowCardGlow: (value: boolean) => void;
+  setAmbientBackground: (value: boolean) => void;
   setShowBrandIcons: (value: boolean) => void;
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
@@ -174,6 +176,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   cjkFontChoice: 'sans',
   showHealthBar: false,
   showCardGlow: true,
+  ambientBackground: false,
   showBrandIcons: true,
   themeChoice: 'original',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
@@ -235,6 +238,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setShowCardGlow: (value) => set({ showCardGlow: value }),
+      setAmbientBackground: (value) => set({ ambientBackground: value }),
       setShowBrandIcons: (value) => set({ showBrandIcons: value }),
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
@@ -301,6 +305,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
         showCardGlow: state.showCardGlow,
+        ambientBackground: state.ambientBackground,
         showBrandIcons: state.showBrandIcons,
         themeChoice: state.themeChoice,
         safetyLocks: state.safetyLocks,

@@ -5,6 +5,7 @@ import "./globals.css";
 // One file per area keeps each page's rules together and reviewable.
 import "@/styles/redesign/kit.css";
 import "@/styles/redesign/shell.css";
+import "@/styles/redesign/ambient-background.css";
 import "@/styles/redesign/dashboard.css";
 import "@/styles/redesign/transactions.css";
 import "@/styles/redesign/transaction-dialogs.css";

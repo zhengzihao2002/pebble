@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { FontControl } from '@/components/settings/FontControl';
 import { CardGlowControl } from '@/components/settings/CardGlowControl';
+import { AmbientBackgroundControl } from '@/components/settings/AmbientBackgroundControl';
 import { BrandIconsControl } from '@/components/settings/BrandIconsControl';
 import { ThemeControl } from '@/components/settings/ThemeControl';
 import { AppearanceControl } from '@/components/settings/AppearanceControl';
@@ -146,6 +147,7 @@ export function SettingsClient({
             />
             <AppearanceControl appearance={appearance} onChange={setAppearance} />
             <CardGlowControl />
+            <AmbientBackgroundControl />
             <BrandIconsControl />
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
             <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />

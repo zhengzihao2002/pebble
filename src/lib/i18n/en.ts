@@ -470,6 +470,10 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
+  ambientBackground: {
+    title: 'Living background',
+    hint: 'Soft pools of your theme colour drift gently behind the page. Still with Reduced Motion.',
+  },
   cardGlow: {
     title: 'Card glow',
     hint: 'Give cards across the app a soft highlight in your theme colour.',
