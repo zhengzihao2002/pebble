@@ -112,7 +112,7 @@ export function useDelta() {
  * select lists (newest first, this data-year only), so stepping can never reach
  * a period the list would not offer.
  *
- * TILES. Each keeps its label, (i), value and reserved note row, and adds the
+ * TILES. Each keeps its label, (i), value and optional note, and adds the
  * change against the previous comparable period (like-for-like while the
  * period is in progress - see src/lib/periodCompare.ts). The change explains
  * itself: hovering or tapping it shows the two figures being compared. (The
@@ -240,6 +240,7 @@ export function DashboardStatsCard({
         {cells.map((c) => {
           const Icon = c.icon;
           const delta = compare?.previous ? deltaFor(c.metric, compare.current, compare.previous, compareLabel) : null;
+          const hasComparison = Boolean(delta && compare?.previous) || Boolean(compare && !compare.previous);
           return (
             <div key={c.key} className="pb-stats-cell pb-dash-tile">
               <div className="pb-stats-label">
@@ -250,9 +251,9 @@ export function DashboardStatsCard({
               <div className="pb-dash-tile-value">
                 <div className="font-mono-tab pb-stats-value">{c.metric === 'savingsRate' ? c.value : <RollingAmount value={c.value} />}</div>
               </div>
-              {/* Reserved like the note row, so tiles stay level before the
-                  comparison resolves and when there is nothing to compare. */}
-              <div className="pb-dash-tile-delta">
+              {/* Undefined changes (for example, income compared with zero)
+                  have no row: supporting text stays directly below the value. */}
+              {hasComparison && <div className="pb-dash-tile-delta">
                 {delta && compare?.previous ? (
                   <CompareTip
                     hint={ux.compareOpen}
@@ -276,11 +277,9 @@ export function DashboardStatsCard({
                   </CompareTip>
                 ) : compare && !compare.previous ? (
                   <span className="pb-dash-tile-vs">{ux.noEarlier}</span>
-                ) : '\u00a0'}
-              </div>
-              {/* Every tile reserves the note row, so a tile without a note
-                  matches the height of the one that has it. */}
-              <div className="pb-stats-note" aria-hidden={c.note ? undefined : true} style={c.note ? undefined : { visibility: 'hidden' }}>{c.note || '\u00a0'}</div>
+                ) : null}
+              </div>}
+              {c.note && <div className="pb-stats-note">{c.note}</div>}
             </div>
           );
         })}
