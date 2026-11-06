@@ -394,6 +394,17 @@
    and pushed up. Now its centre sits on the icons' row and it still rises a little
    above the bar's edge. */
 .pebble-root .pebble-bottom-nav .bottom-nav-add svg { width: 1.75rem; height: 1.75rem; }
+/* One deliberate entrance, rather than exposing Safari's early positioning
+   frames. Backwards fill keeps even the raised + below the screen during the
+   short startup delay. The persistent bar does not remount on page changes. */
+@keyframes pb-bottom-nav-enter {
+  from { transform: translateY(calc(100% + 2rem)); }
+  to { transform: none; }
+}
+.pebble-root .pebble-bottom-nav { animation: pb-bottom-nav-enter 520ms cubic-bezier(.22,1,.36,1) 180ms both; }
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pebble-bottom-nav { animation: none; }
+}
 /* The stacked More items keep the same presence as a bar button. */
 .pebble-root .pebble-bottom-nav-stack-panel .bottom-nav-btn { padding-top: 0.8rem; padding-bottom: 0.8rem; }
 /* Room for the taller bar under the last card (phone layout only; the desktop
