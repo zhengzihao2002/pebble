@@ -12,6 +12,7 @@ import {
   todayInZone,
   type Ymd,
 } from './occurrences';
+import { expandScheduledText } from './textShortcuts';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 
 /**
@@ -119,7 +120,7 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
           // Inherited from the rule: a materialized occurrence must land in
           // the same account the rule is attached to.
           accountId: rule.accountId,
-          description: rule.description,
+          description: expandScheduledText(rule.description, date),
           category: rule.category,
           tag: rule.tag ?? '',
           transactionDate: date,
@@ -133,7 +134,7 @@ async function runCatchUp(userId: string): Promise<CatchUpResult> {
           id: uniqueTransId(issuedIds),
           userId,
           accountId: rule.accountId,
-          description: rule.description,
+          description: expandScheduledText(rule.description, date),
           category: rule.category,
           transactionDate: date,
           paymentMethod: rule.paymentMethod,

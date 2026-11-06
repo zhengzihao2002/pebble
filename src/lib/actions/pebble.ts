@@ -1989,6 +1989,8 @@ export interface ChargeNextRecurringInput {
    * was edited) can never charge a different payment than the one confirmed.
    */
   expectedOccurrence: string;
+  textDateBasis?: 'processed' | 'scheduled';
+  expectedTransactionDate?: string;
 }
 
 export type ChargeNextRecurringResult =
@@ -2043,6 +2045,8 @@ async function chargeNextRecurring(
       typeof input !== 'object' || input === null
       || typeof input.id !== 'string' || input.id.length === 0 || input.id.length > 64
       || typeof input.expectedOccurrence !== 'string' || !isYmd(input.expectedOccurrence)
+      || (input.expectedTransactionDate !== undefined && (typeof input.expectedTransactionDate !== 'string' || !isYmd(input.expectedTransactionDate)))
+      || (input.textDateBasis !== undefined && input.textDateBasis !== 'processed' && input.textDateBasis !== 'scheduled')
     ) {
       return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
     }
@@ -2054,7 +2058,8 @@ async function chargeNextRecurring(
 
     const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
     const plan = planChargeNext(rule, today);
-    if (!plan || plan.occurrenceDate !== input.expectedOccurrence) {
+    if (!plan || plan.occurrenceDate !== input.expectedOccurrence
+      || (input.expectedTransactionDate !== undefined && plan.transactionDate !== input.expectedTransactionDate)) {
       return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
     }
 
@@ -2073,6 +2078,7 @@ async function chargeNextRecurring(
       transactionId: txId,
       occurrenceDate: occ,
       transactionDate: txDate,
+      textDate: plan.early && input.textDateBasis === 'scheduled' ? occ : txDate,
       newMaterializedThrough: plan.newMaterializedThrough,
       expected: {
         materializedThrough: expectedMark,

@@ -1,5 +1,6 @@
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import type { Ymd } from './occurrences';
+import { scheduledTextValues, shortcutPattern } from './textShortcuts';
 
 /**
  * The single SQL statement behind "Charge next payment now".
@@ -39,6 +40,8 @@ export interface ChargeNextSqlArgs {
   newMaterializedThrough: Ymd;
   /** The date the transaction is recorded on. */
   transactionDate: Ymd;
+  /** Explicit early-payment text choice; never changes transaction_date. */
+  textDate?: Ymd;
   /** The rule as the caller read it - the compare-and-set expectation. */
   expected: {
     materializedThrough: Ymd | null;
@@ -64,11 +67,18 @@ export function chargeNextStatement(sql: NeonQueryFunction<false, false>, a: Cha
         AND EXISTS (SELECT 1 FROM account ac WHERE ac.id = rr.account_id AND ac.user_id = rr.user_id AND ac.status = 'active')
       RETURNING rr.id, rr.user_id, rr.description, rr.category, rr.tag, rr.payment_method, rr.account_id, rr.amount, rr.gross_amount`;
 
+  // Render the description returned by the locked update, not a stale JS copy.
+  // No DB function or migration: all token patterns and replacements are bound values.
+  let description = sql`upd.description`;
+  for (const [token, value] of Object.entries(scheduledTextValues(a.textDate ?? a.transactionDate))) {
+    description = sql`regexp_replace(${description}, ${shortcutPattern(token)}, ${value}, 'gi')`;
+  }
+
   return a.kind === 'expense'
     ? sql`WITH upd AS (${advanced}), ins AS (
           INSERT INTO expense
             (id, user_id, description, category, tag, transaction_date, payment_method, account_id, amount, recurring_rule_id, occurrence_date)
-          SELECT ${a.transactionId}, upd.user_id, upd.description, upd.category, COALESCE(upd.tag, ''), ${a.transactionDate}::date,
+          SELECT ${a.transactionId}, upd.user_id, ${description}, upd.category, COALESCE(upd.tag, ''), ${a.transactionDate}::date,
                  upd.payment_method, upd.account_id, upd.amount, upd.id, ${a.occurrenceDate}::date
             FROM upd
           ON CONFLICT (recurring_rule_id, occurrence_date) DO NOTHING
@@ -78,7 +88,7 @@ export function chargeNextStatement(sql: NeonQueryFunction<false, false>, a: Cha
     : sql`WITH upd AS (${advanced}), ins AS (
           INSERT INTO income
             (id, user_id, description, category, transaction_date, payment_method, account_id, gross_amount, net_amount, recurring_rule_id, occurrence_date)
-          SELECT ${a.transactionId}, upd.user_id, upd.description, upd.category, ${a.transactionDate}::date,
+          SELECT ${a.transactionId}, upd.user_id, ${description}, upd.category, ${a.transactionDate}::date,
                  upd.payment_method, upd.account_id, COALESCE(upd.gross_amount, upd.amount), upd.amount, upd.id, ${a.occurrenceDate}::date
             FROM upd
           ON CONFLICT (recurring_rule_id, occurrence_date) DO NOTHING

@@ -14,6 +14,7 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
+import { expandScheduledText } from '@/lib/recurring/textShortcuts';
 import { composeDescription, descriptionTitle, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -272,6 +273,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     }
     return { nextDates, total, last };
   })();
+  const textPreviewDate = preview?.nextDates[0] ?? today;
+  const textPreview = expandScheduledText(outgoingDescription, textPreviewDate);
   const amountNum = Number(amount);
   const amountOk = amount !== '' && Number.isFinite(amountNum) && amountNum > 0;
   const nextMonthFirst = (() => {
@@ -467,6 +470,12 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   optionalLabel={d.txnDetail.optional}
                   titlePlaceholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense}
                 />
+
+                <p style={{ fontSize: '.75rem', color: 'var(--ink-soft)', margin: '-.35rem 0 0', lineHeight: 1.5 }}>{x.textShortcutsHint}</p>
+                {outgoingDescription !== textPreview && <div className="pb-sched-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  <p className="pb-sched-preview-title">{x.textShortcutsPreview} · {textPreviewDate}</p>
+                  <p>{textPreview}</p>
+                </div>}
 
                 <div style={twoCol}>
                   {/* A div, not a label: <label> forwards clicks to its control. */}

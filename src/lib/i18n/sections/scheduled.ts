@@ -8,6 +8,10 @@
  * English one, so a missing translation is a compile error.
  */
 export const scheduledEn = {
+  textShortcutsHint: 'Title and description shortcuts: {MONTH} → November, {MMM} → Nov, {MM} → 11, {YEAR} → 2026, {DD} → 06, {DATE} → 2026-11-06. Each payment uses its processed transaction date; for an early payment, choose the processing date or original scheduled date. Unknown shortcuts stay unchanged.',
+  textShortcutsPreview: 'Text preview',
+  shortcutDateQuestion: 'Which date should the text shortcuts use?', shortcutDateToday: 'Processing date', shortcutDateScheduled: 'Original scheduled date', shortcutDateNote: 'Choose the wording for this payment. The transaction will still be recorded today.',
+
   // Summary hero
   heroTitle: 'Every month, on schedule',
   heroNote: 'Active repeating schedules as a monthly average. One-offs and paused schedules are left out.',
@@ -108,6 +112,10 @@ export const scheduledEn = {
 };
 
 export const scheduledZh: typeof scheduledEn = {
+  textShortcutsHint: '标题和描述支持日期快捷方式：{MONTH} → November，{MMM} → Nov，{MM} → 11，{YEAR} → 2026，{DD} → 06，{DATE} → 2026-11-06。每笔使用实际入账日期；提前处理时可选择使用当天日期或原定日期。未知快捷方式保留原文；中文月份可写成 {MM}月。',
+  textShortcutsPreview: '文字预览',
+  shortcutDateQuestion: '文字中的日期快捷方式使用哪一天？', shortcutDateToday: '本次处理日期', shortcutDateScheduled: '原定处理日期', shortcutDateNote: '仅选择本次标题和描述的日期，交易仍会记在今天。',
+
   heroTitle: '每月固定收支',
   heroNote: '按月平均计算进行中的重复日程，不含一次性和已暂停的日程。',
   aboutHero: '关于这些数字',

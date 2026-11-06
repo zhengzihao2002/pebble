@@ -419,3 +419,13 @@
   .pebble-root .pb-sched-hero-next-title { grid-area: title; }
   .pebble-root .pb-sched-hero-next-amt { grid-area: amt; }
 }
+
+.pebble-root .pb-sched-shortcut-options { border:0; padding:0; margin:1.1rem 0 0; min-width:0; }
+.pebble-root .pb-sched-shortcut-options legend { font-size:.875rem; font-weight:600; margin-bottom:.6rem; color:var(--ink); }
+.pebble-root .pb-sched-shortcut-options label { display:flex; align-items:flex-start; gap:.65rem; padding:.8rem; margin:.45rem 0; border:1px solid var(--line); border-radius:.85rem; background:var(--mist); cursor:pointer; }
+.pebble-root .pb-sched-shortcut-options label:has(input:checked) { border-color:var(--pine); background:color-mix(in srgb,var(--pine) 7%,var(--mist)); }
+.pebble-root .pb-sched-shortcut-options input { accent-color:var(--pine); margin-top:.2rem; flex:none; }
+.pebble-root .pb-sched-shortcut-options label > span { min-width:0; }
+.pebble-root .pb-sched-shortcut-options strong { font-size:.8rem; font-weight:600; }
+.pebble-root .pb-sched-shortcut-text { display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; color:var(--ink-soft); line-height:1.5; margin-top:.35rem; }
+.pebble-root .pb-sched-shortcut-options > p { font-size:.75rem; color:var(--ink-soft); line-height:1.5; }

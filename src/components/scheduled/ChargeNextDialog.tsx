@@ -12,6 +12,7 @@ import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { expandScheduledText } from '@/lib/recurring/textShortcuts';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -49,6 +50,8 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
   const { d, t, locale } = useTranslation();
   const router = useRouter();
   const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
+  const [textDateBasis, setTextDateBasis] = useState<'processed' | 'scheduled' | null>(null);
+  const needsTextDateChoice = plan.early && expandScheduledText(rule.description, plan.transactionDate) !== rule.description;
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,11 +63,11 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
   const occurrence = formatDate(plan.occurrenceDate, locale);
 
   const confirm = async () => {
-    if (saving || done) return;
+    if (saving || done || (needsTextDateChoice && !textDateBasis)) return;
     setSaving(true);
     setError(null);
     const result = await callAction(
-      () => chargeNextRecurringAction({ id: rule.id, expectedOccurrence: plan.occurrenceDate }),
+      () => chargeNextRecurringAction({ id: rule.id, expectedOccurrence: plan.occurrenceDate, textDateBasis: textDateBasis ?? 'processed', expectedTransactionDate: plan.transactionDate }),
       x.chargeFailed,
     );
     setSaving(false);
@@ -129,13 +132,26 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
                   : x.chargeLast}
               </p>
             </div>
+            {needsTextDateChoice && <fieldset className="pb-sched-shortcut-options" disabled={saving}>
+              <legend>{x.shortcutDateQuestion}</legend>
+              {(['processed', 'scheduled'] as const).map(basis => {
+                const date = basis === 'processed' ? plan.transactionDate : plan.occurrenceDate;
+                return <label key={basis}>
+                  <input type="radio" name="shortcut-date" value={basis} checked={textDateBasis === basis} onChange={() => setTextDateBasis(basis)} />
+                  <span><strong>{basis === 'processed' ? x.shortcutDateToday : x.shortcutDateScheduled} · {formatDate(date, locale)}</strong>
+                    <span className="pb-sched-shortcut-text">{expandScheduledText(rule.description, date)}</span></span>
+                </label>;
+              })}
+              <p>{x.shortcutDateNote}</p>
+            </fieldset>}
+
           </div>
 
           <div className="pb-modal-foot">
             <ActionError message={error} kind={errorKind} onRetry={() => void confirm()} busy={saving} />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={close} disabled={saving} className="pill pb-sched-charge-btn">{x.chargeCancel}</button>
-              <button type="button" onClick={() => void confirm()} disabled={saving || done} className="btn-primary pb-sched-charge-btn" style={{ opacity: saving ? 0.6 : 1 }}>
+              <button type="button" onClick={() => void confirm()} disabled={saving || done || (needsTextDateChoice && !textDateBasis)} className="btn-primary pb-sched-charge-btn" style={{ opacity: saving ? 0.6 : 1 }}>
                 {saving ? x.chargeCharging : x.chargeConfirm}
               </button>
             </div>
