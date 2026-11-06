@@ -1441,6 +1441,8 @@ export const zh: typeof en = {
     'validation.ruleNetExceedsGross': '税后金额不能高于税前金额。',
     'validation.ruleCategoryInvalid': '请选择一个有效的分类。',
     'notFound.recurringRule': '该定期计划已不存在。',
+    'validation.ruleNextDate': '请选择计划内今天或之后的日期。如需更改账单日，请调整首次日期。',
+    'validation.ruleNextDateConflict': '计划已变更，或该日期及之后仍有已存在的交易。请先删除误记交易，或重新加载计划。',
     'validation.ruleKindLocked': '定期计划无法在支出和收入之间切换。请删除后重新创建一个。',
     'validation.ruleStatusInvalid': '无效的状态。',
     'validation.timeZoneInvalid': '无法识别该时区。',

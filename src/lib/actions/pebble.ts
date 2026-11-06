@@ -34,6 +34,8 @@ import type {
   RecurringKind,
 } from '@/types';
 import { addDays, todayInZone } from '@/lib/recurring/occurrences';
+import { nextPaymentMark } from '@/lib/recurring/rescheduleNext';
+import { rescheduleNextStatement } from '@/lib/recurring/rescheduleNextSql';
 import { planChargeNext } from '@/lib/recurring/chargeNext';
 import { chargeNextStatement } from '@/lib/recurring/chargeNextSql';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
@@ -1621,10 +1623,9 @@ async function deleteBalanceAdjustment(
  * A rule is a TEMPLATE. The transactions it produces are ordinary expense /
  * income rows, materialized by runRecurringCatchUp() on page load.
  *
- * These handlers NEVER write materializedThrough. That is the high-water mark
- * catch-up uses, and it only ever moves forward - which is precisely what makes
- * "editing a rule affects future occurrences only" structural rather than
- * remembered. There is no code path here that can rewrite history.
+ * Ordinary edits and deletions preserve the processed-through marker. An explicit
+ * next-date edit may reposition it for today or a future occurrence, guarded
+ * against existing payments and concurrent progress changes. Past rows are never rewritten.
  * ------------------------------------------------------------------------- */
 
 const RECURRING_FREQUENCIES: readonly string[] = ['once', 'weekly', 'biweekly', 'monthly', 'yearly'];
@@ -1665,6 +1666,7 @@ export interface RecurringRuleActionInput {
 
 export interface UpdateRecurringRuleActionInput extends RecurringRuleActionInput {
   id: string;
+  nextPaymentDate?: string;
 }
 
 interface NormalizedRule {
@@ -1768,7 +1770,7 @@ async function normalizeRuleInput(
 
   // 'once' is stored as a one-shot so the occurrence generator has exactly one
   // code path. Enforced by CHECK too; normalized here so the form need not know.
-  let frequency = input.frequency;
+  const frequency = input.frequency;
   let endMode = input.endMode;
   if (frequency === 'once') {
     endMode = 'after';
@@ -1896,7 +1898,7 @@ async function updateRecurringRule(
     // Ownership check before the write: the id arrives from the client, and
     // withSessionUser only guarantees WHO is asking, not WHAT they own.
     const rows = await db
-      .select({ id: recurringRule.id, kind: recurringRule.kind, status: recurringRule.status })
+      .select({ id: recurringRule.id, kind: recurringRule.kind, status: recurringRule.status, materializedThrough: recurringRule.materializedThrough })
       .from(recurringRule)
       .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)))
       .limit(1);
@@ -1915,7 +1917,20 @@ async function updateRecurringRule(
     const normalized = await normalizeRuleInput(userId, input);
     if (!normalized.ok) return fail(normalized.error, 'validation', normalized.code, normalized.params);
 
-    // materializedThrough is deliberately absent from this SET clause.
+    if (input.nextPaymentDate !== undefined) {
+      const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
+      const mark = typeof input.nextPaymentDate === 'string' ? nextPaymentMark(normalized.values, input.nextPaymentDate, today) : null;
+      if (mark === null) return fail('Choose a date on this schedule, today or later. To change the billing day, adjust the first payment date.', 'validation', 'validation.ruleNextDate');
+      const result = await neonSql.transaction([
+        userWriteLockStatement(userId),
+        rescheduleNextStatement(neonSql, userId, input.id, existing.materializedThrough, input.nextPaymentDate, mark, normalized.values),
+      ], { isolationLevel: 'ReadCommitted' });
+      if (!(result[1] as unknown[]).length) return fail('The schedule changed or a payment on or after that date still exists. Remove an accidental payment first, or reload the schedule.', 'validation', 'validation.ruleNextDateConflict');
+      revalidateAll();
+      return { ok: true };
+    }
+
+    // Ordinary edits preserve progress. Only an explicit next-date change can reposition it.
     await db
       .update(recurringRule)
       .set({ ...normalized.values, updatedAt: new Date().toISOString() })

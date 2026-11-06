@@ -78,6 +78,8 @@ export type ServerErrorCode =
   | 'validation.ruleNetExceedsGross'
   | 'validation.ruleCategoryInvalid'
   | 'notFound.recurringRule'
+  | 'validation.ruleNextDate'
+  | 'validation.ruleNextDateConflict'
   | 'validation.ruleKindLocked'
   | 'validation.ruleStatusInvalid'
   // --- timezone override (Phase 1) ---

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowDownRight, ArrowUpRight, Sparkles, Trash2 } from 'lucide-react';
 import {
   createRecurringRuleAction,
@@ -14,7 +14,8 @@ import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
-import { expandScheduledText } from '@/lib/recurring/textShortcuts';
+import { planChargeNext } from '@/lib/recurring/chargeNext';
+import { expandScheduledText, scheduledTextValues } from '@/lib/recurring/textShortcuts';
 import { composeDescription, descriptionTitle, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -78,6 +79,12 @@ const END_MODE_VALUES: RecurringEndMode[] = ['never', 'after', 'on'];
 /** Quick lengths offered for "after a number of payments". */
 const COUNT_PICKS = [6, 12, 24, 36];
 
+function subscribeToday(onChange: () => void) {
+  const timer = window.setInterval(onChange, 60_000);
+  window.addEventListener('focus', onChange);
+  return () => { clearInterval(timer); window.removeEventListener('focus', onChange); };
+}
+
 export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: RecurringRuleModalProps) {
   const prefill = rule ? undefined : rawPrefill;
   const { d, t, locale } = useTranslation();
@@ -85,7 +92,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   const isEdit = rule !== undefined;
   const timeZoneOverride = useTimeZoneOverride();
   // Stored override wins; otherwise the browser's own zone.
-  const today = todayInZone(timeZoneOverride ?? resolveBrowserTimeZone());
+  const today = useSyncExternalStore(subscribeToday,
+    () => todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()),
+    () => todayInZone(timeZoneOverride ?? resolveBrowserTimeZone()));
 
   const [mode, setMode] = useState<Mode>('form');
   const [saving, setSaving] = useState(false);
@@ -123,6 +132,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   const [endCount, setEndCount] = useState(rule?.endCount != null ? String(rule.endCount) : '');
   const [endDate, setEndDate] = useState(rule?.endDate ?? '');
   const [backfill, setBackfill] = useState(false);
+  const [nextPaymentOverride, setNextPaymentOverride] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -210,6 +220,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     : composeDescription(title, description);
 
   const dirty = !isEdit || !rule || (
+    Boolean(nextPaymentOverride) ||
     outgoingDescription.trim() !== rule.description ||
     category !== rule.category ||
     (kind === 'expense' ? (tag.trim() || null) : null) !== rule.tag ||
@@ -254,7 +265,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   // a new rule with a past start begins today unless backfill is ticked
   // (createRecurringRuleAction's rule).
   const lowerBound = rule
-    ? rule.materializedThrough
+    ? (nextPaymentOverride ? addDays(nextPaymentOverride, -1) : rule.materializedThrough)
     : (showBackfillFor(startDate) && backfill) || startDate >= today ? null : addDays(today, -1);
   const preview = (() => {
     if (!specReady) return null;
@@ -273,7 +284,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     }
     return { nextDates, total, last };
   })();
-  const textPreviewDate = preview?.nextDates[0] ?? today;
+  const calculatedNext = specReady && rule ? planChargeNext({ ...spec, status: 'active', materializedThrough: rule.materializedThrough }, today)?.occurrenceDate ?? '' : '';
+  const textPreviewDate = nextPaymentOverride || preview?.nextDates[0] || today;
+  const shortcutExamples = scheduledTextValues(today);
   const textPreview = expandScheduledText(outgoingDescription, textPreviewDate);
   const amountNum = Number(amount);
   const amountOk = amount !== '' && Number.isFinite(amountNum) && amountNum > 0;
@@ -313,7 +326,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     };
 
     const result = rule
-      ? await callAction(() => updateRecurringRuleAction({ ...payload, id: rule.id }))
+      ? await callAction(() => updateRecurringRuleAction({ ...payload, id: rule.id, ...(nextPaymentOverride ? { nextPaymentDate: nextPaymentOverride } : {}) }))
       : await callAction(() => createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill }));
 
     setSaving(false);
@@ -471,7 +484,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   titlePlaceholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense}
                 />
 
-                <p style={{ fontSize: '.75rem', color: 'var(--ink-soft)', margin: '-.35rem 0 0', lineHeight: 1.5 }}>{x.textShortcutsHint}</p>
+                <p style={{ fontSize: '.75rem', color: 'var(--ink-soft)', margin: '-.35rem 0 0', lineHeight: 1.5 }}>{t(x.textShortcutsHint, { monthExample: shortcutExamples.MONTH, numberExample: shortcutExamples.MM, dateExample: today })}</p>
                 {outgoingDescription !== textPreview && <div className="pb-sched-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                   <p className="pb-sched-preview-title">{x.textShortcutsPreview} · {textPreviewDate}</p>
                   <p>{textPreview}</p>
@@ -540,6 +553,12 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                     </button>
                   ))}
                 </div>
+
+                {isEdit && <label style={labelStyle}>
+                  {x.nextPaymentDate}
+                  <input type="date" value={nextPaymentOverride || calculatedNext} min={today} onChange={e => setNextPaymentOverride(e.target.value)} style={rowInputStyle} />
+                  <span style={hintStyle}>{x.nextPaymentDateHint}</span>
+                </label>}
 
                 {frequency !== 'once' && (
                   <div style={labelStyle}>

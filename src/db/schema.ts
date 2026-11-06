@@ -190,9 +190,10 @@ export const recurringRule = pgTable(
     status: text().default('active').notNull(),
     /**
      * High-water mark. Catch-up only ever examines (materializedThrough, today],
-     * so deleting an unwanted materialized transaction is permanent - nothing
-     * resurrects it - and no code path can write below the mark, which is what
-     * structurally enforces "edits affect future occurrences only".
+     * so deleting a materialized transaction does not reset the schedule.
+     * Ordinary edits preserve this mark. An explicit next-date edit can
+     * reposition it to the day before a today/future occurrence, under the
+     * user-write lock and only if no live payments lie at/after that date.
      */
     materializedThrough: date('materialized_through'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })

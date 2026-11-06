@@ -1551,6 +1551,8 @@ export const en = {
     'validation.ruleNetExceedsGross': 'Net amount cannot be more than the gross amount.',
     'validation.ruleCategoryInvalid': 'Select a valid category.',
     'notFound.recurringRule': 'That scheduled payment no longer exists.',
+    'validation.ruleNextDate': 'Choose a date on this schedule, today or later. To change the billing day, adjust the first payment date.',
+    'validation.ruleNextDateConflict': 'The schedule changed or a payment on or after that date still exists. Remove an accidental payment first, or reload the schedule.',
     'validation.ruleKindLocked': 'A scheduled payment cannot be switched between expense and income. Delete it and create a new one.',
     'validation.ruleStatusInvalid': 'Invalid status.',
     'validation.timeZoneInvalid': 'That timezone is not recognized.',
