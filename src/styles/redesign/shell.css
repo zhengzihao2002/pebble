@@ -1,5 +1,9 @@
 /* Redesign: shell. Loaded after globals.css and kit.css (src/app/layout.tsx). */
 
+/* Reserve the subtitle before the dashboard greeting/profile resolves. Its
+   font-relative height keeps the header and cached cards still on startup. */
+.pebble-root .pb-shell-title p { line-height: 1.5; min-height: 1.5em; }
+
 /* Content width. On a wide Mac display the page content stops at a readable
    width and centres, instead of stretching charts and rows edge to edge. In
    rem, so a larger text size widens it in step (like .settings-column). The
