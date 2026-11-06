@@ -415,10 +415,6 @@ export const zh: typeof en = {
     cjk: { sans: '黑体', serif: '宋体', kai: '楷体' },
   },
 
-  fluidBackground: {
-    title: '流光背景',
-    hint: '柔和的主题色在背景中缓缓流动。开启减少动态效果时保持静止。',
-  },
   cardGlow: {
     title: '卡片微光',
     hint: '为应用中的卡片添加柔和的主题色微光。',

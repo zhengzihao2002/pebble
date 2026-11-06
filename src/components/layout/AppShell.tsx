@@ -14,7 +14,6 @@ import { playEventSound } from '@/lib/sound/useSound';
 import { NavigationContent } from '@/components/loading/NavigationContent';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
-import { FluidBackground } from './FluidBackground';
 import { Header } from './Header';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import { GoalModal } from '@/components/modals/GoalModal';
@@ -509,7 +508,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
-      <FluidBackground />
       {/* Blur used by privacy mode on chart axis text: CSS blur() does not
           apply inside SVG, a url() filter does. */}
       <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>

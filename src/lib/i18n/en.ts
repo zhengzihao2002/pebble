@@ -470,10 +470,6 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
-  fluidBackground: {
-    title: 'Fluid background',
-    hint: 'Soft, slowly drifting colours from your theme. Stays still with Reduced Motion.',
-  },
   cardGlow: {
     title: 'Card glow',
     hint: 'Give cards across the app a soft highlight in your theme colour.',
