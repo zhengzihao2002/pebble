@@ -1,5 +1,17 @@
 /* Redesign: shell. Loaded after globals.css and kit.css (src/app/layout.tsx). */
 
+/* One viewport layer, independent of the scrolling route and inert to input.
+   The light appearance blends it gently with paper for readable page labels. */
+.pebble-root:has(> .pb-fluid-background) { isolation: isolate; }
+.pebble-root > .pb-fluid-background {
+  position: fixed; inset: -84px; z-index: -1; pointer-events: none;
+  filter: blur(26px); opacity: .32;
+  background: radial-gradient(circle at 20% 35%,var(--wine),transparent 65%),radial-gradient(circle at 80% 65%,var(--pine),transparent 65%),var(--paper);
+}
+html.pebble-dark .pebble-root > .pb-fluid-background,
+.pebble-root.dark > .pb-fluid-background { opacity: .72; }
+.pebble-root > .pb-fluid-background canvas { display: block; width: 100%; height: 100%; }
+
 /* Reserve the subtitle before the dashboard greeting/profile resolves. Its
    font-relative height keeps the header and cached cards still on startup. */
 .pebble-root .pb-shell-title p { line-height: 1.5; min-height: 1.5em; }
