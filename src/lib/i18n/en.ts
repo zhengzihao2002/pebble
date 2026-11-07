@@ -473,6 +473,13 @@ export const en = {
   ambientBackground: {
     title: 'Living background',
     hint: 'Large, soft pools of light drift and shift through harmonious colours behind the page. Still with Reduced Motion.',
+    previewTitle: 'Route preview',
+    previewSpeed: '8× speed',
+    previewPlay: 'Play',
+    previewPause: 'Pause',
+    previewLabel: 'Three clear circles show the background routes at eight times normal speed.',
+    previewHint: 'Clear circles show the routes. The app keeps its soft glow.',
+    previewReduced: 'Reduced Motion is on. Play to preview the routes.',
   },
   cardGlow: {
     title: 'Card glow',

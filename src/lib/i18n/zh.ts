@@ -418,6 +418,13 @@ export const zh: typeof en = {
   ambientBackground: {
     title: '灵动背景',
     hint: '大片柔和光团在页面后方缓缓流动，并变换协调的色彩。开启减少动态效果时保持静止。',
+    previewTitle: '路线预览',
+    previewSpeed: '8 倍速',
+    previewPlay: '播放',
+    previewPause: '暂停',
+    previewLabel: '三个清晰圆球以八倍速度展示背景的移动路线。',
+    previewHint: '清晰圆球展示路线，应用背景仍保持柔和微光。',
+    previewReduced: '已开启减少动态效果，点击播放可预览路线。',
   },
   cardGlow: {
     title: '卡片微光',

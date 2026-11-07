@@ -12,6 +12,17 @@
 .pebble-root .pebble-main { width: 100%; max-width: 96rem; margin-inline: auto; }
 .pebble-root .pebble-header > div { max-width: 91rem; margin-inline: auto; }
 
+/* Let the living light remain visible through the top glass. The ordinary
+   header keeps its existing surface when the optional background is off.
+   Blur stays on ::before so fixed header menus remain viewport-relative. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pebble-root:has(> .pb-ambient-background) .pebble-header::before {
+    background-color: color-mix(in srgb, var(--paper) 40%, transparent);
+    -webkit-backdrop-filter: saturate(1.15) blur(16px);
+    backdrop-filter: saturate(1.15) blur(16px);
+  }
+}
+
 /* ------------------------------------------------------------
    Keyboard hint chip (header field, palette rows and legend). Display only - every shortcut lives in AppShell.
    ------------------------------------------------------------ */
