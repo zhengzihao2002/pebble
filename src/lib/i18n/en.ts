@@ -472,7 +472,7 @@ export const en = {
 
   ambientBackground: {
     title: 'Living background',
-    hint: 'Soft pools of your theme colour drift gently behind the page. Still with Reduced Motion.',
+    hint: 'Large, soft pools of light drift and shift through harmonious colours behind the page. Still with Reduced Motion.',
   },
   cardGlow: {
     title: 'Card glow',

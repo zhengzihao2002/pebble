@@ -417,7 +417,7 @@ export const zh: typeof en = {
 
   ambientBackground: {
     title: '灵动背景',
-    hint: '柔和的主题色光团在页面后方缓缓流动。开启减少动态效果时保持静止。',
+    hint: '大片柔和光团在页面后方缓缓流动，并变换协调的色彩。开启减少动态效果时保持静止。',
   },
   cardGlow: {
     title: '卡片微光',

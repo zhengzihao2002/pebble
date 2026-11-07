@@ -1,5 +1,5 @@
-/* Local pools of light, with slow analogous shifts around the theme's primary
-   hue. Independent axes sweep the whole viewport; paper and cards stay intact. */
+/* Broad circles of light scale with the screen, without a desktop size cap.
+   Theme-derived hues drift independently; paper and cards stay intact. */
 .pebble-root:has(> .pb-ambient-background) { isolation: isolate; }
 .pebble-root > .pb-ambient-background {
   --ambient-core: 14%;
@@ -14,15 +14,16 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
 }
 .pebble-root .pb-ambient-orb {
   position: absolute;
-  --ambient-size: clamp(28rem, 62vmin, 52rem);
+  --ambient-size: 100vmax;
+  --ambient-colour: var(--pine);
   left: calc(var(--ambient-size) * -.5); top: calc(var(--ambient-size) * -.5);
-  width: var(--ambient-size); aspect-ratio: 1;
+  width: var(--ambient-size); height: var(--ambient-size); aspect-ratio: 1 / 1;
   border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle closest-side,
-    color-mix(in srgb, var(--pine) var(--ambient-core), transparent) 0%,
-    color-mix(in srgb, var(--pine) calc(var(--ambient-core) * .8), transparent) 20%,
-    color-mix(in srgb, var(--pine) var(--ambient-mid), transparent) 45%,
-    color-mix(in srgb, var(--pine) var(--ambient-edge), transparent) 70%,
+    color-mix(in srgb, var(--ambient-colour) var(--ambient-core), transparent) 0%,
+    color-mix(in srgb, var(--ambient-colour) calc(var(--ambient-core) * .8), transparent) 20%,
+    color-mix(in srgb, var(--ambient-colour) var(--ambient-mid), transparent) 45%,
+    color-mix(in srgb, var(--ambient-colour) var(--ambient-edge), transparent) 70%,
     transparent 100%);
   filter: blur(26px); will-change: transform;
   animation-timing-function: cubic-bezier(.37, 0, .63, 1), cubic-bezier(.37, 0, .63, 1), ease-in-out;
@@ -31,21 +32,23 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
 .pebble-root .pb-ambient-orb.is-near {
   translate: 9vw 0; transform: translateY(66vh);
   animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
-  animation-duration: 31s, 47s, 83s;
+  animation-duration: 31s, 47s, 43s;
   animation-delay: -3.0293s, -32.8369s, -9s;
 }
 .pebble-root .pb-ambient-orb.is-middle {
-  --ambient-size: clamp(26rem, 54vmin, 48rem);
+  --ambient-size: 88vmax;
+  --ambient-colour: color-mix(in oklch, var(--pine) 68%, var(--gold));
   translate: 88vw 0; transform: translateY(13vh);
   animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
-  animation-duration: 43s, 59s, 101s;
+  animation-duration: 43s, 59s, 57s;
   animation-delay: -26.3754s, -6.9741s, -48s;
 }
 .pebble-root .pb-ambient-orb.is-far {
-  --ambient-size: clamp(30rem, 68vmin, 56rem);
+  --ambient-size: 112vmax;
+  --ambient-colour: color-mix(in oklch, var(--pine) 84%, var(--gold));
   translate: 42vw 0; transform: translateY(74vh);
   animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
-  animation-duration: 53s, 71s, 127s;
+  animation-duration: 53s, 71s, 71s;
   animation-delay: -11.9084s, -47.6416s, -88s;
 }
 /* Separate transform properties compose without replacing one another. Each
@@ -60,8 +63,8 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
   50% { transform: translateY(100vh); }
 }
 @keyframes pb-ambient-colour {
-  0%, 100% { filter: blur(26px) hue-rotate(-16deg); }
-  50% { filter: blur(26px) hue-rotate(16deg); }
+  0%, 100% { filter: blur(26px) hue-rotate(-42deg); }
+  50% { filter: blur(26px) hue-rotate(42deg); }
 }
 .pebble-root .pb-ambient-background[data-paused="true"] .pb-ambient-orb { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {

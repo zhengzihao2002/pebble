@@ -16,6 +16,10 @@ html:not([data-pb-card-glow="off"]) .pebble-root :where(.card, [data-slot="card"
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  /* Explicitly clip the reflection's own paint when mobile browsers composite
+     its inset shadows separately. The border box includes inherited rounding;
+     clipping only this overlay leaves the card's outer halo and content free. */
+  clip-path: border-box;
   pointer-events: none;
   box-shadow:
     inset 0 4px 14px -7px color-mix(in srgb, var(--mist) 74%, white),

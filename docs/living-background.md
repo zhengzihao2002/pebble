@@ -4,12 +4,17 @@ Settings → Appearance → Living background is optional and off by default. It
 `ambientBackground` preference is stored per user on this device. Old preferences
 from the removed fluid background do not enable this version.
 
-Three large, localized circles of light start from the selected theme's `--pine`
-colour. Their broad radial falloff and 26px blur keep edges soft while leaving a
-visible pool of light. Diameters scale with the viewport, from 26–30rem minimums
-to 48–56rem maximums. Light mode uses a gentler tint; dark mode has a more visible
-local core. Each circle slowly shifts between neighbouring hues, up to 16 degrees
-either side of the theme colour, over an independent 83/101/127-second cycle.
+Three large circles of light start from the selected theme's `--pine` colour;
+two blend in a restrained amount of its existing `--gold` accent. Their broad
+radial falloff and 26px blur keep edges soft while leaving a visible pool of
+light. Explicit equal width and height keep every circle at 1:1. Diameters are
+100%, 88% and 112% of the viewport's longer side, with no fixed desktop cap:
+on a 390×844 phone they are about 844/743/945px; on a 1440×900 desktop they are
+1440/1267/1613px, and they continue scaling on large monitors. Light mode uses
+a gentler tint; dark mode has a more visible local core. Each circle shifts
+between neighbouring hues, up to 42 degrees either side of its starting colour,
+over an independent 43/57/71-second cycle. This creates visible colour changes
+while deriving the palette from the selected theme.
 The theme's paper, existing background and card surfaces are preserved; the
 scene never paints a separate base colour or a full-screen colour wash.
 
@@ -33,9 +38,11 @@ pause/resume, Reduced Motion, unchanged card geometry/colours and mobile layout.
 Visual review checks populated desktop/mobile views at multiple points in each
 path and in light/dark themes, so the result is assessed in the actual spaces
 around cards rather than only on an empty background. Actual browser geometry
-was sampled every half-second for two minutes on six viewports from 390×844 to
-3840×2160, at the default font size. Every viewport point falls within a circle's
+was sampled every half-second for two minutes on ten viewports from 390×844 to
+3840×2160, including tablets, ultrawide and portrait monitors. Every viewport point falls within a circle's
 visible radial footprint during that window: a 31×21 grid plus the remaining
 radius clearance covers the gaps between samples. Overlap peaks were also
-reviewed visually to check that the larger circles keep their localized effect.
-Production Neon is never used for validation.
+reviewed visually to check that the larger circles retain the theme's identity.
+Additional browser checks confirm circular geometry, screen-proportional sizing
+and changes in rendered pixel colours with position held still. Production Neon
+is never used for validation.
