@@ -72,7 +72,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
     mask.append(background, interior); defs.append(mask); svg.append(defs);
     const group = svgNode('g', { mask: `url(#${id}-outside)` });
     const paths = filters.map((_, index) => {
-      const path = svgNode('path', { fill: 'currentColor', opacity: index ? '.10' : '.14', filter: `url(#${id}-blur-${index})` });
+      const path = svgNode('path', { fill: 'currentColor', opacity: index ? '.20' : '.30', filter: `url(#${id}-blur-${index})` });
       group.append(path); return path;
     });
     svg.append(group);

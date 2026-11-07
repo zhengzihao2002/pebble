@@ -3,7 +3,9 @@
 Card glow is a local Appearance preference, on by default. Its muted color
 comes from the current theme's pine and supporting ink colors. Two soft
 falloffs add gentle separation while preserving the app's ordinary depth
-shadows. Glow strength decreases automatically with the living background on.
+shadows. The broad and near falloffs use 30% and 20% source opacity. Glow
+strength decreases to 70% with the living background on, keeping it visible
+alongside the moving colors.
 
 The decoration has no box of its own (`display: contents`). Per-card SVGs live
 outside card clipping containers, on the app's actual scrolling surface. Native

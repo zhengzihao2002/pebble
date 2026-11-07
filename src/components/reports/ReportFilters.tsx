@@ -12,8 +12,8 @@ import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField } f
 // .card .stat-tabs uses), title on the left and the current value, as a chip,
 // on the right. Each row opens to its controls below.
 
-// Only the chevron rotates; filter sections resize immediately so their
-// controls remain available to click as soon as they are opened.
+// The chevron rotates alongside the local grid transition. No page snapshot
+// or fixed-height card animation covers the filter controls.
 const chevronTransition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
 // Matches the compact selects on the dashboard charts.

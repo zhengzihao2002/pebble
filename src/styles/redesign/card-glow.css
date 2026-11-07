@@ -8,7 +8,7 @@
 }
 .pebble-root.dark > .pb-card-glows,
 :where(html.pebble-dark) .pebble-root > .pb-card-glows { --pb-card-glow-strength: 1; }
-.pebble-root:has(> .pb-ambient-background) > .pb-card-glows { --pb-card-glow-strength: .55; }
+.pebble-root:has(> .pb-ambient-background) > .pb-card-glows { --pb-card-glow-strength: .7; }
 .pebble-root > .pb-card-glows > .pb-card-glow-frame {
   position: absolute; z-index: -1; pointer-events: none;
   opacity: calc(var(--pb-card-glow-strength) * var(--pb-card-opacity, 1));
