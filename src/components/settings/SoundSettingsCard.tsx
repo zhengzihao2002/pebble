@@ -95,7 +95,7 @@ export function SoundSettingsCard() {
                   aria-label={t(d.sounds.preview, { event: d.sounds.events[event.key] })}
                   data-no-click-sound
                   className="icon-btn pb-settings-iconbtn"
-                  style={{ opacity: current ? 1 : 0.35, cursor: current ? 'var(--pb-click-cursor, pointer)' : 'not-allowed' }}
+                  style={{ opacity: current ? 1 : 0.35, cursor: current ? 'pointer' : 'not-allowed' }}
                 >
                   <Volume2 size={15} />
                 </button>

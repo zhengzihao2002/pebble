@@ -215,7 +215,7 @@ export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: Acc
                   {mode === 'some' && (
                     <div>
                       {usage!.records.map((r) => (
-                        <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'var(--pb-click-cursor, pointer)' }}>
+                        <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
                           <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} style={{ flexShrink: 0 }} />
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <p style={{ fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -27,6 +27,7 @@ import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 import { SHELL_EVENTS } from './shellEvents';
 import { useTypographyPreferences } from './useTypographyPreferences';
+import { useCardResize } from './useCardResize';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -288,6 +289,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // recurring catch-up skipped rather than guessing. One refresh, guarded by a
   // ref so it can never loop, re-runs that render with the zone known.
   const rootRef = useRef<HTMLDivElement>(null);
+  useCardResize(rootRef);
   useLayoutEffect(() => {
     const root = rootRef.current;
     let next = 0;

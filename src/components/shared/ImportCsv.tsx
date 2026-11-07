@@ -43,8 +43,8 @@ const fieldStyle: React.CSSProperties = {
   padding: '0.55rem 0.7rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.88rem',
   color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%', minWidth: 0,
 };
-const smallField: React.CSSProperties = { ...fieldStyle, fontSize: 'var(--pb-text-xs)', padding: '0.4rem 0.5rem' };
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', minWidth: 0 };
+const smallField: React.CSSProperties = { ...fieldStyle, fontSize: '0.78rem', padding: '0.4rem 0.5rem' };
+const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--ink-soft)', minWidth: 0 };
 const twoCol: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.7rem' };
 
 interface PreviewRow {
@@ -177,7 +177,7 @@ export function ImportCsvButton({ preview }: { preview?: ImportPreviewData } = {
       <span style={{ position: 'relative', display: 'inline-block', marginLeft: 'auto' }}>
         <button
           type="button" className="pill" onClick={() => setOpen(true)}
-          style={{ padding: '0.4rem 0.85rem', fontSize: 'var(--pb-text-xs)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <Upload size={14} aria-hidden="true" />{d.importCsv.button}
         </button>
@@ -185,7 +185,7 @@ export function ImportCsvButton({ preview }: { preview?: ImportPreviewData } = {
           aria-hidden="true"
           style={{
             position: 'absolute', top: -7, right: -6, padding: '1px 5px', borderRadius: 99,
-            fontSize: 'var(--pb-text-xs)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+            fontSize: '0.56rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
             backgroundColor: 'var(--pine)', color: 'var(--paper)', pointerEvents: 'none', lineHeight: 1.4,
           }}
         >
@@ -291,8 +291,8 @@ function ImportPreviewHeading({ older = 0 }: { older?: number }) {
   const { d, t } = useTranslation();
   return <div className="pb-modal-head"><div>
     <h2 id="pb-import-preview-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{d.importCsv.previewTitle}</h2>
-    <p style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
-    {older > 0 && <p style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', margin: '0.25rem 0 0' }}>{t(d.importCsv.previewOlder, { count: older })}</p>}
+    <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: '0.3rem 0 0' }}>{d.importCsv.previewHint}</p>
+    {older > 0 && <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', margin: '0.25rem 0 0' }}>{t(d.importCsv.previewOlder, { count: older })}</p>}
   </div></div>;
 }
 
@@ -892,7 +892,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
               {loading ? <LoadingBlock label={d.common.loading} minHeight={160} /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   <DropZone onFile={(f) => void onFile(f)} />
-                  {fileError && <p role="status" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', margin: 0 }}>{fileError}</p>}
+                  {fileError && <p role="status" style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{fileError}</p>}
                   {loadError && <ActionError message={loadError} onRetry={() => { if (fileRef.current) void onFile(fileRef.current); }} />}
                 </div>
               )}
@@ -1179,7 +1179,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                     </div>
                   )}
                 </div>
-                <p role="status" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', margin: 0 }}>
+                <p role="status" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', margin: 0 }}>
                   {t(d.importCsv.selected, { count: selected.length, total: rows.length })}
                   {incomplete.length > 0 && <span style={{ color: 'var(--wine)' }}>{' · '}{t(d.importCsv.needChoice, { count: incomplete.length })}</span>}
                 </p>

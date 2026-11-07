@@ -1,6 +1,7 @@
 'use client';
 import { useLayoutEffect, type RefObject } from 'react';
 import { capturePageLayout, LAYOUT_CONTOUR_SELECTOR } from './layoutCache';
+import { settleCardResizes } from '@/lib/cardResize';
 
 /** Observe loaded card geometry; never cache a fallback or a hidden old page. */
 export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathname: string) {
@@ -14,6 +15,8 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
     const resize = new ResizeObserver(schedule);
     const measure = () => {
       timer = 0;
+      // Cache the settled layout, never an in-between animation frame.
+      if (content.querySelector('.pb-card-resizing')) { schedule(); return; }
       for (const el of [...content.children,...content.querySelectorAll(LAYOUT_CONTOUR_SELECTOR)]) {
         if (!observed.has(el)) { observed.add(el); resize.observe(el); }
       }
@@ -31,9 +34,10 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
     document.fonts?.addEventListener('loadingdone',schedule);
     // iOS can terminate a backgrounded app without firing pagehide. Save
     // synchronously as it becomes hidden, while the loaded geometry remains.
-    const onVisibility = () => { if (document.visibilityState === 'hidden') measure(); };
+    const saveSettled = () => { settleCardResizes(content); measure(); };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') saveSettled(); };
     document.addEventListener('visibilitychange',onVisibility);
-    window.addEventListener('pagehide',measure);
+    window.addEventListener('pagehide',saveSettled);
     schedule();
     return () => {
       clearTimeout(timer); resize.disconnect(); mutation.disconnect();
@@ -41,7 +45,7 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
       content.removeEventListener('transitionend',schedule);
       root?.removeEventListener('scroll',schedule); window.removeEventListener('resize',schedule);
       document.fonts?.removeEventListener('loadingdone',schedule); document.removeEventListener('visibilitychange',onVisibility);
-      window.removeEventListener('pagehide',measure);
+      window.removeEventListener('pagehide',saveSettled);
     };
   },[ref,pathname]);
 }

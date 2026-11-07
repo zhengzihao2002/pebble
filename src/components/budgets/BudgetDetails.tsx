@@ -40,7 +40,7 @@ function MonthTip({ active, payload, tag, budget, inProgress, spentLabel, monthl
   const p = payload?.[0]?.payload;
   if (!active || !p?.key) return null;
   return (
-    <div style={{ backgroundColor: 'var(--mist)', border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.5rem 0.7rem', fontSize: 'var(--pb-text-xs)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 150 }}>
+    <div style={{ backgroundColor: 'var(--mist)', border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.5rem 0.7rem', fontSize: '0.78rem', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 150 }}>
       <span style={{ fontWeight: 600 }}>
         {new Date(Number(p.key.slice(0, 4)), Number(p.key.slice(5, 7)) - 1, 1).toLocaleDateString(tag, { month: 'long', year: 'numeric' })}
         {p.current && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>{` · ${inProgress}`}</span>}
@@ -240,8 +240,8 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest, 
               <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                 <defs><pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={color} fillOpacity={0.12} /><path d="M-1 1l2-2M0 6L6 0M5 7l2-2" stroke={color} strokeOpacity={0.45} strokeWidth="1" /></pattern></defs>
                 <CartesianGrid vertical={false} stroke="var(--line)" />
-                <YAxis ticks={monthAxis.ticks} domain={monthAxis.domain} tickFormatter={axisFormat} width="auto" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6} />
+                <YAxis ticks={monthAxis.ticks} domain={monthAxis.domain} tickFormatter={axisFormat} width={58} tick={{ fontSize: 10, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6} />
                 <Tooltip cursor={{ fill: 'var(--line)', opacity: 0.4 }} content={<MonthTip tag={tag} budget={shownBudget ?? 0} inProgress={d.budgetDetails.inProgress} spentLabel={d.budgetRow.tipSpent} monthlyLabel={d.budgetRow.tipMonthly} estimatedLabel={ux.estimatedRemaining} totalLabel={ux.estimatedMonthTotal} />} />
                 {hasBudget && <ReferenceLine y={shownBudget! / 12} stroke="var(--ink-soft)" strokeDasharray="4 4" />}
                 <Bar dataKey="amount" stackId="spending" name={name} fill={color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
@@ -256,13 +256,13 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest, 
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cum} margin={{ top: 18, right: 6, left: 6, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--line)" />
-                <YAxis ticks={cumulativeAxis.ticks} domain={cumulativeAxis.domain} tickFormatter={axisFormat} width="auto" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
+                <YAxis ticks={cumulativeAxis.ticks} domain={cumulativeAxis.domain} tickFormatter={axisFormat} width={58} tick={{ fontSize: 10, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
                 <XAxis
                   dataKey="x" type="number" domain={[0, 1]} ticks={labelTicks} tickFormatter={tickLabel}
-                  tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6}
+                  tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={6}
                 />
                 <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} estimatedLabel={ux.estimatedYearTotal} />} />
-                {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} />}
+                {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 10, fill: 'var(--ink-soft)' }} />}
                 {hasBudget && (
                   <Line dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
                 )}

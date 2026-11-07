@@ -121,8 +121,8 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 16, right: 14, left: 0, bottom: 0 }} barCategoryGap={granularity === 'day' ? '18%' : '26%'} stackOffset="sign">
               <CartesianGrid stroke="var(--line)" vertical={false} />
-              <XAxis dataKey="key" tickFormatter={(k) => data.find((p) => p.key === k)?.label ?? ''} tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={10} />
-              <YAxis tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width="auto" />
+              <XAxis dataKey="key" tickFormatter={(k) => data.find((p) => p.key === k)?.label ?? ''} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={10} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={44} />
               <Tooltip content={<Tip mode={mode} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} isAnimationActive={false} />
               {mode === 'mixed' && <ReferenceLine y={0} stroke="var(--ink-faint)" />}
               {mode !== 'expense' && (
@@ -141,7 +141,7 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
                 <ReferenceLine y={mode === 'mixed' ? -avg : avg} stroke="var(--ink-soft)" strokeDasharray="4 4" strokeOpacity={0.7} ifOverflow="extendDomain" />
               )}
               {todayKey && buckets.length > 1 && (
-                <ReferenceLine x={todayKey} stroke="var(--gold)" strokeWidth={1.5} label={{ value: x.today, position: 'top', fill: 'var(--ink-soft)', fontSize: 'var(--pb-text-chart)' }} />
+                <ReferenceLine x={todayKey} stroke="var(--gold)" strokeWidth={1.5} label={{ value: x.today, position: 'top', fill: 'var(--ink-soft)', fontSize: 10 }} />
               )}
             </ComposedChart>
           </ResponsiveContainer>

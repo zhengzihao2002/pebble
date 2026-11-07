@@ -69,7 +69,7 @@ function PasswordEye({ input, labels }: { input: HTMLInputElement; labels: EyeLa
         position: 'absolute', top: 0, right: 0, height: '100%', width: 36,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: 'transparent', border: 'none', padding: 0,
-        color: 'var(--ink-soft)', cursor: empty ? 'default' : 'var(--pb-click-cursor, pointer)', opacity: empty ? 0.5 : 1,
+        color: 'var(--ink-soft)', cursor: empty ? 'default' : 'pointer', opacity: empty ? 0.5 : 1,
       }}
     >
       <Icon size={16} aria-hidden="true" />

@@ -70,7 +70,7 @@ export function TitleDescriptionFields({
           style={{ ...inputStyle, ...(titleError ? { border: '1px solid var(--wine)' } : {}) }}
         />
         {titleError && (
-          <span style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', lineHeight: 1.45 }}>{titleError}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>{titleError}</span>
         )}
       </label>
 

@@ -18,7 +18,7 @@ function SavedTick({ x, y, payload, savedBy }: {
 }) {
   return (
     <g transform={`translate(${x ?? 0},${y ?? 0})`}>
-      <text dy={12} textAnchor="middle" fontSize="var(--pb-text-chart)" fill="var(--ink)">{payload?.value}</text>
+      <text dy={12} textAnchor="middle" fontSize={11} fill="var(--ink)">{payload?.value}</text>
       <text dy={26} textAnchor="middle" fontSize={10.5} fill="var(--ink-soft)">{savedBy.get(payload?.value ?? '')}</text>
     </g>
   );
@@ -57,7 +57,7 @@ export function YearOverYearChart({ data }: { data: YearStats[] }) {
           {/* Colours, border and size come from the global
               .recharts-default-tooltip rule in globals.css. */}
           <Tooltip cursor={{ fill: CURSOR }} formatter={(v) => formatCurrency(Number(v))} />
-          <Legend wrapperStyle={{ fontSize: 'var(--pb-text-chart)' }} verticalAlign="top" align="right" height={28} iconType="circle" iconSize={8}
+          <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="top" align="right" height={28} iconType="circle" iconSize={8}
             formatter={(value) => <span style={{ color: 'var(--ink)' }}>{value}</span>} />
           <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
           <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />

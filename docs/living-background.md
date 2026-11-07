@@ -60,10 +60,10 @@ Motion. English and Chinese text explain the preview.
 Card glow has been removed, including its preference, settings control, paint
 layers and added inset reflections. Cards keep their original depth shadows.
 
-The main scrollbar is restored to the app's original native treatment. A small
-theme-tinted native image pointer adds a refined translucent triangle and a matching clickable hand on desktop,
-with SVG and PNG fallbacks. Text, drag, resize, disabled and loading cursor semantics
-remain native, as do touch-device and Forced Colors cursors.
+The main scrollbar is restored to the app's original native treatment.
+Native system cursors preserve the platform's regular pointer, clickable hand,
+text selection, drag, resize, disabled and loading states. No cursor images or
+custom cursor styles are shipped.
 
 Validation uses synthetic data and local fixtures only. Pure tests cover
 preference persistence/defaults, shared easing, framebuffer limits, colour

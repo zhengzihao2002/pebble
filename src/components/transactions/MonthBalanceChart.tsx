@@ -107,7 +107,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
                 const date = p ? (p.date ?? points[1]?.date) : null;
                 if (date) onPickDay(date);
               }}
-              style={{ cursor: hasActivity ? 'var(--pb-click-cursor, pointer)' : 'default' }}
+              style={{ cursor: hasActivity ? 'pointer' : 'default' }}
             >
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -119,7 +119,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
                 dataKey="day" type="number" domain={[0, Math.max(1, lastDay)]}
                 ticks={lastDay > 1 ? [1, lastDay] : [1]}
                 tickLine={false} axisLine={{ stroke: 'var(--line)' }}
-                tick={{ fill: 'var(--ink-soft)', fontSize: 'var(--pb-text-chart)' }}
+                tick={{ fill: 'var(--ink-soft)', fontSize: 11 }}
                 tickFormatter={(v: number) => (points[v]?.date ? formatDate(points[v].date as string, locale) : '')}
               />
               {/* Padded below so the line never sits on the axis and the low
@@ -133,7 +133,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
                 <ReferenceDot
                   x={low.day} y={low.balance} r={0}
                   // Under the dot, in the padded band below the line.
-                  label={{ value: t(x.low, { date: formatDate(low.date, locale) }), position: 'bottom', fill: 'var(--ink-soft)', fontSize: 'var(--pb-text-chart)', offset: 7 }}
+                  label={{ value: t(x.low, { date: formatDate(low.date, locale) }), position: 'bottom', fill: 'var(--ink-soft)', fontSize: 11, offset: 7 }}
                 />
               )}
               <Tooltip

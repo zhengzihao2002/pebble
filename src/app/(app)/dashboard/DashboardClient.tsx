@@ -28,6 +28,7 @@ import type { RecurringCandidate } from '@/lib/recurring/detect';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { parseLocalDate } from '@/lib/format';
 import { computeStatsForPeriod, describeWindow, getAvailablePeriods } from '@/lib/stats';
+import { stepPeriodKey } from '@/lib/periodNavigation';
 import { STATS_MODES } from '@/data/seed';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
@@ -107,6 +108,9 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
 
   const needsStatsSubPeriod = statsMode === 'month' || statsMode === 'quarter' || statsMode === 'year';
   const availableStatsPeriods = needsStatsSubPeriod ? periodsForStatsMode(statsMode) : [];
+  const handleStatsStep = (direction: 1 | -1) => {
+    setStatsPeriod(current => stepPeriodKey(availableStatsPeriods, current, direction));
+  };
 
   const handleStatsModeChange = (mode: string) => {
     setStatsMode(mode);
@@ -205,9 +209,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // while any dialog is open.
   // An effect event: reads the current period list without re-subscribing.
   const step = useEffectEvent((dir: 1 | -1) => {
-    const i = availableStatsPeriods.findIndex((p) => p.key === statsPeriod);
-    const next = i >= 0 ? availableStatsPeriods[i + dir] : undefined;
-    if (next) setStatsPeriod(next.key);
+    handleStatsStep(dir);
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -256,6 +258,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
           periods={needsStatsSubPeriod ? availableStatsPeriods : []}
           statsPeriod={statsPeriod}
           onPeriodChange={setStatsPeriod}
+          onPeriodStep={handleStatsStep}
           rangeLabel={statsWindow.rangeLabel}
           inProgress={statsWindow.inProgress}
           inProgressNote={inProgressNote}

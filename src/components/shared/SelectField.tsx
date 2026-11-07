@@ -50,7 +50,7 @@ export function SelectField(props: SelectFieldProps) {
         padding: '0.6rem 0.75rem', borderRadius: '0.6rem',
         border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)',
         backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%',
-        opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'var(--pb-click-cursor, pointer)',
+        opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
         ...style,
       }}
     >

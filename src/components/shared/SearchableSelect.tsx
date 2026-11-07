@@ -273,7 +273,7 @@ export function SearchableSelect({
           position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: 26, height: 26, padding: 0, border: 'none', borderRadius: '0.4rem',
-          background: 'transparent', cursor: disabled ? 'not-allowed' : 'var(--pb-click-cursor, pointer)',
+          background: 'transparent', cursor: disabled ? 'not-allowed' : 'pointer',
         }}
       >
         <ChevronDown size={15} style={{ color: 'var(--ink-soft)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s ease' }} />
@@ -332,7 +332,7 @@ export function SearchableSelect({
                   onMouseEnter={() => { if (!keyboardNavRef.current) setHighlight(i); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.6rem',
-                    padding: '0.5rem 0.7rem', borderRadius: '0.45rem', cursor: 'var(--pb-click-cursor, pointer)',
+                    padding: '0.5rem 0.7rem', borderRadius: '0.45rem', cursor: 'pointer',
                     fontSize: '0.88rem',
                     // Two signals, not one: --mist on a .card (--paper) is too
                     // slight a step to find at a glance while looking at the

@@ -62,11 +62,11 @@ export function InlineBudgetEditor({ name, initial, onClose }: { name: string; i
         <button type="button" className="icon-btn" onClick={cancel} disabled={saving} aria-label={d.budgetEdit.cancel} title={d.budgetEdit.cancel} style={budgetIconBtn}><X size={18} /></button>
       </span>
       {Number.isFinite(amount) && amount > 0 && (
-        <span className="font-mono-tab" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>
+        <span className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
           {t(d.budgetModal.estMonthlyLabel, { amount: formatCurrency(amount / 12) })}
         </span>
       )}
-      {error && <span role="status" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)' }}>{error}</span>}
+      {error && <span role="status" style={{ fontSize: '0.75rem', color: 'var(--wine)' }}>{error}</span>}
     </span>
   );
 }

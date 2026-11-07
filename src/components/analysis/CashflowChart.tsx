@@ -52,7 +52,7 @@ export function CashflowChart({ data, view = 'net' }: { data: MonthlyFlow[]; vie
   const axis = (
     <XAxis
       dataKey="label"
-      tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }}
+      tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
       axisLine={false}
       tickLine={false}
       interval="preserveStartEnd"

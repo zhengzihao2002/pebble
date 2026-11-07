@@ -23,7 +23,7 @@ function AvgLabel({ viewBox, head, amount }: { viewBox?: { x?: number; y?: numbe
   const { x = 0, y = 0, width = 0 } = viewBox;
   const left = x + width + 6;
   return (
-    <text className="recharts-label" x={left} y={y - 3} fontSize="var(--pb-text-chart)" fill="var(--ink-soft)">
+    <text className="recharts-label" x={left} y={y - 3} fontSize={11} fill="var(--ink-soft)">
       <tspan x={left} dy={0}>{head}</tspan>
       <tspan x={left} dy={13} className="font-mono-tab">{amount}</tspan>
     </text>
@@ -64,7 +64,7 @@ export function MonthlySpendChart({ data, average = null }: { data: MonthlySpend
         <BarChart data={data} margin={{ top: 18, right: average !== null && average > 0 ? 58 : 14, bottom: 0, left: 14 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }}
+            tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"

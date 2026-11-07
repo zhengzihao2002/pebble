@@ -215,7 +215,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
                       {g.ids.map((id) => {
                         const c = byId.get(id)!;
                         return (
-                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'var(--pb-click-cursor, pointer)' }}>
+                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
                             <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} style={{ flexShrink: 0 }} />
                             <span style={{ minWidth: 0, flex: 1 }}>
                               {/* Titles are USER DATA. */}

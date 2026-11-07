@@ -21,6 +21,7 @@ interface DashboardStatsCardProps {
   periods: PeriodOption[];
   statsPeriod: string | null;
   onPeriodChange: (key: string) => void;
+  onPeriodStep?: (direction: 1 | -1) => void;
   rangeLabel: string;
   inProgress: boolean;
   /** The in-progress note for this mode ("· includes this month so far"). */
@@ -120,7 +121,7 @@ export function useDelta() {
  * just below they were one set of graphs too many, so they went.)
  */
 export function DashboardStatsCard({
-  modes, statsMode, onModeChange, periods, statsPeriod, onPeriodChange,
+  modes, statsMode, onModeChange, periods, statsPeriod, onPeriodChange, onPeriodStep,
   rangeLabel, inProgress, inProgressNote, income, spending, savingsRate, saved,
   compare = null, compareLabel = '',
 }: DashboardStatsCardProps) {
@@ -129,10 +130,15 @@ export function DashboardStatsCard({
   const deltaFor = useDelta();
 
   // Newest first: "previous" is the next index, "next" the one before.
-  const idx = periods.findIndex((p) => p.key === statsPeriod);
+  const idx = Math.max(0, periods.findIndex((p) => p.key === statsPeriod));
   const current = idx >= 0 ? periods[idx] : undefined;
   const older = idx >= 0 ? periods[idx + 1] : undefined;
   const newer = idx > 0 ? periods[idx - 1] : undefined;
+  const stepPeriod = (direction: 1 | -1) => {
+    if (onPeriodStep) { onPeriodStep(direction); return; }
+    const next = periods[idx + direction];
+    if (next) onPeriodChange(next.key);
+  };
 
   // A tile's figure for one side of the comparison, written as the tile writes it.
   const figure = (metric: Metric, r: RangeStats) =>
@@ -172,7 +178,23 @@ export function DashboardStatsCard({
   return (
     <div className="card pb-stats-card pb-dash-stats">
       <div className="pb-stats-head">
-        <h3 className="pb-stats-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}><PeriodDot />{d.dashboard.periodTitle}</h3>
+        <div className="pb-dash-period-heading">
+          <h3 className="pb-stats-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}><PeriodDot />{d.dashboard.periodTitle}</h3>
+          <p className="pb-stats-range">
+            {/* A date range, not money: tabular but never blurred. */}
+            <span className="pb-tnum">{rangeLabel}</span>
+            {inProgress && <span>&nbsp;{inProgressNote ?? d.dashboard.inProgressNote}</span>}
+            <InfoTooltip label={d.dashboard.periodTooltipLabel}>
+              {renderTemplate(d.dashboard.periodCover, { emphasis: <strong>{d.dashboard.periodCoverEmphasis}</strong> })}
+              {inProgress && (
+                <>
+                  {' '}{renderTemplate(d.dashboard.periodInProgress, { emphasis: <strong>{d.dashboard.periodInProgressEmphasis}</strong> })}
+                </>
+              )}
+              {' '}{renderTemplate(d.dashboard.periodAnalysis, { emphasis: <strong>{d.dashboard.periodAnalysisEmphasis}</strong> })}
+            </InfoTooltip>
+          </p>
+        </div>
         {/* The ONE element carrying this id: PeriodLink scrolls to and pulses it. */}
         <div className="pb-stats-controls pb-dash-period" id="pb-period-control">
           <span className="pb-dash-select is-mode">
@@ -194,12 +216,12 @@ export function DashboardStatsCard({
             <span className="pb-dash-stepper">
               <button
                 type="button" className="pb-dash-step" aria-label={ux.prevPeriod}
-                disabled={!older} onClick={() => older && onPeriodChange(older.key)}
+                disabled={!older} onClick={() => stepPeriod(1)}
               >
                 <ChevronLeft size={16} aria-hidden="true" />
               </button>
               <span className="pb-dash-select is-period">
-                <select value={statsPeriod || ''} onChange={(e) => onPeriodChange(e.target.value)} aria-label={ux.periodPick}>
+                <select value={current?.key ?? ''} onChange={(e) => onPeriodChange(e.target.value)} aria-label={ux.periodPick}>
                   {periods.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
                 </select>
                 {/* Phone only, like the mode's face: the full name, and a
@@ -214,7 +236,7 @@ export function DashboardStatsCard({
               </span>
               <button
                 type="button" className="pb-dash-step" aria-label={ux.nextPeriod}
-                disabled={!newer} onClick={() => newer && onPeriodChange(newer.key)}
+                disabled={!newer} onClick={() => stepPeriod(-1)}
               >
                 <ChevronRight size={16} aria-hidden="true" />
               </button>
@@ -222,20 +244,6 @@ export function DashboardStatsCard({
           )}
         </div>
       </div>
-      <p className="pb-stats-range">
-        {/* A date range, not money: tabular but never blurred. */}
-        <span className="pb-tnum">{rangeLabel}</span>
-        {inProgress && <span>&nbsp;{inProgressNote ?? d.dashboard.inProgressNote}</span>}
-        <InfoTooltip label={d.dashboard.periodTooltipLabel}>
-          {renderTemplate(d.dashboard.periodCover, { emphasis: <strong>{d.dashboard.periodCoverEmphasis}</strong> })}
-          {inProgress && (
-            <>
-              {' '}{renderTemplate(d.dashboard.periodInProgress, { emphasis: <strong>{d.dashboard.periodInProgressEmphasis}</strong> })}
-            </>
-          )}
-          {' '}{renderTemplate(d.dashboard.periodAnalysis, { emphasis: <strong>{d.dashboard.periodAnalysisEmphasis}</strong> })}
-        </InfoTooltip>
-      </p>
       <div className="pb-stats-grid">
         {cells.map((c) => {
           const Icon = c.icon;

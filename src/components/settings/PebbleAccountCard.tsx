@@ -89,7 +89,7 @@ export function PebbleAccountCard() {
               <span className="pb-settings-row-hint pb-settings-me-hint">{deleteLocked ? d.safetyLocks.lockedHint : d.deleteMe.hint}</span>
               <button
                 type="button" onClick={() => setShowDelete(true)} disabled={deleteLocked} className="pill pb-settings-pill pb-settings-danger pb-settings-me-delete"
-                style={{ opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'var(--pb-click-cursor, pointer)' }}
+                style={{ opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
               >
                 <Trash2 size={14} aria-hidden="true" />{d.deleteMe.button}
               </button>

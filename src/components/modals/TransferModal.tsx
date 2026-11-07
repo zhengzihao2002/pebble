@@ -46,7 +46,7 @@ const inputStyle: React.CSSProperties = {
 };
 const labelStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '0.35rem',
-  fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)',
+  fontSize: '0.8rem', color: 'var(--ink-soft)',
 };
 // Same amount field as Add Transaction: the figure is what this form is for.
 const bigAmountStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', border: '1px solid var(--line)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)' };
@@ -198,7 +198,7 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
             <SaveSuccess title={success.title} body={success.summary} onDone={close} />
           ) : (
             <form id={FORM_ID} onSubmit={handleSubmit} className="pb-form-grid">
-              <p className="pb-span-2" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
+              <p className="pb-span-2" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
                 {d.transfer.blurb}
               </p>
 
@@ -233,11 +233,11 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
               </div>
 
               {sameAccount && (
-                <p className="pb-span-2" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
+                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.transfer.sameAccount}</p>
               )}
               {/* The server's own words for the same refusal. */}
               {sleepingPicked && !sameAccount && (
-                <p className="pb-span-2" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', margin: 0 }}>{d.serverErrors['validation.transferInactiveAccount']}</p>
+                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.serverErrors['validation.transferInactiveAccount']}</p>
               )}
               {accountError && <div className="pb-span-2"><ActionError message={accountError} /></div>}
               {accountsLoaded && accounts.length === 0 && (

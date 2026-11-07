@@ -803,7 +803,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                       <Pencil size={14} />{d.txnDetail.edit}
                     </button>
                   )}
-                  <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'var(--pb-click-cursor, pointer)' }}>
+                  <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}>
                     <Trash2 size={14} />{d.txnDetail.delete}
                   </button>
                 </div>

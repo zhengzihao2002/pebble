@@ -115,7 +115,7 @@ export function DeletePebbleAccountDialog({ onClose }: { onClose: () => void }) 
 
         {step === 'confirm' && (
           <div className="goal-step" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.85rem', lineHeight: 1.5, cursor: 'var(--pb-click-cursor, pointer)' }}>
+            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.85rem', lineHeight: 1.5, cursor: 'pointer' }}>
               <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
               <span>{d.deleteMe.understand}</span>
             </label>
