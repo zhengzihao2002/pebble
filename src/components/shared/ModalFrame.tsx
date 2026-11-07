@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { CardGlowLayer } from '@/components/layout/CardGlowLayer';
 import { sheetReleaseVelocity, shouldDismissSheet, type SheetMotionSample } from '@/lib/mobileSheetGesture';
 
 /**
@@ -322,6 +323,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
         pressOnBackdrop.current = false;
       }}
     >
+      <CardGlowLayer scope="modal" />
       <div
         ref={cardRef}
         className={`card pb-modal-card${cardClassName ? ` ${cardClassName}` : ''}`}

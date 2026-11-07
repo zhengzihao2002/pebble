@@ -1,6 +1,5 @@
-/* One rounded shadow paint owns the entire highlight, including reflections.
-   No separately clipped reflection overlay is needed. This keeps card content
-   and menus free while simplifying the initial paint on mobile WebKit. */
+/* Reflections remain on the card. External coloured light is baked into the
+   shared paint plane instead of native outset shadows on every card. */
 .pebble-root {
   --pb-card-reflection: 0 0 0 0 transparent;
   --pb-card-outer: 0 0 0 0 transparent;
@@ -10,23 +9,19 @@ html:not([data-pb-card-glow="off"]) .pebble-root {
   --pb-card-reflection:
     inset 0 4px 14px -7px color-mix(in srgb, var(--mist) 74%, white),
     inset 0 -3px 14px -9px color-mix(in srgb, var(--pine) 30%, transparent);
-  --pb-card-outer:
-    0 0 20px 1px color-mix(in srgb, var(--pine) 17%, transparent),
-    0 0 44px 1px color-mix(in srgb, var(--pine) 11%, transparent);
 }
-/* Reported iOS first-paint artifacts disappear when coloured glow is removed.
-   Keep its glow inside the card silhouette: no coloured halo is emitted into
-   the rounded-corner cutouts.
-   Ordinary depth shadows remain in each card's own shadow declaration. */
-@supports (-webkit-touch-callout: none) {
-  html:not([data-pb-card-glow="off"]) .pebble-root {
-    --pb-card-outer: 0 0 0 0 transparent;
-  }
+.pebble-root:has(> .pb-card-glow-layer) { isolation: isolate; }
+.pebble-root .pb-card-glow-layer {
+  position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1;
+  pointer-events: none; contain: strict;
 }
+.pebble-root .pb-card-glow-layer[data-scope="modal"] { position: absolute; }
+html[data-pb-card-glow="off"] .pb-card-glow-layer { display: none; }
 /* Preserve the positioning existing card overlays rely on, without adding
    transforms, masks, clipping or a new containing block for fixed children. */
 :where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) {
   position: relative;
 }
-/* Nested stat tiles never had the separate inner reflection. */
-.pebble-root .card .stat-tab { --pb-card-halo: var(--pb-card-outer); }
+/* Opaque ancestor cards mask external light; nested tiles get the same inward
+   highlight on every platform rather than a browser-specific shadow fallback. */
+.pebble-root .card .stat-tab { --pb-card-halo: var(--pb-card-reflection); }

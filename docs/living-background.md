@@ -54,19 +54,28 @@ a fixed-height stage. Play/pause is independent of the background switch; the
 preview pauses offscreen or hidden and requires explicit Play with Reduced
 Motion. English and Chinese text explain the preview.
 
-The user isolated the mobile Safari sharp tint to Card glow: removing glow clears
-it, while reapplying it remains clean until refresh. Glow now uses the actual
-card's rounded box-shadow paint, removing the separately clipped reflection
-pseudo-element. On iOS WebKit the highlight stays inside the card, with no
-outward coloured glow entering the corner cutouts; ordinary depth shadows remain.
-Desktop retains its soft external halo. Split transaction panes and the sticky
-annual balance preserve their inward reflections in their own shadow paths.
-The iOS branch passes simulated first-paint/toggle pixel checks on the actual
-Dashboard and Reports card classes. Native Safari reproduction is still unavailable.
+The user isolated Safari's sharp tint to the external coloured Card glow. The
+external glow now uses cached analytic RGBA edge/corner textures on one bounded
+page canvas and a scoped canvas inside each dialog backdrop. Both use identical
+strength on desktop and mobile, restoring iPhone's external glow without native
+coloured outset shadows, CSS blur or canvas shadowBlur. Separate corner radii,
+ancestor clipping and interior masks keep the paint outside each rounded surface.
+Ordinary depth shadows and inward reflections remain on the cards. Nested tiles
+keep inward highlights consistently across browsers. Split transaction panes and
+the sticky annual balance preserve their existing shadow paths.
 
-The main scrollbar uses a native, rounded theme-gradient thumb and subtle rail
-on desktop, with a wider drag area than the visible thumb. Nested lists retain
-their existing scrollbars; coarse-pointer devices keep their native overlay.
+The glow framebuffer is capped at 1400px on its longer side, independent of DPR,
+with a bounded texture cache. Scroll, resize, layout and palette changes coalesce
+into frame requests; active CSS/DOM-triggered layout animations are followed.
+The layer stays idle while the background or route preview animates, pauses while
+hidden, and is removed when glow is off. Local browser fixtures cover page and
+dialog paint, clipping, masks, moving cards, themes and lifecycle behavior. The
+original native Safari flicker has not been reproduced in this environment.
+
+The main scrollbar is restored to the app's original native treatment. A small
+theme-tinted native image pointer adds an outlined arrow on desktop, with SVG and
+PNG fallbacks. Text, hand, drag, resize, disabled and loading cursor semantics
+remain native, as do touch-device and Forced Colors cursors.
 
 Validation uses synthetic data and local fixtures only. Pure tests cover
 preference persistence/defaults, shared easing, framebuffer limits, colour
