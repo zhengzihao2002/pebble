@@ -1,0 +1,56 @@
+/* Keep native scrolling and dragging. Only the app's outer page gets this
+   rail; dialogs, sidebars and nested lists retain their existing scrollbars. */
+.pebble-root.themed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--pine) 65%, var(--ink-soft)) transparent;
+}
+/* scrollbar-color inherits. Stop the main rail's accent at its own children. */
+.pebble-root.themed-scroll > * { scrollbar-color: var(--line) transparent; }
+
+/* iOS keeps its system overlay indicator. Fine pointers get a quiet inset
+   thumb, with a larger native hit area than the visible coloured centre. */
+@media (hover: hover) and (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) {
+    .pebble-root.themed-scroll { scrollbar-width: auto; scrollbar-color: auto; }
+    .pebble-root.themed-scroll::-webkit-scrollbar { width: 12px; height: 12px; }
+    .pebble-root.themed-scroll::-webkit-scrollbar-track {
+      margin-block: calc(var(--pb-header-h, 4.6rem) + .75rem) 1rem;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--pine) 4%, transparent);
+    }
+    .pebble-root.themed-scroll::-webkit-scrollbar-thumb {
+      min-height: 3rem;
+      border: 3px solid transparent;
+      border-radius: 99px;
+      background-image: linear-gradient(180deg,
+        color-mix(in srgb, var(--pine) 68%, var(--gold)),
+        color-mix(in srgb, var(--pine) 68%, var(--ink-soft)) 55%,
+        color-mix(in srgb, var(--pine) 82%, var(--line)));
+      background-clip: padding-box;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pine) 12%, transparent);
+    }
+    .pebble-root.themed-scroll::-webkit-scrollbar-thumb:hover,
+    .pebble-root.themed-scroll:focus-within::-webkit-scrollbar-thumb {
+      background-image: linear-gradient(180deg,
+        color-mix(in srgb, var(--pine) 78%, var(--gold)), var(--pine));
+    }
+    .pebble-root.themed-scroll::-webkit-scrollbar-thumb:active {
+      background-image: linear-gradient(180deg, var(--pine), var(--pine-strong));
+    }
+    .pebble-root.themed-scroll::-webkit-scrollbar-button { width: 0; height: 0; display: none; }
+    .pebble-root.themed-scroll::-webkit-scrollbar-corner { background: transparent; }
+  }
+}
+
+@media (forced-colors: active) {
+  .pebble-root.themed-scroll { scrollbar-width: auto; scrollbar-color: auto; }
+  .pebble-root.themed-scroll::-webkit-scrollbar-track { background: transparent; }
+  .pebble-root.themed-scroll::-webkit-scrollbar-thumb,
+  .pebble-root.themed-scroll:focus-within::-webkit-scrollbar-thumb,
+  .pebble-root.themed-scroll::-webkit-scrollbar-thumb:hover,
+  .pebble-root.themed-scroll::-webkit-scrollbar-thumb:active {
+    background: CanvasText;
+    border-color: Canvas;
+    box-shadow: none;
+  }
+}
