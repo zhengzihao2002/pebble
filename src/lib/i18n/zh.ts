@@ -580,7 +580,6 @@ export const zh: typeof en = {
   textSize: {
     title: '文字大小',
     blurb: '调整 Pebble 中文字的显示大小。',
-    small: '小',
     default: '默认',
     large: '大',
     extraLarge: '特大',

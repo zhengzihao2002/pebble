@@ -113,13 +113,13 @@
 .pebble-root .pb-dash .link-btn { text-decoration: none; }
 .pebble-root .pb-dash-cta { display: inline-flex; text-decoration: none; }
 .pebble-root .pb-dash-quiet { margin: 0; font-size: 0.85rem; color: var(--ink-soft); }
-.pebble-root .pb-dash-caption { margin: -0.45rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-caption { margin: -0.45rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-dash-fill-empty { flex: 1; display: grid; place-items: center; }
 .pebble-root .pb-dash-sr {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.pebble-root .pb-dash-more { align-self: flex-start; min-height: 2rem; padding: 0; border: 0; background: none; cursor: pointer; font-family: inherit; font-weight: 600; }
+.pebble-root .pb-dash-more { align-self: flex-start; min-height: 2rem; padding: 0; border: 0; background: none; cursor: var(--pb-click-cursor, pointer); font-family: inherit; font-weight: 600; }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-more { min-height: 44px; }
   /* Card header links ("See all"): text-sized otherwise. */
@@ -127,7 +127,7 @@
 }
 
 /* Legends: dots for series, short strokes for lines. Text stays in ink. */
-.pebble-root .pb-dash-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-dash-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .pebble-root .pb-dash-key-dot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; flex: none; }
 .pebble-root .pb-dash-key-line { display: inline-block; width: 14px; height: 2px; border-radius: 2px; flex: none; }
@@ -140,7 +140,7 @@
 }
 .pebble-root .pb-dash-tip {
   background-color: var(--mist); border: 1px solid var(--line); border-radius: 0.6rem; box-shadow: var(--shadow);
-  padding: 0.55rem 0.75rem; font-size: 0.8rem; display: flex; flex-direction: column; gap: 3px; min-width: 170px;
+  padding: 0.55rem 0.75rem; font-size: var(--pb-text-xs); display: flex; flex-direction: column; gap: 3px; min-width: 170px;
 }
 
 /* ---------- Hero: figure | trajectory | accounts ---------- */
@@ -201,15 +201,15 @@
 .pebble-root .pb-dash-hero-trend-chev { transition: transform var(--pb-dur-micro) var(--pb-ease-out); }
 .pebble-root .pb-dash-hero-trend-link:hover .pb-dash-hero-trend-chev { transform: translateX(2px); }
 .pebble-root .pb-dash-hero-spark .pb-spark-grid { stroke: var(--pb-hero-fg); stroke-opacity: .15; stroke-dasharray: 2 3; }
-.pebble-root .pb-dash-hero-spark .pb-spark-tick { fill: var(--pb-hero-fg); font-size: 10px; font-variant-numeric: tabular-nums; }
+.pebble-root .pb-dash-hero-spark .pb-spark-tick { fill: var(--pb-hero-fg); font-size: var(--pb-text-chart); font-variant-numeric: tabular-nums; }
 .pebble-root .pb-dash-hero-trend-link:focus-visible { outline: 2px solid var(--pb-hero-fg); outline-offset: 2px; }
 .pebble-root .pb-dash-hero-trend-head {
   display: inline-flex; align-items: center; gap: 2px; align-self: flex-start;
-  font-size: 0.74rem; font-weight: 600; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft);
 }
 .pebble-root .pb-dash-hero-trend-axis {
   display: flex; justify-content: space-between; gap: 1rem;
-  font-size: 0.68rem; color: var(--ink-soft); line-height: 1.2;
+  font-size: var(--pb-text-chart); color: var(--ink-soft); line-height: 1.2;
 }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-hero-trend-link { min-height: 44px; }
@@ -233,7 +233,7 @@
 }
 .pebble-root .pb-dash-alloc-legend {
   display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-top: 0.5rem;
-  font-size: 0.76rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-dash-alloc-key { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.1rem 0.35rem; max-width: 100%; min-width: 0; } /* wraps rather than running past the legend at large text */
 .pebble-root .pb-dash-alloc-key .font-mono-tab { color: var(--pb-hero-fg); font-weight: 600; }
@@ -263,7 +263,7 @@
   -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%;
   height: 2.5rem; padding: 0 2rem 0 0.95rem; border-radius: 999px;
   border: 1px solid var(--line); background-color: color-mix(in srgb, var(--ink) 4%, var(--mist));
-  color: var(--ink); font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer;
+  color: var(--ink); font: inherit; font-size: 0.84rem; font-weight: 600; cursor: var(--pb-click-cursor, pointer);
   text-overflow: ellipsis;
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
@@ -281,7 +281,7 @@
 }
 .pebble-root .pb-dash-step {
   display: grid; place-items: center; flex: none; width: 2.5rem; height: 100%;
-  border: 0; border-radius: 999px; background: transparent; color: var(--ink-soft); cursor: pointer;
+  border: 0; border-radius: 999px; background: transparent; color: var(--ink-soft); cursor: var(--pb-click-cursor, pointer);
   transition: color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-dash-step:hover:not(:disabled) { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
@@ -366,9 +366,9 @@
    is a 390px phone at about 19px text, which needs the same help. */
 @container content ((max-width: 340px) or (max-width: 20.5rem)) {
   .pebble-root .pb-dash-period { gap: 0.3rem; }
-  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { padding: 0 1.7rem 0 0.75rem; font-size: 0.8rem; }
+  .pebble-root .pb-dash-select.is-mode > .pb-dash-select-sizer { padding: 0 1.7rem 0 0.75rem; font-size: var(--pb-text-xs); }
   .pebble-root .pb-dash-select.is-mode > svg { right: 0.6rem; }
-  .pebble-root .pb-dash-select.is-period > .pb-dash-select-face { font-size: 0.8rem; }
+  .pebble-root .pb-dash-select.is-period > .pb-dash-select-face { font-size: var(--pb-text-xs); }
 }
 
 .pebble-root .pb-dash-tile { display: flex; flex-direction: column; }
@@ -382,7 +382,7 @@
   .pebble-root .pb-dash-tile .pb-stats-icon { display: none; }
 }
 @container (max-width: 8.25rem) {
-  .pebble-root .pb-dash-tile .pb-stats-label { gap: 4px; font-size: 0.75rem; }
+  .pebble-root .pb-dash-tile .pb-stats-label { gap: 4px; font-size: var(--pb-text-sm); }
 }
 .pebble-root .pb-dash-tile-value { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-dash-tile-value .pb-stats-value { min-width: 0; }
@@ -393,7 +393,7 @@
 .pebble-root .pb-dash-tile .pb-stats-value { font-size: clamp(0.85rem, 15cqi, 1.4rem); }
 .pebble-root .pb-dash-tile-delta {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.4rem; min-height: 1.4rem; margin-top: 0.45rem;
-  font-size: 0.72rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-dash-tile-delta * { overflow-wrap: normal; }
 /* The chip may wrap onto a second line when a tile is narrower than its text
@@ -413,7 +413,7 @@
 .pebble-root .pb-dash-cmp {
   position: relative; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.4rem; max-width: calc(100% + 0.7rem); min-width: 0;
   margin: -0.15rem -0.35rem; padding: 0.15rem 0.35rem; border: 0; border-radius: 0.5rem;
-  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-dash-cmp:hover, .pebble-root .pb-dash-cmp[aria-expanded="true"] { background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
@@ -429,7 +429,7 @@
   position: fixed; z-index: 60; box-sizing: border-box;
   padding: 0.65rem 0.8rem; border: 1px solid var(--line); border-radius: 0.7rem;
   background-color: var(--mist); color: var(--ink); box-shadow: var(--shadow);
-  font-size: 0.78rem; line-height: 1.4;
+  font-size: var(--pb-text-xs); line-height: 1.4;
   animation: pb-dash-cmp-in var(--pb-dur-micro) var(--pb-ease-out) both;
 }
 @keyframes pb-dash-cmp-in { from { opacity: 0; } to { opacity: 1; } }
@@ -452,7 +452,7 @@
   margin: auto 0 0; padding-top: 0.85rem; border-top: 1px solid var(--line);
 }
 .pebble-root .pb-dash-fact { min-width: 0; }
-.pebble-root .pb-dash-fact dt { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-dash-fact dt { font-size: var(--pb-text-sm); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pebble-root .pb-dash-fact dd { margin: 0.15rem 0 0; font-size: 0.95rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .pebble-root .pb-dash-pace-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; margin: -0.3rem 0 0; font-size: 0.9rem; color: var(--ink); }
 .pebble-root .pb-dash-pace-vs { font-size: 0.82rem; font-weight: 500; }
@@ -469,7 +469,7 @@
   position: relative; isolation: isolate; width: 100%; box-sizing: border-box;
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; column-gap: 0.55rem;
   padding: 0.45rem 0.45rem; margin: 0; border: 0; border-radius: 0.55rem;
-  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer);
   transition: opacity var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-donut-filler .pb-dash-where-row { cursor: default; }
@@ -478,12 +478,12 @@
 .pebble-root .pb-dash-where-row:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
 .pebble-root .pb-dash-where-bar { position: absolute; z-index: -1; left: 0; top: 3px; bottom: 3px; border-radius: 0.45rem; pointer-events: none; }
 .pebble-root .pb-dash-where-chip { display: inline-flex; justify-content: flex-end; min-width: 0; }
-.pebble-root .pb-dash-where-chip .pb-delta { font-size: 0.66rem; padding-top: 0; padding-bottom: 0; }
+.pebble-root .pb-dash-where-chip .pb-delta { font-size: var(--pb-text-xs); padding-top: 0; padding-bottom: 0; }
 .pebble-root .pb-dash-where-centre-name {
-  max-width: 9rem; margin: 0 auto; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft);
+  max-width: 9rem; margin: 0 auto; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft);
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere;
 }
-.pebble-root .pb-dash-seg { cursor: pointer; transition: opacity var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root .pb-dash-seg { cursor: var(--pb-click-cursor, pointer); transition: opacity var(--pb-dur-micro) var(--pb-ease-out); }
 .pebble-root .pb-dash-seg.is-dim { opacity: 0.3; }
 .pebble-root .pb-dash-pager-btn { width: 32px; height: 32px; border-radius: 50%; }
 @media (pointer: coarse) {
@@ -502,7 +502,7 @@
 .pebble-root .pb-dash-day + .pb-dash-day, .pebble-root .pb-dash-agenda > .collapsible-rows .pb-dash-day:first-child:has(> .pb-dash-day-head) { margin-top: 0.6rem; }
 .pebble-root .pb-dash-day-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
-  padding: 0.3rem 0; font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
+  padding: 0.3rem 0; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft);
   border-bottom: 1px solid var(--line);
 }
 .pebble-root .pb-dash-rows { list-style: none; margin: 0; padding: 0; --pb-inset: 48px; }
@@ -514,7 +514,7 @@
 .pebble-root .pb-dash-up-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0; min-width: 0; }
 .pebble-root .pb-dash-tile-icon { width: 36px; height: 36px; border-radius: 0.65rem; flex: none; display: grid; place-items: center; }
 .pebble-root .pb-dash-row-title { display: block; font-size: 0.87rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-dash-row-sub { display: block; font-size: 0.75rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-dash-row-sub { display: block; font-size: var(--pb-text-xs); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-dash-row-amount { font-size: 0.87rem; font-weight: 600; white-space: nowrap; }
 /* Large text on a phone: a row's title and subtitle had ~100px of a 390px
    card (the icon and the amount keep theirs), so "House cleaning" read
@@ -546,7 +546,7 @@
   .pebble-root .pb-dash-hero-change > span:last-child { white-space: normal; overflow: visible; }
   .pebble-root .pb-dash .pb-hero-account-name { white-space: normal; overflow-wrap: anywhere; }
 }
-.pebble-root .pb-dash-payoff { padding: 0.3rem 0.7rem; font-size: 0.75rem; flex: none; }
+.pebble-root .pb-dash-payoff { padding: 0.3rem 0.7rem; font-size: var(--pb-text-xs); flex: none; }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-payoff { min-height: 44px; }
 }
@@ -587,13 +587,13 @@
 @media (pointer: fine) {
   @container pb-upcoming (min-width: 380px) {
     .pebble-root .pb-dash-rail { grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; }
-    .pebble-root .pb-dash-rail .pb-dash-rail-n { width: 1.45rem; height: 1.45rem; font-size: 0.78rem; }
+    .pebble-root .pb-dash-rail .pb-dash-rail-n { width: 1.45rem; height: 1.45rem; font-size: var(--pb-text-xs); }
   }
 }
 .pebble-root .pb-dash-rail-day {
   display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; min-height: 3.5rem;
   padding: 0.3rem 0; border: 1px solid transparent; border-radius: 0.7rem;
-  background: transparent; color: var(--ink); font: inherit; cursor: pointer;
+  background: transparent; color: var(--ink); font: inherit; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-dash-rail-day.is-weekend { background-color: color-mix(in srgb, var(--ink) 3.5%, transparent); }
@@ -601,7 +601,7 @@
 .pebble-root .pb-dash-rail-day.is-on { background-color: color-mix(in srgb, var(--pine) 12%, transparent); border-color: color-mix(in srgb, var(--pine) 45%, transparent); }
 .pebble-root .pb-dash-rail-day:disabled { cursor: default; color: var(--ink-soft); }
 .pebble-root .pb-dash-rail-day:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
-.pebble-root .pb-dash-rail-wd { font-size: 0.64rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; line-height: 1.2; }
+.pebble-root .pb-dash-rail-wd { font-size: var(--pb-text-chart); font-weight: 600; color: var(--ink-soft); text-transform: uppercase; line-height: 1.2; }
 .pebble-root .pb-dash-rail-n { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 99px; font-size: 0.84rem; font-weight: 600; }
 .pebble-root .pb-dash-rail-day.is-today .pb-dash-rail-n { box-shadow: inset 0 0 0 1.5px var(--pine); color: var(--pine); }
 .pebble-root .pb-dash-rail-dots { display: flex; gap: 3px; height: 6px; align-items: center; }
@@ -610,10 +610,10 @@
 .pebble-root .pb-dash-rail-dots .is-out { background-color: var(--wine); }
 .pebble-root .pb-dash-rail-dots .is-card { background-color: var(--gold); }
 .pebble-root .pb-dash-rail-dots .is-overdue { background-color: transparent; box-shadow: inset 0 0 0 1.5px var(--wine); width: 6px; height: 6px; }
-.pebble-root .pb-dash-filter { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.8rem; font-weight: 600; }
+.pebble-root .pb-dash-filter { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: var(--pb-text-xs); font-weight: 600; }
 .pebble-root .pb-dash-up-foot {
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem; margin: auto 0 0; padding-top: 0.75rem;
-  border-top: 1px solid var(--line); font-size: 0.78rem; color: var(--ink-soft);
+  border-top: 1px solid var(--line); font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 
 /* ---------- Needs attention ---------- */
@@ -631,7 +631,7 @@
 .pebble-root .pb-dash-budget-name { display: flex; align-items: center; gap: 0.6rem; min-width: 0; font-size: 0.87rem; font-weight: 600; }
 .pebble-root .pb-dash-budget-icon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 0.6rem; }
 .pebble-root .pb-dash-budget-label { min-width: 0; overflow-wrap: anywhere; }
-.pebble-root .pb-dash-budget-status { flex: none; font-size: 0.76rem; font-weight: 600; text-align: right; }
+.pebble-root .pb-dash-budget-status { flex: none; font-size: var(--pb-text-xs); font-weight: 600; text-align: right; }
 .pebble-root .pb-dash-budget-bar { position: relative; padding: 4px 0; }
 .pebble-root .pb-dash-budget-track { height: 10px; border-radius: 99px; background-color: var(--line); overflow: hidden; }
 .pebble-root .pb-dash-budget-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
@@ -658,8 +658,8 @@
 .pebble-root .pb-dash-budget-marker:hover, .pebble-root .pb-dash-budget-marker:focus-visible { z-index: 6; }
 .pebble-root .pb-dash-budget-marker:hover .pb-dash-budget-tip,
 .pebble-root .pb-dash-budget-marker:focus-visible .pb-dash-budget-tip { opacity: 1; }
-.pebble-root .pb-dash-budget-figs { justify-self: end; font-size: 0.76rem; color: var(--ink-soft); }
-.pebble-root .pb-dash-budget-note { font-size: 0.76rem; color: var(--ink-soft); padding-left: calc(30px + 0.6rem); }
+.pebble-root .pb-dash-budget-figs { justify-self: end; font-size: var(--pb-text-xs); color: var(--ink-soft); }
+.pebble-root .pb-dash-budget-note { font-size: var(--pb-text-xs); color: var(--ink-soft); padding-left: calc(30px + 0.6rem); }
 
 /* ---------- Goals glance ---------- */
 .pebble-root .pb-dash-goals { container: pb-goals / inline-size; }
@@ -688,8 +688,8 @@
 .pebble-root .pb-dash-goal-ring.is-over { box-shadow: 0 0 0 2px var(--mist), 0 0 0 3.5px var(--wine); }
 .pebble-root .pb-dash-goal-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pebble-root .pb-dash-goal-name { font-size: 0.88rem; font-weight: 600; overflow-wrap: anywhere; }
-.pebble-root .pb-dash-goal-figs { font-size: 0.78rem; color: var(--ink-soft); }
-.pebble-root .pb-dash-goal-date { font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-goal-figs { font-size: var(--pb-text-xs); color: var(--ink-soft); }
+.pebble-root .pb-dash-goal-date { font-size: var(--pb-text-xs); color: var(--ink-soft); }
 /* A footer pinned to the card's foot (margin-top: auto): the goals' combined
    progress and a way to add one, level with Recent activity's "Show more"
    in the wide bottom row, where the card shares that card's height. */
@@ -699,9 +699,9 @@
 }
 .pebble-root .pb-dash-goals-add:only-child { margin-left: auto; }
 .pebble-root .pb-dash-goals-sum { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pebble-root .pb-dash-goals-sum-label { font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-goals-sum-label { font-size: var(--pb-text-sm); color: var(--ink-soft); }
 .pebble-root .pb-dash-goals-sum .pb-dash-goal-figs { font-size: 0.85rem; color: var(--ink); }
-.pebble-root .pb-dash-goals-add { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2rem; padding: 0; font-family: inherit; font-weight: 600; cursor: pointer; }
+.pebble-root .pb-dash-goals-add { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2rem; padding: 0; font-family: inherit; font-weight: 600; cursor: var(--pb-click-cursor, pointer); }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-goals-add { min-height: 44px; }
 }
@@ -793,7 +793,7 @@
 .pebble-root .pb-dash-notice-head { display: flex; flex-direction: column; gap: 0.1rem; }
 .pebble-root .pb-dash-notice-title { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 0.88rem; font-weight: 600; }
 .pebble-root .pb-dash-notice-title > svg { flex: none; color: var(--ink-soft); }
-.pebble-root .pb-dash-notice-sub { margin: 0; padding-left: calc(15px + 0.45rem); font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-dash-notice-sub { margin: 0; padding-left: calc(15px + 0.45rem); font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-dash-notice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; min-width: 0; }
 .pebble-root .pb-dash-notice-row {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem;
@@ -814,8 +814,8 @@
 .pebble-root .pb-dash-notice-actions { display: flex; align-items: center; gap: 0.35rem; flex: none; }
 .pebble-root .pb-dash-notice-actions .link-btn { white-space: nowrap; }
 .pebble-root .pb-dash-quiet-btn {
-  min-height: 2rem; padding: 0.25rem 0.6rem; border: 0; border-radius: 0.5rem; background: none; cursor: pointer;
-  font: inherit; font-size: 0.78rem; font-weight: 500; color: var(--ink-soft); white-space: nowrap;
+  min-height: 2rem; padding: 0.25rem 0.6rem; border: 0; border-radius: 0.5rem; background: none; cursor: var(--pb-click-cursor, pointer);
+  font: inherit; font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink-soft); white-space: nowrap;
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-dash-quiet-btn:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
@@ -827,12 +827,12 @@
 .pebble-root .pb-dash-alert-meter { display: flex; align-items: center; gap: 0.6rem; max-width: 24rem; }
 .pebble-root .pb-dash-alert-track { flex: 1; height: 6px; border-radius: 99px; background-color: var(--line); overflow: hidden; }
 .pebble-root .pb-dash-alert-track > span { display: block; height: 100%; border-radius: 99px; }
-.pebble-root .pb-dash-alert-pct { flex: none; width: 2.8rem; text-align: right; font-size: 0.74rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-dash-alert-pct { flex: none; width: 2.8rem; text-align: right; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft); }
 
 /* Looks recurring. */
 .pebble-root .pb-dash-rec-title { margin: 0; font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-dash-rec-sub { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); overflow-wrap: anywhere; }
-.pebble-root .pb-dash-rec-go { padding: 0.4rem 0.9rem; min-height: 2.1rem; font-size: 0.8rem; border-radius: 0.6rem; white-space: nowrap; cursor: pointer; }
+.pebble-root .pb-dash-rec-sub { margin: 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pebble-root .pb-dash-rec-go { padding: 0.4rem 0.9rem; min-height: 2.1rem; font-size: var(--pb-text-xs); border-radius: 0.6rem; white-space: nowrap; cursor: var(--pb-click-cursor, pointer); }
 @media (pointer: coarse) {
   .pebble-root .pb-dash-quiet-btn { min-height: 44px; min-width: 44px; }
   .pebble-root .pb-dash-rec-go { min-height: 44px; }
@@ -863,14 +863,14 @@
 .pebble-root .pb-dash-yoy-figs { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem 1rem; align-content: start; }
 .pebble-root .pb-dash-yoy-fig { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .pebble-root .pb-dash-yoy-fig dd { margin: 0; }
-.pebble-root .pb-dash-yoy-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-dash-yoy-label { display: flex; align-items: center; gap: 0.4rem; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft); }
 .pebble-root .pb-dash-yoy-now { display: flex; flex-direction: column; font-size: clamp(0.9rem, 7.5cqi, 1.3rem); font-weight: 600; line-height: 1.25; white-space: nowrap; }
 /* (7.5cqi: at large text two half-width figures such as "$6,582.84" ran into each other and past the card edge; at the default size 1.3rem still wins.) */
-.pebble-root .pb-dash-yoy-period { font-family: inherit; font-size: 0.7rem; font-weight: 500; line-height: 1.4; color: var(--ink-soft); white-space: normal; }
+.pebble-root .pb-dash-yoy-period { font-family: inherit; font-size: var(--pb-text-xs); font-weight: 500; line-height: 1.4; color: var(--ink-soft); white-space: normal; }
 .pebble-root .pb-dash-yoy-was { display: flex; flex-direction: column; font-size: 0.88rem; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-dash-yoy-chip { display: flex; margin-top: 0.15rem !important; min-height: 1.4rem; }
 .pebble-root .pb-dash-yoy-movers { min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-.pebble-root .pb-dash-yoy-movers-title { margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-dash-yoy-movers-title { margin: 0; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft); }
 .pebble-root .pb-dash-yoy-list { --pb-inset: 48px; }
 .pebble-root .pb-dash-yoy-mover { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.75rem; padding: 0.6rem 0; min-width: 0; }
 .pebble-root .pb-dash-yoy-mover-main { display: flex; flex-direction: column; min-width: 0; }

@@ -258,7 +258,7 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
                       onMouseLeave={() => setHover(null)}
                     >
                       {donutData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} fillOpacity={focus && focus !== entry.name ? 0.3 : 1} style={{ cursor: 'pointer', outline: 'none', transition: 'fill-opacity 160ms ease' }} />
+                        <Cell key={i} fill={entry.color} fillOpacity={focus && focus !== entry.name ? 0.3 : 1} style={{ cursor: 'var(--pb-click-cursor, pointer)', outline: 'none', transition: 'fill-opacity 160ms ease' }} />
                       ))}
                     </Pie>
                   </PieChart>

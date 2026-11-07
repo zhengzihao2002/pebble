@@ -646,7 +646,6 @@ export const en = {
   textSize: {
     title: 'Text size',
     blurb: 'Adjust how large text appears throughout Pebble.',
-    small: 'Small',
     default: 'Default',
     large: 'Large',
     extraLarge: 'Extra large',

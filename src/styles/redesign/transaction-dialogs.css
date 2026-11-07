@@ -50,7 +50,7 @@
   display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; max-width: 100%;
   padding: 0.28rem 0.7rem 0.28rem 0.6rem; border-radius: 999px;
   background-color: var(--mist); border: 1px solid var(--line);
-  font-size: 0.76rem; font-weight: 500; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink-soft);
 }
 .pebble-root .pb-tdlg-chip > svg { flex: none; }
 .pebble-root .pb-tdlg-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -70,7 +70,7 @@
 }
 .pebble-root .pb-tdlg-net-legend {
   display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem;
-  font-size: 0.76rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-tdlg-net-legend > span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .pebble-root .pb-tdlg-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
@@ -83,7 +83,7 @@
 
 /* Balance strip: the record's own account, before -> after. */
 .pebble-root .pb-tdlg-label {
-  margin: 0 0 0.45rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em;
+  margin: 0 0 0.45rem; font-size: var(--pb-text-sm); font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--ink-faint);
 }
 .pebble-root .pb-tdlg-balance { padding: 0 0.15rem; }
@@ -103,9 +103,9 @@
 .pebble-root .pb-tdlg-balance-fig:first-child { align-items: flex-start; }
 /* The figure and the word "owed" stay on one line. */
 .pebble-root .pb-tdlg-balance-val { display: inline; white-space: nowrap; }
-.pebble-root .pb-tdlg-balance-cap { font-size: 0.66rem; color: var(--ink-faint); letter-spacing: 0.02em; }
+.pebble-root .pb-tdlg-balance-cap { font-size: var(--pb-text-sm); color: var(--ink-faint); letter-spacing: 0.02em; }
 .pebble-root .pb-tdlg-strong { color: var(--ink); font-weight: 600; }
-.pebble-root .pb-tdlg-total { margin: 0.45rem 0 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-total { margin: 0.45rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-tdlg-slope { display: inline-flex; flex: none; }
 .pebble-root .pb-tdlg-slope svg { display: block; overflow: visible; }
 .pebble-root .pb-tdlg-slope line { stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
@@ -132,12 +132,12 @@
 .pebble-root .pb-tdlg-row + .pb-tdlg-row { border-top: 1px solid var(--line); }
 .pebble-root .pb-tdlg-row dt { color: var(--ink-soft); flex: none; }
 .pebble-root .pb-tdlg-row dd { margin: 0; font-weight: 500; text-align: right; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
-.pebble-root .pb-tdlg-note { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-note { margin: 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 
 /* Edit form section labels (Amount / Details / Where & when). */
 .pebble-root .pb-tdlg-section {
   margin: 0.15rem 0 -0.55rem; padding-top: 0.15rem;
-  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: var(--pb-text-sm); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--ink-faint);
 }
 .pebble-root .pb-tdlg-section:not(:first-child) { padding-top: 0.9rem; border-top: 1px solid var(--line); }
@@ -184,11 +184,11 @@
 }
 .pebble-root .pb-tdlg-step {
   display: inline-flex; align-items: center; gap: 0.45rem;
-  font-size: 0.8rem; font-weight: 500; color: var(--ink-faint);
+  font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink-faint);
 }
 .pebble-root .pb-tdlg-step-dot {
   display: grid; place-items: center; flex: none; width: 1.4rem; height: 1.4rem; border-radius: 50%;
-  font-size: 0.72rem; font-weight: 700;
+  font-size: var(--pb-text-chart); font-weight: 700;
   border: 1.5px solid var(--line); color: var(--ink-faint);
   transition: background-color var(--pb-dur-std) var(--pb-ease-out), border-color var(--pb-dur-std) var(--pb-ease-out), color var(--pb-dur-std) var(--pb-ease-out);
 }
@@ -214,7 +214,7 @@
 .pebble-root .pb-tdlg-drop {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem;
-  min-height: 13rem; padding: 1.75rem 1.25rem; border-radius: 1.25rem; text-align: center; cursor: pointer;
+  min-height: 13rem; padding: 1.75rem 1.25rem; border-radius: 1.25rem; text-align: center; cursor: var(--pb-click-cursor, pointer);
   border: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
   background-color: color-mix(in srgb, var(--ink) 2.5%, transparent);
   transition: border-color var(--pb-dur-std) var(--pb-ease-out), background-color var(--pb-dur-std) var(--pb-ease-out);
@@ -236,14 +236,14 @@
 }
 .pebble-root .pb-tdlg-drop-over .pb-tdlg-drop-icon { transform: translateY(-3px); }
 .pebble-root .pb-tdlg-drop-title { font-size: 0.98rem; font-weight: 600; color: var(--ink); }
-.pebble-root .pb-tdlg-drop-or { font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-drop-or { font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-tdlg-drop-btn {
   margin-top: 0.6rem; display: inline-flex; align-items: center; gap: 8px;
   padding: 0.6rem 1.1rem; pointer-events: none;
 }
 .pebble-root .pb-tdlg-file-hint {
   display: flex; align-items: flex-start; gap: 0.5rem; margin: 0;
-  font-size: 0.8rem; line-height: 1.5; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); line-height: 1.5; color: var(--ink-soft);
 }
 .pebble-root .pb-tdlg-file-hint > svg { flex: none; margin-top: 0.22rem; color: var(--ink-faint); }
 /* Touch: nothing to drop onto; the zone is a large tap target instead. */
@@ -261,20 +261,20 @@
 .pebble-root .pb-tdlg-group > legend + * { clear: both; }
 .pebble-root .pb-tdlg-check {
   display: flex; align-items: center; gap: 0.5rem; align-self: end; padding-bottom: 0.5rem;
-  font-size: 0.84rem; cursor: pointer; color: var(--ink);
+  font-size: 0.84rem; cursor: var(--pb-click-cursor, pointer); color: var(--ink);
 }
-.pebble-root .pb-tdlg-hint { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-tdlg-hint { margin: 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 
 .pebble-root .pb-tdlg-colprev {
   display: flex; flex-direction: column; gap: 1rem;
   padding: 1rem 1rem 1.05rem; border-radius: 1rem;
   background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
 }
-.pebble-root .pb-tdlg-colprev-empty { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
-.pebble-root .pb-tdlg-colprev-hint { margin: 0.45rem 0 0; font-size: 0.72rem; color: var(--ink-faint); }
-.pebble-root .pb-tdlg-read { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.8rem; }
+.pebble-root .pb-tdlg-colprev-empty { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
+.pebble-root .pb-tdlg-colprev-hint { margin: 0.45rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-faint); }
+.pebble-root .pb-tdlg-read { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: var(--pb-text-xs); }
 .pebble-root .pb-tdlg-read th {
-  text-align: left; font-size: 0.68rem; font-weight: 600; color: var(--ink-faint);
+  text-align: left; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-faint);
   padding: 0 0.5rem 0.35rem 0; border-bottom: 1px solid var(--line);
 }
 .pebble-root .pb-tdlg-read th:first-child { width: 7.2rem; }
@@ -298,7 +298,7 @@
   border: 1px solid var(--line); background-color: var(--mist);
 }
 .pebble-root .pb-tdlg-raw:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
-.pebble-root .pb-tdlg-raw table { border-collapse: collapse; font-size: 0.76rem; min-width: 100%; }
+.pebble-root .pb-tdlg-raw table { border-collapse: collapse; font-size: var(--pb-text-xs); min-width: 100%; }
 .pebble-root .pb-tdlg-raw th, .pebble-root .pb-tdlg-raw td {
   padding: 0.4rem 0.7rem; text-align: left; white-space: nowrap; max-width: 14rem;
   overflow: hidden; text-overflow: ellipsis; vertical-align: top;
@@ -308,11 +308,11 @@
 .pebble-root .pb-tdlg-raw tr + tr td { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .pebble-root .pb-tdlg-raw .pb-tdlg-raw-mapped { background-color: color-mix(in srgb, var(--pine) 6%, transparent); }
 .pebble-root .pb-tdlg-raw td.pb-tdlg-raw-mapped { color: var(--ink); }
-.pebble-root .pb-tdlg-raw-n { display: block; font-size: 0.66rem; color: var(--ink-faint); }
+.pebble-root .pb-tdlg-raw-n { display: block; font-size: var(--pb-text-chart); color: var(--ink-faint); }
 .pebble-root .pb-tdlg-raw-name { display: block; margin-top: 0.15rem; font-weight: 600; color: var(--ink); }
 .pebble-root .pb-tdlg-badge {
   display: inline-block; margin-top: 0.2rem; padding: 0.05rem 0.45rem; border-radius: 999px;
-  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
+  font-size: var(--pb-text-xs); font-weight: 700; letter-spacing: 0.02em;
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, transparent);
 }
 .pebble-root .pb-tdlg-badge-debit { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
@@ -326,7 +326,7 @@
 .pebble-root .pb-tdlg-filter {
   flex: none; padding: 0.32rem 0.8rem; border-radius: 999px; white-space: nowrap;
   border: 1px solid var(--line); background-color: transparent; color: var(--ink-soft);
-  font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  font: inherit; font-size: var(--pb-text-xs); font-weight: 500; cursor: var(--pb-click-cursor, pointer);
   font-variant-numeric: tabular-nums;
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out);
 }
@@ -346,7 +346,7 @@
 .pebble-root .pb-tdlg-review-title {
   display: block; font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink);
 }
-.pebble-root .pb-tdlg-review-meta { display: block; font-size: 0.74rem; margin-top: 0.1rem; }
+.pebble-root .pb-tdlg-review-meta { display: block; font-size: var(--pb-text-xs); margin-top: 0.1rem; }
 .pebble-root .pb-tdlg-review-end {
   flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;
   min-height: 2.1rem; justify-content: center;
@@ -355,13 +355,13 @@
 .pebble-root .pb-tdlg-review-body { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.45rem; padding-left: 1.6rem; }
 .pebble-root .pb-tdlg-review-desc { display: flex; }
 .pebble-root .pb-tdlg-review-add {
-  background: none; border: none; padding: 0; cursor: pointer;
-  color: var(--pine); font: inherit; font-size: 0.76rem;
+  background: none; border: none; padding: 0; cursor: var(--pb-click-cursor, pointer);
+  color: var(--pine); font: inherit; font-size: var(--pb-text-xs);
 }
 .pebble-root .pb-tdlg-status {
   display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;
   padding: 0.06rem 0.45rem 0.06rem 0.35rem; border-radius: 999px;
-  font-size: 0.68rem; font-weight: 600; line-height: 1.5;
+  font-size: var(--pb-text-xs); font-weight: 600; line-height: 1.5;
 }
 .pebble-root .pb-tdlg-status-good { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
 .pebble-root .pb-tdlg-status-wait { color: color-mix(in srgb, var(--gold) 70%, var(--ink)); background-color: color-mix(in srgb, var(--gold) 16%, transparent); }
@@ -375,7 +375,7 @@
 .pebble-root .pb-tdlg-review-compact .pb-tdlg-review-body { padding-left: 0; margin-top: 0.6rem; }
 .pebble-root .pb-tdlg-review-toggle {
   flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; margin-right: -0.4rem;
-  border: 0; border-radius: 0.7rem; background: transparent; color: var(--ink-soft); cursor: pointer;
+  border: 0; border-radius: 0.7rem; background: transparent; color: var(--ink-soft); cursor: var(--pb-click-cursor, pointer);
 }
 .pebble-root .pb-tdlg-review-toggle > svg { transition: transform var(--pb-dur-std) var(--pb-ease-out); }
 .pebble-root .pb-tdlg-review-toggle[aria-expanded="true"] > svg { transform: rotate(180deg); }
@@ -383,7 +383,7 @@
 /* The include tick's hit area: a label around the box, as large as the
    touch rule needs, pulled back by negative margins so the row keeps its
    rhythm. */
-.pebble-root .pb-tdlg-review-hit { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.pebble-root .pb-tdlg-review-hit { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-tdlg-review-hit > .pb-tdlg-review-check { margin: 0; }
 .pebble-root .pb-tdlg-review-top > .pb-tdlg-review-hit { margin-top: calc(1.05rem - 7px); }
 .pebble-root .pb-tdlg-review-compact .pb-tdlg-review-top > .pb-tdlg-review-hit { margin-top: 0; }
@@ -457,7 +457,7 @@
   display: inline-flex; align-items: center; gap: 0.35rem;
   padding: 0.45rem 0.85rem; border: 1px solid var(--line); border-radius: 999px;
   background-color: var(--mist); color: var(--ink); box-shadow: var(--shadow-float);
-  font: inherit; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  font: inherit; font-size: var(--pb-text-xs); font-weight: 600; white-space: nowrap;
   transform: translateX(-50%);
   animation: pb-tdlg-jump-in var(--pb-dur-std) var(--pb-ease-out) backwards;
 }

@@ -6,19 +6,19 @@
 .pebble-root .pb-annual-heading h2 { font-size: 1.75rem; line-height: 1.2; font-weight: 600; color: var(--ink); margin: .35rem 0 0; }
 .pebble-root .pb-annual-eyebrow { font-size: .875rem; color: var(--ink-soft); margin: 0; }
 .pebble-root .pb-annual-date { display: inline-flex; align-items: center; gap: .65rem; color: var(--pine); font-size: .875rem; }
-.pebble-root .pb-annual-date small { display: block; color: var(--ink-soft); margin-top: .2rem; font-size: .75rem; }
+.pebble-root .pb-annual-date small { display: block; color: var(--ink-soft); margin-top: .2rem; font-size: var(--pb-text-xs); }
 .pebble-root .pb-annual-summary { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr); align-items: center; gap: 1.25rem; padding: 1.5rem; background: linear-gradient(115deg,color-mix(in srgb,var(--pine) 7%,var(--mist)),var(--mist) 64%,color-mix(in srgb,var(--gold) 6%,var(--mist))); }
 .pebble-root .pb-annual-summary > div { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
-.pebble-root .pb-annual-summary span { font-size: .8rem; color: var(--ink-soft); }
+.pebble-root .pb-annual-summary span { font-size: var(--pb-text-sm); color: var(--ink-soft); }
 .pebble-root .pb-annual-summary strong { font-size: 1.55rem; font-weight: 600; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
-.pebble-root .pb-annual-summary small { font-size: .8rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.pebble-root .pb-annual-summary small { font-size: var(--pb-text-xs); color: var(--ink-soft); overflow-wrap: anywhere; }
 .pebble-root .pb-annual-summary-arrow { color: var(--ink-soft); }
 .pebble-root .pb-annual-difference { border-left: 1px solid var(--line); padding-left: 1.25rem; }
 .pebble-root .pb-annual-difference strong { font-size: 1.15rem; }
 .pebble-root .pb-annual-categories { min-width: 0; margin: 0; padding: 1.25rem 1.5rem; }
 .pebble-root .pb-annual-base-note { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-left: 3px solid var(--pine); padding: .5rem 1rem; font-size: .85rem; color: var(--ink-soft); line-height: 1.6; }
 .pebble-root .pb-annual-column-head, .pebble-root .pb-annual-row { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr); column-gap: 1.5rem; }
-.pebble-root .pb-annual-column-head { padding: 0 0 .75rem; color: var(--ink-soft); font-size: .75rem; }
+.pebble-root .pb-annual-column-head { padding: 0 0 .75rem; color: var(--ink-soft); font-size: var(--pb-text-sm); }
 .pebble-root .pb-annual-column-head > :not(:first-child) { text-align: right; }
 .pebble-root .pb-annual-row { padding: 1.1rem 0; border-top: 1px solid var(--line); align-items: start; row-gap: .8rem; }
 .pebble-root .pb-annual-category { display: flex; align-items: center; gap: .65rem; padding-top: .5rem; min-width: 0; }
@@ -30,19 +30,19 @@
 .pebble-root .pb-annual-money { position: relative; display: flex; align-items: center; width: 100%; max-width: 15rem; }
 .pebble-root .pb-annual-money > span { position: absolute; left: .75rem; color: var(--ink-soft); font-size: 1rem; pointer-events: none; }
 .pebble-root .pb-annual-money input { box-sizing: border-box; min-width: 0; width: 100%; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: .75rem; padding: .65rem .75rem .65rem 1.6rem; font-size: 1rem; line-height: 1.5; text-align: right; }
-.pebble-root .pb-annual-amount small { font-size: .75rem; line-height: 1.5; color: var(--ink-soft); text-align: right; }
+.pebble-root .pb-annual-amount small { font-size: var(--pb-text-xs); line-height: 1.5; color: var(--ink-soft); text-align: right; }
 .pebble-root .pb-annual-recommendation { grid-column: 1/-1; min-width: 0; border-radius: .85rem; background: color-mix(in srgb,var(--pine) 4%,transparent); }
-.pebble-root .pb-annual-recommendation > summary { display: flex; align-items: center; gap: .45rem; padding: .65rem .8rem; font-size: .8rem; color: var(--pine); cursor: pointer; list-style: none; flex-wrap: wrap; }
+.pebble-root .pb-annual-recommendation > summary { display: flex; align-items: center; gap: .45rem; padding: .65rem .8rem; font-size: var(--pb-text-xs); color: var(--pine); cursor: var(--pb-click-cursor, pointer); list-style: none; flex-wrap: wrap; }
 .pebble-root .pb-annual-recommendation > summary::-webkit-details-marker { display: none; }
 .pebble-root .pb-annual-recommendation > summary > svg:first-child { flex-shrink: 0; }
 .pebble-root .pb-annual-recommendation > summary > svg:last-child { margin-left: auto; flex-shrink: 0; transition: transform .2s; }
 .pebble-root .pb-annual-recommendation[open] > summary > svg:last-child { transform: rotate(180deg); }
 .pebble-root .pb-annual-rec-percent { color: var(--ink-soft); border-left: 1px solid var(--line); padding-left: .5rem; }
-.pebble-root .pb-annual-reason { padding: 0 .9rem .9rem; color: var(--ink-soft); font-size: .8rem; line-height: 1.65; }
+.pebble-root .pb-annual-reason { padding: 0 .9rem .9rem; color: var(--ink-soft); font-size: var(--pb-text-xs); line-height: 1.65; }
 .pebble-root .pb-annual-reason p { margin: .35rem 0; }
 .pebble-root .pb-annual-reason > p:first-child { color: var(--ink); }
 .pebble-root .pb-annual-reason .pill { display: inline-flex; align-items: center; gap: .35rem; margin-top: .5rem; }
-.pebble-root .pb-annual-evidence { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .7rem; margin: .5rem 0; color: var(--ink-soft); font-size: .75rem; }
+.pebble-root .pb-annual-evidence { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .7rem; margin: .5rem 0; color: var(--ink-soft); font-size: var(--pb-text-xs); }
 .pebble-root .pb-annual-evidence > span:first-child { padding: .1rem .5rem; border-radius: 99px; background: color-mix(in srgb,var(--pine) 8%,transparent); color: var(--pine); }
 .pebble-root .pb-annual-feedback:empty { display: none; }
 .pebble-root .pb-annual-error { margin: 0; color: var(--wine); font-size: .875rem; line-height: 1.65; }
@@ -56,7 +56,7 @@
 .pebble-root .pb-annual-review-actions { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .pebble-root .pb-annual-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: .5rem 0; }
 .pebble-root .pb-annual-footer > div:first-child { flex: 1 1 18rem; min-width: 0; color: var(--ink); font-size: .875rem; }
-.pebble-root .pb-annual-footer small { display: block; max-width: 38rem; margin-top: .35rem; color: var(--ink-soft); font-size: .75rem; line-height: 1.6; }
+.pebble-root .pb-annual-footer small { display: block; max-width: 38rem; margin-top: .35rem; color: var(--ink-soft); font-size: var(--pb-text-xs); line-height: 1.6; }
 .pebble-root .pb-annual-footer-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
 .pebble-root .pb-annual-message { padding: 1.25rem 1.5rem; color: var(--ink-soft); font-size: .875rem; line-height: 1.7; }
 .pebble-root .pb-annual :is(input,select,button,summary,a):focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
@@ -80,7 +80,7 @@
   .pebble-root .pb-annual-row { grid-template-columns: minmax(0,1fr); column-gap: 0; gap: .75rem; padding: 1rem 0; }
   .pebble-root .pb-annual-category { padding-top: 0; }
   .pebble-root .pb-annual-current { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding-top: 0; }
-  .pebble-root .pb-annual-mobile-label { display: inline; font-size: .8rem; color: var(--ink-soft); }
+  .pebble-root .pb-annual-mobile-label { display: inline; font-size: var(--pb-text-xs); color: var(--ink-soft); }
   .pebble-root .pb-annual-amount { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: .4rem; }
   .pebble-root .pb-annual-amount > .pb-annual-mobile-label { text-align: left; }
   .pebble-root .pb-annual-money { max-width: none; }
@@ -94,7 +94,7 @@
 @media (prefers-reduced-motion: reduce) { .pebble-root .pb-annual-recommendation > summary > svg { transition: none; } }
 
 .pebble-root .pb-annual-charts { padding: 1.25rem 1.5rem; }
-.pebble-root .pb-annual-chart-key { display:flex; flex-wrap:wrap; gap:1rem; margin:1rem 0; font-size:.8rem; color:var(--ink-soft); }
+.pebble-root .pb-annual-chart-key { display:flex; flex-wrap:wrap; gap:1rem; margin:1rem 0; font-size: var(--pb-text-xs); color:var(--ink-soft); }
 .pebble-root .pb-annual-chart-key span { display:inline-flex; align-items:center; gap:.4rem; }
 .pebble-root .pb-annual-chart-key i { display:inline-block; width:1.25rem; height:5px; background:var(--pine); border-radius:9px; }
 .pebble-root .pb-annual-chart-key .pb-annual-chart-old { opacity:.3; }
@@ -103,13 +103,13 @@
 .pebble-root .pb-annual-chart-rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.25rem 2rem; }
 .pebble-root .pb-annual-chart-name { display:flex; align-items:center; gap:.4rem; font-size:.85rem; margin-bottom:.5rem; overflow-wrap:anywhere; }
 .pebble-root .pb-annual-chart-name i { width:7px; height:7px; border-radius:50%; flex:none; }
-.pebble-root .pb-annual-chart-series { display:flex; align-items:center; gap:.7rem; margin:.3rem 0; font-size:.8rem; }
+.pebble-root .pb-annual-chart-series { display:flex; align-items:center; gap:.7rem; margin:.3rem 0; font-size: var(--pb-text-xs); }
 .pebble-root .pb-annual-chart-track { flex:1; min-width:20px; background:color-mix(in srgb,var(--ink) 5%,transparent); height:6px; border-radius:6px; overflow:hidden; }
 .pebble-root .pb-annual-chart-track i { height:100%; display:block; border-radius:inherit; }
 .pebble-root .pb-annual-chart-series > .font-mono-tab { max-width:65%; overflow-wrap:anywhere; text-align:right; }
 .pebble-root .pb-annual-history { grid-column:1/-1; min-width:0; }
-.pebble-root .pb-annual-history > summary { cursor:pointer; color:var(--pine); font-size:.85rem; padding:.6rem 0; }
-.pebble-root .pb-annual-history > p, .pebble-root .pb-annual-chart-empty { color:var(--ink-soft); font-size:.8rem; line-height:1.5; }
+.pebble-root .pb-annual-history > summary { cursor: var(--pb-click-cursor, pointer); color:var(--pine); font-size:.85rem; padding:.6rem 0; }
+.pebble-root .pb-annual-history > p, .pebble-root .pb-annual-chart-empty { color:var(--ink-soft); font-size: var(--pb-text-xs); line-height:1.5; }
 @media(max-width:639px) { .pebble-root .pb-annual-chart-rows { grid-template-columns:minmax(0,1fr); } .pebble-root .pb-annual-charts { padding:1.1rem; } }
 
 .pebble-root .pb-annual-calculation { margin: .75rem 0; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: color-mix(in srgb,var(--pine) 4%,var(--mist)); overflow-wrap: anywhere; }
@@ -132,7 +132,7 @@
 .pebble-root .pb-annual-row-tools > details[open] { flex-basis:100%; order:1; }
 .pebble-root .pb-annual-row-tools .pb-annual-history > summary { padding:.35rem .1rem; }
 .pebble-root .pb-annual-row-tools .pb-annual-recommendation > summary { padding:.35rem .6rem; }
-.pebble-root .pb-annual-reviewed-count { color:var(--pine); font-size:.8rem; white-space:nowrap; }
+.pebble-root .pb-annual-reviewed-count { color:var(--pine); font-size: var(--pb-text-xs); white-space:nowrap; }
 .pebble-root .pb-annual-scheduled-note { display:flex; gap:.5rem; align-items:flex-start; margin:0; color:var(--pine); font-size:.85rem; line-height:1.5; }
 .pebble-root .pb-annual-scheduled-note svg { flex:none; margin-top:.1rem; }
 @container content (max-width:639px) {
@@ -151,8 +151,8 @@
 .pebble-root .pb-annual-row-tools > details, .pebble-root .pb-annual-row-tools > details[open] { width:100%; flex-basis:auto; order:0; }
 .pebble-root .pb-category-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.4rem; width:100%; }
 .pebble-root .pb-category-choice { align-self:start; }
-.pebble-root .pb-category-options button { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:.15rem; min-width:0; min-height:2.6rem; padding:.4rem .6rem; border:1px solid var(--line); border-radius:.6rem; background:var(--mist); color:var(--ink); font:inherit; font-size:.8rem; line-height:1.4; text-align:left; overflow-wrap:anywhere; cursor:pointer; }
-.pebble-root .pb-category-options small { font-size:.75rem; color:var(--ink-soft); }
+.pebble-root .pb-category-options button { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:.15rem; min-width:0; min-height:2.6rem; padding:.4rem .6rem; border:1px solid var(--line); border-radius:.6rem; background:var(--mist); color:var(--ink); font:inherit; font-size: var(--pb-text-xs); line-height:1.4; text-align:left; overflow-wrap:anywhere; cursor: var(--pb-click-cursor, pointer); }
+.pebble-root .pb-category-options small { font-size: var(--pb-text-xs); color:var(--ink-soft); }
 @container content (max-width:639px) { .pebble-root .pb-category-options { grid-template-columns:repeat(2,minmax(0,1fr)); } .pebble-root .pb-category-options button { min-height:2.75rem; } }
 
 /* One amount, five optional starting points, then independent expandable details. */
@@ -161,7 +161,7 @@
 .pebble-root .pb-category-options button { flex:1 1 8rem; min-height:3.1rem; border-radius:.75rem; background:color-mix(in srgb,var(--pine) 3%,var(--mist)); }
 .pebble-root .pb-category-options button:last-child { flex-grow:0; flex-basis:9rem; }
 .pebble-root .pb-annual-row-tools > .pb-plan-disclosure { width:100%; min-width:0; }
-.pebble-root .pb-plan-disclosure-toggle { display:flex; align-items:center; gap:.45rem; width:100%; border:0; background:none; color:var(--pine); font:inherit; font-size:.85rem; text-align:left; padding:.55rem .1rem; cursor:pointer; }
+.pebble-root .pb-plan-disclosure-toggle { display:flex; align-items:center; gap:.45rem; width:100%; border:0; background:none; color:var(--pine); font:inherit; font-size:.85rem; text-align:left; padding:.55rem .1rem; cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-annual-recommendation > .pb-plan-disclosure-toggle { padding:.6rem .75rem; }
 .pebble-root .pb-plan-disclosure-toggle > svg { flex:none; }
 .pebble-root .pb-plan-disclosure-toggle > svg:last-child { margin-left:auto; transition:transform .28s ease; }
@@ -169,14 +169,14 @@
 .pebble-root .pb-plan-disclosure-body { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .32s cubic-bezier(.22,.61,.36,1),opacity .24s ease; }
 .pebble-root .pb-plan-disclosure[data-open="true"] > .pb-plan-disclosure-body { grid-template-rows:1fr; opacity:1; }
 .pebble-root .pb-plan-disclosure-body > div { min-height:0; overflow:hidden; }
-.pebble-root .pb-plan-history-note { font-size:.8rem; color:var(--ink-soft); margin:.25rem 0 .75rem; }
+.pebble-root .pb-plan-history-note { font-size: var(--pb-text-xs); color:var(--ink-soft); margin:.25rem 0 .75rem; }
 .pebble-root .pb-plan-equation { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr); gap:.6rem; align-items:stretch; padding:.5rem 0; }
 .pebble-root .pb-plan-equation-box { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:.35rem; padding:1rem .6rem; border:1px solid var(--line); border-radius:.85rem; text-align:center; background:var(--mist); min-width:0; }
 .pebble-root .pb-plan-equation-box strong { font-size:clamp(1.1rem,2cqi,1.65rem); line-height:1.3; font-weight:600; color:var(--ink); overflow-wrap:anywhere; }
-.pebble-root .pb-plan-equation-box small { font-size:.75rem; line-height:1.4; color:var(--ink-soft); }
+.pebble-root .pb-plan-equation-box small { font-size: var(--pb-text-xs); line-height:1.4; color:var(--ink-soft); }
 .pebble-root .pb-plan-equation-result { background:color-mix(in srgb,var(--pine) 8%,var(--mist)); border-color:color-mix(in srgb,var(--pine) 24%,var(--line)); }
 .pebble-root .pb-plan-equation-sign { align-self:center; color:var(--ink-soft); font-size:1.2rem; }
-.pebble-root .pb-plan-equation-note { font-size:.75rem; line-height:1.5; }
+.pebble-root .pb-plan-equation-note { font-size: var(--pb-text-xs); line-height:1.5; }
 .pebble-root .pb-plan-no-calculation { padding:.65rem 0; }
 .pebble-root .pb-plan-no-calculation > strong { font-size:1.5rem; color:var(--ink); }
 @container content (max-width:639px) {
@@ -193,7 +193,7 @@
   .pebble-root .pb-plan-disclosure-body, .pebble-root .pb-plan-disclosure-toggle > svg:last-child { transition:none; }
 }
 
-.pebble-root .pb-category-quick-title { margin:.1rem 0 .15rem; width:100%; color:var(--ink-soft); font-size:.8rem; font-weight:500; }
+.pebble-root .pb-category-quick-title { margin:.1rem 0 .15rem; width:100%; color:var(--ink-soft); font-size: var(--pb-text-xs); font-weight:500; }
 .pebble-root .pb-category-options { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.5rem; }
 .pebble-root .pb-category-options button, .pebble-root .pb-category-options button:last-child { width:100%; grid-column:auto; align-items:flex-start; min-height:3.4rem; }
 .pebble-root .pb-plan-calculation-trace { display:flex; flex-direction:column; gap:.25rem; }
@@ -209,7 +209,7 @@
 .pebble-root .pb-category-choice { gap:.45rem; }
 .pebble-root .pb-category-quick-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.25rem 1rem; width:100%; }
 .pebble-root .pb-category-quick-title { width:auto; margin:0; flex:none; }
-.pebble-root .pb-category-amount-summary { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.2rem .65rem; color:var(--ink-soft); font-size:.75rem; line-height:1.5; }
+.pebble-root .pb-category-amount-summary { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.2rem .65rem; color:var(--ink-soft); font-size: var(--pb-text-xs); line-height:1.5; }
 @container content (max-width:639px) {
   .pebble-root .pb-category-quick-head { align-items:flex-start; }
   .pebble-root .pb-category-amount-summary { flex:1; min-width:0; }
@@ -228,7 +228,7 @@
 .pebble-root .pb-category-detail-tabs { position:relative; display:grid; grid-template-columns:repeat(var(--detail-count),minmax(0,1fr)); gap:0; padding:4px; border:1px solid var(--line); border-radius:.85rem; background:color-mix(in srgb,var(--ink) 5%,var(--mist)); isolation:isolate; }
 .pebble-root .pb-category-detail-tabs::before { content:""; position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px) / var(--detail-count)); border-radius:.6rem; background:var(--mist); box-shadow:0 1px 4px color-mix(in srgb,var(--ink) 12%,transparent); transform:translateX(calc(var(--detail-active) * 100%)); opacity:0; transition:transform .3s var(--pb-ease-out),opacity .2s ease; z-index:-1; }
 .pebble-root .pb-category-detail-tabs[data-open="true"]::before { opacity:1; }
-.pebble-root .pb-category-detail-tabs button { display:flex; align-items:center; justify-content:center; gap:.4rem; min-width:0; min-height:2.5rem; padding:.4rem .5rem; border:0; border-radius:.6rem; background:transparent; color:var(--ink-soft); font:inherit; font-size:.85rem; line-height:1.35; cursor:pointer; }
+.pebble-root .pb-category-detail-tabs button { display:flex; align-items:center; justify-content:center; gap:.4rem; min-width:0; min-height:2.5rem; padding:.4rem .5rem; border:0; border-radius:.6rem; background:transparent; color:var(--ink-soft); font:inherit; font-size:.85rem; line-height:1.35; cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-category-detail-tabs button svg { flex:none; }
 .pebble-root .pb-category-detail-tabs button[aria-selected="true"] { color:var(--pine); font-weight:600; }
 .pebble-root .pb-category-detail-tabs button:hover { color:var(--pine); }
@@ -249,8 +249,8 @@
 /* A whole-plan balance sits at the handoff from overview to category editing. */
 .pebble-root .pb-annual-income-settings { min-width:0; }
 .pebble-root .pb-annual-balance { position:sticky; top:calc(var(--pb-header-h,0px) + .4rem); z-index:5; min-width:0; padding:.85rem 1.1rem; background:var(--mist); box-shadow:var(--shadow); }
-.pebble-root .pb-annual-balance-heading { display:flex; justify-content:space-between; gap:.5rem; color:var(--ink); font-size:.8rem; margin-bottom:.65rem; }
-.pebble-root .pb-annual-balance-heading small { color:var(--ink-soft); font-size:.7rem; }
+.pebble-root .pb-annual-balance-heading { display:flex; justify-content:space-between; gap:.5rem; color:var(--ink); font-size: var(--pb-text-xs); margin-bottom:.65rem; }
+.pebble-root .pb-annual-balance-heading small { color:var(--ink-soft); font-size: var(--pb-text-xs); }
 .pebble-root .pb-annual-balance-track { display:flex; height:14px; overflow:hidden; border-radius:99px; background:var(--line); }
 .pebble-root .pb-annual-balance-track > span { height:100%; flex:none; min-width:0; transition:width .45s cubic-bezier(.22,.61,.36,1); }
 .pebble-root .pb-annual-balance-budget { background:var(--gold); }
@@ -258,7 +258,7 @@
 .pebble-root .pb-annual-balance-deficit { background:repeating-linear-gradient(125deg,var(--wine),var(--wine) 5px,color-mix(in srgb,var(--wine) 65%,var(--mist)) 5px,color-mix(in srgb,var(--wine) 65%,var(--mist)) 9px); }
 .pebble-root .pb-annual-balance-figures { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin:.6rem 0 0; }
 .pebble-root .pb-annual-balance-figures > div { min-width:0; }
-.pebble-root .pb-annual-balance-figures dt { display:flex; align-items:center; gap:.3rem; color:var(--ink-soft); font-size:.75rem; }
+.pebble-root .pb-annual-balance-figures dt { display:flex; align-items:center; gap:.3rem; color:var(--ink-soft); font-size: var(--pb-text-sm); }
 .pebble-root .pb-annual-balance-figures dt i { width:6px; height:6px; border-radius:50%; background:var(--pine); flex:none; }
 .pebble-root .pb-annual-balance-figures dd { margin:.2rem 0 0; font-size:1.1rem; font-weight:600; line-height:1.3; overflow-wrap:anywhere; color:var(--ink); }
 .pebble-root .pb-annual-balance-figures [data-tone="budget"] :is(dd,i) { color:var(--gold); }
@@ -266,11 +266,11 @@
 .pebble-root .pb-annual-balance-figures [data-tone="saved"] dd { color:var(--pine); }
 .pebble-root .pb-annual-balance-figures [data-tone="deficit"] dd { color:var(--wine); }
 .pebble-root .pb-annual-balance-figures [data-tone="deficit"] i { background:var(--wine); }
-.pebble-root .pb-annual-balance-note { margin:.5rem 0 0; color:var(--ink-soft); font-size:.75rem; }
+.pebble-root .pb-annual-balance-note { margin:.5rem 0 0; color:var(--ink-soft); font-size: var(--pb-text-xs); }
 @container content (max-width:639px) {
   .pebble-root .pb-annual-balance { padding:.7rem .8rem; top:var(--pb-header-h,0px); border-radius:.85rem; }
   .pebble-root .pb-annual-balance-figures { gap:.5rem; }
-  .pebble-root .pb-annual-balance-figures dt { font-size:.7rem; }
+  .pebble-root .pb-annual-balance-figures dt { font-size: var(--pb-text-sm); }
   .pebble-root .pb-annual-balance-figures dd { font-size:1rem; }
 }
 @media (prefers-reduced-motion:reduce) { .pebble-root .pb-annual-balance-track > span { transition:none; } }
@@ -278,8 +278,8 @@
 /* The anchored balance becomes a distinct edge-to-edge shelf under the header. */
 .pebble-root .pb-annual-balance { top:calc(var(--pb-header-h,0px) - 1px); transition:margin-inline-start .32s var(--pb-ease-out),margin-inline-end .32s var(--pb-ease-out),border-radius .32s var(--pb-ease-out),box-shadow .32s ease,border-color .32s ease; }
 .pebble-root .pb-annual-balance[data-stuck="true"] { margin-inline-start:calc(-1 * var(--balance-bleed-left,0px)); margin-inline-end:calc(-1 * var(--balance-bleed-right,0px)); border-radius:0 0 1rem 1rem; border-color:color-mix(in srgb,var(--pine) 30%,var(--line)); box-shadow:0 1px 0 color-mix(in srgb,var(--pine) 15%,transparent),0 12px 24px -12px color-mix(in srgb,var(--ink) 35%,transparent); }
-.pebble-root .pb-annual-income-toggle { display:flex; align-items:center; gap:.45rem; width:100%; cursor:pointer; color:var(--ink-soft); font:inherit; font-size:.8rem; padding:.25rem .2rem; border:0; background:none; text-align:left; }
-.pebble-root .pb-annual-income-toggle small { margin-left:auto; font-size:.75rem; }
+.pebble-root .pb-annual-income-toggle { display:flex; align-items:center; gap:.45rem; width:100%; cursor: var(--pb-click-cursor, pointer); color:var(--ink-soft); font:inherit; font-size: var(--pb-text-xs); padding:.25rem .2rem; border:0; background:none; text-align:left; }
+.pebble-root .pb-annual-income-toggle small { margin-left:auto; font-size: var(--pb-text-xs); }
 .pebble-root .pb-annual-income-toggle svg { flex:none; }
 .pebble-root .pb-annual-income-toggle > svg:last-child { transition:transform .3s ease; }
 .pebble-root .pb-annual-income-settings[data-open="true"] .pb-annual-income-toggle > svg:last-child { transform:rotate(180deg); }

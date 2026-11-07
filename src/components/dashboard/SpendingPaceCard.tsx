@@ -173,11 +173,11 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={model.data} margin={{ top: 8, right: 18, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="day" type="number" domain={[1, model.data.length]} tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => dateOfDay(Number(v))} minTickGap={28} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={48} />
+                  <XAxis dataKey="day" type="number" domain={[1, model.data.length]} tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => dateOfDay(Number(v))} minTickGap={28} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width="auto" />
                   <Tooltip content={<PaceTip dateOfDay={dateOfDay} />} cursor={{ stroke: 'var(--ink-faint)', strokeWidth: 1 }} />
                   {todayDay !== null && (
-                    <ReferenceLine x={todayDay} stroke="var(--ink-faint)" label={{ value: d.upcomingCard.today, position: 'insideTopRight', fill: 'var(--ink-soft)', fontSize: 11 }} />
+                    <ReferenceLine x={todayDay} stroke="var(--ink-faint)" label={{ value: d.upcomingCard.today, position: 'insideTopRight', fill: 'var(--ink-soft)', fontSize: 'var(--pb-text-chart)' }} />
                   )}
                   {model.budget > 0 && (
                     <Line dataKey="budget" type="linear" stroke={BUDGET} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" dot={false} activeDot={false} isAnimationActive={false} />

@@ -169,8 +169,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   }, []);
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box', width: '100%' };
-  const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)', minWidth: 0 };
-  const hintStyle: React.CSSProperties = { fontSize: '0.73rem', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 };
+  const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', minWidth: 0 };
+  const hintStyle: React.CSSProperties = { fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', lineHeight: 1.45, margin: 0 };
   // Same height, allowed to shrink, no native date styling: iOS Safari sizes
   // type="date" by itself and overflows its cell otherwise.
   const rowInputStyle: React.CSSProperties = { ...inputStyle, minWidth: 0, maxWidth: '100%', height: '2.6rem', textAlign: 'left', WebkitAppearance: 'none', appearance: 'none' };
@@ -484,7 +484,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   titlePlaceholder={isIncome ? d.recurring.descriptionPlaceholderIncome : d.recurring.descriptionPlaceholderExpense}
                 />
 
-                <p style={{ fontSize: '.75rem', color: 'var(--ink-soft)', margin: '-.35rem 0 0', lineHeight: 1.5 }}>{t(x.textShortcutsHint, { monthExample: shortcutExamples.MONTH, numberExample: shortcutExamples.MM, dateExample: today })}</p>
+                <p style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', margin: '-.35rem 0 0', lineHeight: 1.5 }}>{t(x.textShortcutsHint, { monthExample: shortcutExamples.MONTH, numberExample: shortcutExamples.MM, dateExample: today })}</p>
                 {outgoingDescription !== textPreview && <div className="pb-sched-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                   <p className="pb-sched-preview-title">{x.textShortcutsPreview} · {textPreviewDate}</p>
                   <p>{textPreview}</p>
@@ -638,7 +638,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
 
                 {showBackfill && (
                   <div style={{ border: '1px solid var(--line)', borderRadius: '0.6rem', padding: '0.8rem' }}>
-                    <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.83rem', cursor: 'var(--pb-click-cursor, pointer)' }}>
                       <input type="checkbox" checked={backfill} onChange={(e) => setBackfill(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
                       <span>
                         {d.recurring.backfillLabel}

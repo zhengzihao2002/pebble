@@ -216,8 +216,8 @@ export function AccountDetailSheet({
                           </linearGradient>
                         </defs>
                         <CartesianGrid stroke="var(--line)" vertical={false} />
-                        <XAxis dataKey="date" ticks={series.length > 1 ? [series[0].date, series[series.length - 1].date] : undefined} interval={0} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v: string) => formatDate(v, locale)} />
-                        <YAxis orientation="right" width={52} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
+                        <XAxis dataKey="date" ticks={series.length > 1 ? [series[0].date, series[series.length - 1].date] : undefined} interval={0} tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v: string) => formatDate(v, locale)} />
+                        <YAxis orientation="right" width="auto" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                         <Tooltip content={<BalTip locale={locale} />} cursor={{ stroke: 'var(--ink-faint)' }} />
                         <Area type="linear" dataKey="v" stroke={tone} strokeWidth={2} fill={`url(#${gradId})`} isAnimationActive={false} />
                       </AreaChart>
@@ -232,8 +232,8 @@ export function AccountDetailSheet({
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={months} stackOffset="sign" margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barCategoryGap="28%">
                           <CartesianGrid stroke="var(--line)" vertical={false} />
-                          <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
-                          <YAxis orientation="right" width={52} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
+                          <XAxis dataKey="label" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
+                          <YAxis orientation="right" width="auto" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                           <ReferenceLine y={0} stroke="var(--ink-faint)" />
                           <Tooltip content={<MonthTip labels={{ moneyIn: x.moneyIn, transfersIn: x.transfersIn, moneyOut: x.moneyOut, transfersOut: x.transfersOut, correction: x.correction, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
                           <Bar dataKey="in" stackId="m" fill="var(--pine)" maxBarSize={22} isAnimationActive={false} />

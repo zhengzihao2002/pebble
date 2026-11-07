@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source = buildSync({
   stdin: { contents: `
-    export { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope } from './src/lib/ambientRenderer';
+    export { ambientFramebufferSize, ambientRadius, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope } from './src/lib/ambientRenderer';
     export { AMBIENT_MOTION, sampleAmbientMotion } from './src/lib/ambientMotion';
   `, resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'cjs',
@@ -13,7 +13,7 @@ const source = buildSync({
 const compiled = { exports: {} };
 const context = vm.createContext({ module: compiled, exports: compiled.exports });
 vm.runInContext(source, context);
-const { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope, AMBIENT_MOTION, sampleAmbientMotion } = compiled.exports;
+const { ambientFramebufferSize, ambientRadius, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope, AMBIENT_MOTION, sampleAmbientMotion } = compiled.exports;
 
 const viewports = [
   [390, 844], [844, 390], [768, 1024], [1024, 768], [1440, 900],
@@ -128,4 +128,19 @@ test('each route lights the whole screen even with a single ball', () => {
     const halfDiagonal = Math.hypot(width / (columns - 1), height / (rows - 1)) / 2;
     assert.ok(Math.max(...nearest) + halfDiagonal < radius, `${route} leaves permanent gaps on ${width}×${height}`);
   }
+});
+
+test('zero-frost circles fit within the short screen side while defaults keep their large wash', () => {
+  for (const [width, height] of viewports) {
+    AMBIENT_DIAMETERS.forEach((scale, index) => {
+      const clear = ambientRadius(width, height, index, 0);
+      const medium = ambientRadius(width, height, index, 25);
+      const original = ambientRadius(width, height, index, 50);
+      assert.ok(clear * 2 < Math.min(width, height) * .82);
+      assert.ok(clear < medium && medium < original);
+      assert.ok(Math.abs(original - Math.max(width, height) * scale / 2) < 1e-9);
+      assert.equal(ambientRadius(width, height, index, 100), original);
+    });
+  }
+  assert.ok(ambientRadius(2560, 1440, 0, 0) > ambientRadius(390, 844, 0, 0));
 });

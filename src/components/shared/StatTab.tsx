@@ -21,11 +21,11 @@ export function StatTab({ icon: Icon, label, value, sublabel, color, info, value
     <div className="stat-tab">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <Icon size={13} style={{ color }} />
-        <span style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+        <span style={{ fontSize: 'var(--pb-text-sm)', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {info}
       </div>
       <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>{value.includes('$') ? <RollingAmount value={value} /> : value}</div>
-      {sublabel && <div style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 2 }}>{sublabel}</div>}
+      {sublabel && <div style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', marginTop: 2 }}>{sublabel}</div>}
     </div>
   );
 }

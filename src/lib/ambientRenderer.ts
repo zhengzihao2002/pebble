@@ -6,6 +6,15 @@ export const AMBIENT_FRAME_INTERVAL = 1000 / 24;
 export const AMBIENT_DIAMETERS = [1, .88, 1.12, .94, 1.06, .84] as const;
 export type AmbientColour = readonly [number, number, number];
 
+/** Clear circles fit inside the viewport; frost expands them into a broad wash.
+ * The default 50% keeps the existing large Gaussian composition unchanged. */
+export function ambientRadius(width: number, height: number, index: number, frost = 50) {
+  const diffuseDiameter = Math.max(width, height) * AMBIENT_DIAMETERS[index];
+  const clearDiameter = Math.min(width, height) * .72 * AMBIENT_DIAMETERS[index];
+  const blend = Math.max(0, Math.min(1, frost / 50));
+  return (clearDiameter + (diffuseDiameter - clearDiameter) * blend) / 2;
+}
+
 export function ambientFramebufferSize(width: number, height: number) {
   const scale = Math.min(1, AMBIENT_FRAMEBUFFER_LIMIT / Math.max(width, height, 1));
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
@@ -33,7 +42,6 @@ interface AmbientFrame {
 }
 
 function scene(frame: AmbientFrame) {
-  const longest = Math.max(frame.width, frame.height);
   const settings = frame.settings ?? DEFAULT_AMBIENT_SETTINGS;
   return AMBIENT_MOTION.slice(0, settings.count).map((motion, i) => {
     const point = sampleAmbientMotion(motion, frame.still ? 0 : frame.seconds, settings.route);
@@ -43,7 +51,7 @@ function scene(frame: AmbientFrame) {
       : frame.colours[i % frame.colours.length];
     return {
       x: point.x * frame.width, y: point.y * frame.height,
-      radius: longest * AMBIENT_DIAMETERS[i] / 2,
+      radius: ambientRadius(frame.width, frame.height, i, settings.frost),
       strength: Math.min(1, 3 / settings.count),
       colour: rotateAmbientColour(colour, frame.still || custom ? 0 : point.hue),
     };

@@ -11,6 +11,7 @@ import { DEFAULT_SAFETY_LOCKS, type SafetyLockKey, type SafetyLocks } from '@/li
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { clearManualIncomeDraft } from '@/lib/budgets/manualIncomeDraft';
 import { normalizeAmbientSettings, type AmbientSettings } from '@/lib/ambientSettings';
+import { normalizeTextSize } from '@/lib/textSize';
 
 /**
  * UI state only.
@@ -223,7 +224,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       ...DEFAULT_PREFS,
       setAppearance: (value) => set({ appearance: value }),
       setLocale: (value) => set({ locale: value }),
-      setTextSize: (value) => set({ textSize: value }),
+      setTextSize: (value) => set({ textSize: normalizeTextSize(value) }),
       setReportFilters: (value) => set({ reportFilters: value }),
       setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),
       setAnalysisPrefs: (patch) => set((state) => ({ analysisPrefs: { ...state.analysisPrefs, ...patch } })),
@@ -266,7 +267,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.

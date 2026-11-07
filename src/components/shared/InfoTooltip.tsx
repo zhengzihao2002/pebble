@@ -125,7 +125,7 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
         borderRadius: '0.7rem',
         boxShadow: 'var(--shadow)',
         padding: '0.7rem 0.8rem',
-        fontSize: '0.76rem',
+        fontSize: 'var(--pb-text-xs)',
         lineHeight: 1.45,
       }}
     >

@@ -54,7 +54,7 @@ function ChevronNavigator({ label, canGoOlder, canGoNewer, onOlder, onNewer }: M
         onClick={() => canGoOlder && onOlder()}
         disabled={!canGoOlder}
         className="icon-btn"
-        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: canGoOlder ? 1 : 0.35, cursor: canGoOlder ? 'pointer' : 'default' }}
+        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: canGoOlder ? 1 : 0.35, cursor: canGoOlder ? 'var(--pb-click-cursor, pointer)' : 'default' }}
         aria-label={d.transactions.prevMonth}
       >
         <ChevronLeft size={16} />
@@ -67,7 +67,7 @@ function ChevronNavigator({ label, canGoOlder, canGoNewer, onOlder, onNewer }: M
         onClick={() => canGoNewer && onNewer()}
         disabled={!canGoNewer}
         className="icon-btn"
-        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: canGoNewer ? 1 : 0.35, cursor: canGoNewer ? 'pointer' : 'default' }}
+        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, opacity: canGoNewer ? 1 : 0.35, cursor: canGoNewer ? 'var(--pb-click-cursor, pointer)' : 'default' }}
         aria-label={d.transactions.nextMonth}
       >
         <ChevronRight size={16} />
@@ -171,7 +171,7 @@ function MonthStripNavigator({
         onClick={() => can && go()}
         disabled={!can}
         className="icon-btn pb-txn-chev"
-        style={{ opacity: can ? 1 : 0.35, cursor: can ? 'pointer' : 'default' }}
+        style={{ opacity: can ? 1 : 0.35, cursor: can ? 'var(--pb-click-cursor, pointer)' : 'default' }}
         aria-label={dir === 'older' ? d.transactions.prevMonth : d.transactions.nextMonth}
       >
         {dir === 'older' ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}

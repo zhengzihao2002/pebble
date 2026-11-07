@@ -53,7 +53,7 @@ export function DeductionChart({ data, view = 'rate' }: { data: MonthlyDeduction
           <BarChart data={rows} margin={{ top: 8, right: 14, bottom: 0, left: 14 }}>
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
+              tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
@@ -74,17 +74,17 @@ export function DeductionChart({ data, view = 'rate' }: { data: MonthlyDeduction
         <LineChart data={data} margin={{ top: 8, right: 30, bottom: 0, left: 0 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
+            tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={16}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'var(--ink-soft)' }}
+            tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }}
             axisLine={false}
             tickLine={false}
-            width={40}
+            width="auto"
             tickFormatter={(v) => `${Number(v).toFixed(0)}%`}
           />
           {/* Colours, border and size come from the global

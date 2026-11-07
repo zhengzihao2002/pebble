@@ -373,7 +373,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   type="button" onClick={() => setMoveSource(a)} className="icon-btn pb-settings-iconbtn is-round"
                   aria-label={t(d.accounts.moveTitle, { name: a.name })}
                   disabled={!hasRecords[a.id]}
-                  style={{ opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'pointer' : 'not-allowed' }}
+                  style={{ opacity: hasRecords[a.id] ? 1 : 0.4, cursor: hasRecords[a.id] ? 'var(--pb-click-cursor, pointer)' : 'not-allowed' }}
                 >
                   <ArrowRightLeft size={15} />
                 </button>
@@ -442,7 +442,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   <button disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined}
                     type="button" onClick={() => setConfirmDelete(a)} className="icon-btn pb-settings-iconbtn is-round"
                     aria-label={t(d.accounts.deleteLabel, { name: a.name })}
-                    style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}
+                    style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'var(--pb-click-cursor, pointer)' }}
                   >
                     <Trash2 size={15} />
                   </button>

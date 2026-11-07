@@ -27,7 +27,7 @@
 }
 .pebble-root .pb-settings .settings-section-cards { gap: 1rem; }
 .pebble-root .pb-settings-sec-head { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-.pebble-root .pb-settings-sec-hint { margin: 0; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.45; }
+.pebble-root .pb-settings-sec-hint { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.45; }
 .pebble-root .pb-settings .settings-nav { top: calc(var(--pb-header-h) + 1.25rem); }
 /* A Mac-wide column gets a little more room (account tiles sit two abreast,
    inline controls keep their text beside them); still capped, in rem, so
@@ -96,12 +96,12 @@
 .pebble-root .pb-settings-count {
   display: inline-flex; align-items: center; white-space: nowrap;
   padding: 0.16rem 0.55rem; border-radius: 999px;
-  font-size: 0.72rem; font-weight: 600;
+  font-size: var(--pb-text-xs); font-weight: 600;
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);
 }
 .pebble-root .pb-settings-note {
   margin: 0; padding: 0.7rem 0.8rem; border-radius: 0.7rem;
-  font-size: 0.78rem; line-height: 1.5; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); line-height: 1.5; color: var(--ink-soft);
   background-color: color-mix(in srgb, var(--ink) 4%, transparent);
 }
 .pebble-root .pb-settings-quiet { margin: 0.5rem 0 0; font-size: 0.82rem; color: var(--ink-soft); }
@@ -134,7 +134,7 @@
 .pebble-root .pb-settings-row-title {
   display: block; margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--ink); line-height: 1.35;
 }
-.pebble-root .pb-settings-row-hint { display: block; margin: 0.15rem 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-settings-row-hint { display: block; margin: 0.15rem 0 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 /* Narrow card: every control drops under its text, full width. */
 .pebble-root .pb-settings-row-control { grid-row: 2; grid-column: 1 / -1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
 @container pb-settings-rows (max-width: 519.98px) {
@@ -159,11 +159,11 @@
 .pebble-root .pb-ambient-studio { grid-row: 2; grid-column: 2 / -1; display: grid; gap: 1rem; min-width: 0; }
 .pebble-root .pb-ambient-routes { margin: 0; padding: 0; border: 0; min-width: 0; }
 .pebble-root .pb-ambient-routes legend,
-.pebble-root .pb-ambient-control-label { display: block; padding: 0; margin-bottom: .5rem; font-size: .8rem; font-weight: 500; color: var(--ink); }
-.pebble-root .pb-ambient-route-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+.pebble-root .pb-ambient-control-label { display: block; padding: 0; margin-bottom: .5rem; font-size: var(--pb-text-sm); font-weight: 500; color: var(--ink); }
+.pebble-root .pb-ambient-route-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .45rem; }
 .pebble-root .pb-ambient-route-choice {
   position: relative; display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); grid-template-rows: auto auto;
-  align-content: center; column-gap: .5rem; padding: .65rem .6rem; min-width: 0; cursor: pointer;
+  align-content: center; column-gap: .5rem; padding: .65rem .6rem; min-width: 0; cursor: var(--pb-click-cursor, pointer);
   border: 1px solid var(--line); border-radius: .8rem; background: color-mix(in srgb, var(--paper) 48%, var(--mist));
   transition: border-color .2s ease, background-color .2s ease;
 }
@@ -173,30 +173,30 @@
 .pebble-root .pb-ambient-route-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .pebble-root .pb-ambient-route-choice svg { grid-row: 1 / -1; align-self: center; width: 2.4rem; height: 1.8rem; fill: none; stroke: var(--pine); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
 .pebble-root .pb-ambient-route-choice.is-selected svg { opacity: 1; }
-.pebble-root .pb-ambient-route-choice > span { font-size: .78rem; font-weight: 600; color: var(--ink); }
-.pebble-root .pb-ambient-route-choice small { margin-top: .15rem; font-size: .68rem; color: var(--ink-soft); line-height: 1.4; }
+.pebble-root .pb-ambient-route-choice > span { font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink); }
+.pebble-root .pb-ambient-route-choice small { margin-top: .15rem; font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.4; overflow-wrap: anywhere; }
 .pebble-root .pb-ambient-studio-body { display: grid; gap: 1rem; min-width: 0; align-items: start; }
 .pebble-root .pb-ambient-controls { display: grid; gap: 1rem; min-width: 0; }
-.pebble-root .pb-ambient-sliders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.pebble-root .pb-ambient-sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 1rem; }
 .pebble-root .pb-ambient-control { min-width: 0; }
-.pebble-root .pb-ambient-control-title { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin-bottom: .35rem; font-size: .8rem; font-weight: 500; color: var(--ink); }
-.pebble-root .pb-ambient-control-title output { flex: none; color: var(--pine); font-variant-numeric: tabular-nums; font-size: .75rem; }
+.pebble-root .pb-ambient-control-title { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin-bottom: .35rem; font-size: var(--pb-text-sm); font-weight: 500; color: var(--ink); }
+.pebble-root .pb-ambient-control-title output { flex: none; color: var(--pine); font-variant-numeric: tabular-nums; font-size: var(--pb-text-sm); }
 .pebble-root .pb-ambient-sliders .pb-settings-range { display: block; width: 100%; min-height: 1.6rem; }
-.pebble-root .pb-ambient-control-scale { display: flex; justify-content: space-between; gap: .5rem; margin-top: .2rem; font-size: .64rem; color: var(--ink-soft); }
+.pebble-root .pb-ambient-control-scale { display: flex; justify-content: space-between; gap: .5rem; margin-top: .2rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-ambient-count .pb-seg-btn { min-width: 0; padding-inline: .25rem; }
-.pebble-root .pb-ambient-colours { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.pebble-root .pb-ambient-colours { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr)); gap: .5rem; }
 .pebble-root .pb-ambient-colour { min-width: 0; padding: .5rem; border-radius: .65rem; border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); background: color-mix(in srgb, var(--paper) 45%, var(--mist)); }
-.pebble-root .pb-ambient-colour > span { display: block; margin-bottom: .35rem; font-size: .65rem; color: var(--ink-soft); }
-.pebble-root .pb-ambient-colour > div { display: flex; align-items: center; gap: .3rem; }
-.pebble-root .pb-ambient-colour-swatch { position: relative; display: block; width: 1.35rem; height: 1.35rem; border-radius: 50%; flex: none; border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); cursor: pointer; }
+.pebble-root .pb-ambient-colour > span { display: block; margin-bottom: .35rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
+.pebble-root .pb-ambient-colour > div { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.pebble-root .pb-ambient-colour-swatch { position: relative; display: block; width: 1.35rem; height: 1.35rem; border-radius: 50%; flex: none; border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-ambient-colour-swatch:focus-within { outline: 2px solid var(--pine); outline-offset: 3px; }
-.pebble-root .pb-ambient-colour-swatch input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
-.pebble-root .pb-ambient-theme-colour { appearance: none; border: 0; background: transparent; padding: .1rem 0; font: inherit; font-size: .62rem; color: var(--pine); cursor: pointer; }
+.pebble-root .pb-ambient-colour-swatch input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: var(--pb-click-cursor, pointer); }
+.pebble-root .pb-ambient-theme-colour { appearance: none; border: 0; background: transparent; padding: .1rem 0; font: inherit; font-size: var(--pb-text-xs); color: var(--pine); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-ambient-theme-colour:disabled { color: var(--ink-soft); cursor: default; }
 .pebble-root .pb-ambient-theme-colour:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: .2rem; }
-.pebble-root .pb-ambient-colours-hint { margin: .5rem 0 0; font-size: .68rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-ambient-colours-hint { margin: .5rem 0 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 .pebble-root .pb-ambient-studio-foot { display: flex; justify-content: flex-end; }
-.pebble-root .pb-ambient-studio-foot .pb-settings-pill { gap: .35rem; font-size: .73rem; }
+.pebble-root .pb-ambient-studio-foot .pb-settings-pill { gap: .35rem; font-size: var(--pb-text-xs); }
 .pebble-root .pb-ambient-studio-foot .pb-settings-pill:disabled { opacity: .45; cursor: default; }
 .pebble-root .pb-ambient-route-preview {
   grid-row: 2; grid-column: 2 / -1; margin: 0; min-width: 0;
@@ -206,9 +206,9 @@
 .pebble-root .pb-ambient-studio .pb-ambient-route-preview { grid-row: auto; grid-column: auto; width: 100%; }
 .pebble-root .pb-ambient-route-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .pebble-root .pb-ambient-route-head > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: .45rem; }
-.pebble-root .pb-ambient-route-title { font-size: .8rem; font-weight: 600; color: var(--ink); }
-.pebble-root .pb-ambient-route-speed { font-size: .68rem; color: var(--pine); }
-.pebble-root .pb-ambient-route-head .pb-settings-pill { padding: .3rem .6rem; font-size: .72rem; }
+.pebble-root .pb-ambient-route-title { font-size: var(--pb-text-sm); font-weight: 600; color: var(--ink); }
+.pebble-root .pb-ambient-route-speed { font-size: var(--pb-text-xs); color: var(--pine); }
+.pebble-root .pb-ambient-route-head .pb-settings-pill { padding: .3rem .6rem; font-size: var(--pb-text-xs); }
 .pebble-root .pb-ambient-route-stage { display: grid; place-items: center; height: 10rem; margin-block: .65rem; }
 .pebble-root .pb-ambient-route-stage svg { display: block; width: 100%; height: 100%; overflow: hidden; }
 .pebble-root .pb-ambient-route-screen { fill: var(--paper); stroke: color-mix(in srgb, var(--pine) 25%, var(--line)); }
@@ -217,13 +217,12 @@
 .pebble-root .pb-ambient-route-orb.is-far { --route-colour: color-mix(in oklch, var(--pine) 84%, var(--gold)); }
 .pebble-root .pb-ambient-route-orb circle { fill: var(--route-colour); }
 .pebble-root .pb-ambient-route-trail { stroke: var(--route-colour); opacity: .38; stroke-linecap: round; stroke-linejoin: round; }
-.pebble-root .pb-ambient-route-preview figcaption { color: var(--ink-soft); font-size: .7rem; line-height: 1.45; }
+.pebble-root .pb-ambient-route-preview figcaption { color: var(--ink-soft); font-size: var(--pb-text-xs); line-height: 1.45; }
 @container pb-settings-rows (max-width: 519.98px) {
   .pebble-root .pb-ambient-studio { grid-column: 1 / -1; }
   .pebble-root .pb-ambient-route-preview { grid-column: 1 / -1; }
 }
 @container pb-settings-rows (min-width: 720px) {
-  .pebble-root .pb-ambient-route-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pebble-root .pb-ambient-studio-body { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
 }
 @media (pointer: coarse) {
@@ -242,7 +241,7 @@
 /* ---------- Small controls ---------- */
 .pebble-root .pb-settings-pill {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 0.45rem 0.9rem; font-size: 0.8rem; white-space: nowrap;
+  padding: 0.45rem 0.9rem; font-size: var(--pb-text-xs); white-space: nowrap;
 }
 .pebble-root .pb-settings-danger { color: var(--wine); border-color: color-mix(in srgb, var(--wine) 55%, var(--line)); }
 .pebble-root .pb-settings-iconbtn {
@@ -293,7 +292,7 @@
 .pebble-root .pb-settings-preset:focus-visible { outline: 2px solid var(--pine); outline-offset: 1px; }
 @container pb-settings-rows (max-width: 519.98px) {
   .pebble-root .pb-settings-presets:not(.is-wrap) { display: flex; width: 100%; }
-  .pebble-root .pb-settings-presets:not(.is-wrap) .pb-settings-preset { flex: 1 1 auto; padding-inline: 0.45rem; }
+  .pebble-root .pb-settings-presets:not(.is-wrap) .pb-settings-preset { flex: 1 1 0; padding-inline: 0.45rem; white-space: normal; }
 }
 
 /* Text size: slider and number box on one line. */
@@ -313,7 +312,7 @@
 .pebble-root .pb-settings-tile {
   display: flex; flex-direction: column; gap: 0.5rem; padding: 0.55rem; min-width: 0;
   border-radius: 0.85rem; border: 1px solid var(--line); background-color: var(--mist);
-  text-align: left; cursor: pointer;
+  text-align: left; cursor: var(--pb-click-cursor, pointer);
   box-shadow: none;
   transition: border-color var(--pb-dur-std, 220ms) var(--pb-ease-out), box-shadow var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
@@ -326,7 +325,7 @@
 }
 .pebble-root .pb-settings-tile-name {
   display: flex; align-items: center; justify-content: space-between; gap: 4px;
-  font-size: 0.8rem; font-weight: 500; color: var(--ink);
+  font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink);
 }
 
 /* Native selects in rows (sounds). */
@@ -344,7 +343,7 @@
 /* Timezone: the picker and Save on one line, wrapping on a phone. */
 .pebble-root .pb-settings-tz { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; width: 100%; }
 .pebble-root .pb-settings-tz-field { flex: 1 1 14rem; min-width: 0; }
-.pebble-root .pb-settings-saved { margin: 0; font-size: 0.8rem; color: var(--pine); }
+.pebble-root .pb-settings-saved { margin: 0; font-size: var(--pb-text-xs); color: var(--pine); }
 
 /* ---------- Overview ---------- */
 .pebble-root .pb-settings-ov {
@@ -365,7 +364,7 @@
   box-shadow: 0 0 0 2px var(--mist), 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent);
 }
 .pebble-root .pb-settings-ov-name { margin: 0; font-size: 1.08rem; font-weight: 600; color: var(--ink); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-settings-ov-email { margin: 0.1rem 0 0; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-settings-ov-email { margin: 0.1rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-ov-chips {
   list-style: none; margin: 0; padding: 0; min-width: 0;
   display: flex; flex-wrap: wrap; gap: 0.5rem;
@@ -386,7 +385,7 @@
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
   padding: 0.55rem 0.7rem; border-radius: 0.9rem; border: 1px solid transparent;
   background-color: color-mix(in srgb, var(--ink) 4%, transparent);
-  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  color: var(--ink); font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-std, 220ms) var(--pb-ease-out), border-color var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
 .pebble-root .pb-settings-ov-chip:hover { background-color: color-mix(in srgb, var(--pine) 8%, transparent); border-color: color-mix(in srgb, var(--pine) 22%, transparent); }
@@ -403,7 +402,7 @@
 }
 .pebble-root .pb-settings-ov-swatch > span { width: 7px; height: 7px; border-radius: 50%; }
 .pebble-root .pb-settings-ov-text { display: flex; flex-direction: column; min-width: 0; }
-.pebble-root .pb-settings-ov-label { font-size: 0.7rem; color: var(--ink-soft); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-settings-ov-label { font-size: var(--pb-text-sm); color: var(--ink-soft); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-ov-value { font-size: 0.83rem; font-weight: 600; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Phone jump bar ---------- */
@@ -427,7 +426,7 @@
 .pebble-root .pb-settings-jump-list > li { flex: 1 1 auto; display: flex; min-width: 0; }
 .pebble-root .pb-settings-jump-btn {
   flex: 1; min-width: 0; min-height: 36px; padding: 0.35rem 0.5rem; border: 0; border-radius: 999px;
-  background-color: transparent; color: var(--ink-soft); font: inherit; font-size: 0.8rem; font-weight: 500; white-space: nowrap;
+  background-color: transparent; color: var(--ink-soft); font: inherit; font-size: var(--pb-text-xs); font-weight: 500; white-space: nowrap;
   transition: background-color var(--pb-dur-std, 220ms) var(--pb-ease-out), color var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
 .pebble-root .pb-settings-jump-btn.is-active { background-color: var(--pine); color: var(--paper); font-weight: 600; }
@@ -460,7 +459,7 @@
 .pebble-root .pb-settings-adjust-amount { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
 .pebble-root .pb-settings-adjust-now {
   display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.1rem 1rem;
-  padding: 0 0.35rem; font-size: 0.8rem; color: var(--ink-soft);
+  padding: 0 0.35rem; font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-settings-adjust-now-amt { font-size: 1.05rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 
@@ -478,8 +477,8 @@
 .pebble-root .pb-settings-adjust-preview {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.65rem;
 }
-.pebble-root .pb-settings-adjust-idle { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--ink-soft); }
-.pebble-root .pb-settings-adjust-preview-label { font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-adjust-idle { margin: 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-settings-adjust-preview-label { font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-settings-adjust-flow {
   margin-left: auto; display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 0.15rem 0.45rem; color: var(--ink-soft);
 }
@@ -487,7 +486,7 @@
 .pebble-root .pb-settings-adjust-flow > svg { align-self: center; }
 .pebble-root .pb-settings-adjust-before { font-size: 0.85rem; }
 .pebble-root .pb-settings-adjust-after { display: inline-flex; align-items: baseline; gap: 0.35rem; }
-.pebble-root .pb-settings-adjust-after-label { font-size: 0.72rem; }
+.pebble-root .pb-settings-adjust-after-label { font-size: var(--pb-text-xs); }
 .pebble-root .pb-settings-adjust-after .font-mono-tab { font-size: 0.98rem; font-weight: 600; }
 /* The primary action: a proper button, 48px tall, full width on a phone and a
    fixed generous width beside the preview on a wide card. */
@@ -541,7 +540,7 @@
   transition: color 320ms var(--pb-ease-out);
 }
 .pebble-root .pb-settings-acct.is-sleeping .pb-settings-acct-name { color: var(--ink-soft); }
-.pebble-root .pb-settings-acct-kind { margin: 0.05rem 0 0; font-size: 0.74rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-settings-acct-kind { margin: 0.05rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-acct-bal { margin: 0.1rem 0 0; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
 .pebble-root .pb-settings-acct.is-sleeping .pb-settings-acct-bal { color: var(--ink-soft); }
 .pebble-root .pb-settings-acct-credit { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -558,7 +557,7 @@
 .pebble-root .pb-settings-util-fill.is-high { background-color: var(--wine); }
 .pebble-root .pb-settings-acct-credit-line {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.35rem 0.75rem;
-  font-size: 0.74rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-settings-due {
   display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap;
@@ -566,7 +565,7 @@
   color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .pebble-root .pb-settings-due.is-soon { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
-.pebble-root .pb-settings-acct-summary { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-acct-summary { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-settings-acct-actions { display: flex; gap: 0.35rem; }
 
 /* ---------- Categories: chip grid ---------- */
@@ -596,7 +595,7 @@
 .pebble-root .pb-settings-cat-main {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
   padding: 0.25rem; border: 0; border-radius: 0.6rem; background: transparent;
-  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  color: var(--ink); font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-std, 220ms) var(--pb-ease-out);
 }
 .pebble-root .pb-settings-cat-main:hover { background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
@@ -604,7 +603,7 @@
 .pebble-root .pb-settings-cat-tile { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 0.55rem; }
 .pebble-root .pb-settings-cat-name { flex: 1; min-width: 0; font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-cat-name.is-empty { color: var(--ink-faint); }
-.pebble-root .pb-settings-cat-tag { margin-left: 6px; font-size: 0.7rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-cat-tag { margin-left: 6px; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-settings-cat-pen { flex: none; color: var(--ink-faint); opacity: 0; transition: opacity var(--pb-dur-std, 220ms) var(--pb-ease-out); }
 .pebble-root .pb-settings-cat-main:hover .pb-settings-cat-pen,
 .pebble-root .pb-settings-cat-main:focus-visible .pb-settings-cat-pen { opacity: 1; }
@@ -621,7 +620,7 @@
 }
 .pebble-root .pb-settings-cat-preview-tag {
   flex: none; padding: 0.1rem 0.45rem; border-radius: 999px;
-  font-size: 0.68rem; font-weight: 600; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
 /* ---------- Pebble account ----------
@@ -642,7 +641,7 @@
 }
 .pebble-root .pb-settings-me-id { grid-area: id; display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
 .pebble-root .pb-settings-me-name { margin: 0; font-size: 0.92rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-settings-me-email { margin: 0; font-size: 0.78rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-settings-me-email { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-me-signout { grid-area: signout; display: flex; min-width: 0; }
 .pebble-root .pb-settings-me-links { grid-area: links; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-settings-link {
@@ -661,7 +660,7 @@
 /* Each link is its own bordered tile: no inset hairline between them. */
 .pebble-root .pb-settings-link + .pb-settings-link::before { content: none; }
 .pebble-root .pb-settings-legal { grid-area: privacy; justify-self: start; display: flex; flex-wrap: wrap; align-items: center; gap: 0 1.25rem; min-width: 0; }
-.pebble-root .pb-settings-privacy { font-size: 0.78rem; color: var(--pine); white-space: nowrap; word-break: keep-all; }
+.pebble-root .pb-settings-privacy { font-size: var(--pb-text-xs); color: var(--pine); white-space: nowrap; word-break: keep-all; }
 /* The footer and the danger group: their children are separate cells of the
    grid on a phone. */
 .pebble-root .pb-settings-me-foot, .pebble-root .pb-settings-me-danger { display: contents; }
@@ -734,7 +733,7 @@
 .pebble-root .pb-settings-font-group .pb-settings-presets.is-wrap .pb-settings-preset { flex: 0 0 auto; }
 .pebble-root .pb-settings-font-mobile { display: none; }
 .pebble-root .pb-settings-font-preview { padding: 0.85rem 1rem; border: 1px solid color-mix(in srgb, var(--pine) 16%, var(--line)); border-radius: 0.85rem; background: linear-gradient(135deg, color-mix(in srgb, var(--pine) 9%, var(--mist)), color-mix(in srgb, var(--gold) 8%, var(--mist))); min-width: 0; }
-.pebble-root .pb-settings-font-preview-label { font-size: 0.65rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-font-preview-label { font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-settings-font-specimen { font-size: 0.85rem; line-height: 1.6; color: var(--ink); overflow-wrap: anywhere; }
 .pebble-root .pb-settings-font-specimen p { margin: 0.35rem 0 0; }
 .pebble-root .pb-settings-font-digits { font-variant-numeric: tabular-nums; }

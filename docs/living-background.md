@@ -20,6 +20,9 @@ over time. No permanent corner or interior band is excluded.
 The customization studio offers Default, Orbit, Weave and Sweep routes, speed
 from 0.25× to 3×, frost from 0–100%, and one to six balls. Frost 50%, speed 1×,
 three theme-coloured balls and the Default route reproduce the previous look.
+At zero frost, circles use the shorter viewport dimension so each remains a
+distinct, screen-scaled circle. Their size blends into the existing large
+Gaussian wash as frost reaches its default 50%; the default look is unchanged.
 Orbit follows loops, Weave crosses in figure eights, and Sweep visits the four
 corners along opposing diagonals. Each route covers the screen over time even
 with one ball. Additional balls have distinct phases and periods; their combined
@@ -58,8 +61,8 @@ Card glow has been removed, including its preference, settings control, paint
 layers and added inset reflections. Cards keep their original depth shadows.
 
 The main scrollbar is restored to the app's original native treatment. A small
-theme-tinted native image pointer adds an slightly translucent triangle on desktop, with SVG and
-PNG fallbacks. Text, hand, drag, resize, disabled and loading cursor semantics
+theme-tinted native image pointer adds a refined translucent triangle and a matching clickable hand on desktop,
+with SVG and PNG fallbacks. Text, drag, resize, disabled and loading cursor semantics
 remain native, as do touch-device and Forced Colors cursors.
 
 Validation uses synthetic data and local fixtures only. Pure tests cover

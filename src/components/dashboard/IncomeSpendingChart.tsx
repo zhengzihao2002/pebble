@@ -229,8 +229,8 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
           </defs>
           {/* Solid hairline, horizontal only. */}
           <CartesianGrid stroke="var(--line)" vertical={false} />
-          <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={14} />
-          <YAxis tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={48} />
+          <XAxis dataKey="month" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={14} />
+          <YAxis tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width="auto" />
           <Tooltip content={<SavedTooltip />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
           {goesNegative && <ReferenceLine y={0} stroke="var(--ink-faint)" />}
           <Bar dataKey="income" name={d.dashboard.income} fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>

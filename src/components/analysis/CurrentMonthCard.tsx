@@ -132,7 +132,7 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
             <XAxis
-              dataKey="day" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false}
+              dataKey="day" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false}
               ticks={[1, Math.ceil(current.daysInMonth / 2), current.daysInMonth]}
             />
             <Tooltip content={<DayTip />} cursor={{ stroke: 'var(--line)' }} />

@@ -3,6 +3,7 @@
 import { useLayoutEffect } from 'react';
 import { CJK_FONT_ATTRIBUTE, FONT_ATTRIBUTE, isCjkFontChoice, isFontChoice } from '@/lib/fontChoice';
 import { usePebbleStore } from '@/store/usePebbleStore';
+import { normalizeTextSize } from '@/lib/textSize';
 
 /** Preserve pre-paint typography while React is using its static SSR snapshot. */
 export function useTypographyPreferences() {
@@ -12,7 +13,7 @@ export function useTypographyPreferences() {
       // getState already contains persisted preferences. A render selector
       // initially returns SSR defaults, which would reset the page on reload.
       const { textSize, fontChoice, cjkFontChoice } = usePebbleStore.getState();
-      const size = Number.isFinite(textSize) && textSize >= 50 && textSize <= 200 ? textSize : 100;
+      const size = normalizeTextSize(textSize);
       const fontSize = `${size / 100 * 16}px`;
       if (root.style.fontSize !== fontSize) root.style.fontSize = fontSize;
       const font = isFontChoice(fontChoice) && fontChoice !== 'default' ? fontChoice : null;

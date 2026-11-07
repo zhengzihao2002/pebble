@@ -75,7 +75,7 @@ function FilterSection({ id, name, summary, open, onToggle, children, active = f
     <div style={{ borderTop: '1px solid var(--line)' }}>
       <button
         type="button" onClick={onToggle} aria-expanded={open} aria-controls={id}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', minHeight: 44, padding: '0.6rem 4px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', minHeight: 44, padding: '0.6rem 4px', background: 'none', border: 'none', textAlign: 'left', cursor: 'var(--pb-click-cursor, pointer)', color: 'var(--ink)' }}
       >
         <span style={{ flexShrink: 0, fontSize: '0.88rem', fontWeight: 600 }}>{name}</span>
         {/* Always shown, open or closed, so toggling never changes the text.
@@ -302,7 +302,7 @@ export function ReportFilters({
     <div ref={cardRef} className="card pb-rep-filters" style={{ display: 'flex', flexDirection: 'column' }}>
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'var(--pb-click-cursor, pointer)', color: 'var(--ink)' }}
       >
         {/* Card title style (dashboard cards: 0.95rem / 600). A span, not an
             h3, because a heading is not allowed inside a button. */}

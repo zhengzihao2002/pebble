@@ -32,7 +32,7 @@
 
 /* Shared row pieces. */
 .pebble-root .pb-sched-row-title { display: block; min-width: 0; font-size: 0.88rem; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-sched-row-sub { display: block; min-width: 0; margin-top: 0.1rem; font-size: 0.75rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pebble-root .pb-sched-row-sub { display: block; min-width: 0; margin-top: 0.1rem; font-size: var(--pb-text-xs); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-sched-row-amt { flex: none; font-size: 0.88rem; font-weight: 600; white-space: nowrap; }
 .pebble-root .pb-sched-quiet { margin: 0; font-size: 0.82rem; color: var(--ink-soft); }
 
@@ -79,7 +79,7 @@
 .pebble-root .pb-sched-hero-cell:first-child { padding-left: 0; }
 .pebble-root .pb-sched-hero-cell + .pb-sched-hero-cell { border-left: 1px solid var(--line); }
 .pebble-root .pb-sched-hero-cell dt {
-  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: 0.78rem; color: var(--ink-soft); line-height: 1.3;
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: var(--pb-text-sm); color: var(--ink-soft); line-height: 1.3;
 }
 .pebble-root .pb-sched-hero-cell dd { margin: 0; font-size: min(1.2rem, 12cqi); font-weight: 600; white-space: nowrap; }
 .pebble-root .pb-sched-kind-dot {
@@ -96,7 +96,7 @@
 }
 .pebble-root .pb-sched-hero-trend-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
-  font-size: 0.78rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-sched-hero-trend-head .font-mono-tab { font-size: 0.95rem; font-weight: 600; white-space: nowrap; }
 
@@ -108,7 +108,7 @@
 .pebble-root .pb-sched-hero-next-tag {
   flex: none; display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.18rem 0.55rem; border-radius: 999px;
-  font-size: 0.72rem; font-weight: 600; color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--pine); background-color: color-mix(in srgb, var(--pine) 11%, transparent);
 }
 .pebble-root .pb-sched-hero-next-title { flex: 0 1 auto; min-width: 0; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-sched-hero-next-when { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -116,7 +116,7 @@
 @container content (max-width: 639px) {
   .pebble-root .pb-sched-hero-next { flex-wrap: wrap; row-gap: 0.4rem; }
   .pebble-root .pb-sched-hero-next-title { flex: 1 1 0; }
-  .pebble-root .pb-sched-hero-next-when { order: 3; flex-basis: 100%; padding-left: 0.1rem; font-size: 0.78rem; }
+  .pebble-root .pb-sched-hero-next-when { order: 3; flex-basis: 100%; padding-left: 0.1rem; font-size: var(--pb-text-xs); }
 }
 
 /* ---------- Calendar ---------- */
@@ -144,15 +144,15 @@
 .pebble-root .pb-sched-month { min-width: 0; container: pb-sched-month / inline-size; }
 .pebble-root .pb-sched-month-name { margin: 0 0 0.5rem; font-size: 0.84rem; font-weight: 600; color: var(--ink); }
 .pebble-root .pb-sched-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
-.pebble-root .pb-sched-wd { padding-bottom: 0.25rem; text-align: center; font-size: 0.68rem; font-weight: 600; color: var(--ink-faint); }
+.pebble-root .pb-sched-wd { padding-bottom: 0.25rem; text-align: center; font-size: var(--pb-text-chart); font-weight: 600; color: var(--ink-faint); }
 .pebble-root .pb-sched-day {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.2rem;
   min-width: 0; min-height: 2.75rem; padding: 0.32rem 0 0.25rem; box-sizing: border-box;
   border: 0; border-radius: 0.6rem; background: transparent; color: var(--ink);
-  font: inherit; font-size: 0.78rem; line-height: 1;
+  font: inherit; font-size: var(--pb-text-xs); line-height: 1;
 }
 .pebble-root .pb-sched-day.has-items { background-color: color-mix(in srgb, var(--ink) 4.5%, transparent); }
-.pebble-root button.pb-sched-day { cursor: pointer; transition: background-color var(--pb-dur-micro) var(--pb-ease-out); }
+.pebble-root button.pb-sched-day { cursor: var(--pb-click-cursor, pointer); transition: background-color var(--pb-dur-micro) var(--pb-ease-out); }
 @media (hover: hover) {
   .pebble-root button.pb-sched-day:hover { background-color: color-mix(in srgb, var(--ink) 9%, transparent); }
 }
@@ -166,13 +166,13 @@
 .pebble-root .pb-sched-cal-legend i { display: block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
 .pebble-root .pb-sched-day-dots .is-in, .pebble-root .pb-sched-cal-legend .is-in { background-color: var(--pine); }
 .pebble-root .pb-sched-day-dots .is-out, .pebble-root .pb-sched-cal-legend .is-out { background-color: var(--wine); }
-.pebble-root .pb-sched-day-dots b { font-size: 0.56rem; font-weight: 600; color: var(--ink-soft); }
-.pebble-root .pb-sched-day-net { display: none; font-size: 0.58rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-day-dots b { font-size: var(--pb-text-chart); font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-sched-day-net { display: none; font-size: var(--pb-text-chart); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
 @container pb-sched-month (min-width: 290px) {
   .pebble-root .pb-sched-day { min-height: 3.35rem; }
   .pebble-root .pb-sched-day-net { display: block; }
 }
-.pebble-root .pb-sched-cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-sched-cal-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .pebble-root .pb-sched-cal-legend .is-today { width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--pine); }
 @media (pointer: coarse) {
@@ -185,15 +185,15 @@
 }
 
 /* ---------- Coming up ---------- */
-.pebble-root .pb-sched-hint { display: flex; gap: 0.4rem; margin: -0.2rem 0 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-sched-hint { display: flex; gap: 0.4rem; margin: -0.2rem 0 0; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 .pebble-root .pb-sched-hint svg { flex: none; margin-top: 0.15rem; }
 .pebble-root .pb-sched-agenda { display: flex; flex-direction: column; min-width: 0; }
 .pebble-root .pb-sched-agenda-month + .pb-sched-agenda-month { margin-top: 0.9rem; }
 .pebble-root .pb-sched-month-divider {
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
-  padding: 0.1rem 0 0.45rem; font-size: 0.8rem; font-weight: 600; color: var(--ink);
+  padding: 0.1rem 0 0.45rem; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink);
 }
-.pebble-root .pb-sched-month-tot { display: inline-flex; gap: 0.7rem; font-size: 0.76rem; font-weight: 600; color: var(--ink-soft); }
+.pebble-root .pb-sched-month-tot { display: inline-flex; gap: 0.7rem; font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft); }
 .pebble-root .pb-sched-day-group { scroll-margin-top: calc(var(--pb-header-h) + 0.75rem); }
 .pebble-root .pb-sched-day-group + .pb-sched-day-group { margin-top: 0.45rem; }
 /* Day headers stick under the glass header while their rows scroll.
@@ -203,7 +203,7 @@
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
   padding: 0.35rem 0.6rem; border-radius: 0.55rem;
   background-color: color-mix(in srgb, var(--ink) 5%, var(--mist));
-  font-size: 0.72rem; font-weight: 600; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink-soft);
 }
 .pebble-root .pb-sched-day-head > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-sched-day-head > .font-mono-tab { flex: none; }
@@ -221,9 +221,9 @@
 
 /* ---------- Your schedules ---------- */
 .pebble-root .pb-sched-rules { container: pb-sched-rules / inline-size; }
-.pebble-root .pb-sched-how { margin-top: -0.35rem; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-how { margin-top: -0.35rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-sched-how > summary {
-  display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; list-style: none;
+  display: inline-flex; align-items: center; gap: 0.3rem; cursor: var(--pb-click-cursor, pointer); list-style: none;
   font-weight: 500; color: var(--ink-soft); border-radius: 0.4rem;
 }
 .pebble-root .pb-sched-how > summary::-webkit-details-marker { display: none; }
@@ -243,12 +243,12 @@
   position: sticky; top: var(--pb-header-h); z-index: 2;
   display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem;
   padding: 0.4rem 0; background-color: var(--mist); border-bottom: 1px solid var(--line);
-  font-size: 0.78rem; font-weight: 600; color: var(--ink);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink);
 }
 .pebble-root .pb-sched-section-head > span:last-child { font-weight: 500; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-sched-section-count {
   display: inline-block; margin-left: 0.25rem; padding: 0 0.4rem; border-radius: 999px;
-  font-size: 0.68rem; color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+  font-size: var(--pb-text-xs); color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 .pebble-root .pb-sched-rule-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
 @container pb-sched-rules (min-width: 760px) {
@@ -276,18 +276,18 @@
 .pebble-root .pb-sched-pill {
   flex: none; display: inline-flex; align-items: center; gap: 0.25rem;
   padding: 0.08rem 0.45rem; border-radius: 999px; line-height: 1.4;
-  font-size: 0.68rem; font-weight: 600; text-transform: capitalize;
+  font-size: var(--pb-text-xs); font-weight: 600; text-transform: capitalize;
   color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .pebble-root .pb-sched-rule-money { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; padding-top: 0.1rem; }
 .pebble-root .pb-sched-rule-amt { font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
-.pebble-root .pb-sched-rule-approx { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-rule-approx { font-size: var(--pb-text-xs); color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-sched-rule-foot {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
   padding-top: 0.5rem; border-top: 1px solid var(--line);
 }
 .pebble-root .pb-sched-rule-life { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; min-width: 0; }
-.pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--pb-text-xs); color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-sched-rule-actions { flex: none; display: flex; gap: 0.35rem; margin-left: auto; }
 .pebble-root .pb-sched-act { position: relative; width: 36px; height: 36px; border-radius: 0.6rem; }
 @media (pointer: coarse) {
@@ -301,7 +301,7 @@
   position: relative; display: inline-flex; align-items: center; gap: 0.35rem;
   height: 36px; padding: 0 0.8rem; border-radius: 0.6rem; white-space: nowrap;
   border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
-  font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  font: inherit; font-size: var(--pb-text-xs); font-weight: 500; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-sched-charge-now:hover:not(:disabled) { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
@@ -312,7 +312,7 @@
 }
 /* The brief "Charged. Next payment: ..." line under the card; nothing while empty. */
 .pebble-root .pb-sched-charged {
-  margin: 0; font-size: 0.78rem; font-weight: 500; line-height: 1.4; color: var(--pine);
+  margin: 0; font-size: var(--pb-text-xs); font-weight: 500; line-height: 1.4; color: var(--pine);
   animation: pb-sched-charged-in var(--pb-dur-std) var(--pb-ease-out);
 }
 .pebble-root .pb-sched-charged:empty { display: none; }
@@ -340,7 +340,7 @@
 
 /* ---------- Rule dialog (RecurringRuleModal: Scheduled, Insights, shell) ---------- */
 .pebble-root .pb-sched-dialog-kind { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-.pebble-root .pb-sched-dialog-kind-hint { margin: 0; max-width: 28rem; text-align: center; font-size: 0.73rem; line-height: 1.45; color: var(--ink-soft); }
+.pebble-root .pb-sched-dialog-kind-hint { margin: 0; max-width: 28rem; text-align: center; font-size: var(--pb-text-xs); line-height: 1.45; color: var(--ink-soft); }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button { cursor: not-allowed; }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button[aria-checked="false"] { opacity: 0.45; }
 .pebble-root .pb-sched-dialog-kind .pb-kind-switch[aria-disabled="true"] button:hover { color: inherit; }
@@ -350,7 +350,7 @@
 .pebble-root .pb-sched-quick-chip {
   display: inline-flex; align-items: center; padding: 0.28rem 0.7rem; border-radius: 999px;
   border: 1px solid var(--line); background-color: var(--mist);
-  font: inherit; font-size: 0.76rem; font-weight: 500; color: var(--ink-soft); cursor: pointer;
+  font: inherit; font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink-soft); cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-sched-quick-chip:hover { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, var(--mist)); }
@@ -373,14 +373,14 @@
 }
 .pebble-root .pb-sched-preview-title {
   display: flex; align-items: center; gap: 0.4rem; margin: 0;
-  font-size: 0.74rem; font-weight: 600; color: var(--pine); text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--pine); text-transform: uppercase; letter-spacing: 0.04em;
 }
 .pebble-root .pb-sched-preview-line { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--ink); }
-.pebble-root .pb-sched-preview-sub { margin: 0; font-size: 0.76rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-preview-sub { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-sched-preview-dates { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .pebble-root .pb-sched-preview-dates li {
   padding: 0.2rem 0.55rem; border-radius: 0.5rem;
-  font-size: 0.75rem; font-weight: 500; color: var(--ink); background-color: var(--mist); border: 1px solid var(--line);
+  font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink); background-color: var(--mist); border: 1px solid var(--line);
 }
 .pebble-root .pb-sched-preview-dates li:first-child { color: var(--pine); border-color: color-mix(in srgb, var(--pine) 40%, var(--line)); }
 
@@ -422,10 +422,10 @@
 
 .pebble-root .pb-sched-shortcut-options { border:0; padding:0; margin:1.1rem 0 0; min-width:0; }
 .pebble-root .pb-sched-shortcut-options legend { font-size:.875rem; font-weight:600; margin-bottom:.6rem; color:var(--ink); }
-.pebble-root .pb-sched-shortcut-options label { display:grid; grid-template-columns:1rem minmax(0,1fr); column-gap:.65rem; row-gap:.35rem; align-items:start; padding:.8rem; margin:.45rem 0; border:1px solid var(--line); border-radius:.85rem; background:var(--mist); cursor:pointer; }
+.pebble-root .pb-sched-shortcut-options label { display:grid; grid-template-columns:1rem minmax(0,1fr); column-gap:.65rem; row-gap:.35rem; align-items:start; padding:.8rem; margin:.45rem 0; border:1px solid var(--line); border-radius:.85rem; background:var(--mist); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-sched-shortcut-options label:has(input:checked) { border-color:var(--pine); background:color-mix(in srgb,var(--pine) 7%,var(--mist)); }
 .pebble-root .pb-sched-shortcut-options input { grid-column:1; grid-row:1; accent-color:var(--pine); width:1rem; height:1rem; margin:.1rem 0 0; }
 .pebble-root .pb-sched-shortcut-options label > span { min-width:0; }
-.pebble-root .pb-sched-shortcut-options strong { grid-column:2; grid-row:1; min-width:0; font-size:.8rem; line-height:1.2rem; font-weight:600; }
+.pebble-root .pb-sched-shortcut-options strong { grid-column:2; grid-row:1; min-width:0; font-size: var(--pb-text-sm); line-height:1.2rem; font-weight:600; }
 .pebble-root .pb-sched-shortcut-text { grid-column:2; display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; color:var(--ink-soft); line-height:1.5; }
-.pebble-root .pb-sched-shortcut-options > p { font-size:.75rem; color:var(--ink-soft); line-height:1.5; }
+.pebble-root .pb-sched-shortcut-options > p { font-size: var(--pb-text-xs); color:var(--ink-soft); line-height:1.5; }

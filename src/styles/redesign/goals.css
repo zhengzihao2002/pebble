@@ -55,7 +55,7 @@
 }
 .pebble-root .pb-goals-hero-cell dt {
   display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;
-  font-size: 0.78rem; color: var(--ink-soft); line-height: 1.3;
+  font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.3;
 }
 .pebble-root .pb-goals-hero-cell dd { margin: 0; }
 .pebble-root .pb-goals-hero-cell dd.font-mono-tab {
@@ -63,7 +63,7 @@
      scales down with its cell instead. */
   font-size: min(1.2rem, 12cqi); font-weight: 600; color: var(--ink); white-space: nowrap;
 }
-.pebble-root .pb-goals-hero-pct { margin-top: 0.1rem !important; font-size: 0.74rem; color: var(--ink-faint); min-height: 1.1em; }
+.pebble-root .pb-goals-hero-pct { margin-top: 0.1rem !important; font-size: var(--pb-text-sm); color: var(--ink-faint); min-height: 1.1em; }
 /* Legend keys: the goals' own colours in a little stripe (set inline from
    the goals that hold money), and the pine hatch for what is free. */
 .pebble-root .pb-goals-key { flex: none; width: 0.7rem; height: 0.7rem; border-radius: 3px; }
@@ -76,7 +76,7 @@
 .pebble-root .pb-goals-ribbon { position: relative; min-width: 0; }
 .pebble-root .pb-goals-ribbon-wrap { position: relative; }
 .pebble-root .pb-goals .pb-goals-ribbon-track { height: 24px; }
-.pebble-root .pb-goals .pb-goals-ribbon-track .pb-plan-seg { cursor: pointer; }
+.pebble-root .pb-goals .pb-goals-ribbon-track .pb-plan-seg { cursor: var(--pb-click-cursor, pointer); }
 /* Where the goals claim more than the balance: a wine bracket over the
    right-hand end of the ribbon (the part the balance does not cover). */
 .pebble-root .pb-goals-over-zone {
@@ -87,7 +87,7 @@
 }
 .pebble-root .pb-goals-ribbon-labels {
   display: flex; gap: 2px; margin-top: 0.55rem; min-width: 0;
-  font-size: 0.75rem; line-height: 1.3; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); line-height: 1.3; color: var(--ink-soft);
 }
 .pebble-root .pb-goals-ribbon-labels > span {
   flex-basis: 0; min-width: 0; overflow: hidden;
@@ -106,7 +106,7 @@
   .pebble-root .pb-goals-ribbon-labels { display: none; }
   .pebble-root .pb-goals-ribbon-legend {
     display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; list-style: none; margin: 0.7rem 0 0; padding: 0;
-    font-size: 0.75rem; line-height: 1.3; color: var(--ink-soft);
+    font-size: var(--pb-text-xs); line-height: 1.3; color: var(--ink-soft);
   }
   .pebble-root .pb-goals-ribbon-legend > li { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 100%; }
   .pebble-root .pb-goals-ribbon-legend .pb-goals-ribbon-name { overflow-wrap: anywhere; white-space: normal; }
@@ -114,7 +114,7 @@
 }
 .pebble-root .pb-goals-over-label {
   display: flex; flex-direction: column; align-items: flex-end; gap: 0.05rem;
-  margin: 0.55rem 0 0 auto; text-align: right; font-size: 0.75rem; line-height: 1.3; color: var(--wine);
+  margin: 0.55rem 0 0 auto; text-align: right; font-size: var(--pb-text-xs); line-height: 1.3; color: var(--wine);
 }
 .pebble-root .pb-goals-over-label > span:first-child { color: var(--ink-soft); }
 .pebble-root .pb-goals-over-note {
@@ -138,7 +138,7 @@
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent);
 }
 .pebble-root .pb-goals-subhead-count {
-  padding: 0.05rem 0.45rem; border-radius: 99px; font-size: 0.72rem; font-weight: 600;
+  padding: 0.05rem 0.45rem; border-radius: 99px; font-size: var(--pb-text-xs); font-weight: 600;
   color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
@@ -163,10 +163,10 @@
   margin: 0; font-size: 0.98rem; font-weight: 600; color: var(--ink); line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.pebble-root .pb-goal-amount { margin: 0; line-height: 1.25; color: var(--ink-soft); font-size: 0.8rem; }
+.pebble-root .pb-goal-amount { margin: 0; line-height: 1.25; color: var(--ink-soft); font-size: var(--pb-text-xs); }
 .pebble-root .pb-goal-amount .font-display { font-size: 1.35rem; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
 .pebble-root .pb-goal-of { white-space: nowrap; }
-.pebble-root .pb-goal-there { margin: 0; font-size: 0.76rem; color: var(--ink-soft); line-height: 1.35; text-wrap: pretty; }
+.pebble-root .pb-goal-there { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.35; text-wrap: pretty; }
 .pebble-root .pb-goal-edit {
   align-self: start; width: 2rem; height: 2rem; border-radius: 0.6rem; position: relative;
 }
@@ -180,7 +180,7 @@
   list-style: none; margin: 0; padding: 0.65rem 0.8rem; border-radius: 0.8rem;
   display: flex; flex-direction: column; gap: 0.4rem;
   background-color: color-mix(in srgb, var(--ink) 4%, transparent);
-  font-size: 0.78rem; color: var(--ink-soft); line-height: 1.4; text-wrap: pretty;
+  font-size: var(--pb-text-xs); color: var(--ink-soft); line-height: 1.4; text-wrap: pretty;
 }
 .pebble-root .pb-goal-facts li { display: flex; align-items: flex-start; gap: 0.45rem; min-width: 0; }
 .pebble-root .pb-goal-facts li > svg { flex: none; margin-top: 0.12rem; color: var(--ink-faint); }
@@ -230,7 +230,7 @@
 .pebble-root .pb-goals-tl-today > span {
   position: absolute; top: 0; left: 0; transform: translateX(-50%);
   padding: 0.1rem 0.5rem; border-radius: 99px; white-space: nowrap;
-  font-size: 0.7rem; font-weight: 600; color: var(--paper); background-color: var(--ink);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--paper); background-color: var(--ink);
 }
 .pebble-root .pb-goals-tl-mark { position: absolute; bottom: 0; width: 0; }
 .pebble-root .pb-goals-tl-stem {
@@ -244,7 +244,7 @@
 .pebble-root .pb-goals-tl-btn {
   position: absolute; top: 0; left: calc(var(--pb-ring) / -2);
   display: flex; align-items: center; gap: 0.5rem; padding: 0; border: 0; background: none;
-  color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 999px;
+  color: inherit; font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer); border-radius: 999px;
 }
 .pebble-root .pb-goals-tl-mark.is-flip .pb-goals-tl-btn { left: auto; right: calc(var(--pb-ring) / -2); flex-direction: row-reverse; text-align: right; }
 .pebble-root .pb-goals-tl-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
@@ -252,13 +252,13 @@
 .pebble-root .pb-goals-tl-mark .pb-goals-tl-ring { transition: box-shadow var(--pb-dur-micro) var(--pb-ease-out); }
 .pebble-root .pb-goals-tl-mark.is-active .pb-goals-tl-ring { box-shadow: 0 0 0 2px var(--mist), 0 0 0 4px var(--pb-goal); }
 .pebble-root .pb-goals-tl-text { display: flex; flex-direction: column; min-width: 0; max-width: 9rem; line-height: 1.25; }
-.pebble-root .pb-goals-tl-name { font-size: 0.8rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pebble-root .pb-goals-tl-date { font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-goals-tl-name { font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-goals-tl-date { font-size: var(--pb-text-xs); color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-goals-tl-btn:hover .pb-goals-tl-name { color: var(--pine); }
 .pebble-root .pb-goals-tl-ticks { position: relative; height: 1.2rem; margin-top: 0.15rem; }
 .pebble-root .pb-goals-tl-ticks > span {
   position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap;
-  font-size: 0.7rem; color: var(--ink-faint);
+  font-size: var(--pb-text-xs); color: var(--ink-faint);
 }
 .pebble-root .pb-goals-tl-undated { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.9rem; }
 .pebble-root .pb-goals-tl-undated .pill { display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -274,13 +274,13 @@
 .pebble-root .pb-goals-tl-figs .font-mono-tab:first-child { color: var(--ink); font-weight: 600; }
 .pebble-root .pb-goals-tl-meta {
   margin: 0.1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem;
-  font-size: 0.76rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-goals-tl-meta > svg { margin-right: -0.45rem; color: var(--ink-faint); }
 .pebble-root .pb-goals-tl-pace { display: inline-flex; min-width: 0; align-items: center; gap: 0.3rem; color: var(--ink); }
 .pebble-root .pb-goals-tl-pace > svg { color: var(--gold); flex: none; }
 .pebble-root .pb-goals-tl-reached {
-  padding: 0.02rem 0.45rem; border-radius: 99px; font-weight: 600; font-size: 0.7rem;
+  padding: 0.02rem 0.45rem; border-radius: 99px; font-weight: 600; font-size: var(--pb-text-xs);
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent);
 }
 .pebble-root .pb-goals-tl-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -301,17 +301,17 @@
   /* Covers the rail too, so nothing scrolling under a stuck header shows
      to its left. */
   margin: 0 -0.25rem 0.4rem 0; padding: 0.35rem 0.25rem 0.35rem 1.1rem;
-  font-size: 0.8rem; font-weight: 600; color: var(--ink); background-color: var(--mist);
+  font-size: var(--pb-text-xs); font-weight: 600; color: var(--ink); background-color: var(--mist);
 }
 .pebble-root .pb-goals-tl-month::before {
   content: ''; position: absolute; left: 1px; top: 50%; width: 9px; height: 9px; border-radius: 50%;
   transform: translateY(-50%); background-color: var(--mist); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 35%, transparent);
 }
 .pebble-root .pb-goals-tl-group.is-past .pb-goals-tl-month { color: var(--ink-soft); }
-.pebble-root .pb-goals-tl-month-note { font-size: 0.72rem; font-weight: 500; color: var(--ink-soft); }
+.pebble-root .pb-goals-tl-month-note { font-size: var(--pb-text-xs); font-weight: 500; color: var(--ink-soft); }
 .pebble-root .pb-goals-tl-vtoday {
   position: relative; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.7rem;
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink);
+  font-size: var(--pb-text-xs); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink);
 }
 .pebble-root .pb-goals-tl-vtoday > span {
   width: 11px; height: 11px; border-radius: 50%; flex: none; margin-left: 0;
@@ -329,13 +329,13 @@
 }
 .pebble-root .pb-goals-tl-rowbtn {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.6rem 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  padding: 0.6rem 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: var(--pb-click-cursor, pointer);
   border-radius: 0.6rem;
 }
 .pebble-root .pb-goals-tl-rowbtn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
 .pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-fname { font-size: 0.88rem; }
-.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-figs { font-size: 0.78rem; }
-.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-meta { font-size: 0.74rem; }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-figs { font-size: var(--pb-text-xs); }
+.pebble-root .pb-goals-tl-rowbtn .pb-goals-tl-meta { font-size: var(--pb-text-xs); }
 .pebble-root .pb-goals-tl-chev { flex: none; color: var(--ink-faint); }
 .pebble-root .pb-goals-tl-add { flex: none; width: 2.25rem; height: 2.25rem; border-radius: 0.65rem; position: relative; }
 .pebble-root .pb-goals-tl-add:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
@@ -357,9 +357,9 @@
 .pebble-root .pb-goal-prev-text { min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
 .pebble-root .pb-goal-prev-name { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; line-height: 1.3; }
 .pebble-root .pb-goal-prev-name.is-placeholder { color: var(--ink-faint); }
-.pebble-root .pb-goal-prev-figs { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-goal-prev-figs { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-goal-prev-figs .font-mono-tab:first-child { color: var(--ink); font-weight: 600; }
-.pebble-root .pb-goal-prev-meta { margin: 0; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-goal-prev-meta { margin: 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 
 /* Grid stretches the labels equally; keep their controls on the same bottom
    line even when large text makes one heading (including Optional) wrap. */
@@ -369,7 +369,7 @@
 .pebble-root .pb-goal-pick-row { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 3px; }
 .pebble-root .pb-goal-pick-icon,
 .pebble-root .pb-goal-pick-color {
-  width: 2.75rem; height: 2.75rem; display: grid; place-items: center; padding: 0; cursor: pointer;
+  width: 2.75rem; height: 2.75rem; display: grid; place-items: center; padding: 0; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-goal-pick-icon {

@@ -33,7 +33,7 @@
   border-bottom-width: 2px;
   background-color: color-mix(in srgb, var(--ink) 4%, var(--paper));
   color: var(--ink-soft);
-  font: inherit; font-size: 0.68rem; font-weight: 600; line-height: 1; letter-spacing: 0.02em;
+  font: inherit; font-size: var(--pb-text-chart); font-weight: 600; line-height: 1; letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
@@ -57,7 +57,7 @@
 }
 .pebble-root .pb-shell-side-cap {
   margin: 0; padding: 0.45rem 0.85rem 0.2rem;
-  font-size: 0.64rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: var(--pb-text-chart); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-faint);
 }
 /* Slightly tighter rows than the original flat list, so the captions cost
@@ -109,7 +109,7 @@
 }
 .pebble-root .pb-shell-sheet-title {
   margin: 0; padding: 0 0.2rem;
-  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: var(--pb-text-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--ink-faint);
 }
 .pebble-root .pb-shell-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
@@ -122,8 +122,8 @@
   min-height: 4.6rem; padding: 0.7rem 0.4rem;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent); border-radius: 1rem;
   background-color: color-mix(in srgb, var(--ink) 3%, var(--mist));
-  color: var(--ink); font: inherit; font-size: 0.78rem; font-weight: 600; text-align: center;
-  cursor: pointer;
+  color: var(--ink); font: inherit; font-size: var(--pb-text-xs); font-weight: 600; text-align: center;
+  cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), border-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-shell-tile:active { background-color: color-mix(in srgb, var(--ink) 8%, var(--mist)); }
@@ -183,12 +183,12 @@
   position: sticky; top: -0.25rem; z-index: 1;
   margin: 0; padding: 0.45rem 0.75rem 0.3rem;
   background-color: var(--mist);
-  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+  font-size: var(--pb-text-xs); font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
   color: var(--ink-soft);
 }
 .pebble-root .pb-shell-pal-opt {
   display: flex; align-items: center; gap: 0.75rem; min-width: 0;
-  min-height: 2.9rem; padding: 0.4rem 0.65rem; border-radius: 0.8rem; cursor: pointer;
+  min-height: 2.9rem; padding: 0.4rem 0.65rem; border-radius: 0.8rem; cursor: var(--pb-click-cursor, pointer);
   font-size: 0.92rem; color: var(--ink);
 }
 .pebble-root .pb-shell-pal-on { background-color: var(--pine-soft); }
@@ -204,13 +204,13 @@
 .pebble-root .pb-shell-pal-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pebble-root .pb-shell-pal-title,
 .pebble-root .pb-shell-pal-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pebble-root .pb-shell-pal-sub { font-size: 0.74rem; color: var(--ink-soft); margin-top: 1px; }
+.pebble-root .pb-shell-pal-sub { font-size: var(--pb-text-xs); color: var(--ink-soft); margin-top: 1px; }
 .pebble-root .pb-shell-pal-amt { flex: none; font-weight: 600; color: var(--ink); }
 .pebble-root .pb-shell-pal-in { color: var(--pine); }
 .pebble-root .pb-shell-pal-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; }
 .pebble-root .pb-shell-pal-badge {
   flex: none; padding: 0.05rem 0.4rem; border-radius: 999px;
-  font-size: 0.62rem; font-weight: 600; white-space: nowrap;
+  font-size: var(--pb-text-chart); font-weight: 600; white-space: nowrap;
   color: var(--gold); background-color: color-mix(in srgb, var(--gold) 13%, transparent);
 }
 /* The Enter hint on the active row. Always laid out (just transparent), so
@@ -227,7 +227,7 @@
 }
 
 /* Status lines under the rows; alone (no rows) they centre in the list area. */
-.pebble-root .pb-shell-pal-status { margin: 0.7rem 0 0; text-align: center; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-shell-pal-status { margin: 0.7rem 0 0; text-align: center; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-shell-pal-status-err { color: var(--wine); }
 .pebble-root .pb-shell-pal-status-solo { margin: auto 0; padding: 1rem 0; }
 .pebble-root .pb-shell-pal-empty { flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -261,10 +261,10 @@
   border-top: 1px solid var(--line);
   border-radius: 0 0 2rem 2rem;
   background-color: color-mix(in srgb, var(--ink) 3%, transparent);
-  font-size: 0.74rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-shell-pal-legend > span { display: inline-flex; align-items: center; gap: 0.3rem; }
-.pebble-root .pb-shell-pal-legend .pb-shell-kbd { min-width: 1.25rem; height: 1.25rem; font-size: 0.66rem; }
+.pebble-root .pb-shell-pal-legend .pb-shell-kbd { min-width: 1.25rem; height: 1.25rem; font-size: var(--pb-text-chart); }
 @media (max-width: 560px), (pointer: coarse) {
   .pebble-root .pb-shell-pal-legend { display: none; }
 }
@@ -278,14 +278,14 @@
 /* Wider cards: three across as row chips (icon beside the name), so long
    category names have room and the block is two short rows. */
 @container pb-modal (min-width: 560px) {
-  .pebble-root .pb-shell-quick-grid .pb-shell-quick-tile { flex-direction: row; gap: 0.55rem; padding: 0.4rem 0.6rem 0.4rem 0.45rem; text-align: left; font-size: 0.8rem; }
+  .pebble-root .pb-shell-quick-grid .pb-shell-quick-tile { flex-direction: row; gap: 0.55rem; padding: 0.4rem 0.6rem 0.4rem 0.45rem; text-align: left; font-size: var(--pb-text-xs); }
   .pebble-root .pb-shell-quick-grid .pb-shell-quick-icon { flex: none; width: 1.85rem; height: 1.85rem; }
 }
 .pebble-root .pb-shell-quick-tile {
   display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-width: 0;
   padding: 0.55rem 0.3rem 0.5rem; border-radius: 0.85rem;
   border: 1px solid var(--line); background-color: var(--paper);
-  color: var(--ink); font: inherit; font-size: 0.74rem; font-weight: 500; cursor: pointer;
+  color: var(--ink); font: inherit; font-size: var(--pb-text-xs); font-weight: 500; cursor: var(--pb-click-cursor, pointer);
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-shell-quick-tile:hover { border-color: color-mix(in srgb, var(--pb-cat, var(--pine)) 55%, var(--line)); }
@@ -315,7 +315,7 @@
 .pebble-root .pb-shell-date-chip {
   position: relative; padding: 0.42rem 0.75rem; border-radius: 999px;
   border: 1px solid var(--line); background-color: var(--paper);
-  color: var(--ink-soft); font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer; white-space: nowrap;
+  color: var(--ink-soft); font: inherit; font-size: var(--pb-text-xs); font-weight: 500; cursor: var(--pb-click-cursor, pointer); white-space: nowrap;
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out), background-color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-shell-date-chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--pine) 45%, var(--line)); }
@@ -372,7 +372,7 @@
 .pebble-root .pb-shell-error-title { margin: 0 0 0.5rem; font-size: 1.25rem; font-weight: 600; }
 .pebble-root .pb-shell-error-body { margin: 0 0 1.4rem; max-width: 26rem; font-size: 0.87rem; line-height: 1.55; color: var(--ink-soft); }
 .pebble-root .pb-shell-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; }
-.pebble-root .pb-shell-error-ref { margin: 1.3rem 0 0; font-size: 0.72rem; color: var(--ink-soft); opacity: 0.8; }
+.pebble-root .pb-shell-error-ref { margin: 1.3rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); opacity: 0.8; }
 
 /* EQUAL CELLS, measured. flex: 1 1 0 (globals.css) gives every cell the same
    share of the free space, but a link cell's own side padding sat on top of
@@ -399,7 +399,7 @@
 .pebble-root .pebble-bottom-nav .bottom-nav-btn { padding-top: 0.55rem; padding-bottom: 0.55rem; gap: 5px; }
 .pebble-root .pebble-bottom-nav .bottom-nav-icon,
 .pebble-root .pebble-bottom-nav .bottom-nav-icon.active { width: 1.5rem; height: 1.5rem; }
-.pebble-root .pebble-bottom-nav .bottom-nav-label { font-size: 0.68rem; max-width: 100%; }
+.pebble-root .pebble-bottom-nav .bottom-nav-label { font-size: var(--pb-text-chart); max-width: 100%; }
 .pebble-root .pebble-bottom-nav .bottom-nav-add { width: 3.9rem; height: 3.9rem; margin-top: -0.95rem; }
 /* Bigger, and seated lower: with the taller bar the old 56px button read as small
    and pushed up. Now its centre sits on the icons' row and it still rises a little

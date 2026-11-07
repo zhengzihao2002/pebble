@@ -187,7 +187,7 @@ export function StatementRow({
       {hasSubtitle && (
         <div
           className={`pb-txn-srow-sub${restText === '' ? ' pb-txn-srow-sub-catonly' : ''}`}
-          style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         >
           {categoryText !== '' && (
             <span className="pb-txn-srow-subcat">{markHits(categoryText, highlight)}{restText !== '' ? ' · ' : ''}</span>
@@ -210,10 +210,10 @@ export function StatementRow({
       onKeyDown={keyboard ? onKeyDown : undefined}
       data-pb-row={keyboard ? '' : undefined}
       className={ledger ? `pb-txn-srow-main${lensAccount ? ' pb-txn-srow-lens' : ''}` : undefined}
-      style={ledger ? { cursor: 'pointer' } : {
+      style={ledger ? { cursor: 'var(--pb-click-cursor, pointer)' } : {
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: '0.85rem 1.5rem',
-        cursor: 'pointer',
+        cursor: 'var(--pb-click-cursor, pointer)',
       }}
     >
       {ledger ? <div className="pb-txn-srow-lead">{tile}{text}</div> : <>{tile}{text}</>}
@@ -239,7 +239,7 @@ export function StatementRow({
           here would expand the balances AND open the modal over them. */}
       <div
         className={ledger ? 'pb-txn-srow-money' : undefined}
-        style={{ textAlign: 'right', flexShrink: 0, cursor: 'pointer' }}
+        style={{ textAlign: 'right', flexShrink: 0, cursor: 'var(--pb-click-cursor, pointer)' }}
         onClick={canHover ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
         onMouseEnter={canHover ? updateHoverPos : undefined}
         onMouseMove={canHover ? updateHoverPos : undefined}
@@ -251,7 +251,7 @@ export function StatementRow({
         {/* Account lens: this account's own running balance, above the
             unchanged total line. */}
         {lensAccount && (
-          <div className="pb-txn-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
+          <div className="pb-txn-srow-lensbal" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
             {/* The gap is the name's own margin: a space inside the clipped
                 inline-block was swallowed ("Ally Savings$15,675.72"). A card
                 reads as owed, like the rest of its statement. */}
@@ -259,7 +259,7 @@ export function StatementRow({
             <BalanceFigure value={balancesAfter[lensAccount.id] ?? 0} owed={lensAccount.kind === 'credit'} className="pb-txn-srow-lensfig" />
           </div>
         )}
-        <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
+        <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
           <RollingMoneyText value={t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })} />
         </div>
         {/* The same figure without the "Bal" prefix, for the ledger's
@@ -289,10 +289,10 @@ export function StatementRow({
             style={{ padding: ledger ? undefined : '0 1.5rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}
           >
             {nonZeroAccounts.length === 0 && (
-              <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>{d.txn.noAccountBalances}</div>
+              <div style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>{d.txn.noAccountBalances}</div>
             )}
             {nonZeroAccounts.map((a) => (
-              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem' }}>
+              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: 'var(--pb-text-xs)' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{a.name}</span>
                 <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
                   <RollingAmount value={formatCurrency(balancesAfter[a.id] ?? 0)} />
@@ -300,7 +300,7 @@ export function StatementRow({
               </div>
             ))}
             {lensAccount && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: 'var(--pb-text-xs)', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
                 <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
               </div>
@@ -322,12 +322,12 @@ export function StatementRow({
               Closed accounts still appear here: a historical row references
               one, and hiding it would leave an unexplained figure. */}
           {nonZeroAccounts.length === 0 && (
-            <div style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>{d.txn.noAccountBalances}</div>
+            <div style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>{d.txn.noAccountBalances}</div>
           )}
           {nonZeroAccounts.map((a, i) => (
             <div
               key={a.id}
-              style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: i === 0 ? 0 : 4 }}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: 'var(--pb-text-xs)', marginTop: i === 0 ? 0 : 4 }}
             >
               <span style={{ color: 'var(--ink-soft)' }}>{a.name}</span>
               <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}>
@@ -336,7 +336,7 @@ export function StatementRow({
             </div>
           ))}
           {lensAccount && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: 'var(--pb-text-xs)', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
               <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
             </div>

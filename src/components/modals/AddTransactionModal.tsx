@@ -269,7 +269,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const netExceedsGross = !isSideCashSelected && grossEntered && netEntered && draftNet > draftGross;
 
   const inputStyle: React.CSSProperties = { padding: '0.6rem 0.75rem', borderRadius: '0.6rem', border: '1px solid var(--line)', fontSize: '0.9rem', color: 'var(--ink)', backgroundColor: 'var(--paper)', boxSizing: 'border-box' };
-  const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--ink-soft)' };
+  const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' };
   // The amount field, styled like Add to goal's: the figure is what this form
   // is for, so it is the largest thing on it.
   const bigAmountStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', border: '1px solid var(--line)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)' };
@@ -573,7 +573,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                   })}
                 </div>
                 {isSideCashSelected && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', lineHeight: 1.45 }}>
+                  <span style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', lineHeight: 1.45 }}>
                     {d.addTxn.sideCashNote}
                   </span>
                 )}
@@ -603,11 +603,11 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 </div>
               </label>
               {netExceedsGross ? (
-                <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
+                <p className="pb-span-2" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', lineHeight: 1.45, margin: 0 }}>
                   {d.addTxn.netExceedsGross}
                 </p>
               ) : showDeductionPreview && (
-                <div className="pb-span-2" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                <div className="pb-span-2" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>
                   <span>{d.addTxn.deductions}</span>
                   <span className="font-mono-tab" style={{ fontWeight: 500 }}>
                     {deductionPct(draftGross, draftNet).toFixed(1)}%
@@ -631,7 +631,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
           {type === 'expense' && quickPending && (
             <div className="pb-span-2 pb-shell-quick" aria-busy="true">
-              <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
+              <span style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
               <div className="pb-shell-quick-grid" aria-hidden="true">
                 {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="pb-shell-quick-skel" />)}
               </div>
@@ -640,7 +640,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
           {type === 'expense' && quickCategories.length > 1 && (
             <div className="pb-span-2 pb-shell-quick" role="group" aria-labelledby="add-txn-quick">
-              <span id="add-txn-quick" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
+              <span id="add-txn-quick" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)' }}>{d.ux.shell.quickCategories}</span>
               <div className="pb-shell-quick-grid">
                 {quickCategories.map((c) => {
                   const Icon = resolveCategoryIcon(c.iconKey);
@@ -685,7 +685,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                   ariaLabel={d.addTxn.category}
                 />
                 {categoryError && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--wine)', lineHeight: 1.45 }}>{categoryError}</span>
+                  <span style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--wine)', lineHeight: 1.45 }}>{categoryError}</span>
                 )}
               </div>
               <label style={labelStyle}>

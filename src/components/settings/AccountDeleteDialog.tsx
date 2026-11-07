@@ -171,7 +171,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
               <button
                 type="button" disabled={destinations.length === 0}
                 onClick={() => { setError(null); setStep('move'); }}
-                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--line)', backgroundColor: 'var(--mist)', cursor: destinations.length === 0 ? 'not-allowed' : 'pointer', opacity: destinations.length === 0 ? 0.55 : 1 }}
+                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--line)', backgroundColor: 'var(--mist)', cursor: destinations.length === 0 ? 'not-allowed' : 'var(--pb-click-cursor, pointer)', opacity: destinations.length === 0 ? 0.55 : 1 }}
               >
                 <ArrowRightLeft size={18} style={{ color: 'var(--pine)', flexShrink: 0, marginTop: 2 }} />
                 <span>
@@ -184,7 +184,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
               <button
                 type="button"
                 onClick={() => { setError(null); setTyped(''); setStep('destroy'); }}
-                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--wine)', backgroundColor: 'var(--wine-soft)', cursor: 'pointer' }}
+                style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', textAlign: 'left', padding: '0.9rem', borderRadius: '0.8rem', border: '1px solid var(--wine)', backgroundColor: 'var(--wine-soft)', cursor: 'var(--pb-click-cursor, pointer)' }}
               >
                 <Trash2 size={18} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
                 <span>

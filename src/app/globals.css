@@ -541,7 +541,7 @@ html[data-pebble-cjk="kai"] .pebble-root { --cjk: "Kaiti SC", "STKaiti", "KaiTi"
 .pebble-root .font-mono-tab { font-family: inherit; font-variant-numeric: tabular-nums lining-nums; }
 .pebble-root .font-code { font-family: var(--font-ibm-plex-mono), var(--cjk), ui-monospace, monospace; }
 .pebble-root .card { background-color: var(--mist); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: var(--shadow); }
-.pebble-root button { font-family: inherit; cursor: pointer; }
+.pebble-root button { font-family: inherit; cursor: var(--pb-click-cursor, pointer); }
 .pebble-root input, .pebble-root select { font-family: inherit; }
 .pebble-root input::placeholder { color: var(--ink-soft); opacity: 0.7; }
 
@@ -802,7 +802,7 @@ html.pebble-dark .pebble-root { --hp-l: 0.68; --hp-c: 0.1; }
   border-radius: 99px; background: color-mix(in oklch, var(--paper) 18%, transparent);
 }
 .pebble-auth-lang button {
-  border: none; background: transparent; color: var(--paper); cursor: pointer;
+  border: none; background: transparent; color: var(--paper); cursor: var(--pb-click-cursor, pointer);
   font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 99px; opacity: 0.8;
 }
 .pebble-auth-lang button.active { background: var(--paper); color: var(--pine); opacity: 1; }
@@ -864,7 +864,7 @@ html.pebble-welcoming::after {
 }
 @keyframes welcome-cover-out { to { opacity: 0; visibility: hidden; } }
 .welcome {
-  position: fixed; inset: 0; z-index: 1000; cursor: pointer; overflow: hidden;
+  position: fixed; inset: 0; z-index: 1000; cursor: var(--pb-click-cursor, pointer); overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 42%, #173A2E 0%, #0B1512 62%, #060B09 100%);
   color: #F4EFE3;
@@ -1044,7 +1044,7 @@ html.pebble-welcoming::after {
      CJK characters with no space between them ("更多") would wrap onto a
      second line instead of overflowing, the way a hyphen-free English word
      would. Matches the tighter padding the secondary More panel already uses. */
-  padding: 0.3rem 0.35rem; color: var(--ink-soft); background: none; border: none; font-size: 0.65rem; font-weight: 500;
+  padding: 0.3rem 0.35rem; color: var(--ink-soft); background: none; border: none; font-size: var(--pb-text-xs); font-weight: 500;
   transition: color 0.3s ease;
 }
 .pebble-root .bottom-nav-btn.active { color: var(--pine); font-weight: 700; }
@@ -1053,7 +1053,7 @@ html.pebble-welcoming::after {
 .pebble-root .bottom-nav-label { white-space: nowrap; transition: font-size 0.25s ease; }
 
 .pebble-root .pill {
-  padding: 0.42rem 0.9rem; border-radius: 99px; font-size: 0.78rem; font-weight: 500;
+  padding: 0.42rem 0.9rem; border-radius: 99px; font-size: var(--pb-text-xs); font-weight: 500;
   border: 1px solid var(--line); background-color: transparent; color: var(--ink-soft);
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
@@ -1075,13 +1075,13 @@ html.pebble-welcoming::after {
 .pebble-root .icon-btn:hover { border-color: var(--pine); color: var(--pine); }
 
 .pebble-root .link-btn {
-  font-size: 0.78rem; color: var(--pine); display: flex; align-items: center; gap: 2px;
+  font-size: var(--pb-text-xs); color: var(--pine); display: flex; align-items: center; gap: 2px;
   background: none; border: none; font-weight: 500; transition: color 0.3s ease;
 }
 .pebble-root .link-btn:hover { text-decoration: underline; }
 
 .pebble-root .filter-label {
-  font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: var(--pb-text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--ink-soft); margin: 0 0 0.5rem;
 }
 
@@ -1196,7 +1196,7 @@ html.pebble-welcoming::after {
 .pebble-root {
   /* Type scale in rem, so the text-size preference scales it. Nothing that
      can render Chinese goes below the smallest step. */
-  --pb-text-xs: 0.75rem; --pb-text-sm: 0.8125rem; --pb-text-md: 0.9375rem;
+  --pb-text-xs: 0.8125rem; --pb-text-sm: 0.875rem; --pb-text-chart: 0.75rem; --pb-text-md: 0.9375rem;
   --pb-text-lg: 1.125rem; --pb-text-xl: 1.5rem; --pb-text-2xl: 2rem;
   --pb-space-1: 0.25rem; --pb-space-2: 0.5rem; --pb-space-3: 0.75rem; --pb-space-4: 1rem;
   --pb-space-5: 1.5rem; --pb-space-6: 2rem; --pb-space-7: 3rem;
@@ -1369,7 +1369,7 @@ html.pebble-welcoming::after {
   width: 1.75rem; height: 1.75rem; padding: 0; border: none; border-radius: 50%;
   background-color: var(--wine-soft); color: var(--wine);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wine) 40%, transparent);
-  display: inline-grid; place-items: center; cursor: pointer;
+  display: inline-grid; place-items: center; cursor: var(--pb-click-cursor, pointer);
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-close-dot::after { content: ''; position: absolute; inset: -0.5rem; border-radius: 50%; }
@@ -1421,7 +1421,7 @@ html.pebble-welcoming::after {
 }
 .pebble-root .pb-transfer-account {
   display: flex; flex-direction: column; gap: 0.35rem; min-width: 0;
-  font-size: 0.8rem; color: var(--ink-soft);
+  font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-transfer-badge {
   justify-self: center; align-self: center; flex: none;
@@ -1463,7 +1463,7 @@ html.pebble-welcoming::after {
 .pebble-root .pb-inline-done {
   position: absolute; inset: 0; z-index: 2;
   display: flex; align-items: center; justify-content: center; padding: 1.5rem;
-  background: inherit; border-radius: inherit; cursor: pointer;
+  background: inherit; border-radius: inherit; cursor: var(--pb-click-cursor, pointer);
 }
 
 /* Phones: every ModalFrame dialog becomes a bottom sheet. A viewport query on
@@ -1549,7 +1549,7 @@ html.pebble-welcoming::after {
 .pebble-root .pb-stats-controls { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .pebble-root .pb-stats-range {
   display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
-  margin: 0.35rem 1.25rem 1rem; font-size: 0.72rem; color: var(--ink-soft);
+  margin: 0.35rem 1.25rem 1rem; font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 .pebble-root .pb-stats-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
@@ -1562,14 +1562,14 @@ html.pebble-welcoming::after {
   font-size: var(--pb-text-sm); font-weight: 500; color: var(--ink-soft);
 }
 .pebble-root .pb-stats-value { font-size: 1.4rem; font-weight: 600; line-height: 1.2; color: var(--ink); }
-.pebble-root .pb-stats-note { margin-top: 0.25rem; font-size: 0.72rem; color: var(--ink-soft); }
+.pebble-root .pb-stats-note { margin-top: 0.25rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 @container content (min-width: 640px) {
   .pebble-root .pb-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* "Where it went" legend (CategoryDonutChart): one list, names wrap rather
    than truncate, share and amount in tabular figures. */
-.pebble-root .pb-donut-legend { list-style: none; margin: 1rem 0 0; padding: 0; font-size: 0.8rem; }
+.pebble-root .pb-donut-legend { list-style: none; margin: 1rem 0 0; padding: 0; font-size: var(--pb-text-xs); }
 .pebble-root .pb-donut-row {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: baseline; column-gap: 0.6rem;
@@ -1590,11 +1590,11 @@ html.pebble-welcoming::after {
 }
 /* Legend description and pager. The list keeps a full page's height so the
    card does not shrink on a short last page. */
-.pebble-root .pb-donut-summary { margin: 1rem 0 0.25rem; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-donut-summary { margin: 1rem 0 0.25rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-donut-filler { visibility: hidden; }
 .pebble-root .pb-donut-pager {
   display: flex; align-items: center; justify-content: center; gap: 0.75rem;
-  margin-top: 0.6rem; font-size: 0.78rem; color: var(--ink-soft);
+  margin-top: 0.6rem; font-size: var(--pb-text-xs); color: var(--ink-soft);
 }
 
 /* "Where it went" bar view: one straight bar, a segment per category. Widths
@@ -1660,7 +1660,7 @@ html.pebble-welcoming::after {
 .pebble-root .pb-plan-head { padding: 1.1rem 1.25rem 1rem; }
 .pebble-root .pb-plan-body { padding: 1.25rem; border-top: 1px solid var(--line); }
 .pebble-root .pb-plan-body .pb-bar-track { height: 18px; }
-.pebble-root .pb-plan-caption { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-plan-caption { margin: 0.6rem 0 0; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 /* Savings reads as kept, not spent: pine with a fine diagonal hatch. */
 .pebble-root .pb-plan-savings {
   background: repeating-linear-gradient(135deg, var(--pine) 0 5px, color-mix(in srgb, var(--pine) 55%, var(--mist)) 5px 8px);
@@ -1681,7 +1681,7 @@ html.pebble-welcoming::after {
 }
 .pebble-root .pb-plan-pop-title { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; overflow-wrap: anywhere; }
 .pebble-root .pb-plan-pop-figs { margin-top: 0.2rem; color: var(--ink-soft); }
-.pebble-root .pb-plan-pop-note { margin-top: 0.3rem; font-size: 0.75rem; line-height: 1.4; color: var(--ink-soft); }
+.pebble-root .pb-plan-pop-note { margin-top: 0.3rem; font-size: var(--pb-text-xs); line-height: 1.4; color: var(--ink-soft); }
 
 /* Budget rows (BudgetRows): one card, a row per budget, hairlines between.
    Desktop: name | bar | figures on one line, status on the right of the name.
@@ -1692,13 +1692,13 @@ html.pebble-welcoming::after {
   flex: none;
 }
 .pebble-root .pb-rows { padding: 0; }
-.pebble-root .pb-rows-note { margin: 0; padding: 1rem 1.25rem 0.9rem; font-size: 0.78rem; color: var(--ink-soft); }
+.pebble-root .pb-rows-note { margin: 0; padding: 1rem 1.25rem 0.9rem; font-size: var(--pb-text-xs); color: var(--ink-soft); }
 .pebble-root .pb-row {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.55rem; column-gap: 1rem;
   padding: 1rem 1.25rem; border-top: 1px solid var(--line);
 }
 .pebble-root .pb-row-name { display: flex; align-items: center; gap: 0.65rem; min-width: 0; font-weight: 600; font-size: 0.9rem; overflow-wrap: anywhere; }
-.pebble-root .pb-row-status { font-size: 0.78rem; text-align: right; align-self: center; }
+.pebble-root .pb-row-status { font-size: var(--pb-text-xs); text-align: right; align-self: center; }
 .pebble-root .pb-row-bar { grid-column: 1 / -1; position: relative; padding: 5px 0; }
 .pebble-root .pb-row-track { height: 10px; border-radius: 99px; background-color: var(--line); overflow: hidden; }
 .pebble-root .pb-row-fill { height: 100%; border-radius: 99px; animation: pb-row-wipe 1000ms cubic-bezier(0.65, 0, 0.35, 1) both; }
@@ -1714,8 +1714,8 @@ html.pebble-welcoming::after {
   font-size: var(--pb-text-sm); opacity: 0; transition: opacity var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-row-marker:hover::after, .pebble-root .pb-row-marker:focus-visible::after { opacity: 1; }
-.pebble-root .pb-row-figs { font-size: 0.78rem; color: var(--ink-soft); text-align: right; align-self: center; }
-.pebble-root .pb-row-left { grid-column: 1 / -1; text-align: center; font-size: 0.78rem; font-weight: 600; }
+.pebble-root .pb-row-figs { font-size: var(--pb-text-xs); color: var(--ink-soft); text-align: right; align-self: center; }
+.pebble-root .pb-row-left { grid-column: 1 / -1; text-align: center; font-size: var(--pb-text-xs); font-weight: 600; }
 .pebble-root .pb-row-more { grid-column: 1 / -1; text-align: right; }
 .pebble-root .pb-row-details { grid-column: 1 / -1; padding-top: 0.5rem; }
 @container content (min-width: 720px) {
@@ -1741,7 +1741,7 @@ html.pebble-welcoming::after {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7rem;
   min-height: 220px; width: 100%; box-sizing: border-box; padding: 1.5rem;
   background: transparent; border: 1.5px dashed var(--line); border-radius: 1rem;
-  color: var(--ink-soft); cursor: pointer;
+  color: var(--ink-soft); cursor: var(--pb-click-cursor, pointer);
   box-shadow: none;
   transition: border-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
@@ -1758,14 +1758,14 @@ html.pebble-welcoming::after {
 
 /* Privacy mode */
 .pebble-root.pb-private .font-mono-tab:not(input):not(.pb-revealed),
-.pebble-root.pb-private .pb-money:not(.pb-revealed) { filter: blur(6px); cursor: pointer; }
+.pebble-root.pb-private .pb-money:not(.pb-revealed) { filter: blur(6px); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root.pb-private .recharts-cartesian-axis-tick text,
 .pebble-root.pb-private .recharts-tooltip-wrapper,
 .pebble-root.pb-private .recharts-label { filter: blur(5px); }
 
 /* Privacy mode: hero */
 .pebble-root.pb-private .hero-balance:not(.pb-revealed),
-.pebble-root.pb-private .pb-hero-account-amount:not(.pb-revealed) { filter: blur(8px); cursor: pointer; }
+.pebble-root.pb-private .pb-hero-account-amount:not(.pb-revealed) { filter: blur(8px); cursor: var(--pb-click-cursor, pointer); }
 
 /* Privacy mode: stronger blur */
 .pebble-root.pb-private .font-mono-tab:not(input):not(.pb-revealed),
@@ -1793,13 +1793,13 @@ html.pebble-welcoming::after {
 /* Privacy mode: chart cloud */
 /* Blurred charts take the tap that reveals them; their contents ignore the
    pointer meanwhile, so no tooltip can show a figure. */
-.pebble-root.pb-private .pb-chart-fill:not(.pb-revealed) { filter: blur(16px); cursor: pointer; }
+.pebble-root.pb-private .pb-chart-fill:not(.pb-revealed) { filter: blur(16px); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root.pb-private .pb-chart-fill:not(.pb-revealed) > * { pointer-events: none; }
 
 /* Privacy mode: all charts. A tap reveals one chart (AppShell); while still
    blurred its contents ignore the pointer, so no tooltip shows a figure. */
 .pebble-root.pb-private .pb-chart-fade:not(.pb-revealed),
-.pebble-root.pb-private .pb-donut-ring:not(.pb-revealed) { filter: blur(16px); cursor: pointer; }
+.pebble-root.pb-private .pb-donut-ring:not(.pb-revealed) { filter: blur(16px); cursor: var(--pb-click-cursor, pointer); }
 .pebble-root.pb-private .pb-chart-fade:not(.pb-revealed) > *,
 .pebble-root.pb-private .pb-donut-ring:not(.pb-revealed) > * { pointer-events: none; }
 
@@ -1820,7 +1820,7 @@ html.pebble-welcoming::after {
   font-size: 0.87rem;
 }
 .pebble-root .pb-undo-bar button {
-  background: transparent; border: none; color: inherit; cursor: pointer;
+  background: transparent; border: none; color: inherit; cursor: var(--pb-click-cursor, pointer);
   font-weight: 700; font-size: 0.85rem; padding: 0.35rem 0.55rem; border-radius: 0.5rem; flex-shrink: 0;
 }
 .pebble-root .pb-undo-bar button:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
@@ -1873,7 +1873,7 @@ html.pebble-welcoming::after {
   .pebble-root .pb-search-field {
     display: inline-flex; align-items: center; gap: 0.5rem; width: 15rem; padding: 0.5rem 0.85rem;
     border-radius: 999px; border: 1px solid var(--line); background-color: var(--mist);
-    color: var(--ink-soft); font-size: 0.83rem; cursor: pointer; text-align: left;
+    color: var(--ink-soft); font-size: 0.83rem; cursor: var(--pb-click-cursor, pointer); text-align: left;
   }
   .pebble-root .pb-search-field:hover { border-color: var(--pine); color: var(--ink); }
   .pebble-root .pb-search-icon { display: none; }
@@ -1911,7 +1911,7 @@ html.pebble-welcoming::after {
 /* Linked period controls: a pine dot marks a control that sets other cards;
    their time labels are chips that jump to it and pulse it once. */
 .pebble-root .pb-period-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--pine); flex-shrink: 0; }
-.pebble-root .pb-period-chip { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.12rem 0.5rem 0.12rem 0.4rem; border: 1px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--pine) 8%, transparent); color: var(--ink-soft); font: inherit; font-size: 0.75rem; line-height: 1.4; cursor: pointer; }
+.pebble-root .pb-period-chip { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.12rem 0.5rem 0.12rem 0.4rem; border: 1px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--pine) 8%, transparent); color: var(--ink-soft); font: inherit; font-size: var(--pb-text-xs); line-height: 1.4; cursor: var(--pb-click-cursor, pointer); }
 .pebble-root .pb-period-chip:hover { border-color: color-mix(in srgb, var(--pine) 35%, transparent); color: var(--ink); }
 .pebble-root .pb-period-chip svg { opacity: 0.7; }
 .pebble-root .pb-period-pulse { position: relative; }
@@ -1945,7 +1945,7 @@ html.pebble-welcoming::after {
   padding: 0.08rem 0.45rem 0.08rem 0.38rem; border-radius: 6px;
   border: 1px solid color-mix(in srgb, currentColor 26%, transparent);
   background: color-mix(in srgb, currentColor 7%, transparent);
-  font-size: 0.68rem; font-weight: 500; line-height: 1.4; white-space: nowrap;
+  font-size: var(--pb-text-xs); font-weight: 500; line-height: 1.4; white-space: nowrap;
   color: var(--ink-soft);
 }
 .pebble-root .pb-sleep-badge-hero { color: inherit; opacity: 0.85; }
@@ -2272,7 +2272,7 @@ input[data-pb-eye]::-ms-clear { display: none; }
 .pebble-root .bottom-nav-btn.active::before { opacity: 1; }
 .pebble-root .bottom-nav-icon,
 .pebble-root .bottom-nav-icon.active { transform: none; }
-.pebble-root .bottom-nav-label { font-size: 0.66rem; }
+.pebble-root .bottom-nav-label { font-size: var(--pb-text-chart); }
 .pebble-root .bottom-nav-btn,
 .pebble-root .bottom-nav-btn.active { font-weight: 600; }
 /* Centre add button: a light sheen and a glow in the brand colour. The sheen

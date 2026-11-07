@@ -266,7 +266,7 @@ const BalanceChart = memo(function BalanceChart({ days, range, tone, label, onSc
   const markLabel = (word: string, k: number, position: 'top' | 'bottom') => ({
     value: `${word} ${formatCompactCurrency(days[k].total)}`,
     position: k > days.length * 0.85 ? 'left' as const : k < days.length * 0.15 ? 'right' as const : position,
-    offset: 9, fill: 'var(--ink-soft)', fontSize: 11,
+    offset: 9, fill: 'var(--ink-soft)', fontSize: 'var(--pb-text-chart)',
   });
 
   return (
@@ -287,13 +287,13 @@ const BalanceChart = memo(function BalanceChart({ days, range, tone, label, onSc
             </defs>
             <CartesianGrid stroke="var(--line)" vertical={false} />
             <XAxis
-              dataKey="date" tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false}
+              dataKey="date" tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false}
               minTickGap={36} tickFormatter={tick}
               {...(narrow ? { ticks: [days[0].date, end.date], interval: 0 as const } : {})}
             />
             <YAxis
               orientation="right" hide={narrow}
-              tick={{ fontSize: 12, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} width={66}
+              tick={{ fontSize: 'var(--pb-text-chart)', fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} width="auto"
               // Clear of the end dot, which sits on the plot's right edge.
               tickMargin={12}
               // Padded so the High and Low labels have a band of their own

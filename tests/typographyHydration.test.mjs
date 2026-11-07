@@ -10,11 +10,11 @@ const source = buildSync({
 
 function fixture() {
   let effect, listener;
-  let state = { textSize: 95, fontChoice: 'rounded', cjkFontChoice: 'kai' };
+  let state = { textSize: 115, fontChoice: 'rounded', cjkFontChoice: 'kai' };
   const writes = [];
   const attributes = new Map([['data-pebble-font', 'rounded'], ['data-pebble-cjk', 'kai']]);
   const root = {
-    style: new Proxy({ fontSize: '15.2px' }, { set(object, key, value) { writes.push([key, value]); object[key] = value; return true; } }),
+    style: new Proxy({ fontSize: '18.4px' }, { set(object, key, value) { writes.push([key, value]); object[key] = value; return true; } }),
     getAttribute: key => attributes.get(key) ?? null,
     setAttribute: (key, value) => { writes.push([key, value]); attributes.set(key, value); },
     removeAttribute: key => { writes.push([key, null]); attributes.delete(key); },
@@ -35,10 +35,10 @@ function fixture() {
   return { root, writes, attributes, cleanup, update: patch => { state = { ...state, ...patch }; listener?.(); } };
 }
 
-test('hydration preserves the smaller size and fonts already applied before paint', () => {
+test('hydration preserves the larger size and fonts already applied before paint', () => {
   const f = fixture();
   assert.deepEqual(f.writes, [], 'SSR defaults must never overwrite the saved typography');
-  assert.equal(f.root.style.fontSize, '15.2px');
+  assert.equal(f.root.style.fontSize, '18.4px');
   assert.equal(f.attributes.get('data-pebble-font'), 'rounded');
   assert.equal(f.attributes.get('data-pebble-cjk'), 'kai');
   f.cleanup();
@@ -58,4 +58,13 @@ test('actual preference changes and user switches still apply, without rewriting
   f.cleanup();
   f.update({ textSize: 80 });
   assert.equal(f.root.style.fontSize, '16px');
+});
+
+test('legacy small sizes and direct state updates cannot shrink text below 100%', () => {
+  const f = fixture();
+  f.update({ textSize: 85 });
+  assert.equal(f.root.style.fontSize, '16px');
+  f.update({ textSize: NaN });
+  assert.equal(f.root.style.fontSize, '16px');
+  f.cleanup();
 });

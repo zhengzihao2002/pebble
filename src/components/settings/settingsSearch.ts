@@ -30,7 +30,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
       [...Object.values(d.ux.accounts.sortModes), 'account order sort manual drag reorder balance high low 排序 手动 拖动 余额 高 低']), id: 'accountOrder' },
     entry('categories', d.categoryManager.title, money, d.categoryManager.blurb, ['category icon colour color rename budget 分类 图标 颜色 重命名']),
     entry('theme', d.theme.title, appearance, d.theme.blurb, ['theme palette colour color 主题 配色', ...Object.values(d.theme)]),
-    entry('textSize', d.textSize.title, appearance, d.textSize.blurb, ['text size small large zoom 字号 文字 大小 缩放']),
+    entry('textSize', d.textSize.title, appearance, d.textSize.blurb, ['text size large zoom 字号 文字 大小 缩放']),
     entry('font', d.font.title, appearance, d.font.blurb,
       [d.font.latinTitle, d.font.cjkTitle, d.font.default, d.font.system, d.font.rounded, d.font.serif, d.font.legible, 'font typeface letters numbers Chinese 字体 英文 数字 中文 黑体 宋体 楷体']),
     entry('appearance', d.appearance.title, appearance, d.appearance.blurb, ['appearance light dark system mode 外观 浅色 深色 自动']),

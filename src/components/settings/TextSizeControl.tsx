@@ -5,6 +5,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
 import { SETTING_TARGETS } from './settingsTargets';
 import type { Dictionary } from '@/lib/i18n';
+import { MAX_TEXT_SIZE, MIN_TEXT_SIZE, normalizeTextSize } from '@/lib/textSize';
 
 interface TextSizeControlProps {
   textSize: number;
@@ -17,7 +18,6 @@ interface TextSizeControlProps {
 // The key is also the React key. It was the LABEL before this change, which
 // meant every preset button remounted on a language switch.
 const PRESETS: { labelKey: keyof Dictionary['textSize']; value: number }[] = [
-  { labelKey: 'small', value: 85 },
   { labelKey: 'default', value: 100 },
   { labelKey: 'large', value: 115 },
   { labelKey: 'extraLarge', value: 130 },
@@ -30,17 +30,17 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
     <SettingsRow id={SETTING_TARGETS.textSize} icon={Type} title={d.textSize.title} hint={d.textSize.blurb} layout="stack">
       <div className="pb-settings-size">
         <input
-          type="range" min="80" max="150" step="5" value={textSize}
-          onChange={(e) => onChange(Number(e.target.value))}
+          type="range" min={MIN_TEXT_SIZE} max={MAX_TEXT_SIZE} step="5" value={textSize}
+          onChange={(e) => onChange(normalizeTextSize(Number(e.target.value)))}
           aria-label={d.textSize.title}
           className="pb-settings-range"
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <input
-            type="number" min="80" max="150" step="5" value={textSize}
+            type="number" min={MIN_TEXT_SIZE} max={MAX_TEXT_SIZE} step="5" value={textSize}
             onChange={(e) => {
               const v = Number(e.target.value);
-              if (!Number.isNaN(v)) onChange(Math.min(150, Math.max(80, v)));
+              if (!Number.isNaN(v)) onChange(normalizeTextSize(v));
             }}
             aria-label={d.textSize.title}
             className="font-mono-tab text-size-input"

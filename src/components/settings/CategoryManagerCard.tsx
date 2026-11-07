@@ -97,7 +97,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (color: str
       <label
         title={d.categoryManager.customColor}
         style={{
-          position: 'relative', width: 26, height: 26, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', cursor: 'pointer',
+          position: 'relative', width: 26, height: 26, borderRadius: '50%', flexShrink: 0, boxSizing: 'border-box', cursor: 'var(--pb-click-cursor, pointer)',
           background: isPalette ? 'conic-gradient(#E0605E, #E8B14F, #6FBF73, #4F9FE8, #9B6FE0, #E0605E)' : value,
           border: isPalette ? '2px solid transparent' : '2px solid var(--ink)',
         }}
@@ -107,7 +107,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (color: str
           aria-label={d.categoryManager.customColor}
           value={HEX6.test(value) ? value.toLowerCase() : '#1f5a45'}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0, margin: 0 }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'var(--pb-click-cursor, pointer)', border: 'none', padding: 0, margin: 0 }}
         />
       </label>
     </div>
@@ -334,7 +334,7 @@ export function CategoryManagerCard() {
                       )}
                     </button>
                     {!c.isSystem && (
-                      <button type="button" onClick={() => setDeleteTarget(c)} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="icon-btn pb-settings-iconbtn" style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
+                      <button type="button" onClick={() => setDeleteTarget(c)} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="icon-btn pb-settings-iconbtn" style={{ opacity: deleteLocked ? 0.4 : 1, cursor: deleteLocked ? 'not-allowed' : 'var(--pb-click-cursor, pointer)' }} aria-label={t(d.categoryManager.deleteAria, { name: c.name })}>
                         <Trash2 size={14} />
                       </button>
                     )}

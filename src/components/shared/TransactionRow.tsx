@@ -76,7 +76,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         display: 'flex', alignItems: 'center', gap: '0.85rem',
         padding: flush ? `${compact ? '0.55rem' : '0.85rem'} 0` : compact ? '0.55rem 1.5rem' : '0.85rem 1.5rem',
         borderBottom: flush ? undefined : '1px solid var(--line)',
-        cursor: onOpenDetail ? 'pointer' : 'default',
+        cursor: onOpenDetail ? 'var(--pb-click-cursor, pointer)' : 'default',
       }}
     >
       {lead}
@@ -91,11 +91,11 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {txn.description.split('\n')[0]}
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {subtitleParts.join(' · ')}
         </div>
         {!compact && txn.type === 'income' && txn.grossAmount !== txn.netAmount && (
-          <div className="font-mono-tab" style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 1 }}>
+          <div className="font-mono-tab" style={{ fontSize: 'var(--pb-text-xs)', color: 'var(--ink-soft)', marginTop: 1 }}>
             <RollingMoneyText value={t(d.txn.gross, { amount: formatCurrency(txn.grossAmount) })} />
           </div>
         )}

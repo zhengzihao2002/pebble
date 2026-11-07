@@ -92,7 +92,7 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
 
               <div>
                 {pairs.map((p) => (
-                  <label key={p.groupId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
+                  <label key={p.groupId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0', borderBottom: '1px solid var(--line)', cursor: 'var(--pb-click-cursor, pointer)' }}>
                     <input type="checkbox" checked={selected.has(p.groupId)} onChange={() => toggle(p.groupId)} style={{ flexShrink: 0 }} />
                     <span style={{ minWidth: 0, flex: 1 }}>
                       {/* Descriptions and account names are USER DATA. */}
