@@ -1,5 +1,5 @@
-/* Local pools of primary-colour light. The theme's paper is never repainted.
-   Only transforms animate: each soft circle is rasterized once, then moved. */
+/* Local pools of light, with slow analogous shifts around the theme's primary
+   hue. Independent axes sweep the whole viewport; paper and cards stay intact. */
 .pebble-root:has(> .pb-ambient-background) { isolation: isolate; }
 .pebble-root > .pb-ambient-background {
   --ambient-core: 14%;
@@ -13,9 +13,10 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
   --ambient-core: 21%; --ambient-mid: 10%; --ambient-edge: 3%;
 }
 .pebble-root .pb-ambient-orb {
-  position: absolute; left: 0; top: 0;
-  width: clamp(20rem, 44vmin, 32rem); aspect-ratio: 1;
-  translate: -50% -50%;
+  position: absolute;
+  --ambient-size: clamp(28rem, 62vmin, 52rem);
+  left: calc(var(--ambient-size) * -.5); top: calc(var(--ambient-size) * -.5);
+  width: var(--ambient-size); aspect-ratio: 1;
   border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle closest-side,
     color-mix(in srgb, var(--pine) var(--ambient-core), transparent) 0%,
@@ -24,37 +25,43 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
     color-mix(in srgb, var(--pine) var(--ambient-edge), transparent) 70%,
     transparent 100%);
   filter: blur(26px); will-change: transform;
-  animation-timing-function: ease-in-out;
+  animation-timing-function: cubic-bezier(.37, 0, .63, 1), cubic-bezier(.37, 0, .63, 1), ease-in-out;
   animation-iteration-count: infinite;
 }
 .pebble-root .pb-ambient-orb.is-near {
-  transform: translate3d(9vw, 66vh, 0);
-  animation-name: pb-ambient-near; animation-duration: 34s;
+  translate: 9vw 0; transform: translateY(66vh);
+  animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
+  animation-duration: 31s, 47s, 83s;
+  animation-delay: -3.0293s, -32.8369s, -9s;
 }
 .pebble-root .pb-ambient-orb.is-middle {
-  width: clamp(18rem, 38vmin, 28rem);
-  transform: translate3d(88vw, 13vh, 0);
-  animation-name: pb-ambient-middle; animation-duration: 43s;
+  --ambient-size: clamp(26rem, 54vmin, 48rem);
+  translate: 88vw 0; transform: translateY(13vh);
+  animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
+  animation-duration: 43s, 59s, 101s;
+  animation-delay: -26.3754s, -6.9741s, -48s;
 }
 .pebble-root .pb-ambient-orb.is-far {
-  width: clamp(22rem, 50vmin, 36rem);
-  transform: translate3d(42vw, 74vh, 0);
-  animation-name: pb-ambient-far; animation-duration: 53s;
+  --ambient-size: clamp(30rem, 68vmin, 56rem);
+  translate: 42vw 0; transform: translateY(74vh);
+  animation-name: pb-ambient-x, pb-ambient-y, pb-ambient-colour;
+  animation-duration: 53s, 71s, 127s;
+  animation-delay: -11.9084s, -47.6416s, -88s;
 }
-@keyframes pb-ambient-near {
-  0%, 100% { transform: translate3d(9vw, 66vh, 0); }
-  35% { transform: translate3d(32vw, 40vh, 0); }
-  70% { transform: translate3d(6vw, 18vh, 0); }
+/* Separate transform properties compose without replacing one another. Each
+   axis reaches both edges; different periods keep the paths from retracing a
+   small triangle or leaving a permanent unlit band. */
+@keyframes pb-ambient-x {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 100vw 0; }
 }
-@keyframes pb-ambient-middle {
-  0%, 100% { transform: translate3d(88vw, 13vh, 0); }
-  36% { transform: translate3d(67vw, 38vh, 0); }
-  72% { transform: translate3d(91vw, 72vh, 0); }
+@keyframes pb-ambient-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(100vh); }
 }
-@keyframes pb-ambient-far {
-  0%, 100% { transform: translate3d(42vw, 74vh, 0); }
-  38% { transform: translate3d(72vw, 62vh, 0); }
-  73% { transform: translate3d(32vw, 24vh, 0); }
+@keyframes pb-ambient-colour {
+  0%, 100% { filter: blur(26px) hue-rotate(-16deg); }
+  50% { filter: blur(26px) hue-rotate(16deg); }
 }
 .pebble-root .pb-ambient-background[data-paused="true"] .pb-ambient-orb { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
