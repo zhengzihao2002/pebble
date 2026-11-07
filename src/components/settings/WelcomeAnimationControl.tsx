@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import { Play, Sparkles } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { Switch } from '@/components/shared/Switch';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { WELCOME_PREVIEW_EVENT } from '@/components/layout/WelcomeOverlay';
@@ -16,7 +17,7 @@ export function WelcomeAnimationControl() {
   const titleId = useId();
 
   return (
-    <SettingsRow icon={Sparkles} title={d.welcome.settingTitle} hint={d.welcome.settingHint} titleId={titleId}>
+    <SettingsRow id={SETTING_TARGETS.welcome} icon={Sparkles} title={d.welcome.settingTitle} hint={d.welcome.settingHint} titleId={titleId}>
       <div className="pb-settings-inline">
         <button
           type="button" className="pill pb-settings-pill"

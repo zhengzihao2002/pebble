@@ -4,6 +4,7 @@ import { useId } from 'react';
 import { CaseSensitive } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import {
   CJK_FONT_CHOICES, FONT_CHOICES, isCjkFontChoice, isFontChoice,
   type CjkFontChoice, type FontChoice,
@@ -42,7 +43,7 @@ export function FontControl({ fontChoice, onChange, cjkFontChoice, onCjkChange }
   const currentCjk: CjkFontChoice = isCjkFontChoice(cjkFontChoice) ? cjkFontChoice : 'sans';
 
   return (
-    <SettingsRow icon={CaseSensitive} title={d.font.title} hint={d.font.blurb} layout="stack">
+    <SettingsRow id={SETTING_TARGETS.font} icon={CaseSensitive} title={d.font.title} hint={d.font.blurb} layout="stack">
       <div className="pb-settings-font-layout">
       <div className="pb-settings-font-controls">
         <div role="group" aria-label={d.font.latinTitle} className="pb-settings-font-group">

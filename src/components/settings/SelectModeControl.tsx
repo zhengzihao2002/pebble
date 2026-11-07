@@ -3,6 +3,7 @@
 import { ChevronsUpDown } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import type { SelectMode } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -33,7 +34,7 @@ export function SelectModeControl({ selectMode, onChange }: SelectModeControlPro
   const current: SelectMode = selectMode === 'plain' ? 'plain' : 'searchable';
 
   return (
-    <SettingsRow icon={ChevronsUpDown} title={d.selectMode.title} hint={d.selectMode.hint}>
+    <SettingsRow id={SETTING_TARGETS.dropdowns} icon={ChevronsUpDown} title={d.selectMode.title} hint={d.selectMode.hint}>
       <SegmentedControl
         options={MODES.map((mode) => ({ value: mode, label: labels[mode] }))}
         value={current} onChange={onChange} ariaLabel={d.selectMode.title}

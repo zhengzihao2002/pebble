@@ -1,5 +1,7 @@
 'use client';
 
+import { SETTING_TARGETS } from './settingsTargets';
+
 import { useEffect, useRef, useState } from 'react';
 import { Check, Pencil, Plus, Search, Shapes, Trash2, X } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
@@ -272,7 +274,7 @@ export function CategoryManagerCard() {
   };
 
   return (
-    <div className="card pb-settings-card" aria-busy={loading} style={{ position: 'relative' }}>
+    <div id={SETTING_TARGETS.categories} className="card pb-settings-target pb-settings-card" aria-busy={loading} style={{ position: 'relative' }}>
       {busy && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.categoryManager.saved : ''}</span>

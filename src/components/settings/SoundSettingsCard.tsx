@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BadgeDollarSign, CircleAlert, MousePointerClick, Receipt, Trophy, Volume2, type LucideIcon } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS, SOUND_SETTING_TARGETS } from './settingsTargets';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { SOUND_EVENTS, emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { SOUND_FILES } from '@/lib/sound/manifest';
@@ -34,7 +35,7 @@ export function SoundSettingsCard() {
   const hasFiles = SOUND_FILES.length > 0;
 
   return (
-    <div className="card pb-settings-card">
+    <div id={SETTING_TARGETS.sounds} className="card pb-settings-card pb-settings-target">
       {/* An h3 like every other card title: the section above is the h2.
           It used to be a second h2 in display type. */}
       <SectionHeader icon={Volume2} title={d.sounds.title} subtitle={d.sounds.blurb} />
@@ -61,6 +62,7 @@ export function SoundSettingsCard() {
           const current = prefs[event.key as SoundEvent] ?? '';
           return (
             <SettingsRow
+              id={SOUND_SETTING_TARGETS[event.key]}
               key={event.key}
               icon={EVENT_ICONS[event.key as SoundEvent] ?? Volume2}
               title={d.sounds.events[event.key]}

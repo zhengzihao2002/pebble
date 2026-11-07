@@ -1,5 +1,7 @@
 'use client';
 
+import { SETTING_TARGETS } from './settingsTargets';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useRef, useState } from 'react';
 import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
@@ -255,7 +257,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
   const listTotal = visible.reduce((sum, a) => sum + (balancesByAccount[a.id] ?? 0), 0);
 
   return (
-    <div className="card pb-settings-card" style={{ position: 'relative' }}>
+    <div id={SETTING_TARGETS.accounts} className="card pb-settings-target pb-settings-card" style={{ position: 'relative' }}>
       {saving && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.accounts.saved : ''}</span>

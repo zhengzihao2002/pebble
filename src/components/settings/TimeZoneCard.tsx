@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Globe, Globe2 } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { setTimeZoneOverrideAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
@@ -79,7 +80,7 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
   // A row in the Language & region group. The row is position: relative
   // (settings.css), so the saving overlay covers just this setting.
   return (
-    <SettingsRow icon={Globe2} title={d.settings.timeZone.title} hint={d.settings.timeZone.hint} layout="stack">
+    <SettingsRow id={SETTING_TARGETS.timeZone} icon={Globe2} title={d.settings.timeZone.title} hint={d.settings.timeZone.hint} layout="stack">
       {saving && <LoadingOverlay label={d.common.saving} />}
       <div className="pb-settings-tz">
         <div className="pb-settings-tz-field">

@@ -3,6 +3,7 @@
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { beginNavigation } from '@/components/loading/navigation';
 import { useRouter } from 'next/navigation';
 import { ArrowRightLeft, CalendarClock, CornerDownLeft, Receipt, Eye, EyeOff, Plus, Search, SearchX, Settings as SettingsIcon, Target } from 'lucide-react';
@@ -19,6 +20,8 @@ import { translateActionError } from '@/lib/i18n/actionErrors';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
+import { SETTINGS_JUMP_EVENT } from '@/components/settings/settingsTargets';
+import { searchSettings } from '@/components/settings/settingsSearch';
 import type { CategoryMeta, LedgerRecord, Transaction } from '@/types';
 
 /**
@@ -60,6 +63,7 @@ interface CommandPaletteProps {
 interface Command {
   id: string;
   label: string;
+  description?: string;
   icon: LucideIcon;
   group: 'actions' | 'pages' | 'settings';
   run: () => void;
@@ -152,20 +156,16 @@ export function CommandPalette({
     });
   };
 
-  // Settings is one page; its sections are found by id (SettingsClient). Going
-  // there from elsewhere waits briefly for the page to mount, then scrolls.
+  // Settings owns its exact-row jump and arrival highlight. A hash survives a
+  // cold navigation; an event handles repeat jumps while already on that page.
   const goToSection = (id: string) => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const scroll = () => {
-      const el = document.getElementById(id);
-      if (!el) return false;
-      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-      return true;
-    };
-    if (window.location.pathname !== '/settings') { beginNavigation('/settings'); router.push('/settings'); }
-    let tries = 0;
-    const tick = () => { if (scroll() || ++tries > 40) return; window.setTimeout(tick, 50); };
-    window.setTimeout(tick, 0);
+    if (window.location.pathname === '/settings') {
+      window.dispatchEvent(new CustomEvent(SETTINGS_JUMP_EVENT, { detail: id }));
+      return;
+    }
+    const href = `/settings#${id}`;
+    beginNavigation(href);
+    router.push(href, { scroll: false });
   };
 
   const commands: Command[] = [
@@ -186,8 +186,6 @@ export function CommandPalette({
     { id: 's-language', label: d.settingsSections.languageRegion, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-language-region') },
     { id: 's-behavior', label: d.settingsSections.behavior, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
     { id: 's-account', label: d.account.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-pebble-account') },
-    { id: 's-privacy', label: d.privacyMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
-    { id: 's-dropdowns', label: d.selectMode.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
     { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => { beginNavigation('/account/security'); router.push('/account/security'); } },
   ];
 
@@ -197,7 +195,17 @@ export function CommandPalette({
   const qAmount = q.replace(/[$,\s]/g, '');
   const amountQuery = /[0-9]/.test(qAmount);
 
-  const shownCommands = q ? commands.filter((c) => c.label.toLowerCase().includes(q)) : commands;
+  const shownCommands = [
+    ...(q ? commands.filter((c) => c.label.toLowerCase().includes(q)) : commands),
+    ...searchSettings(d, q).map((setting): Command => ({
+      id: `setting-${setting.id}`, label: setting.label,
+      description: `${setting.section} · ${setting.hint}`, icon: SettingsIcon,
+      group: 'settings', run: () => {
+        if (setting.href) { beginNavigation(setting.href); router.push(setting.href); }
+        else goToSection(setting.target);
+      },
+    })),
+  ];
   const shownTxns = q && searchState === 'ready'
     ? txns.filter((x) => {
         const tag = x.type === 'expense' && x.tag ? x.tag.toLowerCase() : '';
@@ -235,7 +243,14 @@ export function CommandPalette({
 
   return (
     <ModalFrame
-      onClose={() => { onClose(); const run = pending.current; pending.current = null; run?.(); }}
+      onClose={() => {
+        const run = pending.current;
+        pending.current = null;
+        // Complete the palette's unmount and ModalFrame's focus restoration
+        // before a command focuses a setting or opens another dialog.
+        flushSync(onClose);
+        run?.();
+      }}
       labelledBy="pb-palette-title"
       // One roomy column (about 48rem; it was 36rem and read as too small on a Mac). The old 780px card split into a
       // list and a preview pane that was mostly empty for actions and pages;
@@ -319,6 +334,7 @@ export function CommandPalette({
                               <span className="pb-shell-pal-icon" aria-hidden="true"><Icon size={16} /></span>
                               <span className="pb-shell-pal-text">
                                 <span className="pb-shell-pal-title">{highlight(row.cmd.label, q)}</span>
+                                {row.cmd.description && <span className="pb-shell-pal-sub">{highlight(row.cmd.description, q)}</span>}
                               </span>
                               {/* Display only: AppShell binds N and T itself. */}
                               {row.cmd.key && <kbd className="pb-shell-kbd" aria-hidden="true">{row.cmd.key}</kbd>}

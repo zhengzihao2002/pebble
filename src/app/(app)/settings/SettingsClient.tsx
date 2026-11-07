@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
@@ -29,6 +29,7 @@ import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
 import { SettingsJumpBar, SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
 import { SettingsOverview } from '@/components/settings/SettingsOverview';
 import { useSectionJump } from '@/components/settings/useSectionJump';
+import { isSettingTarget, SETTINGS_JUMP_EVENT } from '@/components/settings/settingsTargets';
 import { useScrollAnchor } from '@/components/settings/useScrollAnchor';
 import { SAFETY_LOCK_KEYS, isLocked } from '@/lib/safetyLocks';
 import { isThemeChoice } from '@/lib/themeChoice';
@@ -204,6 +205,26 @@ export function SettingsClient({
   // bar and the overview chips, so they always agree on where you are.
   const navItems = sections.map(({ id, title, short }) => ({ id, title, short }));
   const { activeId, jump, jumpToRow } = useSectionJump(navItems.map((i) => i.id));
+
+  useEffect(() => {
+    const openTarget = (id: string) => {
+      if (isSettingTarget(id)) jumpToRow(id);
+      else if (Object.values(SECTION_IDS).some((sectionId) => sectionId === id)) jump(id);
+    };
+    const fromHash = () => openTarget(window.location.hash.slice(1));
+    const requested = (event: Event) => {
+      if (event instanceof CustomEvent && typeof event.detail === 'string') openTarget(event.detail);
+    };
+    // Runs after the setting rows mount, even when a cold page load takes
+    // longer than the command palette's old short polling window.
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    window.addEventListener(SETTINGS_JUMP_EVENT, requested);
+    return () => {
+      window.removeEventListener('hashchange', fromHash);
+      window.removeEventListener(SETTINGS_JUMP_EVENT, requested);
+    };
+  }, [jump, jumpToRow]);
 
   return (
     <div className="settings-layout pb-settings">

@@ -3,6 +3,7 @@
 import { TextSelect } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -17,7 +18,7 @@ export function TextSelectControl() {
   const allow = usePebbleStore((s) => s.allowTextSelect) === true;
   const setAllow = usePebbleStore((s) => s.setAllowTextSelect);
   return (
-    <SettingsRow icon={TextSelect} title={d.selectMode.textSelectTitle} hint={d.selectMode.textSelectHint}>
+    <SettingsRow id={SETTING_TARGETS.textSelection} icon={TextSelect} title={d.selectMode.textSelectTitle} hint={d.selectMode.textSelectHint}>
       <SegmentedControl
         options={[
           { value: 'off', label: d.selectMode.textSelectOff },

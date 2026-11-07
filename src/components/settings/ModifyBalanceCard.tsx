@@ -1,5 +1,7 @@
 'use client';
 
+import { SETTING_TARGETS } from './settingsTargets';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -135,7 +137,7 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
   };
 
   return (
-    <div className="card pb-settings-card" style={{ position: 'relative' }}>
+    <div id={SETTING_TARGETS.balances} className="card pb-settings-target pb-settings-card" style={{ position: 'relative' }}>
       {saving && <LoadingOverlay label={d.modifyBalance.saving} />}
 
       {/* inert while the confirmation shows: no focus, no clicks, hidden from

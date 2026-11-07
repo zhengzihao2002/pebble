@@ -4,6 +4,7 @@ import { ChartBarBig, ChartPie } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 
 export type ChartTypeValue = 'donut' | 'bar';
 
@@ -21,7 +22,7 @@ export function ChartTypeControl({ value, onChange }: ChartTypeControlProps) {
   // The kit radiogroup (sliding thumb, arrow keys) replaces the two pills;
   // the same two named choices stay visible.
   return (
-    <SettingsRow icon={ChartPie} title={d.chartType.title} hint={d.chartType.hint}>
+    <SettingsRow id={SETTING_TARGETS.chartType} icon={ChartPie} title={d.chartType.title} hint={d.chartType.hint}>
       <SegmentedControl
         options={choices.map((c) => ({ value: c, label: d.chartType[c], icon: c === 'donut' ? ChartPie : ChartBarBig }))}
         value={value} onChange={onChange} ariaLabel={d.chartType.title}

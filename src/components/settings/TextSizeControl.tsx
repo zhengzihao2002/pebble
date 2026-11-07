@@ -3,6 +3,7 @@
 import { Type } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 import type { Dictionary } from '@/lib/i18n';
 
 interface TextSizeControlProps {
@@ -26,7 +27,7 @@ export function TextSizeControl({ textSize, onChange }: TextSizeControlProps) {
   const { d } = useTranslation();
 
   return (
-    <SettingsRow icon={Type} title={d.textSize.title} hint={d.textSize.blurb} layout="stack">
+    <SettingsRow id={SETTING_TARGETS.textSize} icon={Type} title={d.textSize.title} hint={d.textSize.blurb} layout="stack">
       <div className="pb-settings-size">
         <input
           type="range" min="80" max="150" step="5" value={textSize}

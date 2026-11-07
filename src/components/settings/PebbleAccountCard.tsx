@@ -1,5 +1,7 @@
 'use client';
 
+import { SETTING_TARGETS } from './settingsTargets';
+
 import Link from '@/components/loading/PendingLink';
 import { useState } from 'react';
 import { useSafetyLock } from '@/lib/useSafetyLock';
@@ -39,7 +41,7 @@ export function PebbleAccountCard() {
   // dialog (a fixed overlay rendered in place) is a SIBLING of it - a size
   // container would pin the dialog inside the card.
   return (
-    <div className="card pb-settings-card pb-settings-me">
+    <div id={SETTING_TARGETS.pebbleAccount} className="card pb-settings-target pb-settings-card pb-settings-me">
       <div className="pb-settings-me-body">
         <div className="pb-settings-me-grid">
           <div className="pb-settings-me-id">

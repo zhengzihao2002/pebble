@@ -5,6 +5,7 @@ import { useId } from 'react';
 import { HeartPulse } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
+import { SETTING_TARGETS } from './settingsTargets';
 
 interface HealthBarControlProps {
   enabled: boolean;
@@ -21,7 +22,7 @@ export function HealthBarControl({ enabled, onChange }: HealthBarControlProps) {
   // switch ("Health status bar" / "Show on dashboard"). The row shows the
   // title once; the switch is named by it.
   return (
-    <SettingsRow icon={HeartPulse} title={d.healthBar.settingTitle} hint={d.healthBar.settingHint} titleId={titleId} layout="side">
+    <SettingsRow id={SETTING_TARGETS.healthBar} icon={HeartPulse} title={d.healthBar.settingTitle} hint={d.healthBar.settingHint} titleId={titleId} layout="side">
       <Switch checked={enabled} onChange={onChange} labelledBy={titleId} className="pb-settings-switch" />
     </SettingsRow>
   );
