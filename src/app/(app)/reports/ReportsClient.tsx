@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { animateReportLayout } from '@/components/reports/animateReportLayout';
 import { SlidersHorizontal } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
@@ -926,7 +925,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const railRef = useRef<HTMLButtonElement>(null);
   const toggleFilters = () => {
     const opening = !filtersExpanded;
-    animateReportLayout(pageRef.current, () => setFiltersExpanded(opening));
+    setFiltersExpanded(opening);
     const rail = railRef.current;
     if (!rail || rail.offsetParent === null) return;
     // The swapped-in control only becomes focusable once its visibility has
@@ -996,8 +995,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             {chips.length > 0 && <span className="pb-rep-rail-count pb-tnum" aria-hidden="true">{chips.length}</span>}
             <span className="pb-rep-rail-text" aria-hidden="true">{dict.reports.filters}</span>
           </button>
-          {/* Fixed width on a wide screen, so the card never re-wraps while the
-              track animates under it; it is just clipped and faded. */}
+          {/* Wide layouts keep inspector controls at a fixed width. */}
           <div className="pb-rep-side-card">
           <ReportFilters
             expanded={filtersExpanded}

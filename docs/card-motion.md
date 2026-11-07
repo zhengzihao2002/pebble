@@ -9,6 +9,8 @@ moves with the card. There is no transform scaling or fixed final height.
 - The observer pauses for its own animation to avoid resize feedback.
 - Nested cards follow their containing card; dialogs keep their existing motion.
 - Sections with existing height transitions keep their own motion.
+- Reports filters opt out with `data-pb-resize="off"`; their sections and
+  sidebar open immediately so filter controls remain available to click.
 - Viewport changes, hidden pages and Reduced Motion settle immediately.
 - Layout caching waits for settled geometry. Pagehide settles synchronously
   before saving so an intermediate height cannot become a loading placeholder.

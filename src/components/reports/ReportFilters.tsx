@@ -12,9 +12,8 @@ import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField } f
 // .card .stat-tabs uses), title on the left and the current value, as a chip,
 // on the right. Each row opens to its controls below.
 
-// Same timing as .collapsible-rows, so the chevron and the slide finish
-// together. That class lives in globals.css (shared), so it is matched here
-// rather than retimed there; the report's category rows match it too.
+// Only the chevron rotates; filter sections resize immediately so their
+// controls remain available to click as soon as they are opened.
 const chevronTransition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
 // Matches the compact selects on the dashboard charts.
@@ -299,7 +298,7 @@ export function ReportFilters({
   const panelId = `${uid}-panel`;
 
   return (
-    <div ref={cardRef} className="card pb-rep-filters" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div ref={cardRef} className="card pb-rep-filters" data-pb-resize="off" style={{ display: 'flex', flexDirection: 'column' }}>
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}

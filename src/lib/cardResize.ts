@@ -1,5 +1,5 @@
 const CARDS = '.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accounts-cc, .pb-settings-tile, .add-goal-tile, .stat-tab';
-const EXCLUDED = '[role="dialog"], .pb-modal-overlay, [aria-busy="true"], .pb-navigation-preview, .pb-page-skeleton, .pb-cached-layout';
+const EXCLUDED = '[role="dialog"], .pb-modal-overlay, [aria-busy="true"], [data-pb-resize="off"], .pb-navigation-preview, .pb-page-skeleton, .pb-cached-layout';
 const ANIMATION_ID = 'pb-card-resize';
 const DURATION = 260;
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];

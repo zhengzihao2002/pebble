@@ -257,8 +257,8 @@
 }
 
 /* ---------- This period: command bar + tiles ---------- */
-.pebble-root .pb-dash-stats .pb-stats-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; padding: 0.75rem 1.25rem; gap: 0.6rem 1rem; }
-.pebble-root .pb-dash-period-heading { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.pebble-root .pb-dash-stats .pb-stats-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; padding: 1.25rem 1.5rem; gap: 0.6rem 1rem; }
+.pebble-root .pb-dash-period-heading { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
 .pebble-root .pb-dash-period-heading .pb-stats-range { margin: 0; line-height: 1.4; }
 .pebble-root .pb-dash-period { align-items: center; gap: 0.5rem; border-radius: 14px; }
 .pebble-root .pb-dash-select { position: relative; display: inline-flex; align-items: center; min-width: 0; }
@@ -274,13 +274,13 @@
 .pebble-root .pb-dash-select-sizer { display: none; }
 .pebble-root .pb-dash-select > svg { position: absolute; right: 0.75rem; pointer-events: none; color: var(--ink-soft); }
 .pebble-root .pb-dash-stepper {
-  display: inline-flex; align-items: center; height: 2.5rem; min-width: 0; width: 14.25rem;
+  display: inline-flex; align-items: center; height: 2.5rem; min-width: 0; width: 13.25rem;
   border: 1px solid var(--line); border-radius: 999px;
   background-color: color-mix(in srgb, var(--ink) 4%, var(--mist));
 }
 .pebble-root .pb-dash-select.is-period { align-self: stretch; flex: 1 1 0; }
 .pebble-root .pb-dash-select.is-period select {
-  height: 100%; padding: 0 0.4rem; border: 0; border-radius: 0.5rem; background: transparent; text-align: center; text-align-last: center;
+  width: 100%; height: 100%; padding: 0 0.4rem; border: 0; border-radius: 0.5rem; background: transparent; text-align: center; text-align-last: center;
 }
 .pebble-root .pb-dash-step {
   position: relative; z-index: 2; touch-action: manipulation;
@@ -308,7 +308,7 @@
    one, which pushed the stepper onto a second line. The selects keep every
    tap, the iOS wheel and keyboard use; only their painting moves to the face. */
 @container content (max-width: 639px) {
-  .pebble-root .pb-dash-stats .pb-stats-head { display: grid; grid-template-columns: minmax(0, 1fr); padding-inline: 1rem; }
+  .pebble-root .pb-dash-stats .pb-stats-head { display: grid; grid-template-columns: minmax(0, 1fr); padding: 1.1rem; }
   .pebble-root .pb-dash-period-heading { display: contents; }
   .pebble-root .pb-dash-period-heading .pb-stats-title { grid-row: 1; }
   .pebble-root .pb-dash-period { grid-row: 2; }
