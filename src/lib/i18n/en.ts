@@ -498,10 +498,6 @@ export const en = {
     previewHint: 'Route markers stay clear. Frost applies to the app background.',
     previewReduced: 'Reduced Motion is on. Play to preview the routes.',
   },
-  cardGlow: {
-    title: 'Card glow',
-    hint: 'Give cards across the app a soft highlight in your theme colour.',
-  },
 
   brandIcons: {
     title: 'Brand icons',

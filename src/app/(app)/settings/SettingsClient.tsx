@@ -5,7 +5,6 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { TextSizeControl } from '@/components/settings/TextSizeControl';
 import { FontControl } from '@/components/settings/FontControl';
-import { CardGlowControl } from '@/components/settings/CardGlowControl';
 import { AmbientBackgroundControl } from '@/components/settings/AmbientBackgroundControl';
 import { BrandIconsControl } from '@/components/settings/BrandIconsControl';
 import { ThemeControl } from '@/components/settings/ThemeControl';
@@ -147,7 +146,6 @@ export function SettingsClient({
               cjkFontChoice={cjkFontChoice} onCjkChange={setCjkFontChoice}
             />
             <AppearanceControl appearance={appearance} onChange={setAppearance} />
-            <CardGlowControl />
             <AmbientBackgroundControl />
             <BrandIconsControl />
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />

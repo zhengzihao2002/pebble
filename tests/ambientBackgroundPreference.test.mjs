@@ -40,7 +40,7 @@ test('living background defaults OFF for new users and existing preferences', ()
   const existing = fixture(savedPreferences({ locale: 'zh', showCardGlow: false }));
   assert.equal(existing.usePebbleStore.getState().ambientBackground, false);
   assert.equal(existing.usePebbleStore.getState().locale, 'zh');
-  assert.equal(existing.usePebbleStore.getState().showCardGlow, false);
+  assert.equal(existing.usePebbleStore.getState().showCardGlow, undefined);
 });
 
 test('the rejected fluid-background preference cannot enable the new background', () => {

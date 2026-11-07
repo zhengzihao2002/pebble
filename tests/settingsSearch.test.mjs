@@ -26,7 +26,7 @@ test('individual settings stay hidden until a nonempty query', () => {
 
 test('specific controls and their options can be found in both interface languages', () => {
   for (const dictionary of [en, zh]) {
-    for (const [query, id] of [['loading spinner', 'loadingStyle'], ['缓存', 'loadingStyle'], ['manual order', 'accountOrder'], ['字体', 'font'], ['card glow', 'cardGlow'], ['living background', 'ambientBackground']]) {
+    for (const [query, id] of [['loading spinner', 'loadingStyle'], ['缓存', 'loadingStyle'], ['manual order', 'accountOrder'], ['字体', 'font'], ['living background', 'ambientBackground']]) {
       assert.ok(searchSettings(dictionary, query).some((entry) => entry.id === id), `${query} must find ${id}`);
     }
   }
@@ -76,6 +76,7 @@ test('background customization searches address their exact controls', () => {
 });
 
 test('unrelated queries do not expand all settings', () => {
+  assert.equal(searchSettings(en, 'card glow').length, 0);
   assert.equal(searchSettings(en, 'zzzz-no-setting-zzzz').length, 0);
   const matches = searchSettings(en, 'Text size');
   assert.equal(matches[0].id, 'textSize');

@@ -11,7 +11,6 @@ export const SETTING_TARGETS = {
   textSize: 'pb-set-text-size',
   font: 'pb-set-font',
   appearance: 'pb-set-appearance',
-  cardGlow: 'pb-set-card-glow',
   ambientBackground: 'pb-set-ambient-background',
   ambientRoute: 'pb-set-ambient-route',
   ambientSpeed: 'pb-set-ambient-speed',

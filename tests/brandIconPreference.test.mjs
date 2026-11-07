@@ -18,7 +18,7 @@ test('brand icons default ON for new and existing users whose preferences predat
   const store = fixture(values).usePebbleStore;
   assert.equal(store.getState().showBrandIcons, true);
   assert.equal(store.getState().locale, 'zh');
-  assert.equal(store.getState().showCardGlow, false);
+  assert.equal(store.getState().showCardGlow, undefined);
 });
 
 test('turning the setting off persists across a fresh app load', () => {

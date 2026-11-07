@@ -15,7 +15,6 @@ import { NavigationContent } from '@/components/loading/NavigationContent';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { AmbientBackground } from './AmbientBackground';
-import { CardGlowLayer } from './CardGlowLayer';
 import { Header } from './Header';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import { GoalModal } from '@/components/modals/GoalModal';
@@ -36,18 +35,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const locale = usePebbleStore((s) => s.locale);
   useTypographyPreferences();
   const themeChoice = usePebbleStore((s) => s.themeChoice);
-  useLayoutEffect(() => {
-    const html = document.documentElement;
-    // Read the hydrated store directly so its static SSR snapshot cannot
-    // briefly undo the pre-paint OFF preference during hydration.
-    const apply = () => {
-      if (usePebbleStore.getState().showCardGlow === false) {
-        if (html.getAttribute('data-pb-card-glow') !== 'off') html.setAttribute('data-pb-card-glow', 'off');
-      } else if (html.hasAttribute('data-pb-card-glow')) html.removeAttribute('data-pb-card-glow');
-    };
-    apply();
-    return usePebbleStore.subscribe(apply);
-  }, []);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
   // Text selection is off unless the user turned it on (exactly true only).
   const allowTextSelect = usePebbleStore((s) => s.allowTextSelect);
@@ -511,7 +498,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
       <AmbientBackground />
-      <CardGlowLayer />
       {/* Blur used by privacy mode on chart axis text: CSS blur() does not
           apply inside SVG, a url() filter does. */}
       <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>

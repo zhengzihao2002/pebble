@@ -54,26 +54,11 @@ a fixed-height stage. Play/pause is independent of the background switch; the
 preview pauses offscreen or hidden and requires explicit Play with Reduced
 Motion. English and Chinese text explain the preview.
 
-The user isolated Safari's sharp tint to the external coloured Card glow. The
-external glow now uses cached analytic RGBA edge/corner textures on one bounded
-page canvas and a scoped canvas inside each dialog backdrop. Both use identical
-strength on desktop and mobile, restoring iPhone's external glow without native
-coloured outset shadows, CSS blur or canvas shadowBlur. Separate corner radii,
-ancestor clipping and interior masks keep the paint outside each rounded surface.
-Ordinary depth shadows and inward reflections remain on the cards. Nested tiles
-keep inward highlights consistently across browsers. Split transaction panes and
-the sticky annual balance preserve their existing shadow paths.
-
-The glow framebuffer is capped at 1400px on its longer side, independent of DPR,
-with a bounded texture cache. Scroll, resize, layout and palette changes coalesce
-into frame requests; active CSS/DOM-triggered layout animations are followed.
-The layer stays idle while the background or route preview animates, pauses while
-hidden, and is removed when glow is off. Local browser fixtures cover page and
-dialog paint, clipping, masks, moving cards, themes and lifecycle behavior. The
-original native Safari flicker has not been reproduced in this environment.
+Card glow has been removed, including its preference, settings control, paint
+layers and added inset reflections. Cards keep their original depth shadows.
 
 The main scrollbar is restored to the app's original native treatment. A small
-theme-tinted native image pointer adds an outlined arrow on desktop, with SVG and
+theme-tinted native image pointer adds an slightly translucent triangle on desktop, with SVG and
 PNG fallbacks. Text, hand, drag, resize, disabled and loading cursor semantics
 remain native, as do touch-device and Forced Colors cursors.
 

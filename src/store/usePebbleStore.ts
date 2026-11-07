@@ -98,8 +98,6 @@ interface PebblePrefs {
   cjkFontChoice: CjkFontChoice;
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
-  // The theme-coloured rim on app cards; enabled unless explicitly disabled.
-  showCardGlow: boolean;
   ambientBackground: boolean;
   ambientSettings: AmbientSettings;
   // Recognized merchant logos in transaction tiles. On unless disabled.
@@ -147,7 +145,6 @@ interface PebbleUIState extends PebblePrefs {
   setFontChoice: (value: FontChoice) => void;
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
-  setShowCardGlow: (value: boolean) => void;
   setAmbientBackground: (value: boolean) => void;
   setAmbientSettings: (patch: Partial<AmbientSettings>) => void;
   resetAmbientSettings: () => void;
@@ -179,7 +176,6 @@ const DEFAULT_PREFS: PebblePrefs = {
   fontChoice: 'default',
   cjkFontChoice: 'sans',
   showHealthBar: false,
-  showCardGlow: true,
   ambientBackground: false,
   ambientSettings: normalizeAmbientSettings(undefined),
   showBrandIcons: true,
@@ -242,7 +238,6 @@ export const usePebbleStore = create<PebbleUIState>()(
       setFontChoice: (value) => set({ fontChoice: value }),
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
-      setShowCardGlow: (value) => set({ showCardGlow: value }),
       setAmbientBackground: (value) => set({ ambientBackground: value }),
       setAmbientSettings: (patch) => set((state) => ({ ambientSettings: normalizeAmbientSettings({ ...state.ambientSettings, ...patch }) })),
       resetAmbientSettings: () => set({ ambientSettings: normalizeAmbientSettings(undefined) }),
@@ -268,7 +263,9 @@ export const usePebbleStore = create<PebbleUIState>()(
       // the current in-memory state, which after switching users is the
       // PREVIOUS user's - a user with nothing saved would have inherited it.
       merge: (persisted, current) => {
-        const merged = { ...current, ...DEFAULT_PREFS, ...((persisted ?? {}) as Partial<PebblePrefs>) };
+        const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
+        delete restored.showCardGlow;
+        const merged = { ...current, ...DEFAULT_PREFS, ...restored };
         return { ...merged, themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
@@ -293,7 +290,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         }
         return state as unknown as PebbleUIState;
       },
-      // appearance, locale, fonts, themeChoice, showCardGlow and loadingStyle MUST stay
+      // appearance, locale, fonts, themeChoice and loadingStyle MUST stay
       // here - the pre-paint script reads them (see storageKeys.ts).
       partialize: (state): PebblePrefs => ({
         appearance: state.appearance,
@@ -311,7 +308,6 @@ export const usePebbleStore = create<PebbleUIState>()(
         fontChoice: state.fontChoice,
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
-        showCardGlow: state.showCardGlow,
         ambientBackground: state.ambientBackground,
         ambientSettings: state.ambientSettings,
         showBrandIcons: state.showBrandIcons,

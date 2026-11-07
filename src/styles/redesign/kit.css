@@ -131,3 +131,6 @@
    2...). Opacity and transform only; reduced motion shows it at once. */
 @keyframes pb-rise { from { opacity: 0; transform: translateY(8px); } }
 .pebble-root .pb-rise { animation: pb-rise 480ms var(--pb-ease-out) both; animation-delay: calc(var(--pb-i, 0) * 50ms); }
+
+/* Anchor card overlays without changing fixed dialog containing blocks. */
+:where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) { position: relative; }

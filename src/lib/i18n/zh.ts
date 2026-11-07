@@ -443,10 +443,6 @@ export const zh: typeof en = {
     previewHint: '路线标记保持清晰，雾化效果应用于实际背景。',
     previewReduced: '已开启减少动态效果，点击播放可预览路线。',
   },
-  cardGlow: {
-    title: '卡片微光',
-    hint: '为应用中的卡片添加柔和的主题色微光。',
-  },
 
   brandIcons: {
     title: '品牌图标',

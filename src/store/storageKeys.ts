@@ -64,9 +64,6 @@ export const TEXT_SIZE_FIELD = 'textSize';
 /** Field the pre-paint script reads: false means no welcome animation. */
 export const SHOW_WELCOME_FIELD = 'showWelcome';
 
-/** Field the pre-paint script reads to avoid flashing card highlights on load. */
-export const CARD_GLOW_FIELD = 'showCardGlow';
-
 /** Field the pre-paint script reads to choose the page loading surface. */
 export const LOADING_STYLE_FIELD = 'loadingStyle';
 
