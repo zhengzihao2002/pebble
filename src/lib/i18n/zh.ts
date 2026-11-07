@@ -415,6 +415,10 @@ export const zh: typeof en = {
     cjk: { sans: '黑体', serif: '宋体', kai: '楷体' },
   },
 
+  cardGlow: {
+    title: '卡片柔光',
+    hint: '在卡片周围添上一层柔和的主题色光晕。开启灵动背景时，柔光会自动减弱。',
+  },
   ambientBackground: {
     title: '灵动背景',
     hint: '大片柔和光团在页面后方缓缓流动，并变换协调的色彩。开启减少动态效果时保持静止。',

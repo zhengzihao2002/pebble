@@ -149,3 +149,24 @@ test('Restore defaults resets the appearance without changing the enabled state'
     assert.equal(reloaded.usePebbleStore.getState().ambientBackground, enabled);
   }
 });
+
+
+test('new card glow is independent of old glow flags and living-background preferences', () => {
+  const f = fixture(savedPreferences({ showCardGlow: false, ambientBackground: false }));
+  assert.equal(f.usePebbleStore.getState().cardGlow, true);
+  f.usePebbleStore.getState().setCardGlow(false);
+  assert.equal(f.usePebbleStore.getState().ambientBackground, false);
+  assert.equal(fixture(f.values).usePebbleStore.getState().cardGlow, false);
+  f.usePebbleStore.getState().setCardGlow(true);
+  assert.equal(fixture(f.values).usePebbleStore.getState().cardGlow, true);
+});
+
+test('card glow is restored separately for each user', async () => {
+  const f = fixture();
+  await f.switchPebbleUser('glow-alice');
+  f.usePebbleStore.getState().setCardGlow(false);
+  await f.switchPebbleUser('glow-bob');
+  assert.equal(f.usePebbleStore.getState().cardGlow, true);
+  await f.switchPebbleUser('glow-alice');
+  assert.equal(f.usePebbleStore.getState().cardGlow, false);
+});

@@ -57,8 +57,10 @@ a fixed-height stage. Play/pause is independent of the background switch; the
 preview pauses offscreen or hidden and requires explicit Play with Reduced
 Motion. English and Chinese text explain the preview.
 
-Card glow has been removed, including its preference, settings control, paint
-layers and added inset reflections. Cards keep their original depth shadows.
+Card glow is an independent setting, on by default. It adds a muted theme-colored
+halo to the original card depth shadows and automatically reduces its strength
+when the living background is on. See [card-glow.md](card-glow.md) for its
+scrolling, clipping and transparent-tail guarantees.
 
 The main scrollbar is restored to the app's original native treatment.
 Native system cursors preserve the platform's regular pointer, clickable hand,

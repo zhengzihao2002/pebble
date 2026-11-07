@@ -12,6 +12,7 @@ import { AppearanceControl } from '@/components/settings/AppearanceControl';
 import { HealthBarControl } from '@/components/settings/HealthBarControl';
 import { ChartTypeControl } from '@/components/settings/ChartTypeControl';
 import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
+import { CardGlowControl } from '@/components/settings/CardGlowControl';
 import { LoadingStyleControl } from '@/components/settings/LoadingStyleControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
@@ -147,6 +148,7 @@ export function SettingsClient({
             />
             <AppearanceControl appearance={appearance} onChange={setAppearance} />
             <AmbientBackgroundControl />
+            <CardGlowControl />
             <BrandIconsControl />
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
             <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />

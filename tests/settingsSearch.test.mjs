@@ -76,7 +76,8 @@ test('background customization searches address their exact controls', () => {
 });
 
 test('unrelated queries do not expand all settings', () => {
-  assert.equal(searchSettings(en, 'card glow').length, 0);
+  assert.equal(searchSettings(en, 'card glow')[0].id, 'cardGlow');
+  assert.equal(searchSettings(zh, '卡片柔光')[0].target, 'pb-set-card-glow');
   assert.equal(searchSettings(en, 'zzzz-no-setting-zzzz').length, 0);
   const matches = searchSettings(en, 'Text size');
   assert.equal(matches[0].id, 'textSize');

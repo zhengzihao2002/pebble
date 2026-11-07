@@ -470,6 +470,10 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
+  cardGlow: {
+    title: 'Card glow',
+    hint: 'Soft, theme-colored light around your cards. Gently dims when the living background is on.',
+  },
   ambientBackground: {
     title: 'Living background',
     hint: 'Large, soft pools of light drift and shift through harmonious colours behind the page. Still with Reduced Motion.',

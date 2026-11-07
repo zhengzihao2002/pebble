@@ -15,6 +15,7 @@ import { NavigationContent } from '@/components/loading/NavigationContent';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { AmbientBackground } from './AmbientBackground';
+import { CardGlow } from './CardGlow';
 import { Header } from './Header';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import { GoalModal } from '@/components/modals/GoalModal';
@@ -537,6 +538,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       </div>
 
+      <CardGlow />
       {showAddModal && <AddTransactionModal onClose={() => setShowAddModal(false)} />}
       {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
       {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}

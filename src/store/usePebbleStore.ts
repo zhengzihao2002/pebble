@@ -100,6 +100,7 @@ interface PebblePrefs {
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
   ambientBackground: boolean;
+  cardGlow: boolean;
   ambientSettings: AmbientSettings;
   // Recognized merchant logos in transaction tiles. On unless disabled.
   showBrandIcons: boolean;
@@ -147,6 +148,7 @@ interface PebbleUIState extends PebblePrefs {
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
   setAmbientBackground: (value: boolean) => void;
+  setCardGlow: (value: boolean) => void;
   setAmbientSettings: (patch: Partial<AmbientSettings>) => void;
   resetAmbientSettings: () => void;
   setShowBrandIcons: (value: boolean) => void;
@@ -178,6 +180,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   cjkFontChoice: 'sans',
   showHealthBar: false,
   ambientBackground: false,
+  cardGlow: true,
   ambientSettings: normalizeAmbientSettings(undefined),
   showBrandIcons: true,
   themeChoice: 'original',
@@ -240,6 +243,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setAmbientBackground: (value) => set({ ambientBackground: value }),
+      setCardGlow: (value) => set({ cardGlow: value }),
       setAmbientSettings: (patch) => set((state) => ({ ambientSettings: normalizeAmbientSettings({ ...state.ambientSettings, ...patch }) })),
       resetAmbientSettings: () => set({ ambientSettings: normalizeAmbientSettings(undefined) }),
       setShowBrandIcons: (value) => set({ showBrandIcons: value }),
@@ -267,7 +271,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, cardGlow: merged.cardGlow !== false, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.
@@ -310,6 +314,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
         ambientBackground: state.ambientBackground,
+        cardGlow: state.cardGlow,
         ambientSettings: state.ambientSettings,
         showBrandIcons: state.showBrandIcons,
         themeChoice: state.themeChoice,
