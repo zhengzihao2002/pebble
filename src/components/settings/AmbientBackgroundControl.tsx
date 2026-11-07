@@ -7,7 +7,7 @@ import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SettingsRow } from './SettingsRow';
 import { SETTING_TARGETS } from './settingsTargets';
-import { AmbientRoutePreview } from './AmbientRoutePreview';
+import { AmbientBackgroundStudio } from './AmbientBackgroundStudio';
 
 export function AmbientBackgroundControl() {
   const { d } = useTranslation();
@@ -16,6 +16,6 @@ export function AmbientBackgroundControl() {
   const titleId = useId();
   return <SettingsRow id={SETTING_TARGETS.ambientBackground} className="pb-ambient-setting" icon={Waves} title={d.ambientBackground.title} hint={d.ambientBackground.hint} titleId={titleId} layout="side">
     <Switch checked={enabled} onChange={setEnabled} labelledBy={titleId} className="pb-settings-switch" />
-    <AmbientRoutePreview />
+    <AmbientBackgroundStudio />
   </SettingsRow>;
 }

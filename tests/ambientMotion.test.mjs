@@ -29,12 +29,29 @@ test('each route reaches both edges of each independent axis smoothly', () => {
 
 test('the scene retains its staggered starting composition', () => {
   const starts = [[.09, .66], [.88, .13], [.42, .74]];
-  AMBIENT_MOTION.forEach((orb, index) => {
+  AMBIENT_MOTION.slice(0, 3).forEach((orb, index) => {
     const p = sampleAmbientMotion(orb, 0);
     assert.ok(Math.abs(p.x - starts[index][0]) < .0001);
     assert.ok(Math.abs(p.y - starts[index][1]) < .0001);
     assert.notEqual(orb.xPeriod, orb.yPeriod);
   });
+});
+
+test('route choices have distinct paths and stay continuous within the screen', () => {
+  const routes = ['default', 'orbit', 'weave', 'sweep'];
+  const signatures = routes.map(route => Array.from({ length: 12 }, (_, i) => {
+    const p = sampleAmbientMotion(AMBIENT_MOTION[0], i * 5, route);
+    return `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+  }).join('|'));
+  assert.equal(new Set(signatures).size, routes.length, 'Every route must look different');
+  for (const route of routes) for (const orb of AMBIENT_MOTION) {
+    for (let time = 0; time < 200; time += .5) {
+      const p = sampleAmbientMotion(orb, time, route);
+      const next = sampleAmbientMotion(orb, time + .001, route);
+      assert.ok(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
+      assert.ok(Math.hypot(p.x - next.x, p.y - next.y) < .002, `${route} must not jump`);
+    }
+  }
 });
 
 test('all time samples stay inside the viewport and retain bounded colour shifts', () => {

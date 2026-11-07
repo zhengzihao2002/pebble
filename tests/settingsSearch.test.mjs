@@ -59,6 +59,22 @@ test('profile and security searches retain their existing dedicated destinations
   assert.equal(searchSettings(zh, 'email').find((entry) => entry.id === 'profile').href, '/account/settings');
 });
 
+test('background customization searches address their exact controls', () => {
+  for (const [query, id, target] of [
+    ['frost', 'ambientFrost', 'pb-set-ambient-frost'],
+    ['background speed', 'ambientSpeed', 'pb-set-ambient-speed'],
+    ['background count', 'ambientCount', 'pb-set-ambient-count'],
+    ['background colours', 'ambientColours', 'pb-set-ambient-colours'],
+    ['background orbit', 'ambientRoute', 'pb-set-ambient-route'],
+  ]) for (const dictionary of [en, zh]) {
+    const entry = searchSettings(dictionary, query).find(entry => entry.id === id);
+    assert.ok(entry, `${query} finds ${id}`);
+    assert.equal(entry.target, target);
+    assert.equal(isSettingTarget(entry.target), true);
+  }
+  assert.equal(searchSettings(zh, '雾化程度')[0].id, 'ambientFrost');
+});
+
 test('unrelated queries do not expand all settings', () => {
   assert.equal(searchSettings(en, 'zzzz-no-setting-zzzz').length, 0);
   const matches = searchSettings(en, 'Text size');

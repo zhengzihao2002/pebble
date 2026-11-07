@@ -16,6 +16,7 @@ function AmbientLight() {
     const colourContext = colourCanvas.getContext('2d', { willReadFrequently: true });
     const probes = [...layer.querySelectorAll<HTMLElement>('.pb-ambient-palette')];
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let settings = usePebbleStore.getState().ambientSettings;
     let frame = 0, elapsed = 0, previous = 0, lastPaint = -Infinity, lost = false;
     let colourKey = '', colours: AmbientColour[] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     const paint = () => {
@@ -36,13 +37,14 @@ function AmbientLight() {
         seconds: elapsed, colours,
         opacity: parseFloat(getComputedStyle(layer).getPropertyValue('--ambient-core')) / 100,
         still: reduce.matches,
+        settings,
       });
       layer.dataset.renderer = renderer.kind;
     };
     const tick = (now: number) => {
       frame = 0;
       if (document.hidden || reduce.matches || lost) return;
-      if (previous) elapsed += (now - previous) / 1000;
+      if (previous) elapsed += (now - previous) / 1000 * settings.speed;
       previous = now;
       if (now - lastPaint >= AMBIENT_FRAME_INTERVAL) { paint(); lastPaint = now; }
       frame = requestAnimationFrame(tick);
@@ -58,6 +60,11 @@ function AmbientLight() {
     const refresh = () => {
       if (!document.hidden && reduce.matches && !frame) frame = requestAnimationFrame(() => { frame = 0; paint(); });
     };
+    const unsubscribeSettings = usePebbleStore.subscribe((state, before) => {
+      if (state.ambientSettings === before.ambientSettings) return;
+      settings = state.ambientSettings;
+      refresh();
+    });
     const contextLost = (event: Event) => {
       event.preventDefault(); lost = true; cancelAnimationFrame(frame); frame = 0; previous = 0;
     };
@@ -82,6 +89,7 @@ function AmbientLight() {
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect(); palette.disconnect();
+      unsubscribeSettings();
       root?.removeEventListener('transitionend', paletteSettled);
       document.removeEventListener('visibilitychange', sync);
       reduce.removeEventListener('change', sync);

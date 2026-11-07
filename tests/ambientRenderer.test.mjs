@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source = buildSync({
   stdin: { contents: `
-    export { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS } from './src/lib/ambientRenderer';
+    export { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope } from './src/lib/ambientRenderer';
     export { AMBIENT_MOTION, sampleAmbientMotion } from './src/lib/ambientMotion';
   `, resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'cjs',
@@ -13,7 +13,7 @@ const source = buildSync({
 const compiled = { exports: {} };
 const context = vm.createContext({ module: compiled, exports: compiled.exports });
 vm.runInContext(source, context);
-const { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS, AMBIENT_MOTION, sampleAmbientMotion } = compiled.exports;
+const { ambientFramebufferSize, rotateAmbientColour, AMBIENT_DIAMETERS, ambientEnvelope, AMBIENT_MOTION, sampleAmbientMotion } = compiled.exports;
 
 const viewports = [
   [390, 844], [844, 390], [768, 1024], [1024, 768], [1440, 900],
@@ -74,10 +74,10 @@ test('hue rotation preserves identity and neutral colours while keeping sRGB bou
 test('shared routes and screen-scaled radii illuminate every viewport point over time', () => {
   const columns = 31, rows = 21;
   for (const [width, height] of viewports) {
-    const radii = AMBIENT_DIAMETERS.map(diameter => Math.max(width, height) * diameter / 2);
+    const radii = AMBIENT_DIAMETERS.slice(0, 3).map(diameter => Math.max(width, height) * diameter / 2);
     const nearest = Array(columns * rows).fill(Infinity);
     for (let seconds = 0; seconds <= 120; seconds += .5) {
-      AMBIENT_MOTION.forEach((motion, index) => {
+      AMBIENT_MOTION.slice(0, 3).forEach((motion, index) => {
         const centre = sampleAmbientMotion(motion, seconds);
         for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
           const distance = Math.hypot(
@@ -96,5 +96,36 @@ test('shared routes and screen-scaled radii illuminate every viewport point over
     const clearance = Math.min(...radii) * (1 - worstDistance);
     const halfDiagonal = Math.hypot(width / (columns - 1), height / (rows - 1)) / 2;
     assert.ok(clearance > halfDiagonal, `${width}×${height} has unproven gaps between samples`);
+  }
+});
+
+test('frost preserves the original default and offers clear and diffuse alternatives', () => {
+  for (const [distance, expected] of [[0, 1], [.2, .8521437889662113], [.45, .4448580662229411], [.7, .14085842092104503], [1, 0]]) {
+    assert.ok(Math.abs(ambientEnvelope(distance, 50) - expected) < 1e-12);
+  }
+  assert.ok(ambientEnvelope(.7, 0) > .99, 'Clear balls retain a defined interior');
+  assert.ok(ambientEnvelope(1.1, 100) > 0, 'High frost spreads a soft tail');
+  assert.equal(ambientEnvelope(1.1, 50), 0);
+  for (const frost of [0, 25, 50, 75, 100]) for (let d = 0; d <= 1.5; d += .01) {
+    const opacity = ambientEnvelope(d, frost);
+    assert.ok(Number.isFinite(opacity) && opacity >= 0 && opacity <= 1);
+  }
+});
+
+test('each route lights the whole screen even with a single ball', () => {
+  const columns = 21, rows = 15;
+  for (const route of ['default', 'orbit', 'weave', 'sweep']) for (const [width, height] of [[390, 844], [1440, 900], [900, 900]]) {
+    const radius = Math.max(width, height) * AMBIENT_DIAMETERS[0] / 2;
+    const nearest = Array(columns * rows).fill(Infinity);
+    for (let time = 0; time <= 240; time += .5) {
+      const p = sampleAmbientMotion(AMBIENT_MOTION[0], time, route);
+      for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+        const distance = Math.hypot(width * column / (columns - 1) - p.x * width, height * row / (rows - 1) - p.y * height);
+        const index = row * columns + column;
+        nearest[index] = Math.min(nearest[index], distance);
+      }
+    }
+    const halfDiagonal = Math.hypot(width / (columns - 1), height / (rows - 1)) / 2;
+    assert.ok(Math.max(...nearest) + halfDiagonal < radius, `${route} leaves permanent gaps on ${width}×${height}`);
   }
 });

@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { AMBIENT_MOTION, sampleAmbientMotion } from '@/lib/ambientMotion';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { usePebbleStore } from '@/store/usePebbleStore';
 
 const SPEED = 8;
+const THEME_COLOURS = ['var(--pine)', 'color-mix(in oklch, var(--pine) 68%, var(--gold))', 'color-mix(in oklch, var(--pine) 84%, var(--gold))'];
 const subscribeViewport = (notify: () => void) => {
   window.addEventListener('resize', notify, { passive: true });
   return () => window.removeEventListener('resize', notify);
@@ -22,6 +24,9 @@ const reducedSnapshot = () => window.matchMedia('(prefers-reduced-motion: reduce
 export function AmbientRoutePreview() {
   const { d } = useTranslation();
   const copy = d.ambientBackground;
+  const settings = usePebbleStore(s => s.ambientSettings);
+  const { route, count, speed } = settings;
+  const colourKey = settings.colours.join('|');
   const viewport = useSyncExternalStore(subscribeViewport, viewportSnapshot, () => '16:9');
   const [width, height] = viewport.split(':').map(Number);
   const reduced = useSyncExternalStore(subscribeReducedMotion, reducedSnapshot, () => true);
@@ -40,18 +45,19 @@ export function AmbientRoutePreview() {
     const svg = frameRef.current;
     if (!svg) return;
     let frame = 0, previous = 0, lastPaint = 0;
+    const customColours = colourKey.split('|');
     let visible = typeof IntersectionObserver === 'undefined';
     const paint = () => {
-      AMBIENT_MOTION.forEach((orb, index) => {
+      AMBIENT_MOTION.slice(0, count).forEach((orb, index) => {
         const marker = markersRef.current[index];
         const trail = trailsRef.current[index];
-        const point = sampleAmbientMotion(orb, elapsedRef.current);
+        const point = sampleAmbientMotion(orb, elapsedRef.current, route);
         marker?.setAttribute('cx', String(point.x * width));
         marker?.setAttribute('cy', String(point.y * height));
-        marker?.setAttribute('style', `filter: hue-rotate(${point.hue}deg)`);
+        marker?.setAttribute('style', `filter: hue-rotate(${customColours[index] ? 0 : point.hue}deg)`);
         let path = '';
         for (let step = 0; step <= 12; step++) {
-          const p = sampleAmbientMotion(orb, elapsedRef.current - 12 + step);
+          const p = sampleAmbientMotion(orb, elapsedRef.current - 12 + step, route);
           path += `${step ? 'L' : 'M'}${p.x * width},${p.y * height}`;
         }
         trail?.setAttribute('d', path);
@@ -59,7 +65,7 @@ export function AmbientRoutePreview() {
     };
     const tick = (now: number) => {
       frame = 0;
-      if (previous) elapsedRef.current += Math.min((now - previous) / 1000, .1) * SPEED;
+      if (previous) elapsedRef.current += Math.min((now - previous) / 1000, .1) * SPEED * speed;
       previous = now;
       if (now - lastPaint >= 1000 / 30) { paint(); lastPaint = now; }
       frame = requestAnimationFrame(tick);
@@ -83,7 +89,7 @@ export function AmbientRoutePreview() {
       observer?.disconnect();
       document.removeEventListener('visibilitychange', sync);
     };
-  }, [playing, width, height]);
+  }, [playing, width, height, route, count, speed, colourKey]);
 
   return <figure className="pb-ambient-route-preview">
     <div className="pb-ambient-route-head">
@@ -98,9 +104,9 @@ export function AmbientRoutePreview() {
         <defs><clipPath id={clipId}><rect width={width} height={height} rx={Math.min(width, height) * .045} /></clipPath></defs>
         <rect className="pb-ambient-route-screen" x="1" y="1" width={Math.max(0, width - 2)} height={Math.max(0, height - 2)} rx={Math.min(width, height) * .045} vectorEffect="non-scaling-stroke" />
         <g clipPath={`url(#${clipId})`}>
-          {AMBIENT_MOTION.map((orb, index) => {
-            const point = sampleAmbientMotion(orb, 0);
-            return <g key={orb.key} className={`pb-ambient-route-orb is-${orb.key}`}>
+          {AMBIENT_MOTION.slice(0, count).map((orb, index) => {
+            const point = sampleAmbientMotion(orb, 0, route);
+            return <g key={orb.key} className="pb-ambient-route-orb" style={{ '--route-colour': settings.colours[index] ?? THEME_COLOURS[index % 3] } as CSSProperties}>
               <path ref={node => { trailsRef.current[index] = node; }} className="pb-ambient-route-trail" fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" />
               <circle ref={node => { markersRef.current[index] = node; }} cx={point.x * width} cy={point.y * height} r={radius} />
             </g>;

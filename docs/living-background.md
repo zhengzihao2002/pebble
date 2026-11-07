@@ -4,7 +4,7 @@ Settings → Appearance → Living background is optional and off by default. It
 `ambientBackground` preference is stored per user on this device. Old preferences
 from the removed fluid background do not enable this version.
 
-Three large circles start from the selected theme's primary colour; two blend
+Default uses three large circles from the selected theme's primary colour; two blend
 in its existing accent. Diameters are 100%, 88% and 112% of the viewport's longer
 side. Positions and radius use CSS screen coordinates independently of the
 framebuffer, so circles stay 1:1 on phones, desktops and large monitors. Hues
@@ -16,6 +16,21 @@ Gaussian pools with a smooth outer falloff, preserving paper and card surfaces.
 Settings preview. Independent X periods of 31/43/53 seconds and Y periods of
 47/59/71 seconds, smooth easing and staggered phases sweep the whole background
 over time. No permanent corner or interior band is excluded.
+
+The customization studio offers Default, Orbit, Weave and Sweep routes, speed
+from 0.25× to 3×, frost from 0–100%, and one to six balls. Frost 50%, speed 1×,
+three theme-coloured balls and the Default route reproduce the previous look.
+Orbit follows loops, Weave crosses in figure eights, and Sweep visits the four
+corners along opposing diagonals. Each route covers the screen over time even
+with one ball. Additional balls have distinct phases and periods; their combined
+strength is balanced to keep a six-ball scene from simply becoming brighter.
+
+Each ball can use its automatic theme colour or a custom hex colour. Automatic
+colours retain their gentle hue cycle; custom colours stay as chosen. Controls
+apply live without recreating the canvas or resetting its clock. Restore defaults
+resets the appearance without changing the enabled switch. Settings are validated
+and saved per user in localStorage; existing saved preferences receive the current
+look. Invalid routes, non-finite numbers and invalid colours fall back safely.
 
 One pointer-inert, fixed canvas belongs to AppShell and persists across route
 changes. The transparent WebGL framebuffer is capped at 700px on its longer
@@ -34,17 +49,24 @@ so fixed action menus remain viewport-relative. Background-off, unsupported-blur
 and theme-transition fallback treatments retain their existing behavior.
 
 The compact Settings route preview shows clear circles and recent trails at
-8× speed, using the same sampler. It preserves the actual viewport's aspect in
+8× the selected speed, using the same route, count and colours. It preserves the actual viewport's aspect in
 a fixed-height stage. Play/pause is independent of the background switch; the
 preview pauses offscreen or hidden and requires explicit Play with Reduced
 Motion. English and Chinese text explain the preview.
 
-The intermittent sharp card tint reported on mobile Safari was not reproduced
-in the available browser. Inspection found no unrounded dashboard wrapper or
-persistent skeleton backdrop. Earlier clipping of the inner reflection did not
-resolve the user's report. The bounded renderer removes the much larger
-animated filtered surfaces as a plausible compositor-pressure trigger; no
-further speculative card clipping or shadow changes were added.
+The user isolated the mobile Safari sharp tint to Card glow: removing glow clears
+it, while reapplying it remains clean until refresh. Glow now uses the actual
+card's rounded box-shadow paint, removing the separately clipped reflection
+pseudo-element. On iOS WebKit the highlight stays inside the card, with no
+outward coloured glow entering the corner cutouts; ordinary depth shadows remain.
+Desktop retains its soft external halo. Split transaction panes and the sticky
+annual balance preserve their inward reflections in their own shadow paths.
+The iOS branch passes simulated first-paint/toggle pixel checks on the actual
+Dashboard and Reports card classes. Native Safari reproduction is still unavailable.
+
+The main scrollbar uses a native, rounded theme-gradient thumb and subtle rail
+on desktop, with a wider drag area than the visible thumb. Nested lists retain
+their existing scrollbars; coarse-pointer devices keep their native overlay.
 
 Validation uses synthetic data and local fixtures only. Pure tests cover
 preference persistence/defaults, shared easing, framebuffer limits, colour
@@ -54,5 +76,8 @@ the actual WebGL component and forced 2D fallback at DPR 3: frame cap, shader
 output, persistent canvas, hidden/reduced pause, settled palette, resize through
 4K and portrait, visible light through the header, fixed menus, context recovery
 and complete disable/cleanup. Separate preview checks cover clear circles,
-independent controls, 8× motion, aspect ratio, hidden/offscreen pause and Reduced
-Motion opt-in. Production Neon is never used for validation.
+independent controls, 8× motion, aspect ratio, all route/count/colour choices,
+native picker theme seeding, hidden/offscreen pause and Reduced Motion opt-in.
+Defaults also match the previous renderer across 60 synthetic frames: the 2D
+fallback is pixel-identical and WebGL differs by at most 1/255. Production Neon
+is never used for validation.
