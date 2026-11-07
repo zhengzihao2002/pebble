@@ -1,5 +1,6 @@
 import Link from '@/components/loading/PendingLink';
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { PRIVACY_NOTICE } from '@/lib/legal/privacyNotice';
 import { AuthLanguageToggle } from '../[path]/AuthLanguageToggle';
@@ -28,6 +29,9 @@ async function isSignedIn(): Promise<boolean> {
  * from Settings.
  */
 export default async function PrivacyPage() {
+  // Locale and the back link depend on request cookies. Stop the build's
+  // static probe before cookie/session helpers can catch its dynamic signal.
+  await connection();
   const locale = await resolveUserLocale();
   const signedIn = await isSignedIn();
   const notice = PRIVACY_NOTICE[locale === 'zh' ? 'zh' : 'en'];

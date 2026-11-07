@@ -1,5 +1,6 @@
 import Link from '@/components/loading/PendingLink';
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { TERMS_OF_USE } from '@/lib/legal/termsOfUse';
 import { AuthLanguageToggle } from '../[path]/AuthLanguageToggle';
@@ -28,6 +29,9 @@ async function isSignedIn(): Promise<boolean> {
  * from Settings, and from the Privacy Notice.
  */
 export default async function TermsPage() {
+  // Locale and the back link depend on request cookies. Stop the build's
+  // static probe before cookie/session helpers can catch its dynamic signal.
+  await connection();
   const locale = await resolveUserLocale();
   const signedIn = await isSignedIn();
   const notice = TERMS_OF_USE[locale === 'zh' ? 'zh' : 'en'];
