@@ -15,12 +15,12 @@
 .pebble-root .pb-txn-pane { display: contents; }
 .pebble-root .pb-txn-scroll-hint { display: none; }
 .pebble-root .pb-txn-card-shadows { display: none; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
-.pebble-root .pb-txn-card-shadow { position: absolute; box-shadow: var(--shadow), var(--pb-card-halo, 0 0 transparent); }
+.pebble-root .pb-txn-card-shadow { position: absolute; box-shadow: var(--shadow), var(--pb-card-outer, 0 0 transparent); }
 .pebble-root .pb-txn-card-shadow[hidden] { display: none; }
 /* Keep the route's width stable through streamed loading and hydration. */
 .pebble-root:has(.pb-navigation-content:not([hidden]) [data-layout-path="/transactions"], .pb-navigation-preview [data-layout-path="/transactions"]) { scrollbar-gutter: auto; }
 .pebble-root:has(.pb-navigation-content:not([hidden]) .pb-txn-page[data-txn-panes]) { overflow-y: hidden; }
-.pebble-root .pb-txn-page[data-txn-panes] [data-pb-pane-shadow] { box-shadow: none; }
+.pebble-root .pb-txn-page[data-txn-panes] [data-pb-pane-shadow] { box-shadow: var(--pb-card-reflection, 0 0 transparent); }
 .pebble-root .pb-txn-rail {
   display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;
   container-type: inline-size; container-name: content;

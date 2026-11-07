@@ -1,30 +1,32 @@
-/* Compose the halo with each card's own shadow. Drawing it on the card
-   itself lets it spill outside overflow-hidden surfaces without changing
-   clipping, stacking contexts or the containing block of fixed dialogs. */
-.pebble-root { --pb-card-halo: 0 0 0 0 transparent; }
+/* One rounded shadow paint owns the entire highlight, including reflections.
+   No separately clipped reflection overlay is needed. This keeps card content
+   and menus free while simplifying the initial paint on mobile WebKit. */
+.pebble-root {
+  --pb-card-reflection: 0 0 0 0 transparent;
+  --pb-card-outer: 0 0 0 0 transparent;
+  --pb-card-halo: var(--pb-card-reflection), var(--pb-card-outer);
+}
 html:not([data-pb-card-glow="off"]) .pebble-root {
-  --pb-card-halo:
+  --pb-card-reflection:
+    inset 0 4px 14px -7px color-mix(in srgb, var(--mist) 74%, white),
+    inset 0 -3px 14px -9px color-mix(in srgb, var(--pine) 30%, transparent);
+  --pb-card-outer:
     0 0 20px 1px color-mix(in srgb, var(--pine) 17%, transparent),
     0 0 44px 1px color-mix(in srgb, var(--pine) 11%, transparent);
 }
+/* Reported iOS first-paint artifacts disappear when coloured glow is removed.
+   Keep its glow inside the card silhouette: no coloured halo is emitted into
+   the rounded-corner cutouts.
+   Ordinary depth shadows remain in each card's own shadow declaration. */
+@supports (-webkit-touch-callout: none) {
+  html:not([data-pb-card-glow="off"]) .pebble-root {
+    --pb-card-outer: 0 0 0 0 transparent;
+  }
+}
+/* Preserve the positioning existing card overlays rely on, without adding
+   transforms, masks, clipping or a new containing block for fixed children. */
 :where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) {
   position: relative;
 }
-/* A blurred inner reflection replaces the bright, one-pixel rim. */
-html:not([data-pb-card-glow="off"]) .pebble-root :where(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  /* Explicitly clip the reflection's own paint when mobile browsers composite
-     its inset shadows separately. The border box includes inherited rounding;
-     clipping only this overlay leaves the card's outer halo and content free. */
-  clip-path: border-box;
-  pointer-events: none;
-  box-shadow:
-    inset 0 4px 14px -7px color-mix(in srgb, var(--mist) 74%, white),
-    inset 0 -3px 14px -9px color-mix(in srgb, var(--pine) 30%, transparent);
-}
-/* The CSV wrapper only arranges two cards. Its reflection otherwise draws a
-   large rounded outline across their gap even with border/shadow removed. */
-.pebble-root .pb-modal-card.pb-import-split::after { content: none; }
+/* Nested stat tiles never had the separate inner reflection. */
+.pebble-root .card .stat-tab { --pb-card-halo: var(--pb-card-outer); }
