@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { settleCardResizes } from '@/lib/cardResize';
+import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
 
 const DURATION = 360;
 const CLOSE_DELAY = 60;
@@ -10,6 +11,7 @@ const CLOSE_DELAY = 60;
 type Capture = {
   cards: Map<HTMLElement, DOMRect>;
   interrupted: boolean;
+  summary: SummaryCapture | null;
   inspector: { element: HTMLElement; before: DOMRect } | null;
 };
 
@@ -21,9 +23,11 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
   const motions = useRef<Animation[]>([]);
   const generation = useRef(0);
   const restore = useRef<(() => void) | null>(null);
+  const exit = useRef<{ grid: HTMLElement; token: object; update: () => void } | null>(null);
 
   const settle = () => {
     generation.current++;
+    exit.current?.grid.removeAttribute('data-pb-summary-exit'); exit.current = null;
     for (const animation of motions.current) animation.cancel();
     motions.current = [];
     restore.current?.(); restore.current = null;
@@ -44,7 +48,8 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     }
     const inspector = grid.querySelector<HTMLElement>('.pb-rep-filters');
     const inspectorCapture = inspector ? { element: inspector, before: inspector.getBoundingClientRect() } : null;
-    const interrupted = motions.current.length > 0;
+    const interrupted = motions.current.some(animation => animation.id === 'pb-report-inspector-layout' || animation.id === 'pb-report-inspector-surface');
+    const summary = captureSummary(page!);
     // Capture first so reversals continue from the currently visible position.
     settle();
     const previous = main.getAttribute('data-pb-resize');
@@ -57,7 +62,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       grid.removeAttribute('data-pb-inspector-motion');
       inspector?.dispatchEvent(new Event('pb-report-inspector-settled'));
     };
-    pending.current = { cards: capture, inspector: inspectorCapture, interrupted };
+    pending.current = { cards: capture, inspector: inspectorCapture, interrupted, summary };
   };
 
   useLayoutEffect(() => {
@@ -79,6 +84,11 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const inspectorAfter = inspector?.element.getBoundingClientRect();
     // Read all final geometry together before creating any animations.
     const final = [...capture.cards].filter(([card]) => card.isConnected).map(([card, before]) => ({ card, before, after: card.getBoundingClientRect() }));
+    const summaryMotions: Animation[] = [];
+    if (capture.summary) {
+      const hero = final.find(item => item.card === capture.summary!.hero);
+      if (hero) summaryMotions.push(...animateSummary(capture.summary, hero.before, hero.after, DURATION, delay, easing));
+    }
     motions.current = final.flatMap(({ card, before, after }) => {
       if (!after.width || !after.height) return [];
       const animation = card.animate([
@@ -88,6 +98,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       animation.id = 'pb-report-inspector-layout';
       return [animation];
     });
+    motions.current.push(...summaryMotions);
     if (inspector && inspectorAfter) {
       const animation = inspector.element.animate([
         { width: `${inspector.before.width}px`, height: `${inspector.before.height}px` },
@@ -119,12 +130,51 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     // The refs survive state changes; listeners intentionally mount once.
   }, []);
 
-  return (update: () => void) => {
+  const commit = (update: () => void) => {
     prepare();
-    // Cancelling the previous transforms and committing the new grid must
-    // be atomic. Deferred commits could otherwise expose the old layout for
-    // one frame during a rapid reversal.
+    // Cancelling previous transforms and committing the new grid is atomic.
     flushSync(update);
     if (pending.current) settle();
+  };
+
+  return (update: () => void, intent: 'toggle' | 'open' = 'toggle') => {
+    if (exit.current && intent === 'open') { exit.current.update = update; return; }
+    if (intent === 'open' && expanded) { flushSync(update); return; }
+    if (exit.current) {
+      // A second click during the brief exit cancels the pending layout change.
+      const support = captureSummary(pageRef.current!);
+      const grid = exit.current.grid;
+      settle();
+      grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content > button' : '.pb-rep-rail')?.focus({ preventScroll: true });
+      if (support) {
+        const current = ++generation.current;
+        motions.current = support.support.map(({ element, opacity }) => element.animate(
+          [{ opacity }, { opacity: 1 }], { duration: 90, easing: 'ease-out', fill: 'both' },
+        ));
+        void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
+          if (generation.current === current) settle();
+        });
+      }
+      return;
+    }
+    const page = pageRef.current;
+    const grid = page?.querySelector<HTMLElement>('.pb-rep-grid');
+    const summary = page && captureSummary(page);
+    if (grid && summary && !motions.current.length && getComputedStyle(grid).display === 'grid'
+      && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      && summaryWillReflow(summary, grid)) {
+      const token = {};
+      exit.current = { grid, token, update };
+      grid.setAttribute('data-pb-summary-exit', '');
+      motions.current = fadeSummaryOut(summary);
+      void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
+        if (exit.current?.token !== token) return;
+        const action = exit.current.update;
+        exit.current = null; grid.removeAttribute('data-pb-summary-exit');
+        commit(action);
+      });
+      return;
+    }
+    commit(update);
   };
 }

@@ -22,6 +22,16 @@ moves with the card. There is no transform scaling or fixed final height.
   animator pauses during this managed motion. Layout caching waits
   until the live transforms settle. Charts resize once at the final layout;
   their viewport clips any pending Recharts resize before paint.
+- When the Reports summary switches between columns and a stacked layout,
+  supporting details dissolve for 70ms before committing the new arrangement.
+  The eyebrow, Net label and amount remain visible; sampled counter-transforms
+  preserve their screen position and text size while the card reshapes.
+  Supporting figures then return softly, with the chart following slightly
+  later. Changes that keep the same column arrangement do not dissolve content.
+- A second toggle during the short exit cancels the queued change. Later
+  reversals continue from the visible geometry, and explicit Find/open intent
+  remains queued correctly. Resize, backgrounding and Reduced Motion cancel
+  pending exits and clear their decoration without reviving stale callbacks.
 - The filter surface unfolds down and left from its top-right corner. Its
   fixed-width controls fade in once the surface fits, and out before it
   contracts. The collapsed rail uses the same card surface and glow.

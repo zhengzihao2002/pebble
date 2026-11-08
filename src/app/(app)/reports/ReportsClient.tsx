@@ -870,9 +870,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       step(dir);
     } else if (k === 'f') {
       e.preventDefault();
-      if (!filtersExpanded) {
-        animateFiltersLayout(() => { setFiltersExpanded(true); setFindExpanded(true); });
-      } else setFindExpanded(true);
+      animateFiltersLayout(() => { setFiltersExpanded(true); setFindExpanded(true); }, 'open');
       // After the panel and section have opened (they are inert while closed,
       // and the card is visibility:hidden until the swap lands), so retry per
       // frame until the field takes focus.

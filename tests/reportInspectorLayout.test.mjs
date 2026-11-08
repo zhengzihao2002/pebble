@@ -6,13 +6,13 @@ import vm from 'node:vm';
 const source = buildSync({
   entryPoints: ['src/components/reports/useReportInspectorLayout.ts'], bundle: true,
   write: false, platform: 'node', format: 'cjs',
-  external: ['react', 'react-dom', '@/lib/cardResize'],
+  external: ['react', 'react-dom', '@/lib/cardResize', './summaryLayoutMotion'],
 }).outputFiles[0].text;
 
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function fixture({ wide = true, reduced = false, resizePreference = null } = {}) {
+function fixture({ wide = true, reduced = false, resizePreference = null, summary = false, reflow = true } = {}) {
   const trace = [];
   const events = () => {
     const handlers = new Map();
@@ -31,6 +31,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null } = {})
       this.style = { setProperty: (key, value) => this.attrs.set(`style:${key}`, value) };
       this.rect = rect(0, 0, 1, 1); this.active = null; this.animations = [];
     }
+    focus() { this.focused = true; }
     dispatchEvent(event) { this.events ??= []; this.events.push(event.type); return true; }
     closest(selector) { return this.classes.includes(selector.slice(1)) ? this : this.parentElement?.closest(selector) ?? null; }
     querySelectorAll(selector) {
@@ -57,7 +58,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null } = {})
           if (this.active === animation) this.active = null;
           reject(new Error('cancelled'));
         },
-        finish: () => resolve(),
+        finish: () => { animation.finishedFlag = true; resolve(); },
       };
       this.active = animation; this.animations.push(animation);
       return animation;
@@ -72,6 +73,8 @@ function fixture({ wide = true, reduced = false, resizePreference = null } = {})
   inspectorContent.rect = rect(0, 0, 326, 530);
   const hero = new Element('hero', ['card'], main);
   const nested = new Element('nested tile', ['card'], hero);
+  const supports = summary ? Array.from({ length: 4 }, (_, i) => new Element(`support ${i}`, ['summary-support'], hero)) : [];
+  const rail = new Element('rail', ['pb-rep-rail'], side);
   const results = new Element('results wrapper', ['pb-rep-results'], main);
   const firstPeriod = new Element('first period', ['card'], results);
   const secondPeriod = new Element('second period', ['card'], results);
@@ -100,12 +103,21 @@ function fixture({ wide = true, reduced = false, resizePreference = null } = {})
     },
   };
   const settled = [];
+  const summaryApi = {
+    captureSummary: () => summary ? { hero, columns: true, anchors: [], support: supports.map(element => ({ element,
+      opacity: element.active?.visualOpacity ?? (element.active ? element.active.frames[element.active.finishedFlag ? element.active.frames.length - 1 : 0].opacity : 1),
+    })) } : null,
+    summaryWillReflow: () => reflow,
+    fadeSummaryOut: captured => captured.support.map(({ element, opacity }) => element.animate([{ opacity }, { opacity: 0 }], { duration: 70, fill: 'both' })),
+    animateSummary: () => [], // Real world-space math is covered by reportSummaryMotion.test.mjs.
+  };
   const compiled = { exports: {} };
   vm.runInNewContext(source, {
     module: compiled, exports: compiled.exports, window, document, Event: class { constructor(type) { this.type = type; } },
     getComputedStyle: () => ({ display: wide ? 'grid' : 'flex', getPropertyValue: () => 'cubic-bezier(.4,0,.2,1)' }),
     require: name => {
       if (name === 'react') return react;
+      if (name === './summaryLayoutMotion') return summaryApi;
       if (name === 'react-dom') return { flushSync: update => { trace.push('flush:start'); update(); trace.push('flush:end'); } };
       return { settleCardResizes: scope => settled.push(scope) };
     },
@@ -118,7 +130,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null } = {})
     return run;
   };
   const stop = () => { for (const effect of effects) effect.cleanup?.(); };
-  return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, layout, media, window, document, render, trace, settled, stop };
+  return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, layout, media, window, document, render, trace, settled, stop };
 }
 
 test('hero and each period card move together, without separately animating nested tiles', async () => {
@@ -238,3 +250,120 @@ test('an unchanged expanded value still commits the callback and releases captur
   assert.ok(f.surfaces.every(card => card.animations.length === 0));
   f.stop();
 });
+
+test('a column switch waits for the old supporting content to fade before committing the new layout', async () => {
+  const f = fixture({ summary: true });
+  const run = f.render(false);
+  let commits = 0;
+  run(() => { commits++; f.layout(true); f.render(true); });
+  assert.equal(commits, 0, 'Do not expose destination layout while old supporting content is visible');
+  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), '');
+  assert.equal(f.main.getAttribute('data-pb-resize'), null, 'Card geometry remains intrinsic during the brief content exit');
+  assert.ok(f.surfaces.every(card => card.animations.length === 0));
+  const exitAnimations = f.supports.map(element => element.active);
+  assert.ok(exitAnimations.every(animation => animation.options.duration === 70 && animation.frames.at(-1).opacity === 0));
+  // One finished region is insufficient: the chart must also finish its exit.
+  exitAnimations[0].finish(); await flush();
+  assert.equal(commits, 0);
+  exitAnimations.slice(1).forEach(animation => animation.finish()); await flush();
+  assert.equal(commits, 1);
+  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+  assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), '');
+  assert.ok(exitAnimations.every(animation => animation.cancelled), 'Owned exit layers are removed during the atomic layout handoff');
+  assert.ok(f.cards.every(card => card.active?.id === 'pb-report-inspector-layout'));
+  f.stop(); await flush();
+});
+
+test('a second toggle during the content exit cancels its queued commit and restores the visible opacity', async () => {
+  const f = fixture({ summary: true });
+  const run = f.render(false);
+  let commits = 0;
+  run(() => { commits++; f.layout(true); f.render(true); });
+  const exitAnimations = f.supports.map(element => element.active);
+  exitAnimations.forEach(animation => { animation.visualOpacity = .45; });
+  run(() => { commits++; });
+  await flush();
+  assert.equal(commits, 0, 'Neither the first action nor the cancellation may change the layout');
+  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+  assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), null);
+  assert.equal(f.rail.focused, true, 'Return focus to the still-visible filter control');
+  assert.ok(exitAnimations.every(animation => animation.cancelled));
+  for (const element of f.supports) {
+    assert.equal(element.active.options.duration, 90);
+    assert.equal(element.active.frames[0].opacity, .45, 'Restore from the currently visible opacity');
+    assert.equal(element.active.frames.at(-1).opacity, 1);
+    element.active.finish();
+  }
+  await flush();
+  assert.equal(commits, 0, 'Late settlement of the old promises cannot revive the cancelled action');
+  assert.ok(f.supports.every(element => element.active === null));
+  f.stop();
+});
+
+test('an explicit open action replaces a queued close instead of being mistaken for a toggle cancellation', async () => {
+  const f = fixture({ summary: true });
+  f.layout(true);
+  const run = f.render(true);
+  let closeCalls = 0, openCalls = 0, findOpened = false;
+  run(() => { closeCalls++; f.layout(false); f.render(false); });
+  run(() => { openCalls++; findOpened = true; f.layout(true); f.render(true); }, 'open');
+  assert.equal(openCalls, 0, 'Keep the latest explicit intent queued behind the already-running content exit');
+  for (const element of f.supports) element.active.finish();
+  await flush();
+  assert.equal(closeCalls, 0);
+  assert.equal(openCalls, 1);
+  assert.equal(findOpened, true, 'The Find shortcut callback must not be dropped');
+  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+  assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), null, 'Same-state explicit actions must release prepared layout state');
+  f.stop(); await flush();
+});
+
+for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
+  test(`${reason} cancels a queued summary exit without committing a stale action`, async () => {
+    const f = fixture({ summary: true });
+    const run = f.render(false);
+    let commits = 0;
+    run(() => { commits++; f.layout(true); f.render(true); });
+    const exitAnimations = f.supports.map(element => element.active);
+    if (reason === 'unmount') f.stop();
+    else if (reason === 'hidden') { f.document.hidden = true; f.document.emit('visibilitychange'); }
+    else if (reason === 'reduced') { f.media.matches = true; f.media.emit('change'); }
+    else f.window.emit(reason);
+    await flush();
+    assert.ok(exitAnimations.every(animation => animation.cancelled));
+    assert.equal(commits, 0);
+    assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+    assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), null);
+    assert.equal(f.main.getAttribute('data-pb-resize'), null);
+    // Even a late resolved completion must not replay a discarded intent.
+    exitAnimations.forEach(animation => animation.finish()); await flush();
+    assert.equal(commits, 0);
+    if (reason !== 'unmount') f.stop();
+    assert.equal(f.window.listenerCount + f.document.listenerCount + f.media.listenerCount, 0);
+  });
+}
+
+test('same-column summaries avoid staging and commit immediately', () => {
+  const f = fixture({ summary: true, reflow: false });
+  const run = f.render(false);
+  let commits = 0;
+  run(() => { commits++; f.layout(true); f.render(true); });
+  assert.equal(commits, 1);
+  assert.ok(f.supports.every(element => !element.animations.length));
+  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+  f.stop();
+});
+
+for (const mode of [{ wide: false }, { reduced: true }]) {
+  test(`a potentially reflowing summary still skips staging for ${JSON.stringify(mode)}`, () => {
+    const f = fixture({ summary: true, ...mode });
+    const run = f.render(false);
+    let commits = 0;
+    run(() => { commits++; f.layout(true); f.render(true); });
+    assert.equal(commits, 1);
+    assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+    assert.ok(f.supports.every(element => !element.animations.length));
+    assert.ok(f.surfaces.every(element => !element.animations.length));
+    f.stop();
+  });
+}

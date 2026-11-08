@@ -199,19 +199,21 @@
 .pebble-root .pb-rep-rail, .pebble-root .pb-rep-motion-toggle { display: none; }
 @container content (min-width: 1040px) {
   .pebble-root .pb-rep-grid {
-    --pb-rep-side-w: 2.75rem;
+    --pb-rep-side-w: var(--pb-rep-collapsed-w);
+    --pb-rep-expanded-w: 20.5rem;
+    --pb-rep-collapsed-w: 2.75rem;
     --pb-rep-layout-ease: cubic-bezier(.4,0,.2,1);
     display: grid; grid-template-columns: minmax(0, 1fr) var(--pb-rep-side-w); align-items: start; gap: 0 1.25rem;
   }
-  .pebble-root .pb-rep-grid.has-inspector { --pb-rep-side-w: 20.5rem; }
+  .pebble-root .pb-rep-grid.has-inspector { --pb-rep-side-w: var(--pb-rep-expanded-w); }
   .pebble-root .pb-rep-grid[data-pb-inspector-motion] { overflow-anchor: none; }
   .pebble-root .pb-rep-grid[data-pb-inspector-motion] .pb-rep-filters { transition: none; }
-  .pebble-root .pb-rep-grid[data-pb-inspector-motion] .pb-rep-motion-toggle {
+  .pebble-root .pb-rep-grid:is([data-pb-inspector-motion], [data-pb-summary-exit]) .pb-rep-motion-toggle {
     display: block; position: absolute; inset: 0; z-index: 2;
     width: 100%; height: 100%; padding: 0; border: 0; border-radius: inherit;
     background: transparent; cursor: pointer; pointer-events: auto;
   }
-  .pebble-root .pb-rep-grid[data-pb-inspector-motion] .pb-rep-filters { pointer-events: auto; }
+  .pebble-root .pb-rep-grid:is([data-pb-inspector-motion], [data-pb-summary-exit]) .pb-rep-filters { pointer-events: auto; }
   .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="false"] .collapsible-rows { transition: none; }
   .pebble-root .pb-rep-grid[data-pb-inspector-motion] .pb-rep-main .card {
     transform-origin: top left; will-change: transform;
@@ -229,12 +231,12 @@
     --pb-rep-floating: 1;
     --pb-card-glow-local: 1;
     position: absolute; top: 0; right: 0; box-sizing: border-box;
-    width: 2.75rem; height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
+    width: var(--pb-rep-collapsed-w); height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
     overflow: visible; pointer-events: none;
     transition: width 360ms var(--pb-rep-layout-ease) 60ms, height 360ms var(--pb-rep-layout-ease) 60ms;
   }
   .pebble-root .has-inspector .pb-rep-filters {
-    width: 20.5rem; height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
+    width: var(--pb-rep-expanded-w); height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
     pointer-events: auto; transition-delay: 0ms;
   }
   .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="true"] {
@@ -242,7 +244,7 @@
     height: auto; transition-property: width;
   }
   .pebble-root .pb-rep-filter-content {
-    position: absolute; top: 0; right: 0; width: calc(20.5rem - 2px); box-sizing: border-box;
+    position: absolute; top: 0; right: 0; width: calc(var(--pb-rep-expanded-w) - 2px); box-sizing: border-box;
     padding: 1.1rem 1.15rem; max-height: max(0px, calc(min(var(--pb-rep-inspector-room), var(--pb-rep-filter-available, 100dvh)) - 2px));
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity 60ms ease-out, visibility 0s linear 60ms;
@@ -272,7 +274,7 @@
   .pebble-root .pb-rep-rail {
     position: absolute; right: 0; top: 0; z-index: 1;
     display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
-    box-sizing: border-box; width: 2.75rem; height: var(--pb-rep-rail-h); padding: 0.75rem 0;
+    box-sizing: border-box; width: var(--pb-rep-collapsed-w); height: var(--pb-rep-rail-h); padding: 0.75rem 0;
     border: 1px solid transparent; border-radius: 1.15rem; background: transparent; box-shadow: none;
     color: var(--ink); font: inherit; cursor: pointer; pointer-events: auto;
     opacity: 1; visibility: visible;
@@ -338,9 +340,10 @@
 /* ---------- Summary (hero) ---------- */
 .pebble-root .pb-rep-hero {
   container: pb-rep-hero / inline-size;
+  --pb-rep-hero-column-min: 26rem;
   /* The available card width decides this, including the space occupied by
      the inspector. Each half needs room for its own monetary figures. */
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: 1.25rem 2rem;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--pb-rep-hero-column-min)), 1fr)); gap: 1.25rem 2rem;
   padding: 1.4rem 1.5rem;
   /* A faint pine and gold wash on the card - a calm cousin of the Dashboard
      hero, not a second full-colour block. Tokens only, so it fades with the
@@ -761,3 +764,8 @@
   .pebble-root .pb-rep-filter-content,
   .pebble-root .pb-rep-rail { transition: none !important; }
 }
+
+/* The primary amount stays legible while supporting panels change arrangement. */
+.pebble-root .pb-rep-eyebrow { width: fit-content; max-width: 100%; }
+.pebble-root .pb-rep-figure-label { align-self: flex-start; }
+.pebble-root .pb-rep-grid[data-pb-inspector-motion] :is(.pb-rep-eyebrow, .pb-rep-figure-label, .pb-rep-figure) { transform-origin: top left; }
