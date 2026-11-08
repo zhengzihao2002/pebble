@@ -32,8 +32,8 @@ export function summaryWillReflow(summary: SummaryCapture, grid: HTMLElement) {
 }
 
 export function fadeSummaryOut(summary: SummaryCapture) {
-  return summary.support.map(({ element, opacity }) => element.animate(
-    [{ opacity }, { opacity: 0 }], { duration: 70, easing: 'ease-out', fill: 'both' },
+  return summary.support.map(({ element, opacity }, index) => element.animate(
+    [{ opacity }, { opacity: 0 }], { duration: 110, delay: index * 15, easing: 'ease-in-out', fill: 'both' },
   ));
 }
 

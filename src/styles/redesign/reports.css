@@ -193,9 +193,8 @@
   display: inline-flex; align-items: center; justify-content: center;
 }
 @media (pointer: coarse) { .pebble-root .pb-rep-find-clear { width: 44px; height: 44px; right: 0; } }
-/* Desktop reserves a real inspector column. Commit the final grid once;
-   live-card transforms synchronize report movement with the unfolding shell.
-   This avoids a chart redraw/container-query reflow on every animation frame. */
+/* Desktop reserves a real inspector column. One native grid track moves
+   report cards and the unfolding shell together without scaling typography. */
 .pebble-root .pb-rep-rail, .pebble-root .pb-rep-motion-toggle { display: none; }
 @container content (min-width: 1040px) {
   .pebble-root .pb-rep-grid {

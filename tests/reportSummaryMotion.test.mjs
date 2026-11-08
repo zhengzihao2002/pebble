@@ -94,3 +94,18 @@ test('column-change prediction respects the real card padding, borders, gap and 
     f.grid.open = false;
   }
 });
+
+
+test('arrangement changes leave smoothly in reading order before geometry starts', () => {
+  const f = fixture(), capture = f.captureSummary(f.page);
+  const animations = f.fadeSummaryOut(capture);
+  animations.forEach((animation, index) => {
+    assert.equal(animation.options.duration, 110);
+    assert.equal(animation.options.delay, index * 15);
+    assert.equal(animation.options.easing, 'ease-in-out');
+    assert.equal(animation.frames[0].opacity, 1);
+    assert.equal(animation.frames.at(-1).opacity, 0);
+    assert.equal(animation.options.fill, 'both');
+  });
+  assert.ok(f.anchors.every(element => !element.animations.length), 'The headline stays visible');
+});

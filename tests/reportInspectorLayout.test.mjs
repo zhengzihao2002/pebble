@@ -109,7 +109,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
       opacity: element.active?.visualOpacity ?? (element.active ? element.active.frames[element.active.finishedFlag ? element.active.frames.length - 1 : 0].opacity : 1),
     })) } : null,
     summaryWillReflow: () => reflow,
-    fadeSummaryOut: captured => captured.support.map(({ element, opacity }) => element.animate([{ opacity }, { opacity: 0 }], { duration: 70, fill: 'both' })),
+    fadeSummaryOut: captured => captured.support.map(({ element, opacity }, index) => element.animate([{ opacity }, { opacity: 0 }], { duration: 110, delay: index * 15, fill: 'both' })),
     animateSummary: () => summaryMasks ? supports.map(element => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 360, fill: 'both' })) : [], // Geometry math is covered separately.
   };
   const compiled = { exports: {} };
@@ -134,7 +134,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
   return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, contentSurfaces: [...supports, rail, inspectorContent], layout, media, window, document, render, trace, settled, stop };
 }
 
-test('hero and each period card move together, without separately animating nested tiles', async () => {
+test('native grid moves cards together without redundant heights or nested tile animations', async () => {
   const f = fixture();
   const run = f.render(false);
   assert.ok(f.cards.every(card => card.animations.length === 0), 'Mounting does not animate a saved layout');
@@ -146,7 +146,7 @@ test('hero and each period card move together, without separately animating nest
   });
   assert.ok(f.trace.lastIndexOf('animate:inspector') < f.trace.lastIndexOf('flush:end'), 'The new geometry and every motion are committed atomically');
   assert.ok(f.trace.lastIndexOf('read:second period') < f.trace.indexOf('animate:hero'), 'Batch final geometry reads before any animation writes');
-  for (const card of f.cards) {
+  for (const card of [f.hero]) {
     assert.equal(card.animations.length, 1);
     assert.equal(card.active.options.duration, 360);
     assert.equal(card.active.options.delay, 0);
@@ -156,9 +156,9 @@ test('hero and each period card move together, without separately animating nest
   assert.equal(f.grid.active.frames[0].gridTemplateColumns, '900px 44px');
   assert.equal(f.grid.active.frames.at(-1).gridTemplateColumns, '600px 328px');
   assert.equal(f.hero.active.frames[0].height, '300px');
-  assert.ok(f.cards.every(card => !('transform' in card.active.frames[0])), 'Text is never scaled');
-  assert.equal(f.firstPeriod.active.frames[0].height, '100px');
-  assert.equal(f.secondPeriod.active.frames[0].height, '140px');
+  assert.ok(f.cards.every(card => card.animations.every(a => !('transform' in a.frames[0]))), 'Text is never scaled');
+  assert.equal(f.firstPeriod.animations.length, 0, 'Unchanged height follows native grid flow without animation');
+  assert.equal(f.secondPeriod.animations.length, 0, 'Unchanged period heights need no animation');
   assert.equal(f.nested.animations.length, 0, 'A tile already follows its containing hero');
   assert.equal(f.inspector.active.id, 'pb-report-inspector-surface');
   assert.equal(f.inspector.active.frames[0].height, '152px');
@@ -166,7 +166,7 @@ test('hero and each period card move together, without separately animating nest
   assert.equal(f.inspector.active.options.duration, f.hero.active.options.duration);
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
   assert.equal(f.inspector.active.startTime, 1234);
-  assert.ok(f.cards.every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
+  assert.ok(f.cards.filter(card => card.active).every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
   assert.equal(f.inspector.active.options.easing, f.hero.active.options.easing);
   for (const card of [...f.surfaces, ...f.contentSurfaces]) card.active?.finish();
   await flush();
@@ -183,8 +183,6 @@ test('closing and rapid reversals start from visible rectangles before old anima
   firstMotion.visualRect = rect(20, 100, 750, 400);
   f.grid.active.visualColumns = '750px 186px';
   f.inspector.active.visualRect = rect(1054, 100, 186, 342);
-  f.firstPeriod.active.visualRect = rect(20, 520, 750, 100);
-  f.secondPeriod.active.visualRect = rect(20, 640, 750, 140);
   f.trace.length = 0;
   run(() => { f.layout(false); f.render(false); });
   assert.ok(f.trace.indexOf('read:hero') < f.trace.indexOf('cancel:hero'));
@@ -192,14 +190,14 @@ test('closing and rapid reversals start from visible rectangles before old anima
   assert.equal(firstMotion.cancelled, true);
   assert.equal(f.grid.active.frames[0].gridTemplateColumns, '750px 186px', 'A reversal begins from the currently displayed columns');
   assert.equal(f.hero.active.frames[0].height, '400px');
-  assert.equal(f.firstPeriod.active.frames[0].height, '100px');
+  assert.equal(f.firstPeriod.animations.length, 0, 'Unchanged height follows native grid flow without animation');
   assert.equal(f.hero.active.options.delay, 0, 'An interrupted motion reverses immediately without a closing pause');
   assert.equal(f.hero.active.options.duration, 360);
   assert.equal(f.inspector.active.frames[0].height, '342px');
 
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
   assert.equal(f.inspector.active.startTime, 1234);
-  assert.ok(f.cards.every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
+  assert.ok(f.cards.filter(card => card.active).every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
   const latest = f.hero.active;
   await flush();
   assert.equal(f.hero.active, latest, 'Rejected promises from old motion cannot cancel the replacement');
@@ -225,7 +223,7 @@ for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
   test(`${reason} settles active motion and removes its transient state`, async () => {
     const f = fixture();
     const run = f.render(false); run(() => { f.layout(true); f.render(true); });
-    const animations = f.surfaces.map(card => card.active);
+    const animations = f.surfaces.map(card => card.active).filter(Boolean);
     if (reason === 'unmount') f.stop();
     else if (reason === 'hidden') { f.document.hidden = true; f.document.emit('visibilitychange'); }
     else if (reason === 'reduced') { f.media.matches = true; f.media.emit('change'); }
@@ -271,7 +269,7 @@ test('a column switch waits for the old supporting content to fade before commit
   assert.equal(f.main.getAttribute('data-pb-resize'), null, 'Card geometry remains intrinsic during the brief content exit');
   assert.ok(f.surfaces.every(card => card.animations.length === 0));
   const exitAnimations = f.contentSurfaces.map(element => element.active).filter(Boolean);
-  assert.ok(exitAnimations.every(animation => animation.options.duration === 70 && animation.frames.at(-1).opacity === 0));
+  assert.ok(exitAnimations.every(animation => animation.options.duration === 110 && animation.frames.at(-1).opacity === 0));
   // One finished region is insufficient: the chart must also finish its exit.
   exitAnimations[0].finish(); await flush();
   assert.equal(commits, 0);
@@ -280,7 +278,8 @@ test('a column switch waits for the old supporting content to fade before commit
   assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
   assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), '');
   assert.ok(exitAnimations.every(animation => animation.cancelled), 'Owned exit layers are removed during the atomic layout handoff');
-  assert.ok(f.cards.every(card => card.active?.id === 'pb-report-card-height'));
+  assert.equal(f.hero.active?.id, 'pb-report-card-height');
+  assert.ok([f.firstPeriod, f.secondPeriod].every(card => !card.active));
   f.stop(); await flush();
 });
 
@@ -378,7 +377,7 @@ for (const mode of [{ wide: false }, { reduced: true }]) {
 }
 
 
-test('summary reveal and inspector readiness start together after every geometry animation finishes', async () => {
+test('details stagger in reading order after geometry settles, with filters joining the first group', async () => {
   const f = fixture({ summary: true, summaryMasks: true });
   const run = f.render(false);
   run(() => { f.layout(true); f.render(true); });
@@ -390,16 +389,39 @@ test('summary reveal and inspector readiness start together after every geometry
   assert.equal(readyCount(), before, 'Wait for the filter geometry as well as the cards');
   f.inspector.active.finish(); await flush();
   assert.equal(readyCount(), before + 1, 'Release filter content in the same handoff as summary reveal');
-  for (const element of f.supports) {
-    assert.equal(element.active.options.duration, 80);
-    assert.equal(element.active.options.delay ?? 0, 0, 'No stagger between chart and figures');
+  for (const [index, element] of f.supports.entries()) {
+    assert.equal(element.active.options.duration, 200);
+    assert.equal(element.active.options.delay, index * 35, 'Supporting groups return in reading order');
     assert.equal(element.active.frames[0].opacity, 0);
     assert.equal(element.active.frames.at(-1).opacity, 1);
     element.active.finish();
   }
   const filterContent = f.inspector.querySelector('.pb-rep-filter-content');
-  assert.equal(filterContent.active.options.duration, 80);
+  assert.equal(filterContent.active.options.duration, 200);
   assert.equal(filterContent.active.startTime, f.supports[0].active.startTime);
+  assert.equal(filterContent.active.options.delay, 0, 'Filters join the first supporting region');
   filterContent.active.finish();
   await flush(); f.stop();
+});
+
+test('reversing during the stagger cancels old reveals without stranding hidden content', async () => {
+  const f = fixture({ summary: true, summaryMasks: true });
+  let run = f.render(false);
+  run(() => { f.layout(true); run = f.render(true); });
+  f.contentSurfaces.forEach(element => element.active?.finish()); await flush();
+  [...f.surfaces, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
+  const oldReveals = f.contentSurfaces.map(element => element.active).filter(Boolean);
+  f.supports.forEach(element => { element.active.visualOpacity = .45; });
+  run(() => { f.layout(false); run = f.render(false); });
+  const replacement = f.grid.active;
+  await flush();
+  assert.ok(oldReveals.every(animation => animation.cancelled), 'The previous stagger has one owner and is fully released');
+  assert.equal(f.grid.active, replacement, 'Late completion of the old reveal cannot settle its replacement');
+  assert.equal(f.hero.active.options.delay, 0, 'A reversal follows the current geometry immediately');
+  [...f.surfaces, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
+  f.contentSurfaces.forEach(element => element.active?.finish()); await flush();
+  assert.equal(f.grid.getAttribute('data-pb-content-reveal'), null);
+  assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), null);
+  assert.ok(f.supports.every(element => !element.active), 'Every supporting region returns to native visible content');
+  f.stop();
 });

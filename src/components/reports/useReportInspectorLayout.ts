@@ -104,7 +104,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     columnMotion.id = 'pb-report-inspector-layout';
     motions.current = [columnMotion];
     for (const { card, before, after } of final) {
-      if (!after.height) continue;
+      if (!after.height || Math.abs(after.height - before.height) < 1) continue;
       const animation = card.animate([{ height: `${before.height}px` }, { height: `${after.height}px` }],
         { duration: DURATION, delay, easing, fill: 'both' });
       animation.id = 'pb-report-card-height'; motions.current.push(animation);
@@ -127,13 +127,14 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
       if (generation.current !== current) return;
       if (!summaryMotions.length || !capture.summary) { settle(); return; }
-      // Release visibility, then animate every region on the same 80ms
-      // timeline. Suppress the inspector's independent CSS fade for this phase.
+      // The geometry is settled before details return in reading order. The
+      // inspector joins the first region on this clock, without a second CSS fade.
       grid.setAttribute('data-pb-content-reveal', '');
       const filterReveal = grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content' : '.pb-rep-rail');
       const elements = [...capture.summary.support.map(item => item.element), ...(filterReveal ? [filterReveal] : [])];
-      const reveal = elements.map(element => element.animate(
-        [{ opacity: 0 }, { opacity: 1 }], { duration: 80, easing: 'ease-out', fill: 'both' },
+      const reveal = elements.map((element, index) => element.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
+        { duration: 200, delay: element === filterReveal ? 0 : index * 35, easing: 'ease-in-out', fill: 'both' },
       ));
       motions.current.push(...reveal);
       const release = restore.current; restore.current = null; flushSync(() => release?.());
@@ -206,7 +207,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       const filterContent = grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content' : '.pb-rep-rail');
       if (filterContent) motions.current.push(filterContent.animate(
         [{ opacity: Number(getComputedStyle(filterContent).opacity) }, { opacity: 0 }],
-        { duration: 70, easing: 'ease-out', fill: 'both' },
+        { duration: 110, easing: 'ease-in-out', fill: 'both' },
       ));
       startTogether(motions.current);
       void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {

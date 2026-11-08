@@ -118,7 +118,8 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
       </div>
       <div className="pb-rep-chart pb-chart-fade" role="img" aria-label={label}>
         <div style={{ position: 'absolute', inset: 0 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          {/* Bound SVG redraws while the inspector resizes the native grid. */}
+          <ResponsiveContainer width="100%" height="100%" debounce={32}>
             <ComposedChart data={data} margin={{ top: 16, right: 14, left: 0, bottom: 0 }} barCategoryGap={granularity === 'day' ? '18%' : '26%'} stackOffset="sign">
               <CartesianGrid stroke="var(--line)" vertical={false} />
               <XAxis dataKey="key" tickFormatter={(k) => data.find((p) => p.key === k)?.label ?? ''} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={10} />
