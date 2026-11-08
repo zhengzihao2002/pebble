@@ -40,5 +40,5 @@ export function useBottomNavPanels(add: RefObject<HTMLDivElement | null>, more: 
     return () => { cancelled = true; };
   }, [panels.closing, add, more]);
 
-  return { open: panels.shown === 'more', addOpen: panels.shown === 'add', engaged: panels.shown !== null || panels.closing !== null, toggle, close };
+  return { dimmed: panels.shown !== null || panels.next !== null, open: panels.shown === 'more', addOpen: panels.shown === 'add', engaged: panels.shown !== null || panels.closing !== null, toggle, close };
 }

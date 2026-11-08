@@ -52,7 +52,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
     : t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) });
   const addPanelRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
-  const { open, addOpen, engaged, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
+  const { open, addOpen, engaged, dimmed, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
   const { ref: navRef, indicatorRef } = useNavGlass<HTMLElement>(`${pathname}:${open}`, true);
   useRememberedBottomNav(navRef, pathname, engaged);
 
@@ -103,7 +103,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
     const active = isNavItemActive(pathname, item.href) && !open;
     return (
       <Link
-        key={item.href} href={item.href} prefetch={false}
+        key={item.href} href={item.href} prefetch={false} onNavigate={close}
         className={`bottom-nav-btn ${active ? 'active' : ''}`}
         aria-current={isNavItemActive(pathname, item.href) ? 'page' : undefined}
         data-pb-nav-link data-pb-nav-selected={active || undefined}
@@ -126,9 +126,9 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
         style={{
           position: 'fixed', inset: 0, zIndex: 19,
           backgroundColor: 'rgba(15,20,18,0.4)',
-          opacity: engaged ? 1 : 0,
+          opacity: dimmed ? 1 : 0,
           pointerEvents: engaged ? 'auto' : 'none',
-          transition: 'opacity 0.28s ease',
+          transition: dimmed ? 'opacity 200ms ease-out' : 'opacity 140ms ease-out',
         }}
       />
 
@@ -209,7 +209,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
                     const here = isNavItemActive(pathname, item.href);
                     return (
                       <Link
-                        key={item.href} href={item.href} prefetch={false}
+                        key={item.href} href={item.href} prefetch={false} onNavigate={close}
                         className={`pb-shell-tile pb-shell-tile-row${here ? ' pb-shell-tile-here' : ''}`}
                         aria-current={here ? 'page' : undefined}
                         // Not keyboard-reachable while collapsed: the element
