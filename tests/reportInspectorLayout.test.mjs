@@ -103,12 +103,16 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
       }
     },
   };
-  const settled = [];
+  const settled = [], chartHolds = [];
   const summaryApi = {
     captureSummary: () => summary ? { hero, columns: true, anchors: [], support: supports.map(element => ({ element,
       opacity: element.active?.visualOpacity ?? (element.active ? element.active.frames[element.active.finishedFlag ? element.active.frames.length - 1 : 0].opacity : 1),
     })) } : null,
     summaryWillReflow: () => reflow,
+    holdSummaryChart: () => {
+      const hold = { released: false }; chartHolds.push(hold);
+      return () => { hold.released = true; };
+    },
     fadeSummaryOut: captured => captured.support.map(({ element, opacity }, index) => element.animate([{ opacity }, { opacity: 0 }], { duration: 110, delay: index * 15, fill: 'both' })),
     animateSummary: () => summaryMasks ? supports.map(element => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 360, fill: 'both' })) : [], // Geometry math is covered separately.
   };
@@ -131,7 +135,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
     return run;
   };
   const stop = () => { for (const effect of effects) effect.cleanup?.(); };
-  return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, contentSurfaces: [...supports, rail, inspectorContent], layout, media, window, document, render, trace, settled, stop };
+  return { chartHolds, page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, contentSurfaces: [...supports, rail, inspectorContent], layout, media, window, document, render, trace, settled, stop };
 }
 
 test('native grid moves cards together without redundant heights or nested tile animations', async () => {
@@ -359,6 +363,7 @@ test('same-column summaries keep their contents visible and commit immediately',
   run(() => { commits++; f.layout(true); f.render(true); });
   assert.equal(commits, 1);
   assert.ok(f.supports.every(element => !element.animations.length));
+  assert.equal(f.chartHolds.length, 0, 'Visible width-only changes keep the chart responsive');
   f.stop();
 });
 
@@ -387,8 +392,10 @@ test('details stagger in reading order after geometry settles, with filters join
   const before = readyCount();
   [f.grid, ...f.cards, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
   assert.equal(readyCount(), before, 'Wait for the filter geometry as well as the cards');
+  assert.equal(f.chartHolds.at(-1).released, false, 'The masked chart does not redraw during geometry');
   f.inspector.active.finish(); await flush();
   assert.equal(readyCount(), before + 1, 'Release filter content in the same handoff as summary reveal');
+  assert.equal(f.chartHolds.at(-1).released, true, 'Restore responsive SVG sizing before content returns');
   for (const [index, element] of f.supports.entries()) {
     assert.equal(element.active.options.duration, 200);
     assert.equal(element.active.options.delay, index * 35, 'Supporting groups return in reading order');
@@ -425,3 +432,21 @@ test('reversing during the stagger cancels old reveals without stranding hidden 
   assert.ok(f.supports.every(element => !element.active), 'Every supporting region returns to native visible content');
   f.stop();
 });
+
+
+for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
+  test(`${reason} releases a held chart during an arrangement change`, async () => {
+    const f = fixture({ summary: true, summaryMasks: true });
+    const run = f.render(false);
+    run(() => { f.layout(true); f.render(true); });
+    f.contentSurfaces.forEach(element => element.active?.finish()); await flush();
+    assert.equal(f.chartHolds.at(-1).released, false);
+    if (reason === 'unmount') f.stop();
+    else if (reason === 'hidden') { f.document.hidden = true; f.document.emit('visibilitychange'); }
+    else if (reason === 'reduced') { f.media.matches = true; f.media.emit('change'); }
+    else f.window.emit(reason);
+    await flush();
+    assert.ok(f.chartHolds.every(hold => hold.released), 'No stale fixed SVG width survives settlement');
+    if (reason !== 'unmount') f.stop();
+  });
+}

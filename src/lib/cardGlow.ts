@@ -40,8 +40,14 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   // rerasterizes SVG Gaussian filters on the first interaction.
   layer.dataset.pbGlowReady = 'true';
   const glows = new Map<HTMLElement, Glow>();
-  let nextId = 0, frame = 0, disposed = false;
-  const resize = new ResizeObserver(() => paint());
+  let nextId = 0, frame = 0, disposed = false, targetsDirty = true;
+  let rootWidth = root.clientWidth;
+  const resize = new ResizeObserver(() => {
+    // Height changes move existing halos; only a new width can change the
+    // container breakpoint that chooses local versus shared Reports glows.
+    if (root.clientWidth !== rootWidth) { rootWidth = root.clientWidth; targetsDirty = true; }
+    paint();
+  });
 
   const eligible = (target: HTMLElement) => {
     if (target.closest(EXCLUDED) || target.parentElement?.closest(CARDS)
@@ -107,8 +113,9 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   function paint() {
     cancelAnimationFrame(frame); frame = 0;
     if (disposed || document.hidden) return;
-    sync();
-    const origin = root!.getBoundingClientRect();
+    if (targetsDirty) { targetsDirty = false; sync(); }
+    if (!glows.size) return;
+    const origin = anchors ? null : root!.getBoundingClientRect();
     const styles = new Map<HTMLElement, CSSStyleDeclaration>();
     const moving = new Map<HTMLElement, boolean>();
     let active = false;
@@ -136,8 +143,8 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
       glow.frame.style.setProperty('--pb-card-opacity', String(opacity));
       glow.frame.style.display = width && height && opacity ? '' : 'none';
       if (!anchors) {
-        glow.frame.style.left = `${rect.left - origin.left + root!.scrollLeft}px`;
-        glow.frame.style.top = `${rect.top - origin.top + root!.scrollTop}px`;
+        glow.frame.style.left = `${rect.left - origin!.left + root!.scrollLeft}px`;
+        glow.frame.style.top = `${rect.top - origin!.top + root!.scrollTop}px`;
         glow.frame.style.width = `${width}px`; glow.frame.style.height = `${height}px`;
       }
       const geometry = `${width}|${height}|${radii.join('|')}`;
@@ -155,21 +162,32 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   }
   function queue() { if (!disposed && !document.hidden && !frame) frame = requestAnimationFrame(paint); }
   const mutation = new MutationObserver(records => {
-    if (records.some(record => {
+    let changed = false;
+    for (const record of records) {
       const element = record.target instanceof Element ? record.target : record.target.parentElement;
-      return element && !element.closest(IGNORED);
-    })) queue();
+      if (!element || element.closest(IGNORED)) continue;
+      // Chart SVG updates cannot add/remove HTML cards. Do not scan every
+      // card or read its computed style again for each resize-driven redraw.
+      const hasCards = (node: Node) => node instanceof HTMLElement && (node.matches(CARDS) || !!node.querySelector(CARDS));
+      if (record.type === 'attributes' ? glows.has(element as HTMLElement) || hasCards(element)
+        : [...record.addedNodes, ...record.removedNodes].some(hasCards)) targetsDirty = true;
+      // Native anchors already follow layout positions; target resizes have
+      // their own observer. Internal SVG updates need no extra layout read.
+      changed ||= !anchors || targetsDirty;
+    }
+    if (changed) queue();
   });
   mutation.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-busy'] });
   const visibility = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else queue(); };
   for (const event of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) root.addEventListener(event, queue, true);
-  window.addEventListener('resize', queue, { passive: true });
+  const onResize = () => { targetsDirty = true; queue(); };
+  window.addEventListener('resize', onResize, { passive: true });
   document.addEventListener('visibilitychange', visibility);
   resize.observe(root); paint();
   return () => {
     disposed = true; delete layer.dataset.pbGlowReady; cancelAnimationFrame(frame); mutation.disconnect(); resize.disconnect();
     for (const glow of [...glows.values()]) remove(glow);
     for (const event of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) root.removeEventListener(event, queue, true);
-    window.removeEventListener('resize', queue); document.removeEventListener('visibilitychange', visibility);
+    window.removeEventListener('resize', onResize); document.removeEventListener('visibilitychange', visibility);
   };
 }

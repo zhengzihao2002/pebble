@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { settleCardResizes } from '@/lib/cardResize';
-import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
+import { animateSummary, captureSummary, fadeSummaryOut, holdSummaryChart, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
 
 const DURATION = 360;
 const CLOSE_DELAY = 60;
@@ -95,6 +95,11 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     if (capture.summary) {
       const hero = final.find(item => item.card === capture.summary!.hero);
       if (hero) summaryMotions.push(...animateSummary(capture.summary, hero.before, hero.after, DURATION, delay));
+    }
+    if (summaryMotions.length && capture.summary) {
+      const releaseChart = holdSummaryChart(capture.summary);
+      const releaseLayout = restore.current;
+      restore.current = () => { releaseChart(); releaseLayout?.(); };
     }
     // Every surface follows this one physical grid track. Text is never scaled.
     const columnMotion = grid.animate([

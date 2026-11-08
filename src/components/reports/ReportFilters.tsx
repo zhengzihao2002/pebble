@@ -227,9 +227,11 @@ export function ReportFilters({
     const reveal = () => { if (expanded && !card.closest('[data-pb-inspector-motion]') && fits()) setInspectorReady(true); };
     const reconcile = () => {
       window.clearTimeout(timer);
+      // The shared motion owns geometry and emits settled even on reversal.
+      // Avoid forcing style/layout while its native grid is being committed.
+      if (card.closest('[data-pb-inspector-motion]')) { setInspectorReady(false); return; }
       const floating = getComputedStyle(card).getPropertyValue('--pb-rep-floating').trim() === '1';
-      const managed = !!card.closest('[data-pb-inspector-motion]');
-      setInspectorReady(expanded && floating && (reduced.matches || (!managed && fits())));
+      setInspectorReady(expanded && floating && (reduced.matches || fits()));
       // No transition runs for a saved-open panel or a breakpoint change.
       // The final-size check also prevents premature reveals after reversals.
       if (expanded && floating) timer = window.setTimeout(reveal, 380);
@@ -256,14 +258,23 @@ export function ReportFilters({
     if (!card || !root) return;
     let frame = 0;
     const measure = () => {
-      frame = 0;
+      cancelAnimationFrame(frame); frame = 0;
+      // The owner already measured the final shell. Re-reading this on every
+      // animated page-height change forces layout again before the next paint.
+      // A settled event refreshes viewport/scroll limits after interruptions too.
+      if (card.closest('[data-pb-inspector-motion]')) return;
       const bottomNav = root.querySelector('.pebble-bottom-nav')?.getBoundingClientRect().height ?? 0;
       const room = Math.max(0, window.innerHeight - bottomNav - card.getBoundingClientRect().top);
       // Before sticking, the card also sits below the main padding/chips.
       // Keep a little air below it unless the window is exceptionally short.
       const gap = Math.min(16, Math.max(0, room - 48));
-      card.style.setProperty('--pb-rep-filter-available', `${Math.max(0, room - gap)}px`);
-      if (contentRef.current) card.style.setProperty('--pb-rep-filter-height', `${Math.ceil(parseFloat(getComputedStyle(contentRef.current).height) || contentRef.current.offsetHeight) + 2}px`);
+      const available = `${Math.max(0, room - gap)}px`;
+      const content = contentRef.current;
+      const height = content ? `${Math.ceil(parseFloat(getComputedStyle(content).height) || content.offsetHeight) + 2}px` : null;
+      // Batch layout reads before writes, and do not invalidate style or wake
+      // global mutation observers when the viewport limits did not change.
+      if (card.style.getPropertyValue('--pb-rep-filter-available') !== available) card.style.setProperty('--pb-rep-filter-available', available);
+      if (height !== null && card.style.getPropertyValue('--pb-rep-filter-height') !== height) card.style.setProperty('--pb-rep-filter-height', height);
     };
     const queue = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const observer = new ResizeObserver(entries => {
@@ -282,12 +293,14 @@ export function ReportFilters({
       const element = root.querySelector(selector);
       if (element) observer.observe(element);
     }
+    card.addEventListener('pb-report-inspector-settled', measure);
     root.addEventListener('scroll', queue, { passive: true });
     window.addEventListener('resize', queue);
     measure();
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame);
+      card.removeEventListener('pb-report-inspector-settled', measure);
       root.removeEventListener('scroll', queue);
       window.removeEventListener('resize', queue);
     };

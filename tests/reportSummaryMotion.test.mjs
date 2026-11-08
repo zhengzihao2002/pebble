@@ -109,3 +109,28 @@ test('arrangement changes leave smoothly in reading order before geometry starts
   });
   assert.ok(f.anchors.every(element => !element.animations.length), 'The headline stays visible');
 });
+
+test('a masked chart holds its final native viewport width and restores the original inline style', () => {
+  const f = fixture();
+  const plot = { style: { width: '' }, getBoundingClientRect: () => ({ width: 482.375 }) };
+  const query = f.hero.querySelector.bind(f.hero);
+  f.hero.querySelector = selector => selector === '[data-pb-report-plot]' ? plot : query(selector);
+  const release = f.holdSummaryChart(f.captureSummary(f.page));
+  assert.equal(plot.style.width, '482.375px', 'Invisible SVG uses one exact destination width during native grid motion');
+  release();
+  assert.equal(plot.style.width, '', 'Responsive width is restored before the stagger reveals the chart');
+  plot.style.width = '90%';
+  const releaseExisting = f.holdSummaryChart(f.captureSummary(f.page));
+  releaseExisting();
+  assert.equal(plot.style.width, '90%', 'Do not discard a pre-existing inline width');
+});
+
+test('missing or unmeasurable chart viewports do not leave temporary dimensions', () => {
+  const f = fixture();
+  f.holdSummaryChart(f.captureSummary(f.page))();
+  const plot = { style: { width: '' }, getBoundingClientRect: () => ({ width: 0 }) };
+  const query = f.hero.querySelector.bind(f.hero);
+  f.hero.querySelector = selector => selector === '[data-pb-report-plot]' ? plot : query(selector);
+  f.holdSummaryChart(f.captureSummary(f.page))();
+  assert.equal(plot.style.width, '');
+});

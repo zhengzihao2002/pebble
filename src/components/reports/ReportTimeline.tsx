@@ -1,12 +1,20 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ComposedChart, Bar, Line, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ComposedChart, Bar, Line, Curve, type LineDrawShapeProps, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { formatCompactCurrency } from '@/lib/chartFormat';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Granularity, ReportBucket } from './reportBuckets';
+
+// This chart never draws the line in. A static Curve keeps the same path and
+// active dots without Recharts measuring SVG path length during every resize.
+function StaticNetLine({ points, type, layout, connectNulls, className, stroke, strokeWidth, strokeLinejoin, clipPath }: LineDrawShapeProps) {
+  return <Curve points={points} type={type} layout={layout} connectNulls={connectNulls}
+    className={className} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin={strokeLinejoin}
+    clipPath={clipPath} fill="none" />;
+}
 
 export type TimelineMode = 'expense' | 'income' | 'mixed';
 
@@ -117,7 +125,7 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
         <span className="pb-rep-avg"><i className="pb-rep-key is-dashed" /><span className="font-mono-tab">{avgText}</span></span>
       </div>
       <div className="pb-rep-chart pb-chart-fade" role="img" aria-label={label}>
-        <div style={{ position: 'absolute', inset: 0 }}>
+        <div data-pb-report-plot style={{ position: 'absolute', inset: 0 }}>
           {/* Bound SVG redraws while the inspector resizes the native grid. */}
           <ResponsiveContainer width="100%" height="100%" debounce={32}>
             <ComposedChart data={data} margin={{ top: 16, right: 14, left: 0, bottom: 0 }} barCategoryGap={granularity === 'day' ? '18%' : '26%'} stackOffset="sign">
@@ -136,7 +144,7 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
                 <Bar dataKey="ghost" stackId="one" fill="transparent" stroke="var(--ink-faint)" strokeOpacity={0.6} strokeDasharray="3 3" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
               )}
               {mode === 'mixed' && granularity !== 'day' && (
-                <Line dataKey="net" stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth={2} dot={false} activeDot={{ r: 3.5 }} strokeLinejoin="round" connectNulls={false} isAnimationActive={false} />
+                <Line dataKey="net" shape={StaticNetLine} stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth={2} dot={false} activeDot={{ r: 3.5 }} strokeLinejoin="round" connectNulls={false} isAnimationActive={false} />
               )}
               {avg > 0 && (
                 <ReferenceLine y={mode === 'mixed' ? -avg : avg} stroke="var(--ink-soft)" strokeDasharray="4 4" strokeOpacity={0.7} ifOverflow="extendDomain" />

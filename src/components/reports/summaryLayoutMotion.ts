@@ -51,3 +51,17 @@ export function animateSummary(summary: SummaryCapture, before: DOMRect, after: 
   }
   return animations;
 }
+
+
+/** The chart is already fully masked for an arrangement change. Lay its SVG
+ * out once at the destination width, rather than redraw invisible axes/bars
+ * on every grid frame. Release before the existing stagger reveals it. */
+export function holdSummaryChart(summary: SummaryCapture) {
+  const plot = summary.hero.querySelector<HTMLElement>('[data-pb-report-plot]');
+  if (!plot) return () => {};
+  const width = plot.getBoundingClientRect().width;
+  if (!width) return () => {};
+  const previous = plot.style.width;
+  plot.style.width = `${width}px`;
+  return () => { plot.style.width = previous; };
+}
