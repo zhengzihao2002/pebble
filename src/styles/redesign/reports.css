@@ -796,13 +796,4 @@
 .pebble-root .pb-rep-native-plot:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; border-radius: 4px; }
 
 .pebble-root .pb-rep-legend { position: relative; }
-.pebble-root .pb-rep-native-plot { container: pb-rep-plot / inline-size; }
-/* Keep every monthly label. Dense mobile axes angle text rather than skip it. */
-@container pb-rep-plot (max-width: 480px) {
-  .pebble-root .pb-rep-native-x.is-month { transform: translateX(-50%) rotate(-45deg); transform-origin: 50% 0; }
-}
-.pebble-root .pb-rep-chart { container: pb-report-axis / inline-size; }
-@container pb-report-axis (max-width: 540px) {
-  .pebble-root .pb-rep-native-chart:has(.pb-rep-native-x.is-month) { bottom: 42px; }
-}
 .pebble-root .pb-rep-hero-side { position: relative; }

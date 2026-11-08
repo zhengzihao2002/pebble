@@ -90,7 +90,7 @@ function ReportPlot({ data, avg, todayKey, mode, granularity, today }: {
           {mode !== 'expense' && bar(p.income, 'var(--income)')}
           {mode !== 'income' && bar(p.spending, 'var(--expense)')}
           {mode !== 'mixed' && p.future && bar(p.ghost, 'transparent', true)}
-          {(granularity === 'month' || labels.has(index)) && <span className={`pb-rep-native-x${granularity === 'month' ? ' is-month' : ''}`}>{p.label}</span>}
+          {labels.has(index) && <span className="pb-rep-native-x">{p.label}</span>}
           {p.key === todayKey && count > 1 && <i className="pb-rep-native-today"><span>{today}</span></i>}
         </div>;
       })}
