@@ -873,7 +873,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       const focusFind = () => {
         const input = document.querySelector<HTMLInputElement>('.pb-rep-find-input');
         input?.focus();
-        if (document.activeElement !== input && ++tries < 12) window.requestAnimationFrame(focusFind);
+        if (document.activeElement !== input && ++tries < 24) window.requestAnimationFrame(focusFind);
       };
       window.requestAnimationFrame(() => window.requestAnimationFrame(focusFind));
     } else if (k === 'e') {
@@ -932,12 +932,12 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     // flipped, which can take a few frames after the commit (even with reduced
     // motion, where the change is instant but still lands on a later frame),
     // so retry per frame until it takes focus.
-    const target = () => (opening ? pageRef.current?.querySelector<HTMLElement>('.pb-rep-filters > button') : rail);
+    const target = () => (opening ? pageRef.current?.querySelector<HTMLElement>('.pb-rep-filter-content > button') : rail);
     let tries = 0;
     const focusIt = () => {
       const el = target();
       el?.focus({ preventScroll: true });
-      if (el && document.activeElement !== el && ++tries < 12) window.requestAnimationFrame(focusIt);
+      if (el && document.activeElement !== el && ++tries < 24) window.requestAnimationFrame(focusIt);
     };
     window.requestAnimationFrame(focusIt);
   };
@@ -975,15 +975,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
       <ReportFilterChips chips={chips} onClearAll={clearAllFilters} summary={filterSummary} />
 
-      {/* The Filters card comes first in the DOM, so on a phone (and any
-          narrow column) it sits above the summary as it always did. On a wide
-          Mac the SAME grid and the SAME aside stay in place whether the card
-          is open or not: open, the right-hand track is the sticky inspector;
-          closed, the track narrows to a slim rail (the Filters button with
-          the active count) while the report widens into the freed space. One
-          track animates and nothing remounts or moves, so collapsing no
-          longer throws the card above the summary and stretches everything
-          in a single frame (owner-reported). */}
+      {/* Keep the desktop report's width fixed. The inspector unfolds over
+          its right edge from the same top-right anchor as the collapsed rail;
+          opening filters never reflows the summary, chart or transactions. */}
       <div className={`pb-rep-grid${filtersExpanded ? ' has-inspector' : ''}`}>
         <aside className="pb-rep-side-col">
           {/* Wide screens only (reports.css): the collapsed state of the card. */}

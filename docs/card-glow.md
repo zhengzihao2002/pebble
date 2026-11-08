@@ -12,7 +12,12 @@ outside card clipping containers, on the app's actual scrolling surface. Native
 CSS anchors follow cards where supported, including sticky surfaces. Older
 browsers use content-space positions for flow cards and omit sticky/fixed
 surfaces rather than chasing them with JavaScript. No root scroll listener,
-viewport paint canvas, CSS blur surface or colored outset box-shadow is used.
+viewport paint canvas or CSS blur surface is used for these scroll surfaces.
+The desktop Reports inspector is the exception: its single unfolding card
+uses native theme-colored shadow falloffs above report content, including in
+its collapsed state. This avoids cold SVG rerasterization during expansion.
+Its parent permits the full shadow tail, and the same saved preference and
+live-background dimming apply. Mobile keeps the shared scroll-surface glow.
 
 The rounded card interior is masked out, so the effect does not tint text or
 amounts through transparent card fills. Each filter has 88px of space beyond

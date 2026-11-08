@@ -19,3 +19,21 @@
 .pebble-root .pb-card-glow-frame > .pb-card-glow {
   display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none;
 }
+
+/* The floating Reports inspector has one native halo in both states. It sits
+   above report content, outside clipping ancestors, and avoids rerasterizing
+   an SVG blur for every new width/height during the first expansion. */
+@container content (min-width: 1040px) {
+  .pebble-root .pb-rep-filters {
+    --pb-rep-glow-color: color-mix(in srgb, var(--pine) 55%, var(--ink-soft));
+    --pb-rep-glow-strength: .9;
+  }
+  .pebble-root.dark .pb-rep-filters,
+  :where(html.pebble-dark) .pebble-root .pb-rep-filters { --pb-rep-glow-strength: 1; }
+  .pebble-root:has(> .pb-ambient-background) .pb-rep-filters { --pb-rep-glow-strength: .7; }
+  .pebble-root:has(> .pb-card-glows[data-pb-glow-ready]) .pb-rep-filters {
+    box-shadow: var(--shadow),
+      0 0 36px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 30%), transparent),
+      0 0 14px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 20%), transparent);
+  }
+}

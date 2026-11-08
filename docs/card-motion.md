@@ -9,9 +9,15 @@ moves with the card. There is no transform scaling or fixed final height.
 - The observer pauses for its own animation to avoid resize feedback.
 - Nested cards follow their containing card; dialogs keep their existing motion.
 - Sections with existing height transitions keep their own motion.
-- Reports filters opt out with `data-pb-resize="off"` and use 240ms local
-  grid transitions for section height and sidebar width. Their real controls
-  remain live, without a page snapshot or fixed-height clipping layer.
+- Reports filters opt out with `data-pb-resize="off"`. On desktop the report
+  keeps a fixed width while one glowing filter surface unfolds down and left
+  from its fixed top-right corner (180ms). Closing reverses that direction.
+  Fixed-width controls fade in after the surface fits and fade out before it
+  contracts. The collapsed rail uses that same card surface and glow.
+- Desktop filter controls retain their final scroll viewport while hidden,
+  avoiding temporary scrollbars during opening/closing. The actual overflow
+  remains scrollable in short windows. Local sections and the mobile outer
+  accordion use 200ms grid transitions. No page snapshot covers live controls.
 - Viewport changes, hidden pages and Reduced Motion settle immediately.
 - Layout caching waits for settled geometry. Pagehide settles synchronously
   before saving so an intermediate height cannot become a loading placeholder.

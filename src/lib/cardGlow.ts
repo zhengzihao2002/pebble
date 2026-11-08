@@ -36,12 +36,16 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   && CSS.supports('left: anchor(left)') && CSS.supports('width: anchor-size(width)')) {
   const root = layer.closest<HTMLElement>('.pebble-root');
   if (!root || typeof ResizeObserver === 'undefined') return () => {};
+  // Floating inspectors use a native local halo so resizing them never
+  // rerasterizes SVG Gaussian filters on the first interaction.
+  layer.dataset.pbGlowReady = 'true';
   const glows = new Map<HTMLElement, Glow>();
   let nextId = 0, frame = 0, disposed = false;
   const resize = new ResizeObserver(() => paint());
 
   const eligible = (target: HTMLElement) => {
-    if (target.closest(EXCLUDED) || target.parentElement?.closest(CARDS)) return false;
+    if (target.closest(EXCLUDED) || target.parentElement?.closest(CARDS)
+      || (target.matches('.pb-rep-filters') && getComputedStyle(target).getPropertyValue('--pb-card-glow-local').trim() === '1')) return false;
     if (!anchors) {
       // Older browsers still get native scrolling for flow cards. Sticky/fixed
       // surfaces require native CSS anchors; never approximate them per frame.
@@ -163,7 +167,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   document.addEventListener('visibilitychange', visibility);
   resize.observe(root); paint();
   return () => {
-    disposed = true; cancelAnimationFrame(frame); mutation.disconnect(); resize.disconnect();
+    disposed = true; delete layer.dataset.pbGlowReady; cancelAnimationFrame(frame); mutation.disconnect(); resize.disconnect();
     for (const glow of [...glows.values()]) remove(glow);
     for (const event of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) root.removeEventListener(event, queue, true);
     window.removeEventListener('resize', queue); document.removeEventListener('visibilitychange', visibility);

@@ -212,6 +212,41 @@ export function ReportFilters({
   const { d: dict, t: tr } = useTranslation();
   const uid = useId();
   const cardRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [inspectorReady, setInspectorReady] = useState(false);
+  // The desktop contents retain their final layout behind the unfolding
+  // surface. Reveal them only when that surface fits, including on reversals.
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let timer = 0;
+    const fits = () => !!contentRef.current
+      && card.clientWidth >= contentRef.current.offsetWidth
+      && card.clientHeight >= Math.ceil(contentRef.current.getBoundingClientRect().height);
+    const reveal = () => { if (expanded && fits()) setInspectorReady(true); };
+    const reconcile = () => {
+      window.clearTimeout(timer);
+      const floating = getComputedStyle(card).getPropertyValue('--pb-rep-floating').trim() === '1';
+      setInspectorReady(expanded && floating && (reduced.matches || fits()));
+      // No transition runs for a saved-open panel or a breakpoint change.
+      // The final-size check also prevents premature reveals after reversals.
+      if (expanded && floating) timer = window.setTimeout(reveal, 200);
+    };
+    const onEnd = (event: TransitionEvent) => {
+      if (event.target === card && ['width', 'height'].includes(event.propertyName)) reveal();
+    };
+    card.addEventListener('transitionend', onEnd);
+    window.addEventListener('resize', reconcile);
+    reduced.addEventListener('change', reconcile);
+    reconcile();
+    return () => {
+      window.clearTimeout(timer);
+      card.removeEventListener('transitionend', onEnd);
+      window.removeEventListener('resize', reconcile);
+      reduced.removeEventListener('change', reconcile);
+    };
+  }, [expanded]);
   useLayoutEffect(() => {
     const card = cardRef.current;
     const root = card?.closest('.pebble-root');
@@ -225,10 +260,17 @@ export function ReportFilters({
       // Keep a little air below it unless the window is exceptionally short.
       const gap = Math.min(16, Math.max(0, room - 48));
       card.style.setProperty('--pb-rep-filter-available', `${Math.max(0, room - gap)}px`);
+      if (contentRef.current) card.style.setProperty('--pb-rep-filter-height', `${Math.ceil(contentRef.current.getBoundingClientRect().height) + 2}px`);
     };
     const queue = () => { if (!frame) frame = requestAnimationFrame(measure); };
-    const observer = new ResizeObserver(queue);
+    const observer = new ResizeObserver(entries => {
+      // Inner accordions already ease their own height. Follow them in this
+      // layout pass instead of starting a second, delayed shell animation.
+      if (entries.some(entry => entry.target === contentRef.current)) measure();
+      else queue();
+    });
     observer.observe(root);
+    if (contentRef.current) observer.observe(contentRef.current);
     const page = card.closest('.pb-rep');
     // The first active chip mounts after this effect; watching the page also
     // catches that insertion/removal and later chip wrapping above the card.
@@ -298,7 +340,8 @@ export function ReportFilters({
   const panelId = `${uid}-panel`;
 
   return (
-    <div ref={cardRef} className="card pb-rep-filters" data-pb-resize="off" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div ref={cardRef} className="card pb-rep-filters" data-pb-resize="off" data-inspector-ready={inspectorReady}>
+      <div ref={contentRef} className="pb-rep-filter-content">
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', width: '100%', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', color: 'var(--ink)' }}
@@ -559,6 +602,7 @@ export function ReportFilters({
         </div>
       </div>
       <p className="pb-rep-keys" aria-hidden="true">{dict.ux.reports.shortcutsHint}</p>
+      </div>
     </div>
   );
 }
