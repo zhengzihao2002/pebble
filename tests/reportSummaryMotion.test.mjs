@@ -44,43 +44,13 @@ function fixture() {
   return { ...compiled.exports, page, hero, main, side, anchors, support, grid, root, layout };
 }
 
-for (const opening of [true, false]) test(`headline world-space geometry stays continuous through all 33 frames (${opening ? 'opening' : 'closing'})`, () => {
-  const f = fixture(); f.layout(opening);
-  const capture = f.captureSummary(f.page), before = { ...f.hero.rect };
-  const oldAnchors = f.anchors.map(e => ({ ...e.rect }));
-  // Include translation as well as asymmetric scaling, so the assertion
-  // detects incorrect coordinate space or transform order.
-  f.layout(opening ? false : true, rect(55, 211, opening ? 832 : 1116, opening ? 686 : 371));
-  const after = { ...f.hero.rect }, newAnchors = f.anchors.map(e => ({ ...e.rect }));
-  f.animateSummary(capture, before, after, 360, 60, 'ease-in-out');
-  f.anchors.forEach((element, index) => {
-    const animation = element.animations.at(-1);
-    assert.equal(animation.frames.length, 33);
-    assert.equal(animation.options.delay, 60);
-    for (const frame of animation.frames) {
-      const p = frame.offset;
-      const parts = frame.transform.match(/translate\(([^p]+)px, ([^p]+)px\) scale\(([^,]+), ([^)]+)\)/);
-      assert.ok(parts, 'Every frame has an explicit translation and scale');
-      const [tx, ty, sx, sy] = parts.slice(1).map(Number);
-      const parentX = mix(before.left, after.left, p), parentY = mix(before.top, after.top, p);
-      const parentSx = mix(before.width, after.width, p) / after.width;
-      const parentSy = mix(before.height, after.height, p) / after.height;
-      const end = newAnchors[index], start = oldAnchors[index];
-      close(parentX + parentSx * (end.left - after.left + tx), mix(start.left, end.left, p), 'world left');
-      close(parentY + parentSy * (end.top - after.top + ty), mix(start.top, end.top, p), 'world top');
-      close(parentSx * end.width * sx, mix(start.width, end.width, p), 'world width');
-      close(parentSy * end.height * sy, mix(start.height, end.height, p), 'world height');
-    }
-  });
-});
-
-test('same-layout resizing protects text from parent scaling', () => {
+for (const crossing of [true, false]) test(`native headline text is never transformed (layout change: ${crossing})`, () => {
   const f = fixture(), capture = f.captureSummary(f.page), before = { ...f.hero.rect };
-  f.layout(true, rect(40, 198, 1300, 371));
+  if (crossing) f.layout(false);
   const motions = f.animateSummary(capture, before, f.hero.rect, 360, 0, 'ease');
-  assert.ok(motions.length > 0);
-  assert.ok(f.anchors.every(e => e.animations.length === 1));
-  assert.ok(f.support.every(e => e.animations.at(-1).frames.at(-1).opacity === 0));
+  assert.ok(f.anchors.every(e => !e.animations.length), 'Native text does not receive counter-scales');
+  if (!crossing) assert.equal(motions.length, 0, 'Width-only changes keep supporting content visible');
+  else assert.ok(f.support.every(e => e.animations.at(-1).frames.at(-1).opacity === 0));
 });
 
 test('all supporting regions stay masked until the shared geometry completes', () => {

@@ -216,7 +216,7 @@
   .pebble-root .pb-rep-grid:is([data-pb-inspector-motion], [data-pb-summary-exit]) .pb-rep-filters { pointer-events: auto; }
   .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="false"] .collapsible-rows { transition: none; }
   .pebble-root .pb-rep-grid[data-pb-inspector-motion] .pb-rep-main .card {
-    transform-origin: top left; will-change: transform;
+    overflow: clip;
   }
   .pebble-root .pb-rep-main :is(.card, .pb-rep-empty) { --pb-card-glow-local: 1; }
   .pebble-root .pb-rep-grid > .pb-rep-main { grid-column: 1; grid-row: 1; }
@@ -231,12 +231,12 @@
     --pb-rep-floating: 1;
     --pb-card-glow-local: 1;
     position: absolute; top: 0; right: 0; box-sizing: border-box;
-    width: var(--pb-rep-collapsed-w); height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
+    width: 100%; height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
     overflow: visible; pointer-events: none;
     transition: width 360ms var(--pb-rep-layout-ease) 60ms, height 360ms var(--pb-rep-layout-ease) 60ms;
   }
   .pebble-root .has-inspector .pb-rep-filters {
-    width: var(--pb-rep-expanded-w); height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
+    width: 100%; height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
     pointer-events: auto; transition-delay: 0ms;
   }
   .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="true"] {
@@ -768,17 +768,9 @@
 /* The primary amount stays legible while supporting panels change arrangement. */
 .pebble-root .pb-rep-eyebrow { width: fit-content; max-width: 100%; }
 .pebble-root .pb-rep-figure-label { align-self: flex-start; }
-.pebble-root .pb-rep-grid[data-pb-inspector-motion] :is(.pb-rep-eyebrow, .pb-rep-figure-label, .pb-rep-figure) { transform-origin: top left; }
 
 /* One WAAPI clock owns both sets of content during their shared reveal. */
 .pebble-root .pb-rep-grid[data-pb-content-reveal] :is(.pb-rep-filter-content, .pb-rep-rail) { transition: none !important; }
-
-/* Keep origins stable through geometry, reveal and cancellation phases. */
-.pebble-root .pb-rep-main .card,
-.pebble-root .pb-rep :is(.pb-rep-eyebrow, .pb-rep-figure-label, .pb-rep-figure) { transform-origin: top left; }
-@container content (min-width: 1040px) {
-  .pebble-root .pb-rep-filters { transform-origin: top right; }
-}
 
 /* The page already fades in; a separate rise can shift captured card origins. */
 .pebble-root .pb-rep-main .card { animation: none; }

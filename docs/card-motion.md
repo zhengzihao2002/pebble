@@ -9,38 +9,20 @@ moves with the card. There is no transform scaling or fixed final height.
 - The observer pauses for its own animation to avoid resize feedback.
 - Nested cards follow their containing card; dialogs keep their existing motion.
 - Sections with existing height transitions keep their own motion.
-- Reports filters opt out with `data-pb-resize="off"`. On desktop the grid
-  reserves a real column for the inspector. The final responsive layout is
-  calculated once; live report cards then move/resize from their visible old
-  rectangles to the final rectangles over 360ms with a gentler ease-in/out, matching the filter surface.
-  Closing shares its 60ms content-fade delay; interrupted motion reverses immediately. No card overlaps the inspector.
-- `useReportInspectorLayout` captures an interrupted animation before cancelling
-  it and commits the next layout atomically, so rapid reversals continue from
-  the current visible positions. Cards and filter surface share one animation
-  clock; controls reveal on its completion signal. During motion the filter
-  surface stays clickable, allowing an immediate reversal from its visible size. The shared card height
-  animator pauses during this managed motion. Layout caching waits
-  until the live transforms settle. Charts resize once at the final layout;
-  their viewport clips any pending Recharts resize before paint.
-- When the desktop Reports summary changes width,
-  supporting details dissolve for 70ms before committing the new arrangement.
-  The eyebrow, Net label and amount remain visible; sampled counter-transforms
-  preserve their screen position and text size while the card reshapes.
-  Supporting figures, charts and filter contents then return together on a
-  shared 80ms fade after geometry settles. This also covers wide screens that keep both sections in columns, so text
-  never visibly stretches with the card.
-- A second toggle during the short exit cancels the queued change. Later
-  reversals continue from the visible geometry, and explicit Find/open intent
-  remains queued correctly. Resize, backgrounding and Reduced Motion cancel
-  pending exits and clear their decoration without reviving stale callbacks.
-- All Reports surfaces use the same transform geometry, including the filter
-  shell. Mixing compositor card motion with layout-driven filter dimensions
-  can desynchronize under main-thread load. Transform origins remain fixed
-  through every phase, and counter-scaled corner radii keep the visible curve
-  steady. The report uses its existing page fade rather than a competing rise.
-- The filter surface unfolds down and left from its top-right corner. Its
-  fixed-width controls fade in once the surface fits, and out before it
-  contracts. The collapsed rail uses the same card surface and glow.
+- Reports filters opt out with `data-pb-resize="off"`. A single physical grid
+  track changes the filter column and report width together over 360ms. The
+  report/filter heights interpolate in normal flow, moving the following rows.
+  Cards and text are never transformed or counter-scaled. Native border radii,
+  font sizes and the top-left origin therefore stay steady.
+- Before committing a reversal, the hook captures the currently visible grid
+  columns and card heights. All replacement animations share one timeline.
+  The shared generic height effect pauses, and layout caching waits for motion.
+- Only a change between stacked and side-by-side summary arrangements triggers
+  the brief supporting-content exit. Width changes within the same arrangement
+  keep every summary region visible. Details and filter contents return on the
+  shared 80ms reveal after geometry settles.
+- The moving filter remains clickable, with explicit Find/open intent retained.
+  Resize, backgrounding and Reduced Motion cancel pending exits and stale work.
 - Desktop filter controls retain their final scroll viewport while hidden,
   avoiding temporary scrollbars during opening/closing. Actual overflow stays
   scrollable in short windows. Local sections and the mobile outer accordion

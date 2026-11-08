@@ -2,9 +2,8 @@
 
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
-import { reportGeometryFrames } from './reportGeometryMotion';
 import { settleCardResizes } from '@/lib/cardResize';
-import { animateSummary, captureSummary, fadeSummaryOut, type SummaryCapture } from './summaryLayoutMotion';
+import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
 
 const DURATION = 360;
 const CLOSE_DELAY = 60;
@@ -16,14 +15,14 @@ function startTogether(animations: Animation[]) {
 
 type Capture = {
   cards: Map<HTMLElement, DOMRect>;
+  columns: string;
   interrupted: boolean;
   summary: SummaryCapture | null;
   inspector: { element: HTMLElement; before: DOMRect } | null;
 };
 
-/** Commit responsive layout once, then move the real cards on the compositor.
- * Recharts and container queries resolve at the final width, not every frame.
- * Native hit testing follows these live elements; no page snapshot is created. */
+/** Resize a single real grid track and native card heights together.
+ * Typography stays unscaled, with no nested inverse transforms or snapshots. */
 export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | null>, expanded: boolean, ready: boolean) {
   const pending = useRef<Capture | null>(null);
   const motions = useRef<Animation[]>([]);
@@ -48,6 +47,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const main = page?.querySelector<HTMLElement>('.pb-rep-main');
     if (!grid || !main || getComputedStyle(grid).display !== 'grid'
       || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const columns = getComputedStyle(grid).gridTemplateColumns;
     const capture: Capture['cards'] = new Map();
     for (const card of main.querySelectorAll<HTMLElement>('.card')) {
       if (card.parentElement?.closest('.card')) continue;
@@ -69,7 +69,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       grid.removeAttribute('data-pb-inspector-motion');
       inspector?.dispatchEvent(new Event('pb-report-inspector-settled'));
     };
-    pending.current = { cards: capture, inspector: inspectorCapture, interrupted, summary };
+    pending.current = { cards: capture, inspector: inspectorCapture, interrupted, summary, columns };
   };
 
   useLayoutEffect(() => {
@@ -94,23 +94,27 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const summaryMotions: Animation[] = [];
     if (capture.summary) {
       const hero = final.find(item => item.card === capture.summary!.hero);
-      if (hero) summaryMotions.push(...animateSummary(capture.summary, hero.before, hero.after, DURATION, delay, easing));
+      if (hero) summaryMotions.push(...animateSummary(capture.summary, hero.before, hero.after, DURATION, delay));
     }
-    motions.current = final.flatMap(({ card, before, after }) => {
-      if (!after.width || !after.height) return [];
-      const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius) || 24;
-      const animation = card.animate(reportGeometryFrames(before, after, radius),
+    // Every surface follows this one physical grid track. Text is never scaled.
+    const columnMotion = grid.animate([
+      { gridTemplateColumns: capture.columns },
+      { gridTemplateColumns: getComputedStyle(grid).gridTemplateColumns },
+    ], { duration: DURATION, delay, easing, fill: 'both' });
+    columnMotion.id = 'pb-report-inspector-layout';
+    motions.current = [columnMotion];
+    for (const { card, before, after } of final) {
+      if (!after.height) continue;
+      const animation = card.animate([{ height: `${before.height}px` }, { height: `${after.height}px` }],
         { duration: DURATION, delay, easing, fill: 'both' });
-      animation.id = 'pb-report-inspector-layout';
-      return [animation];
-    });
+      animation.id = 'pb-report-card-height'; motions.current.push(animation);
+    }
     motions.current.push(...summaryMotions);
     if (inspector && inspectorAfter) {
-      const radius = parseFloat(getComputedStyle(inspector.element).borderTopLeftRadius) || 24;
-      const animation = inspector.element.animate(reportGeometryFrames(inspector.before, inspectorAfter, radius, true),
-        { duration: DURATION, delay, easing, fill: 'both' });
-      animation.id = 'pb-report-inspector-surface';
-      motions.current.push(animation);
+      const animation = inspector.element.animate([
+        { height: `${inspector.before.height}px` }, { height: `${inspectorAfter.height}px` },
+      ], { duration: DURATION, delay, easing, fill: 'both' });
+      animation.id = 'pb-report-inspector-surface'; motions.current.push(animation);
     }
     if (inspector) {
       for (const element of [grid.querySelector<HTMLElement>('.pb-rep-rail'), inspector?.element.querySelector<HTMLElement>('.pb-rep-filter-content')]) {
@@ -118,7 +122,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       }
     }
     // Explicitly share one timeline origin: a rapid reversal must not let
-    // the compositor start card transforms a frame before filter dimensions.
+    // separate surfaces start on different frames.
     startTogether(motions.current);
     void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
       if (generation.current !== current) return;
@@ -161,7 +165,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
 
   const commit = (update: () => void) => {
     prepare();
-    // Cancelling previous transforms and committing the new grid is atomic.
+    // Cancelling previous geometry and committing the new grid is atomic.
     flushSync(update);
     if (pending.current) settle();
   };
@@ -193,7 +197,8 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const grid = page?.querySelector<HTMLElement>('.pb-rep-grid');
     const summary = page && captureSummary(page);
     if (grid && summary && !motions.current.length && getComputedStyle(grid).display === 'grid'
-      && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      && summaryWillReflow(summary, grid)) {
       const token = {};
       exit.current = { grid, token, update };
       grid.setAttribute('data-pb-summary-exit', '');

@@ -80,8 +80,9 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
   const secondPeriod = new Element('second period', ['card'], results);
   if (resizePreference !== null) main.setAttribute('data-pb-resize', resizePreference);
   const cards = [hero, firstPeriod, secondPeriod];
-  const surfaces = [...cards, inspector];
+  const surfaces = [grid, ...cards, inspector];
   const layout = opened => {
+    grid.columns = opened ? '600px 328px' : '900px 44px';
     inspector.rect = rect(opened ? 912 : 1196, 100, opened ? 328 : 44, opened ? 532 : 152);
     hero.rect = rect(20, 100, opened ? 600 : 900, opened ? 500 : 300);
     firstPeriod.rect = rect(20, opened ? 620 : 420, opened ? 600 : 900, 100);
@@ -114,7 +115,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
   const compiled = { exports: {} };
   vm.runInNewContext(source, {
     module: compiled, exports: compiled.exports, window, document, Event: class { constructor(type) { this.type = type; } },
-    getComputedStyle: () => ({ display: wide ? 'grid' : 'flex', getPropertyValue: () => 'cubic-bezier(.4,0,.2,1)' }),
+    getComputedStyle: element => ({ gridTemplateColumns: element.active?.visualColumns ?? element.columns, display: wide ? 'grid' : 'flex', getPropertyValue: () => 'cubic-bezier(.4,0,.2,1)' }),
     require: name => {
       if (name === 'react') return react;
       if (name === './summaryLayoutMotion') return summaryApi;
@@ -150,15 +151,18 @@ test('hero and each period card move together, without separately animating nest
     assert.equal(card.active.options.duration, 360);
     assert.equal(card.active.options.delay, 0);
     assert.equal(card.active.options.easing, 'cubic-bezier(.4,0,.2,1)');
-    assert.equal(card.active.id, 'pb-report-inspector-layout');
+    assert.equal(card.active.id, 'pb-report-card-height');
   }
-  assert.equal(f.hero.active.frames[0].transform, 'translate(0px, 0px) scale(1.5, 0.6)');
-  assert.equal(f.firstPeriod.active.frames[0].transform, 'translate(0px, -200px) scale(1.5, 1)');
-  assert.equal(f.secondPeriod.active.frames[0].transform, 'translate(0px, -200px) scale(1.5, 1)');
+  assert.equal(f.grid.active.frames[0].gridTemplateColumns, '900px 44px');
+  assert.equal(f.grid.active.frames.at(-1).gridTemplateColumns, '600px 328px');
+  assert.equal(f.hero.active.frames[0].height, '300px');
+  assert.ok(f.cards.every(card => !('transform' in card.active.frames[0])), 'Text is never scaled');
+  assert.equal(f.firstPeriod.active.frames[0].height, '100px');
+  assert.equal(f.secondPeriod.active.frames[0].height, '140px');
   assert.equal(f.nested.animations.length, 0, 'A tile already follows its containing hero');
   assert.equal(f.inspector.active.id, 'pb-report-inspector-surface');
-  assert.match(f.inspector.active.frames[0].transform, /scale\(0\.134/);
-  assert.equal(f.inspector.active.frames.at(-1).transform, 'translate(0px, 0px) scale(1, 1)');
+  assert.equal(f.inspector.active.frames[0].height, '152px');
+  assert.equal(f.inspector.active.frames.at(-1).height, '532px');
   assert.equal(f.inspector.active.options.duration, f.hero.active.options.duration);
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
   assert.equal(f.inspector.active.startTime, 1234);
@@ -177,6 +181,7 @@ test('closing and rapid reversals start from visible rectangles before old anima
   let run = f.render(false); run(() => { f.layout(true); run = f.render(true); });
   const firstMotion = f.hero.active;
   firstMotion.visualRect = rect(20, 100, 750, 400);
+  f.grid.active.visualColumns = '750px 186px';
   f.inspector.active.visualRect = rect(1054, 100, 186, 342);
   f.firstPeriod.active.visualRect = rect(20, 520, 750, 100);
   f.secondPeriod.active.visualRect = rect(20, 640, 750, 140);
@@ -185,12 +190,13 @@ test('closing and rapid reversals start from visible rectangles before old anima
   assert.ok(f.trace.indexOf('read:hero') < f.trace.indexOf('cancel:hero'));
   assert.ok(f.trace.indexOf('read:inspector') < f.trace.indexOf('cancel:inspector'));
   assert.equal(firstMotion.cancelled, true);
-  assert.equal(f.hero.active.frames[0].transform, `translate(0px, 0px) scale(${750 / 900}, ${400 / 300})`);
-  assert.equal(f.firstPeriod.active.frames[0].transform, `translate(0px, 100px) scale(${750 / 900}, 1)`);
+  assert.equal(f.grid.active.frames[0].gridTemplateColumns, '750px 186px', 'A reversal begins from the currently displayed columns');
+  assert.equal(f.hero.active.frames[0].height, '400px');
+  assert.equal(f.firstPeriod.active.frames[0].height, '100px');
   assert.equal(f.hero.active.options.delay, 0, 'An interrupted motion reverses immediately without a closing pause');
   assert.equal(f.hero.active.options.duration, 360);
-  assert.match(f.inspector.active.frames[0].transform, /scale\(/);
-  assert.equal(f.inspector.active.frames[0].offset, 0);
+  assert.equal(f.inspector.active.frames[0].height, '342px');
+
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
   assert.equal(f.inspector.active.startTime, 1234);
   assert.ok(f.cards.every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
@@ -274,7 +280,7 @@ test('a column switch waits for the old supporting content to fade before commit
   assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
   assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), '');
   assert.ok(exitAnimations.every(animation => animation.cancelled), 'Owned exit layers are removed during the atomic layout handoff');
-  assert.ok(f.cards.every(card => card.active?.id === 'pb-report-inspector-layout'));
+  assert.ok(f.cards.every(card => card.active?.id === 'pb-report-card-height'));
   f.stop(); await flush();
 });
 
@@ -348,16 +354,12 @@ for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
   });
 }
 
-test('same-column summaries also hide supporting text before a width change', async () => {
+test('same-column summaries keep their contents visible and commit immediately', () => {
   const f = fixture({ summary: true, reflow: false });
-  const run = f.render(false);
-  let commits = 0;
+  const run = f.render(false); let commits = 0;
   run(() => { commits++; f.layout(true); f.render(true); });
-  assert.equal(commits, 0);
-  for (const element of f.contentSurfaces) element.active?.finish();
-  await flush();
   assert.equal(commits, 1);
-  assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
+  assert.ok(f.supports.every(element => !element.animations.length));
   f.stop();
 });
 
@@ -384,7 +386,7 @@ test('summary reveal and inspector readiness start together after every geometry
   assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), '');
   const readyCount = () => (f.inspector.events ?? []).filter(name => name === 'pb-report-inspector-settled').length;
   const before = readyCount();
-  [...f.cards, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
+  [f.grid, ...f.cards, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
   assert.equal(readyCount(), before, 'Wait for the filter geometry as well as the cards');
   f.inspector.active.finish(); await flush();
   assert.equal(readyCount(), before + 1, 'Release filter content in the same handoff as summary reveal');
