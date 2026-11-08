@@ -773,3 +773,24 @@
 
 /* The page already fades in; a separate rise can shift captured card origins. */
 .pebble-root .pb-rep-main .card { animation: none; }
+
+/* The responsive report plot uses native percentage geometry instead of
+   resizing a React/SVG scene on each inspector-animation frame. */
+.pebble-root .pb-rep-native-chart { position: absolute; inset: 16px 14px 24px 44px; }
+.pebble-root .pb-rep-native-y { position: absolute; inset: 0 auto 0 -44px; width: 38px; }
+.pebble-root .pb-rep-native-y > span { position: absolute; right: 0; transform: translateY(-50%); font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+.pebble-root .pb-rep-native-plot { position: absolute; inset: 0; }
+.pebble-root .pb-rep-native-grid, .pebble-root .pb-rep-native-average { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); pointer-events: none; }
+.pebble-root .pb-rep-native-average { border-top: 1px dashed var(--ink-soft); opacity: .7; }
+.pebble-root .pb-rep-native-bucket { position: absolute; top: 0; bottom: 0; }
+.pebble-root .pb-rep-native-bar { position: absolute; left: 50%; transform: translateX(-50%); width: 74%; max-width: 24px; }
+.pebble-root .pb-rep-native-bar.is-future { border: 1px dashed var(--ink-faint); opacity: .6; }
+.pebble-root .pb-rep-native-x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: 11px; white-space: nowrap; color: var(--ink-soft); }
+.pebble-root .pb-rep-native-net { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.pebble-root .pb-rep-native-cursor { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.pebble-root .pb-rep-native-today { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 1.5px solid var(--gold); pointer-events: none; }
+.pebble-root .pb-rep-native-today > span { position: absolute; bottom: calc(100% + 2px); left: 0; transform: translateX(-50%); font-size: 10px; font-style: normal; color: var(--ink-soft); }
+.pebble-root .pb-rep-native-tooltip { position: absolute; top: 10%; z-index: 3; pointer-events: none; width: max-content; max-width: min(220px, 100%); }
+.pebble-root .pb-rep-native-dot { position: absolute; width: 7px; height: 7px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--ink); pointer-events: none; }
+.pebble-root.pb-private .pb-rep-chart:not(.pb-revealed):not(.pb-revealed *) { filter: blur(6px); }
+.pebble-root .pb-rep-native-plot:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; border-radius: 4px; }

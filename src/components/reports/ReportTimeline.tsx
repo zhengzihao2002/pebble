@@ -1,20 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
-import { ComposedChart, Bar, Line, Curve, type LineDrawShapeProps, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useMemo, useState, type PointerEvent } from 'react';
+import { reportScale, reportNetPath } from './reportPlot';
 import { formatCurrency, parseLocalDate } from '@/lib/format';
 import { formatCompactCurrency } from '@/lib/chartFormat';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { Granularity, ReportBucket } from './reportBuckets';
-
-// This chart never draws the line in. A static Curve keeps the same path and
-// active dots without Recharts measuring SVG path length during every resize.
-function StaticNetLine({ points, type, layout, connectNulls, className, stroke, strokeWidth, strokeLinejoin, clipPath }: LineDrawShapeProps) {
-  return <Curve points={points} type={type} layout={layout} connectNulls={connectNulls}
-    className={className} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin={strokeLinejoin}
-    clipPath={clipPath} fill="none" />;
-}
 
 export type TimelineMode = 'expense' | 'income' | 'mixed';
 
@@ -57,6 +49,62 @@ function Tip({ active, payload, mode }: { active?: boolean; payload?: ReadonlyAr
   );
 }
 
+/** Percentage geometry resizes in browser layout; labels keep their native
+ * font size. The SVG contains only the Net stroke, never text. */
+function ReportPlot({ data, avg, todayKey, mode, granularity, today }: {
+  data: Point[]; avg: number; todayKey: string | null; mode: TimelineMode; granularity: Granularity; today: string;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const { y, ticks, net } = useMemo(() => {
+    const scale = reportScale(data.flatMap(p => mode === 'mixed' ? [p.income, p.spending, p.net ?? 0] : [mode === 'income' ? p.income : p.spending, p.ghost])
+      .concat(mode === 'mixed' ? -avg : avg));
+    return { ...scale, net: reportNetPath(data.map(p => p.net), scale.y) };
+  }, [data, avg, mode]);
+  const move = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const index = Math.max(0, Math.min(data.length - 1, Math.floor((event.clientX - rect.left) / rect.width * data.length)));
+    setHovered(index);
+  };
+  const count = data.length || 1;
+  const labels = new Set(Array.from({ length: Math.min(count, 6) }, (_, i) => Math.round(i * (count - 1) / Math.max(1, Math.min(count, 6) - 1))));
+  const point = hovered === null ? null : data[hovered];
+  return <div className="pb-rep-native-chart">
+    <div className="pb-rep-native-y" aria-hidden="true">
+      {ticks.map(value => <span key={value} style={{ top: `${y(value)}%` }}>{formatCompactCurrency(value)}</span>)}
+    </div>
+    <div className="pb-rep-native-plot" role="group" tabIndex={data.length ? 0 : -1}
+      onPointerMove={move} onPointerDown={move} onPointerLeave={() => setHovered(null)} onBlur={() => setHovered(null)}
+      onKeyDown={event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        setHovered(index => Math.max(0, Math.min(data.length - 1, (index ?? -1) + (event.key === 'ArrowRight' ? 1 : -1))));
+      }}>
+      {ticks.map(value => <i key={value} className="pb-rep-native-grid" style={{ top: `${y(value)}%`, opacity: value === 0 ? 1 : .65 }} />)}
+      {avg > 0 && <i className="pb-rep-native-average" style={{ top: `${y(mode === 'mixed' ? -avg : avg)}%` }} />}
+      {data.map((p, index) => {
+        const bar = (value: number, color: string, ghost = false) => <i className={`pb-rep-native-bar${ghost ? ' is-future' : ''}`}
+          style={{ top: `${Math.min(y(0), y(value))}%`, height: `${Math.abs(y(value) - y(0))}%`, background: ghost ? 'transparent' : color,
+            borderRadius: value < 0 ? '0 0 4px 4px' : '4px 4px 0 0' }} />;
+        return <div key={p.key} className="pb-rep-native-bucket" style={{ left: `${index / count * 100}%`, width: `${100 / count}%` }}>
+          {hovered === index && <i className="pb-rep-native-cursor" />}
+          {mode !== 'expense' && bar(p.income, 'var(--income)')}
+          {mode !== 'income' && bar(p.spending, 'var(--expense)')}
+          {mode !== 'mixed' && p.future && bar(p.ghost, 'transparent', true)}
+          {labels.has(index) && <span className="pb-rep-native-x">{p.label}</span>}
+          {p.key === todayKey && count > 1 && <i className="pb-rep-native-today"><span>{today}</span></i>}
+        </div>;
+      })}
+      {mode === 'mixed' && granularity !== 'day' && <svg className="pb-rep-native-net" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+        <path d={net} fill="none" stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>}
+      {point?.net !== null && point?.net !== undefined && hovered !== null && <i className="pb-rep-native-dot" style={{ left: `${(hovered + .5) / count * 100}%`, top: `${y(point.net)}%` }} />}
+      {point && hovered !== null && <div className="pb-rep-native-tooltip" style={hovered >= count / 2 ? { right: 0 } : { left: 0 }}>
+        <Tip active payload={[{ payload: point }]} mode={mode} />
+      </div>}
+    </div>
+  </div>;
+}
+
 interface ReportTimelineProps {
   buckets: ReportBucket[];
   granularity: Granularity;
@@ -74,7 +122,7 @@ interface ReportTimelineProps {
  * so a month in progress reads as unfinished.
  *
  * Fades in (pb-chart-fade) rather than growing from zero, and blurs as a unit
- * in privacy mode, axis text included (#pb-svg-blur).
+ * in privacy mode, axis text included.
  *
  * Read-only on purpose: bars used to drill into the month (or scroll to the
  * day), and a stray tap silently changed the period with no obvious way
@@ -126,34 +174,7 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
       </div>
       <div className="pb-rep-chart pb-chart-fade" role="img" aria-label={label}>
         <div data-pb-report-plot style={{ position: 'absolute', inset: 0 }}>
-          {/* Bound SVG redraws while the inspector resizes the native grid. */}
-          <ResponsiveContainer width="100%" height="100%" debounce={32}>
-            <ComposedChart data={data} margin={{ top: 16, right: 14, left: 0, bottom: 0 }} barCategoryGap={granularity === 'day' ? '18%' : '26%'} stackOffset="sign">
-              <CartesianGrid stroke="var(--line)" vertical={false} />
-              <XAxis dataKey="key" tickFormatter={(k) => data.find((p) => p.key === k)?.label ?? ''} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={10} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} width={44} />
-              <Tooltip content={<Tip mode={mode} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} isAnimationActive={false} />
-              {mode === 'mixed' && <ReferenceLine y={0} stroke="var(--ink-faint)" />}
-              {mode !== 'expense' && (
-                <Bar dataKey="income" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--income)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-              )}
-              {mode !== 'income' && (
-                <Bar dataKey="spending" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--expense)" radius={mode === 'mixed' ? [0, 0, 4, 4] : [4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-              )}
-              {mode !== 'mixed' && (
-                <Bar dataKey="ghost" stackId="one" fill="transparent" stroke="var(--ink-faint)" strokeOpacity={0.6} strokeDasharray="3 3" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-              )}
-              {mode === 'mixed' && granularity !== 'day' && (
-                <Line dataKey="net" shape={StaticNetLine} stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth={2} dot={false} activeDot={{ r: 3.5 }} strokeLinejoin="round" connectNulls={false} isAnimationActive={false} />
-              )}
-              {avg > 0 && (
-                <ReferenceLine y={mode === 'mixed' ? -avg : avg} stroke="var(--ink-soft)" strokeDasharray="4 4" strokeOpacity={0.7} ifOverflow="extendDomain" />
-              )}
-              {todayKey && buckets.length > 1 && (
-                <ReferenceLine x={todayKey} stroke="var(--gold)" strokeWidth={1.5} label={{ value: x.today, position: 'top', fill: 'var(--ink-soft)', fontSize: 10 }} />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+          <ReportPlot data={data} avg={avg} todayKey={todayKey} mode={mode} granularity={granularity} today={x.today} />
         </div>
       </div>
     </div>
