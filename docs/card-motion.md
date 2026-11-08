@@ -12,12 +12,13 @@ moves with the card. There is no transform scaling or fixed final height.
 - Reports filters opt out with `data-pb-resize="off"`. On desktop the grid
   reserves a real column for the inspector. The final responsive layout is
   calculated once; live report cards then move/resize from their visible old
-  rectangles to the final rectangles over 480ms with a gentler ease-in/out, matching the filter surface.
-  Closing shares its 60ms content-fade delay. No card overlaps the inspector.
+  rectangles to the final rectangles over 360ms with a gentler ease-in/out, matching the filter surface.
+  Closing shares its 60ms content-fade delay; interrupted motion reverses immediately. No card overlaps the inspector.
 - `useReportInspectorLayout` captures an interrupted animation before cancelling
   it and commits the next layout atomically, so rapid reversals continue from
   the current visible positions. Cards and filter surface share one animation
-  clock; controls reveal on its completion signal. The shared card height
+  clock; controls reveal on its completion signal. During motion the filter
+  surface stays clickable, allowing an immediate reversal from its visible size. The shared card height
   animator pauses during this managed motion. Layout caching waits
   until the live transforms settle. Charts resize once at the final layout;
   their viewport clips any pending Recharts resize before paint.

@@ -208,7 +208,7 @@ Open [http://localhost:3000](http://localhost:3000) and sign up.
 ```bash
 npm run dev      # dev server
 npm run build    # production build
-npm run deps:update # refresh all app dependencies from npm's latest tags
+npm run deps:check # check installed packages; restore missing packages from the lockfile
 npm run start    # serve the production build
 npm run lint     # eslint
 npm run sounds   # regenerate src/lib/sound/manifest.ts from public/sounds/
@@ -216,6 +216,11 @@ npm run icons    # redraw the app icons and favicon from src/components/brand/pe
 ```
 
 ---
+
+Vercel install, dev startup, and builds check installed dependencies locally.
+If all declared packages are present, no registry requests or installations run.
+Missing packages are restored using `npm ci` and the committed lockfile; package
+versions are never automatically upgraded.
 
 ## Database changes
 

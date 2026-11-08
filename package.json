@@ -6,16 +6,16 @@
     "node": "24.x"
   },
   "scripts": {
-    "deps:update": "node scripts/update-dependencies.mjs",
-    "predev": "npm run deps:update",
+    "predev": "npm run deps:check",
     "dev": "next dev",
-    "prebuild": "npm run deps:update",
+    "prebuild": "npm run deps:check",
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/lint.mjs",
     "sounds": "node scripts/generate-sound-manifest.mjs",
     "themes": "node scripts/generate-themes.mjs",
-    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-icons.mjs"
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-icons.mjs",
+    "deps:check": "node scripts/check-dependencies.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

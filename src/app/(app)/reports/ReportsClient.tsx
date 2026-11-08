@@ -880,7 +880,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       const focusFind = () => {
         const input = document.querySelector<HTMLInputElement>('.pb-rep-find-input');
         input?.focus();
-        if (document.activeElement !== input && ++tries < 24) window.requestAnimationFrame(focusFind);
+        if (document.activeElement !== input && ++tries < 40) window.requestAnimationFrame(focusFind);
       };
       window.requestAnimationFrame(() => window.requestAnimationFrame(focusFind));
     } else if (k === 'e') {
@@ -941,7 +941,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     const focusIt = () => {
       const el = target();
       el?.focus({ preventScroll: true });
-      if (el && document.activeElement !== el && ++tries < 24) window.requestAnimationFrame(focusIt);
+      if (el && document.activeElement !== el && ++tries < 40) window.requestAnimationFrame(focusIt);
     };
     window.requestAnimationFrame(focusIt);
   };

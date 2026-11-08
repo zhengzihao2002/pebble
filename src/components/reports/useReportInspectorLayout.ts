@@ -4,11 +4,12 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { settleCardResizes } from '@/lib/cardResize';
 
-const DURATION = 480;
+const DURATION = 360;
 const CLOSE_DELAY = 60;
 
 type Capture = {
   cards: Map<HTMLElement, DOMRect>;
+  interrupted: boolean;
   inspector: { element: HTMLElement; before: DOMRect } | null;
 };
 
@@ -43,6 +44,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     }
     const inspector = grid.querySelector<HTMLElement>('.pb-rep-filters');
     const inspectorCapture = inspector ? { element: inspector, before: inspector.getBoundingClientRect() } : null;
+    const interrupted = motions.current.length > 0;
     // Capture first so reversals continue from the currently visible position.
     settle();
     const previous = main.getAttribute('data-pb-resize');
@@ -55,7 +57,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       grid.removeAttribute('data-pb-inspector-motion');
       inspector?.dispatchEvent(new Event('pb-report-inspector-settled'));
     };
-    pending.current = { cards: capture, inspector: inspectorCapture };
+    pending.current = { cards: capture, inspector: inspectorCapture, interrupted };
   };
 
   useLayoutEffect(() => {
@@ -65,6 +67,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const grid = pageRef.current?.querySelector<HTMLElement>('.pb-rep-grid');
     if (!grid || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { settle(); return; }
     const current = ++generation.current;
+    const delay = expanded || capture.interrupted ? 0 : CLOSE_DELAY;
     const easing = getComputedStyle(grid).getPropertyValue('--pb-rep-layout-ease').trim() || 'cubic-bezier(.4,0,.2,1)';
     // Give the filter shell the same clock as the cards. Native CSS
     // transitions shorten reversed motion, which would desynchronize them.
@@ -81,7 +84,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       const animation = card.animate([
         { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})` },
         { transform: 'translate(0px, 0px) scale(1, 1)' },
-      ], { duration: DURATION, delay: expanded ? 0 : CLOSE_DELAY, easing, fill: 'both' });
+      ], { duration: DURATION, delay, easing, fill: 'both' });
       animation.id = 'pb-report-inspector-layout';
       return [animation];
     });
@@ -89,7 +92,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       const animation = inspector.element.animate([
         { width: `${inspector.before.width}px`, height: `${inspector.before.height}px` },
         { width: `${inspectorAfter.width}px`, height: `${inspectorAfter.height}px` },
-      ], { duration: DURATION, delay: expanded ? 0 : CLOSE_DELAY, easing, fill: 'both' });
+      ], { duration: DURATION, delay, easing, fill: 'both' });
       animation.id = 'pb-report-inspector-surface';
       motions.current.push(animation);
     }

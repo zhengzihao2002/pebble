@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
-  "installCommand": "node scripts/update-dependencies.mjs",
+  "installCommand": "node scripts/check-dependencies.mjs",
   "buildCommand": "npm run build"
 }

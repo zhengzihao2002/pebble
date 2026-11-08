@@ -232,7 +232,7 @@ export function ReportFilters({
       setInspectorReady(expanded && floating && (reduced.matches || (!managed && fits())));
       // No transition runs for a saved-open panel or a breakpoint change.
       // The final-size check also prevents premature reveals after reversals.
-      if (expanded && floating) timer = window.setTimeout(reveal, 500);
+      if (expanded && floating) timer = window.setTimeout(reveal, 380);
     };
     const onEnd = (event: TransitionEvent) => {
       if (event.target === card && ['width', 'height'].includes(event.propertyName)) reveal();
@@ -344,6 +344,8 @@ export function ReportFilters({
 
   return (
     <div ref={cardRef} className="card pb-rep-filters" data-pb-resize="off" data-inspector-ready={inspectorReady}>
+      <button type="button" className="pb-rep-motion-toggle" onClick={onToggleExpanded}
+        aria-label={dict.reports.filters} aria-expanded={expanded} aria-controls={panelId} tabIndex={-1} />
       <div ref={contentRef} className="pb-rep-filter-content">
       <button
         type="button" onClick={onToggleExpanded} aria-expanded={expanded} aria-controls={panelId}
