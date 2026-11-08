@@ -8,6 +8,11 @@ import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type
 const DURATION = 360;
 const CLOSE_DELAY = 60;
 
+function startTogether(animations: Animation[]) {
+  const start = document.timeline?.currentTime;
+  if (typeof start === 'number') animations.forEach(animation => { animation.startTime = start; });
+}
+
 type Capture = {
   cards: Map<HTMLElement, DOMRect>;
   interrupted: boolean;
@@ -27,6 +32,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
 
   const settle = () => {
     generation.current++;
+    pageRef.current?.querySelector('.pb-rep-grid')?.removeAttribute('data-pb-content-reveal');
     exit.current?.grid.removeAttribute('data-pb-summary-exit'); exit.current = null;
     for (const animation of motions.current) animation.cancel();
     motions.current = [];
@@ -107,8 +113,31 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       animation.id = 'pb-report-inspector-surface';
       motions.current.push(animation);
     }
+    if (capture.summary && summaryMotions.length) {
+      for (const element of [grid.querySelector<HTMLElement>('.pb-rep-rail'), inspector?.element.querySelector<HTMLElement>('.pb-rep-filter-content')]) {
+        if (element) motions.current.push(element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: DURATION, delay, fill: 'both' }));
+      }
+    }
+    // Explicitly share one timeline origin: a rapid reversal must not let
+    // the compositor start card transforms a frame before filter dimensions.
+    startTogether(motions.current);
     void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
-      if (generation.current === current) settle();
+      if (generation.current !== current) return;
+      if (!summaryMotions.length || !capture.summary) { settle(); return; }
+      // Release visibility, then animate every region on the same 80ms
+      // timeline. Suppress the inspector's independent CSS fade for this phase.
+      grid.setAttribute('data-pb-content-reveal', '');
+      const filterReveal = grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content' : '.pb-rep-rail');
+      const elements = [...capture.summary.support.map(item => item.element), ...(filterReveal ? [filterReveal] : [])];
+      const reveal = elements.map(element => element.animate(
+        [{ opacity: 0 }, { opacity: 1 }], { duration: 80, easing: 'ease-out', fill: 'both' },
+      ));
+      motions.current.push(...reveal);
+      const release = restore.current; restore.current = null; flushSync(() => release?.());
+      startTogether(reveal);
+      void Promise.allSettled(reveal.map(animation => animation.finished)).then(() => {
+        if (generation.current === current) settle();
+      });
     });
     // No cleanup on expanded: prepare captures interrupted animations first.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,13 +173,16 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       // A second click during the brief exit cancels the pending layout change.
       const support = captureSummary(pageRef.current!);
       const grid = exit.current.grid;
+      const filterContent = grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content' : '.pb-rep-rail');
+      const filterOpacity = filterContent ? Number(getComputedStyle(filterContent).opacity) : 1;
       settle();
       grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content > button' : '.pb-rep-rail')?.focus({ preventScroll: true });
       if (support) {
         const current = ++generation.current;
-        motions.current = support.support.map(({ element, opacity }) => element.animate(
+        motions.current = [...support.support, ...(filterContent ? [{ element: filterContent, opacity: filterOpacity }] : [])].map(({ element, opacity }) => element.animate(
           [{ opacity }, { opacity: 1 }], { duration: 90, easing: 'ease-out', fill: 'both' },
         ));
+        startTogether(motions.current);
         void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
           if (generation.current === current) settle();
         });
@@ -167,6 +199,12 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       exit.current = { grid, token, update };
       grid.setAttribute('data-pb-summary-exit', '');
       motions.current = fadeSummaryOut(summary);
+      const filterContent = grid.querySelector<HTMLElement>(expanded ? '.pb-rep-filter-content' : '.pb-rep-rail');
+      if (filterContent) motions.current.push(filterContent.animate(
+        [{ opacity: Number(getComputedStyle(filterContent).opacity) }, { opacity: 0 }],
+        { duration: 70, easing: 'ease-out', fill: 'both' },
+      ));
+      startTogether(motions.current);
       void Promise.allSettled(motions.current.map(animation => animation.finished)).then(() => {
         if (exit.current?.token !== token) return;
         const action = exit.current.update;

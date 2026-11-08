@@ -769,3 +769,6 @@
 .pebble-root .pb-rep-eyebrow { width: fit-content; max-width: 100%; }
 .pebble-root .pb-rep-figure-label { align-self: flex-start; }
 .pebble-root .pb-rep-grid[data-pb-inspector-motion] :is(.pb-rep-eyebrow, .pb-rep-figure-label, .pb-rep-figure) { transform-origin: top left; }
+
+/* One WAAPI clock owns both sets of content during their shared reveal. */
+.pebble-root .pb-rep-grid[data-pb-content-reveal] :is(.pb-rep-filter-content, .pb-rep-rail) { transition: none !important; }

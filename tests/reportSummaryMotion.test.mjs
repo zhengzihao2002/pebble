@@ -81,19 +81,19 @@ test('same-layout resizing leaves visible summary contents alone', () => {
   assert.ok([...f.anchors, ...f.support].every(e => !e.animations.length));
 });
 
-test('supporting reflow is masked until the card is reshaping, with charts following details', () => {
+test('all supporting regions stay masked until the shared geometry completes', () => {
   const f = fixture(), capture = f.captureSummary(f.page), before = { ...f.hero.rect };
   f.layout(false);
   f.animateSummary(capture, before, f.hero.rect, 360, 60, 'ease');
   for (const element of f.support) {
     const a = element.animations.at(-1);
     assert.equal(a.frames[0].opacity, 0, 'Destination layout must not flash on the first frame');
-    assert.equal(a.frames.at(-1).opacity, 1);
+    assert.equal(a.frames.at(-1).opacity, 0);
     assert.equal(a.options.fill, 'both', 'Hold zero opacity before reveal begins');
-    assert.ok(a.options.delay > 60, 'Keep supporting content hidden during the initial reshape');
+    assert.equal(a.options.delay, 60, 'The same mask clock covers all supporting content');
     assert.ok(a.options.delay + a.options.duration <= 60 + 360, 'Finish before the shared layout settles');
   }
-  assert.ok(f.side.animations.at(-1).options.delay > f.support[0].animations.at(-1).options.delay, 'The chart follows the supporting numbers');
+  assert.equal(f.side.animations.at(-1).options.delay, f.support[0].animations.at(-1).options.delay, 'The chart and supporting numbers share a clock');
 });
 
 test('a partially hidden interrupted summary restores even when layout columns no longer change', () => {

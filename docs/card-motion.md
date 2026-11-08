@@ -26,8 +26,8 @@ moves with the card. There is no transform scaling or fixed final height.
   supporting details dissolve for 70ms before committing the new arrangement.
   The eyebrow, Net label and amount remain visible; sampled counter-transforms
   preserve their screen position and text size while the card reshapes.
-  Supporting figures then return softly, with the chart following slightly
-  later. Changes that keep the same column arrangement do not dissolve content.
+  Supporting figures, charts and filter contents then return together on a
+  shared 80ms fade after geometry settles. Changes that keep the same column arrangement do not dissolve content.
 - A second toggle during the short exit cancels the queued change. Later
   reversals continue from the visible geometry, and explicit Find/open intent
   remains queued correctly. Resize, backgrounding and Reduced Motion cancel

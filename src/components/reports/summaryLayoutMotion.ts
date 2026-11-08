@@ -65,12 +65,10 @@ export function animateSummary(summary: SummaryCapture, before: DOMRect, after: 
     animation.id = 'pb-report-summary-anchor'; animations.push(animation);
   }
   for (const { element } of summary.support) {
-    const side = element.classList.contains('pb-rep-hero-side');
     const animation = element.animate([
-      { opacity: 0, translate: '0 6px' },
-      { opacity: 1, translate: '0 0' },
-    ], { duration: side ? 150 : 140, delay: delay + (side ? 195 : 160), easing: 'ease-out', fill: 'both' });
-    animation.id = 'pb-report-summary-reveal'; animations.push(animation);
+      { opacity: 0 }, { opacity: 0 },
+    ], { duration, delay, fill: 'both' });
+    animation.id = 'pb-report-summary-mask'; animations.push(animation);
   }
   return animations;
 }

@@ -12,7 +12,7 @@ const source = buildSync({
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function fixture({ wide = true, reduced = false, resizePreference = null, summary = false, reflow = true } = {}) {
+function fixture({ wide = true, reduced = false, resizePreference = null, summary = false, reflow = true, summaryMasks = false } = {}) {
   const trace = [];
   const events = () => {
     const handlers = new Map();
@@ -90,7 +90,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
   layout(false);
   const media = Object.assign(events(), { matches: reduced });
   const window = Object.assign(events(), { matchMedia: () => media });
-  const document = Object.assign(events(), { hidden: false });
+  const document = Object.assign(events(), { hidden: false, timeline: { currentTime: 1234 } });
   const refs = [], effects = [];
   let refIndex, effectIndex, effectQueue;
   const react = {
@@ -109,7 +109,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
     })) } : null,
     summaryWillReflow: () => reflow,
     fadeSummaryOut: captured => captured.support.map(({ element, opacity }) => element.animate([{ opacity }, { opacity: 0 }], { duration: 70, fill: 'both' })),
-    animateSummary: () => [], // Real world-space math is covered by reportSummaryMotion.test.mjs.
+    animateSummary: () => summaryMasks ? supports.map(element => element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 360, fill: 'both' })) : [], // Geometry math is covered separately.
   };
   const compiled = { exports: {} };
   vm.runInNewContext(source, {
@@ -130,7 +130,7 @@ function fixture({ wide = true, reduced = false, resizePreference = null, summar
     return run;
   };
   const stop = () => { for (const effect of effects) effect.cleanup?.(); };
-  return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, layout, media, window, document, render, trace, settled, stop };
+  return { page, grid, main, hero, nested, firstPeriod, secondPeriod, inspector, cards, surfaces, supports, rail, contentSurfaces: [...supports, rail, inspectorContent], layout, media, window, document, render, trace, settled, stop };
 }
 
 test('hero and each period card move together, without separately animating nested tiles', async () => {
@@ -161,6 +161,8 @@ test('hero and each period card move together, without separately animating nest
   assert.equal(f.inspector.active.frames[1].width, '328px');
   assert.equal(f.inspector.active.options.duration, f.hero.active.options.duration);
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
+  assert.equal(f.inspector.active.startTime, 1234);
+  assert.ok(f.cards.every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
   assert.equal(f.inspector.active.options.easing, f.hero.active.options.easing);
   for (const card of f.surfaces) card.active.finish();
   await flush();
@@ -190,6 +192,8 @@ test('closing and rapid reversals start from visible rectangles before old anima
   assert.equal(f.inspector.active.frames[0].width, '186px');
   assert.equal(f.inspector.active.frames[0].height, '342px');
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);
+  assert.equal(f.inspector.active.startTime, 1234);
+  assert.ok(f.cards.every(card => card.active.startTime === f.inspector.active.startTime), 'Reversals share an explicit timeline origin');
   const latest = f.hero.active;
   await flush();
   assert.equal(f.hero.active, latest, 'Rejected promises from old motion cannot cancel the replacement');
@@ -260,7 +264,7 @@ test('a column switch waits for the old supporting content to fade before commit
   assert.equal(f.grid.getAttribute('data-pb-summary-exit'), '');
   assert.equal(f.main.getAttribute('data-pb-resize'), null, 'Card geometry remains intrinsic during the brief content exit');
   assert.ok(f.surfaces.every(card => card.animations.length === 0));
-  const exitAnimations = f.supports.map(element => element.active);
+  const exitAnimations = f.contentSurfaces.map(element => element.active).filter(Boolean);
   assert.ok(exitAnimations.every(animation => animation.options.duration === 70 && animation.frames.at(-1).opacity === 0));
   // One finished region is insufficient: the chart must also finish its exit.
   exitAnimations[0].finish(); await flush();
@@ -279,7 +283,7 @@ test('a second toggle during the content exit cancels its queued commit and rest
   const run = f.render(false);
   let commits = 0;
   run(() => { commits++; f.layout(true); f.render(true); });
-  const exitAnimations = f.supports.map(element => element.active);
+  const exitAnimations = f.contentSurfaces.map(element => element.active).filter(Boolean);
   exitAnimations.forEach(animation => { animation.visualOpacity = .45; });
   run(() => { commits++; });
   await flush();
@@ -294,6 +298,7 @@ test('a second toggle during the content exit cancels its queued commit and rest
     assert.equal(element.active.frames.at(-1).opacity, 1);
     element.active.finish();
   }
+  for (const element of f.contentSurfaces) element.active?.finish();
   await flush();
   assert.equal(commits, 0, 'Late settlement of the old promises cannot revive the cancelled action');
   assert.ok(f.supports.every(element => element.active === null));
@@ -308,7 +313,7 @@ test('an explicit open action replaces a queued close instead of being mistaken 
   run(() => { closeCalls++; f.layout(false); f.render(false); });
   run(() => { openCalls++; findOpened = true; f.layout(true); f.render(true); }, 'open');
   assert.equal(openCalls, 0, 'Keep the latest explicit intent queued behind the already-running content exit');
-  for (const element of f.supports) element.active.finish();
+  for (const element of f.contentSurfaces) element.active?.finish();
   await flush();
   assert.equal(closeCalls, 0);
   assert.equal(openCalls, 1);
@@ -324,7 +329,7 @@ for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
     const run = f.render(false);
     let commits = 0;
     run(() => { commits++; f.layout(true); f.render(true); });
-    const exitAnimations = f.supports.map(element => element.active);
+    const exitAnimations = f.contentSurfaces.map(element => element.active).filter(Boolean);
     if (reason === 'unmount') f.stop();
     else if (reason === 'hidden') { f.document.hidden = true; f.document.emit('visibilitychange'); }
     else if (reason === 'reduced') { f.media.matches = true; f.media.emit('change'); }
@@ -367,3 +372,30 @@ for (const mode of [{ wide: false }, { reduced: true }]) {
     f.stop();
   });
 }
+
+
+test('summary reveal and inspector readiness start together after every geometry animation finishes', async () => {
+  const f = fixture({ summary: true, summaryMasks: true });
+  const run = f.render(false);
+  run(() => { f.layout(true); f.render(true); });
+  f.contentSurfaces.forEach(element => element.active?.finish()); await flush();
+  assert.equal(f.grid.getAttribute('data-pb-inspector-motion'), '');
+  const readyCount = () => (f.inspector.events ?? []).filter(name => name === 'pb-report-inspector-settled').length;
+  const before = readyCount();
+  [...f.cards, ...f.contentSurfaces].forEach(element => element.active?.finish()); await flush();
+  assert.equal(readyCount(), before, 'Wait for the filter geometry as well as the cards');
+  f.inspector.active.finish(); await flush();
+  assert.equal(readyCount(), before + 1, 'Release filter content in the same handoff as summary reveal');
+  for (const element of f.supports) {
+    assert.equal(element.active.options.duration, 80);
+    assert.equal(element.active.options.delay ?? 0, 0, 'No stagger between chart and figures');
+    assert.equal(element.active.frames[0].opacity, 0);
+    assert.equal(element.active.frames.at(-1).opacity, 1);
+    element.active.finish();
+  }
+  const filterContent = f.inspector.querySelector('.pb-rep-filter-content');
+  assert.equal(filterContent.active.options.duration, 80);
+  assert.equal(filterContent.active.startTime, f.supports[0].active.startTime);
+  filterContent.active.finish();
+  await flush(); f.stop();
+});
