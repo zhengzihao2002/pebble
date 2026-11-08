@@ -32,6 +32,11 @@ moves with the card. There is no transform scaling or fixed final height.
   reversals continue from the visible geometry, and explicit Find/open intent
   remains queued correctly. Resize, backgrounding and Reduced Motion cancel
   pending exits and clear their decoration without reviving stale callbacks.
+- All Reports surfaces use the same transform geometry, including the filter
+  shell. Mixing compositor card motion with layout-driven filter dimensions
+  can desynchronize under main-thread load. Transform origins remain fixed
+  through every phase, and counter-scaled corner radii keep the visible curve
+  steady. The report uses its existing page fade rather than a competing rise.
 - The filter surface unfolds down and left from its top-right corner. Its
   fixed-width controls fade in once the surface fits, and out before it
   contracts. The collapsed rail uses the same card surface and glow.

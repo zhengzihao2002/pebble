@@ -772,3 +772,13 @@
 
 /* One WAAPI clock owns both sets of content during their shared reveal. */
 .pebble-root .pb-rep-grid[data-pb-content-reveal] :is(.pb-rep-filter-content, .pb-rep-rail) { transition: none !important; }
+
+/* Keep origins stable through geometry, reveal and cancellation phases. */
+.pebble-root .pb-rep-main .card,
+.pebble-root .pb-rep :is(.pb-rep-eyebrow, .pb-rep-figure-label, .pb-rep-figure) { transform-origin: top left; }
+@container content (min-width: 1040px) {
+  .pebble-root .pb-rep-filters { transform-origin: top right; }
+}
+
+/* The page already fades in; a separate rise can shift captured card origins. */
+.pebble-root .pb-rep-main .card { animation: none; }

@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
+import { reportGeometryFrames } from './reportGeometryMotion';
 import { settleCardResizes } from '@/lib/cardResize';
 import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
 
@@ -97,23 +98,21 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     }
     motions.current = final.flatMap(({ card, before, after }) => {
       if (!after.width || !after.height) return [];
-      const animation = card.animate([
-        { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})` },
-        { transform: 'translate(0px, 0px) scale(1, 1)' },
-      ], { duration: DURATION, delay, easing, fill: 'both' });
+      const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius) || 24;
+      const animation = card.animate(reportGeometryFrames(before, after, radius),
+        { duration: DURATION, delay, easing, fill: 'both' });
       animation.id = 'pb-report-inspector-layout';
       return [animation];
     });
     motions.current.push(...summaryMotions);
     if (inspector && inspectorAfter) {
-      const animation = inspector.element.animate([
-        { width: `${inspector.before.width}px`, height: `${inspector.before.height}px` },
-        { width: `${inspectorAfter.width}px`, height: `${inspectorAfter.height}px` },
-      ], { duration: DURATION, delay, easing, fill: 'both' });
+      const radius = parseFloat(getComputedStyle(inspector.element).borderTopLeftRadius) || 24;
+      const animation = inspector.element.animate(reportGeometryFrames(inspector.before, inspectorAfter, radius, true),
+        { duration: DURATION, delay, easing, fill: 'both' });
       animation.id = 'pb-report-inspector-surface';
       motions.current.push(animation);
     }
-    if (capture.summary && summaryMotions.length) {
+    if (inspector) {
       for (const element of [grid.querySelector<HTMLElement>('.pb-rep-rail'), inspector?.element.querySelector<HTMLElement>('.pb-rep-filter-content')]) {
         if (element) motions.current.push(element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: DURATION, delay, fill: 'both' }));
       }
@@ -157,6 +156,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
       reduced.removeEventListener('change', settle);
     };
     // The refs survive state changes; listeners intentionally mount once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const commit = (update: () => void) => {
