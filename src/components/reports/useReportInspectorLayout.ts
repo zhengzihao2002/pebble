@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { settleCardResizes } from '@/lib/cardResize';
 
-const DURATION = 180;
+const DURATION = 280;
 const CLOSE_DELAY = 60;
 
 type Capture = {

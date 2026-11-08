@@ -135,7 +135,7 @@ test('hero and each period card move together, without separately animating nest
   assert.ok(f.trace.lastIndexOf('read:second period') < f.trace.indexOf('animate:hero'), 'Batch final geometry reads before any animation writes');
   for (const card of f.cards) {
     assert.equal(card.animations.length, 1);
-    assert.equal(card.active.options.duration, 180);
+    assert.equal(card.active.options.duration, 280);
     assert.equal(card.active.options.delay, 0);
     assert.equal(card.active.options.easing, 'cubic-bezier(.22,1,.36,1)');
     assert.equal(card.active.id, 'pb-report-inspector-layout');
@@ -174,7 +174,7 @@ test('closing and rapid reversals start from visible rectangles before old anima
   assert.equal(f.hero.active.frames[0].transform, `translate(0px, 0px) scale(${750 / 900}, ${400 / 300})`);
   assert.equal(f.firstPeriod.active.frames[0].transform, `translate(0px, 100px) scale(${750 / 900}, 1)`);
   assert.equal(f.hero.active.options.delay, 60, 'Closing shares the filter content fade-out delay');
-  assert.equal(f.hero.active.options.duration, 180);
+  assert.equal(f.hero.active.options.duration, 280);
   assert.equal(f.inspector.active.frames[0].width, '186px');
   assert.equal(f.inspector.active.frames[0].height, '342px');
   assert.equal(f.inspector.active.options.delay, f.hero.active.options.delay);

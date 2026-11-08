@@ -224,15 +224,15 @@
     position: absolute; top: 0; right: 0; box-sizing: border-box;
     width: 2.75rem; height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
     overflow: visible; pointer-events: none;
-    transition: width 180ms var(--pb-ease-out) 60ms, height 180ms var(--pb-ease-out) 60ms;
+    transition: width 280ms var(--pb-ease-out) 60ms, height 280ms var(--pb-ease-out) 60ms;
   }
   .pebble-root .has-inspector .pb-rep-filters {
     width: 20.5rem; height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
     pointer-events: auto; transition-delay: 0ms;
   }
   .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="true"] {
-    /* Nested accordions already animate height: follow them without lag. */
-    transition-property: width;
+    /* Follow nested accordions in normal flow, without observer lag. */
+    height: auto; transition-property: width;
   }
   .pebble-root .pb-rep-filter-content {
     position: absolute; top: 0; right: 0; width: calc(20.5rem - 2px); box-sizing: border-box;
@@ -247,6 +247,7 @@
     opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity 80ms ease-out;
   }
+  .pebble-root .has-inspector .pb-rep-filters[data-inspector-ready="true"] .pb-rep-filter-content { position: relative; }
   .pebble-root .pb-rep-filter-content > button,
   .pebble-root .pb-rep-filter-content > .pb-rep-keys { flex: none; }
   /* Always lay out the desktop controls at their final size, even closed.
@@ -268,7 +269,7 @@
     border: 1px solid transparent; border-radius: 1.15rem; background: transparent; box-shadow: none;
     color: var(--ink); font: inherit; cursor: pointer; pointer-events: auto;
     opacity: 1; visibility: visible;
-    transition: opacity 80ms ease-out 240ms, visibility 0s linear 240ms;
+    transition: opacity 80ms ease-out 340ms, visibility 0s linear 340ms;
   }
   .pebble-root .has-inspector .pb-rep-rail {
     opacity: 0; visibility: hidden; pointer-events: none;

@@ -232,7 +232,7 @@ export function ReportFilters({
       setInspectorReady(expanded && floating && (reduced.matches || (!managed && fits())));
       // No transition runs for a saved-open panel or a breakpoint change.
       // The final-size check also prevents premature reveals after reversals.
-      if (expanded && floating) timer = window.setTimeout(reveal, 200);
+      if (expanded && floating) timer = window.setTimeout(reveal, 300);
     };
     const onEnd = (event: TransitionEvent) => {
       if (event.target === card && ['width', 'height'].includes(event.propertyName)) reveal();
