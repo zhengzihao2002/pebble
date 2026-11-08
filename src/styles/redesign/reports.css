@@ -200,6 +200,7 @@
 @container content (min-width: 1040px) {
   .pebble-root .pb-rep-grid {
     --pb-rep-side-w: 2.75rem;
+    --pb-rep-layout-ease: cubic-bezier(.4,0,.2,1);
     display: grid; grid-template-columns: minmax(0, 1fr) var(--pb-rep-side-w); align-items: start; gap: 0 1.25rem;
   }
   .pebble-root .pb-rep-grid.has-inspector { --pb-rep-side-w: 20.5rem; }
@@ -224,7 +225,7 @@
     position: absolute; top: 0; right: 0; box-sizing: border-box;
     width: 2.75rem; height: var(--pb-rep-rail-h); min-height: 0; padding: 0;
     overflow: visible; pointer-events: none;
-    transition: width 280ms var(--pb-ease-out) 60ms, height 280ms var(--pb-ease-out) 60ms;
+    transition: width 480ms var(--pb-rep-layout-ease) 60ms, height 480ms var(--pb-rep-layout-ease) 60ms;
   }
   .pebble-root .has-inspector .pb-rep-filters {
     width: 20.5rem; height: var(--pb-rep-filter-height, var(--pb-rep-rail-h));
@@ -269,7 +270,7 @@
     border: 1px solid transparent; border-radius: 1.15rem; background: transparent; box-shadow: none;
     color: var(--ink); font: inherit; cursor: pointer; pointer-events: auto;
     opacity: 1; visibility: visible;
-    transition: opacity 80ms ease-out 340ms, visibility 0s linear 340ms;
+    transition: opacity 80ms ease-out 540ms, visibility 0s linear 540ms;
   }
   .pebble-root .has-inspector .pb-rep-rail {
     opacity: 0; visibility: hidden; pointer-events: none;

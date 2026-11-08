@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { settleCardResizes } from '@/lib/cardResize';
 
-const DURATION = 280;
+const DURATION = 480;
 const CLOSE_DELAY = 60;
 
 type Capture = {
@@ -65,7 +65,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const grid = pageRef.current?.querySelector<HTMLElement>('.pb-rep-grid');
     if (!grid || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { settle(); return; }
     const current = ++generation.current;
-    const easing = getComputedStyle(grid).getPropertyValue('--pb-ease-out').trim() || 'cubic-bezier(.22,1,.36,1)';
+    const easing = getComputedStyle(grid).getPropertyValue('--pb-rep-layout-ease').trim() || 'cubic-bezier(.4,0,.2,1)';
     // Give the filter shell the same clock as the cards. Native CSS
     // transitions shorten reversed motion, which would desynchronize them.
     const inspector = capture.inspector;

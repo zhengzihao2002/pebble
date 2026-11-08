@@ -12,7 +12,7 @@ moves with the card. There is no transform scaling or fixed final height.
 - Reports filters opt out with `data-pb-resize="off"`. On desktop the grid
   reserves a real column for the inspector. The final responsive layout is
   calculated once; live report cards then move/resize from their visible old
-  rectangles to the final rectangles over 280ms, matching the filter surface.
+  rectangles to the final rectangles over 480ms with a gentler ease-in/out, matching the filter surface.
   Closing shares its 60ms content-fade delay. No card overlaps the inspector.
 - `useReportInspectorLayout` captures an interrupted animation before cancelling
   it and commits the next layout atomically, so rapid reversals continue from

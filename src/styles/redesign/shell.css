@@ -36,12 +36,12 @@
   }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .pebble-root .pebble-sidebar {
-      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 65%, transparent);
+      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 30%, transparent);
       -webkit-backdrop-filter: saturate(1.6) blur(16px);
       backdrop-filter: saturate(1.6) blur(16px);
     }
     .pebble-root:has(> .pb-ambient-background) .pebble-sidebar {
-      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 38%, transparent);
+      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 12%, transparent);
       -webkit-backdrop-filter: saturate(1.15) blur(16px);
       backdrop-filter: saturate(1.15) blur(16px);
     }
