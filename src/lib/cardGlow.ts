@@ -36,7 +36,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   && CSS.supports('left: anchor(left)') && CSS.supports('width: anchor-size(width)')) {
   const root = layer.closest<HTMLElement>('.pebble-root');
   if (!root || typeof ResizeObserver === 'undefined') return () => {};
-  // Floating inspectors use a native local halo so resizing them never
+  // Desktop Reports cards use native local halos so moving them never
   // rerasterizes SVG Gaussian filters on the first interaction.
   layer.dataset.pbGlowReady = 'true';
   const glows = new Map<HTMLElement, Glow>();
@@ -45,7 +45,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
 
   const eligible = (target: HTMLElement) => {
     if (target.closest(EXCLUDED) || target.parentElement?.closest(CARDS)
-      || (target.matches('.pb-rep-filters') && getComputedStyle(target).getPropertyValue('--pb-card-glow-local').trim() === '1')) return false;
+      || (target.closest('.pb-rep') && getComputedStyle(target).getPropertyValue('--pb-card-glow-local').trim() === '1')) return false;
     if (!anchors) {
       // Older browsers still get native scrolling for flow cards. Sticky/fixed
       // surfaces require native CSS anchors; never approximate them per frame.

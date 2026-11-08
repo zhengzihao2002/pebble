@@ -42,10 +42,10 @@ export function YearOverYearCard({ data, categoryMeta, today, inProgress }: Year
 
   const figure = (metric: Metric, r: RangeStats) => (metric === 'savingsRate' ? `${r.savingsRate.toFixed(2)}%` : formatCurrency(r[metric]));
   const cells: { metric: Metric; icon: typeof Wallet; color: string; label: string }[] = [
-    { metric: 'income', icon: ArrowUpRight, color: 'var(--pine)', label: d.dashboard.income },
-    { metric: 'spending', icon: ArrowDownRight, color: 'var(--wine)', label: d.dashboard.spending },
+    { metric: 'income', icon: ArrowUpRight, color: 'var(--income)', label: d.dashboard.income },
+    { metric: 'spending', icon: ArrowDownRight, color: 'var(--expense)', label: d.dashboard.spending },
     { metric: 'savingsRate', icon: Percent, color: 'var(--gold)', label: d.dashboard.savingsRate },
-    { metric: 'saved', icon: Wallet, color: 'var(--pine)', label: d.dashboard.saved },
+    { metric: 'saved', icon: Wallet, color: 'var(--income)', label: d.dashboard.saved },
   ];
 
   // Both bars of a mover share one scale across the three, so their lengths compare.

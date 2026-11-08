@@ -55,7 +55,7 @@ export function LimitMeter({ owed, limit, over }: { owed: number; limit: number;
           blurs with the figures in privacy mode (pb-chart-fill). */}
       <ProgressRing
         value={limit > 0 ? owed / limit : 0} size={50} stroke={5}
-        color={over ? 'var(--wine)' : 'var(--ink-soft)'}
+        color={over ? 'var(--expense)' : 'var(--ink-soft)'}
         label={t(d.ux.accounts.utilizationLabel, { pct: `${pct}%` })}
         className="pb-chart-fill"
       >

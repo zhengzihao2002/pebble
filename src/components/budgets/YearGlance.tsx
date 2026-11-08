@@ -50,7 +50,7 @@ export function YearRing({ totalBudget, totalSpent, fraction }: {
       className="pb-bud-ring pb-chart-fade" role="img"
       aria-label={usedPct === null ? t(ux.yearGone, { pct: String(yearPct) }) : t(ux.ringLabel, { used: String(usedPct), year: String(yearPct) })}
     >
-      <ProgressRing value={used ?? 0} size={148} stroke={12} color={used !== null && used > 1 ? 'var(--wine)' : 'var(--pine)'}>
+      <ProgressRing value={used ?? 0} size={148} stroke={12} color={used !== null && used > 1 ? 'var(--expense)' : 'var(--pine)'}>
         <span className="pb-bud-ring-pct pb-tnum">{usedPct === null ? '—' : `${usedPct}%`}</span>
         {usedPct !== null && <span className="pb-bud-ring-sub">{ux.used}</span>}
       </ProgressRing>

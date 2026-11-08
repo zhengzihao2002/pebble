@@ -24,7 +24,7 @@ interface ScheduleCalendarProps {
 
 /**
  * The preview window as month grids. Each day carries one fixed-size dot per
- * item (pine in, wine out - by kind, not by size, so the grid itself gives no
+ * item (green in, red out - by kind, not by size, so the grid itself gives no
  * amounts away; '+n' past three), today is ringed and days outside the
  * window are faded. Where a month is wide enough the day's net shows in the
  * cell, as a font-mono-tab figure that privacy mode blurs. A day with items is
@@ -142,7 +142,7 @@ export function ScheduleCalendar({ upcoming, previewDays, today, onPick }: Sched
                               {items.length > MAX_DOTS && <b className="pb-tnum">+{items.length - MAX_DOTS}</b>}
                             </span>
                             {items.length > 0 && (
-                              <span className="font-mono-tab pb-sched-day-net" aria-hidden="true" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>
+                              <span className="font-mono-tab pb-sched-day-net" aria-hidden="true" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>
                                 {compactMoney(net)}
                               </span>
                             )}

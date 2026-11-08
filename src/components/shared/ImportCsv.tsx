@@ -1036,7 +1036,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                           </span>
                         );
                         const amount = !r.problem && (
-                          <span className="font-mono-tab pb-tdlg-review-amount" style={{ color: income ? 'var(--pine)' : 'var(--wine)' }}>
+                          <span className="font-mono-tab pb-tdlg-review-amount" style={{ color: income ? 'var(--income)' : 'var(--expense)' }}>
                             {income ? '+' : '−'}{formatCurrency(Math.abs(r.cents as number) / 100)}
                           </span>
                         );
@@ -1168,7 +1168,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <span style={{ color: 'var(--ink-soft)' }}>{d.importCsv.importAmount}</span>
-                    <span className="font-mono-tab" style={{ fontWeight: 600, color: netCents > 0 ? 'var(--pine)' : netCents < 0 ? 'var(--wine)' : 'var(--ink)' }}>
+                    <span className="font-mono-tab" style={{ fontWeight: 600, color: netCents > 0 ? 'var(--income)' : netCents < 0 ? 'var(--expense)' : 'var(--ink)' }}>
                       {netCents > 0 ? '+' : ''}{formatCurrency(netCents / 100)}
                     </span>
                   </div>

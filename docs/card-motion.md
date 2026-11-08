@@ -9,15 +9,25 @@ moves with the card. There is no transform scaling or fixed final height.
 - The observer pauses for its own animation to avoid resize feedback.
 - Nested cards follow their containing card; dialogs keep their existing motion.
 - Sections with existing height transitions keep their own motion.
-- Reports filters opt out with `data-pb-resize="off"`. On desktop the report
-  keeps a fixed width while one glowing filter surface unfolds down and left
-  from its fixed top-right corner (180ms). Closing reverses that direction.
-  Fixed-width controls fade in after the surface fits and fade out before it
-  contracts. The collapsed rail uses that same card surface and glow.
+- Reports filters opt out with `data-pb-resize="off"`. On desktop the grid
+  reserves a real column for the inspector. The final responsive layout is
+  calculated once; live report cards then move/resize from their visible old
+  rectangles to the final rectangles over 180ms, matching the filter surface.
+  Closing shares its 60ms content-fade delay. No card overlaps the inspector.
+- `useReportInspectorLayout` captures an interrupted animation before cancelling
+  it and commits the next layout atomically, so rapid reversals continue from
+  the current visible positions. Cards and filter surface share one animation
+  clock; controls reveal on its completion signal. The shared card height
+  animator pauses during this managed motion. Layout caching waits
+  until the live transforms settle. Charts resize once at the final layout;
+  their viewport clips any pending Recharts resize before paint.
+- The filter surface unfolds down and left from its top-right corner. Its
+  fixed-width controls fade in once the surface fits, and out before it
+  contracts. The collapsed rail uses the same card surface and glow.
 - Desktop filter controls retain their final scroll viewport while hidden,
-  avoiding temporary scrollbars during opening/closing. The actual overflow
-  remains scrollable in short windows. Local sections and the mobile outer
-  accordion use 200ms grid transitions. No page snapshot covers live controls.
+  avoiding temporary scrollbars during opening/closing. Actual overflow stays
+  scrollable in short windows. Local sections and the mobile outer accordion
+  use 200ms grid transitions. No page snapshot covers live controls.
 - Viewport changes, hidden pages and Reduced Motion settle immediately.
 - Layout caching waits for settled geometry. Pagehide settles synchronously
   before saving so an intermediate height cannot become a loading placeholder.

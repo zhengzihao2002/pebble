@@ -77,14 +77,14 @@ export function StatementRow({
 
   const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
-    : (isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)'));
+    : (isIncome ? 'var(--income)' : (meta ? meta.color : 'var(--ink-soft)'));
   const accentBg = isAdjustment || uncategorised
     ? 'var(--mist)'
-    : (isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`);
+    : (isIncome ? 'var(--income-soft)' : `${meta ? meta.color : '#999999'}20`);
   // Green for money in, red for money out, grey for corrections.
   const amountColor = isAdjustment
     ? 'var(--ink-soft)'
-    : (isIncome ? 'var(--pine)' : 'var(--wine)');
+    : (isIncome ? 'var(--income)' : 'var(--expense)');
   const amountPrefix = isAdjustment ? (txn.amount > 0 ? '+' : '') : (isIncome ? '+' : '');
 
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);

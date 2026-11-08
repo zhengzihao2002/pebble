@@ -62,13 +62,13 @@ export function AccountsHero({
   // The range's own summary (unchanged wording and colour rule), and while
   // scrubbing, the change from the range's start to the day under the finger.
   const full = changeBetween(first, last);
-  const summaryColor = full.change > 0 ? 'var(--pine)' : full.change < 0 ? 'var(--wine)' : 'var(--ink-soft)';
+  const summaryColor = full.change > 0 ? 'var(--income)' : full.change < 0 ? 'var(--expense)' : 'var(--ink-soft)';
   const summaryText = words.sentence(full.change, full.pct, formatCurrency(Math.abs(full.change)));
   const part = i !== null ? changeBetween(first, shownTotal) : null;
 
   // Coloured like a stock chart: the range's overall direction, first point
-  // to last - up pine, down wine, unchanged grey.
-  const trendTone = last > first + 0.004 ? 'var(--pine)' : last < first - 0.004 ? 'var(--wine)' : 'var(--ink-soft)';
+  // to last - up green, down red, unchanged grey.
+  const trendTone = last > first + 0.004 ? 'var(--income)' : last < first - 0.004 ? 'var(--expense)' : 'var(--ink-soft)';
 
   const options = useMemo(() => [
     { value: '1m' as const, label: x.range1m },

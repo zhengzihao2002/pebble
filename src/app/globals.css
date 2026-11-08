@@ -505,6 +505,23 @@ html[data-pebble-theme="graphite"] .pebble-root.dark {
   --overlay-tint: rgba(20, 21, 23, 0.6);
 }
 /* @generated-themes:end */
+
+/* Financial meaning is independent of the selected brand palette. Green
+   always means money in; red means money out. Dark variants preserve contrast. */
+@property --income { syntax: '<color>'; inherits: true; initial-value: #23734F; }
+@property --income-soft { syntax: '<color>'; inherits: true; initial-value: #E5F1E9; }
+@property --expense { syntax: '<color>'; inherits: true; initial-value: #A5414A; }
+@property --expense-soft { syntax: '<color>'; inherits: true; initial-value: #F7E5E6; }
+.pebble-root {
+  --income: #23734F; --income-soft: #E5F1E9;
+  --expense: #A5414A; --expense-soft: #F7E5E6;
+}
+.pebble-root.dark,
+.pebble-dark .pebble-root {
+  --income: #74C69D; --income-soft: #203C2D;
+  --expense: #EA969C; --expense-soft: #452B30;
+}
+
 /* No universal transition: theme switches fade through the registered colour
    tokens on .pebble-root, and interaction timing lives in the motion section
    at the end of this file. */
@@ -1355,11 +1372,11 @@ html.pebble-welcoming::after {
 .pebble-root .pb-kind-switch button[aria-checked="true"] { color: var(--paper); }
 .pebble-root .pb-kind-thumb {
   position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
-  border-radius: 999px; background-color: var(--wine); box-shadow: var(--shadow);
+  border-radius: 999px; background-color: var(--expense); box-shadow: var(--shadow);
   transition: transform 340ms cubic-bezier(0.34, 1.36, 0.64, 1), background-color var(--pb-dur-std) var(--pb-ease-out);
 }
 .pebble-root .pb-kind-switch[data-kind="income"] .pb-kind-thumb {
-  transform: translateX(100%); background-color: var(--pine);
+  transform: translateX(100%); background-color: var(--income);
 }
 
 /* Modal close dot (ModalCloseButton): soft wine dot, cross always visible,

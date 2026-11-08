@@ -18,7 +18,7 @@ const MAX_ROWS = 6;
  * stacked with headers that stick under the period bar on a phone). Each
  * month header carries its totals and a small in / out proportion bar; each
  * row a date tile with the weekday, the category's icon chip, the title with
- * any note on a softer second line, and the amount (income pine, with +).
+ * any note on a softer second line, and the amount (income green, with +).
  *
  * Every item is still listed: past six in a month, the rest open in place
  * with "Show N more". The description is no longer one run-together line -
@@ -56,7 +56,7 @@ export function UpcomingTimeline({ months, categoryMeta }: { months: UpcomingMon
             </span>
           )}
         </span>
-        <span className="font-mono-tab pb-ana-up-amt" style={{ color: income ? 'var(--pine)' : 'var(--ink)' }}>
+        <span className="font-mono-tab pb-ana-up-amt" style={{ color: income ? 'var(--income)' : 'var(--expense)' }}>
           {income ? '+' : '−'}<RollingAmount value={formatCurrency(Math.abs(it.amount))} />
         </span>
       </li>
@@ -75,9 +75,9 @@ export function UpcomingTimeline({ months, categoryMeta }: { months: UpcomingMon
             <div className="pb-ana-up-head">
               <span className="pb-ana-up-label">{m.label}</span>
               <span className="font-mono-tab pb-ana-up-tot" aria-label={t(x.monthTotals, { label: m.label })}>
-                {m.expenseTotal > 0 && `−${formatCurrency(m.expenseTotal)}`}
+                {m.expenseTotal > 0 && <span style={{ color: 'var(--expense)' }}>−<RollingAmount value={formatCurrency(m.expenseTotal)} /></span>}
                 {m.expenseTotal > 0 && m.incomeTotal > 0 && ' · '}
-                {m.incomeTotal > 0 && <span style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(m.incomeTotal)} /></span>}
+                {m.incomeTotal > 0 && <span style={{ color: 'var(--income)' }}>+<RollingAmount value={formatCurrency(m.incomeTotal)} /></span>}
               </span>
               {flow > 0 && (
                 <span className="pb-ana-split pb-chart-fill" aria-hidden="true">

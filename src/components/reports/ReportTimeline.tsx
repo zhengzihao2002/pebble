@@ -40,9 +40,9 @@ function Tip({ active, payload, mode }: { active?: boolean; payload?: ReadonlyAr
       <p className="pb-rep-tip-title">{p.tip}</p>
       {p.future ? <p className="pb-rep-tip-soft">{x.notYet}</p> : (
         <>
-          {mode !== 'expense' && row(x.moneyIn, p.bucket.income, 'var(--pine)')}
-          {mode !== 'income' && row(x.moneyOut, p.bucket.spending, 'var(--wine)')}
-          {mode === 'mixed' && row(x.net, p.bucket.net, p.bucket.net < 0 ? 'var(--wine)' : 'var(--ink)')}
+          {mode !== 'expense' && row(x.moneyIn, p.bucket.income, 'var(--income)')}
+          {mode !== 'income' && row(x.moneyOut, p.bucket.spending, 'var(--expense)')}
+          {mode === 'mixed' && row(x.net, p.bucket.net, p.bucket.net < 0 ? 'var(--expense)' : 'var(--ink)')}
         </>
       )}
     </div>
@@ -59,7 +59,7 @@ interface ReportTimelineProps {
 
 /**
  * The report over time: one bar per day, week or month of the bounds.
- * Expenses alone are wine bars, income alone pine; both are diverging bars
+ * Expenses alone are red bars, income alone green; both are diverging bars
  * (money in up, money out down from a zero hairline) with a thin ink line for
  * the net. A dashed line marks the average; a gold tick marks today; buckets
  * still to come are hollow outlines at the average height, never zero bars,
@@ -111,8 +111,8 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
   return (
     <div className="pb-rep-timeline">
       <div className="pb-rep-timeline-legend">
-        {mode !== 'expense' && <span><i className="pb-rep-key" style={{ background: 'var(--pine)' }} />{x.moneyIn}</span>}
-        {mode !== 'income' && <span><i className="pb-rep-key" style={{ background: 'var(--wine)' }} />{x.moneyOut}</span>}
+        {mode !== 'expense' && <span><i className="pb-rep-key" style={{ background: 'var(--income)' }} />{x.moneyIn}</span>}
+        {mode !== 'income' && <span><i className="pb-rep-key" style={{ background: 'var(--expense)' }} />{x.moneyOut}</span>}
         {mode === 'mixed' && granularity !== 'day' && <span><i className="pb-rep-key is-line" />{x.net}</span>}
         <span className="pb-rep-avg"><i className="pb-rep-key is-dashed" /><span className="font-mono-tab">{avgText}</span></span>
       </div>
@@ -126,10 +126,10 @@ export function ReportTimeline({ buckets, granularity, mode, label }: ReportTime
               <Tooltip content={<Tip mode={mode} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} isAnimationActive={false} />
               {mode === 'mixed' && <ReferenceLine y={0} stroke="var(--ink-faint)" />}
               {mode !== 'expense' && (
-                <Bar dataKey="income" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--pine)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+                <Bar dataKey="income" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--income)" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
               )}
               {mode !== 'income' && (
-                <Bar dataKey="spending" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--wine)" radius={mode === 'mixed' ? [0, 0, 4, 4] : [4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+                <Bar dataKey="spending" stackId={mode === 'mixed' ? 'flow' : 'one'} fill="var(--expense)" radius={mode === 'mixed' ? [0, 0, 4, 4] : [4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
               )}
               {mode !== 'mixed' && (
                 <Bar dataKey="ghost" stackId="one" fill="transparent" stroke="var(--ink-faint)" strokeOpacity={0.6} strokeDasharray="3 3" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />

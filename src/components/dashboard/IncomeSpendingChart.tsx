@@ -20,8 +20,8 @@ import { BarsSkeleton } from './DashSkeletons';
 // SVG attributes, so the series follow the active theme and dark mode too.
 // Income is pine and spending is wine - the app's colours for money in and
 // money out, the same as the Analysis charts.
-const INCOME = 'var(--pine)';
-const SPENDING = 'var(--wine)';
+const INCOME = 'var(--income)';
+const SPENDING = 'var(--expense)';
 
 // The running "saved so far" line: ink, so it reads as a total rather than a
 // third money series competing with pine and wine.
@@ -81,7 +81,7 @@ const WEEKLY = new Set(['30d', '90d', 'month']);
 
 /**
  * Income vs spending as what the data actually is: discrete buckets. Each
- * week or month gets a pair of bars (income pine, spending wine) and a thin
+ * week or month gets a pair of bars (income green, spending red) and a thin
  * ink line carries the running "saved so far" across them.
  *
  * The previous version drew two monotone AREAS, which interpolated between
@@ -255,7 +255,7 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
         <dl className="pb-dash-facts" aria-label={ux.flowFacts}>
           {facts.income !== null && <div className="pb-dash-fact"><dt>{t(ux.avgIncome, { unit })}</dt><dd><span className="font-mono-tab">{formatCurrency(facts.income)}</span></dd></div>}
           {facts.spending !== null && <div className="pb-dash-fact"><dt>{t(ux.avgSpending, { unit })}</dt><dd><span className="font-mono-tab">{formatCurrency(facts.spending)}</span></dd></div>}
-          <div className="pb-dash-fact"><dt>{ux.savedSoFar}</dt><dd><span className="font-mono-tab" style={{ color: facts.saved < 0 ? 'var(--wine)' : undefined }}>{formatCurrency(facts.saved)}</span></dd></div>
+          <div className="pb-dash-fact"><dt>{ux.savedSoFar}</dt><dd><span className="font-mono-tab" style={{ color: facts.saved < 0 ? 'var(--expense)' : undefined }}>{formatCurrency(facts.saved)}</span></dd></div>
         </dl>
       )}
     </section>

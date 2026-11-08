@@ -347,7 +347,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                 <DeductionChart data={incomeSummary.monthlyDeductions} view={deductionView} />
                 {deductionView === 'paycheck' && (
                   <div className="pb-ana-legend" aria-hidden="true">
-                    <span><i style={{ background: 'var(--pine)' }} />{x.takeHome}</span>
+                    <span><i style={{ background: 'var(--income)' }} />{x.takeHome}</span>
                     <span><i style={{ background: 'var(--gold)' }} />{x.withheld}</span>
                   </div>
                 )}
@@ -466,8 +466,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               <CashflowChart data={cashflow.months} view={cashflowView} />
               {cashflowView === 'inout' && (
                 <div className="pb-ana-legend" aria-hidden="true">
-                  <span><i style={{ background: 'var(--pine)' }} />{x.income}</span>
-                  <span><i style={{ background: 'var(--wine)' }} />{x.spending}</span>
+                  <span><i style={{ background: 'var(--income)' }} />{x.income}</span>
+                  <span><i style={{ background: 'var(--expense)' }} />{x.spending}</span>
                   <span><i className="is-line" />{x.net}</span>
                 </div>
               )}
@@ -535,7 +535,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                         </th>
                         <td className="is-wide font-mono-tab"><RollingAmount value={formatCurrency(y.income)} /></td>
                         <td className="is-wide font-mono-tab"><RollingAmount value={formatCurrency(y.spending)} /></td>
-                        <td className="font-mono-tab" style={{ color: y.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}><RollingAmount value={formatCurrency(y.net)} /></td>
+                        <td className="font-mono-tab" style={{ color: y.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount value={formatCurrency(y.net)} /></td>
                         <td className="pb-tnum">
                           {y.savingsRate === null ? '—' : pct(y.savingsRate)}
                         </td>

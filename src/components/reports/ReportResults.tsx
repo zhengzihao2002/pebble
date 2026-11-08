@@ -12,8 +12,8 @@ import type { ReportPeriodGroup, CategoryGroupMode, SortDir, SortField } from '.
 import { ReportCategoryRow } from './ReportCategoryRow';
 import { sectionByDay } from './daySections';
 
-// Mixed (both types shown): every income group or row sits on a 9% pine
-// band and every expense one on a 9% wine band - the owner's light green and
+// Mixed (both types shown): every income group or row sits on a 9% green
+// band and every expense one on a 9% red band - the owner's light green and
 // light red, mixed from the theme colours so they follow every palette and
 // dark mode. The bands are now classes (pb-rep-tint-in / -out in
 // reports.css), so a row's HOVER can deepen its own tint instead of painting
@@ -198,13 +198,13 @@ export function ReportResults({
                   const panelId = `pb-rep-g-${pi}-${i}`;
                   return (
                     // data-side: the header's accent bar and the rail under it
-                    // are pine for money in and wine for money out, tinted or
+                    // are green for money in and red for money out, tinted or
                     // not (a category's own colour could be green on an
                     // expense). --pb-rep-cat stays the category's identity
                     // colour for the tile and share bar.
                     <div
                       key={sg.key} data-side={side} className={`pb-rep-group${tinted ? ` pb-rep-tint-${side}` : ''}`}
-                      style={{ ['--pb-rep-cat' as string]: categoryMeta[sg.key]?.color ?? 'var(--pine)' }}
+                      style={{ ['--pb-rep-cat' as string]: categoryMeta[sg.key]?.color ?? (side === 'in' ? 'var(--income)' : 'var(--pine)') }}
                     >
                       {firstOfSide && sideLabel(side)}
                       <ReportCategoryRow

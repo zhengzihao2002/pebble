@@ -109,8 +109,8 @@
   overflow-wrap: anywhere;
 }
 .pebble-root .pb-off-amount { flex: none; font-size: 0.87rem; font-weight: 600; white-space: nowrap; }
-.pebble-root .pb-off-amount.out { color: var(--wine); }
-.pebble-root .pb-off-amount.in { color: var(--pine); }
+.pebble-root .pb-off-amount.out { color: var(--expense); }
+.pebble-root .pb-off-amount.in { color: var(--income); }
 
 .pebble-root .pb-off-row-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;

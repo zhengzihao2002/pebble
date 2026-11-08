@@ -104,8 +104,8 @@ export function AccountDetailSheet({
   const figure = credit ? Math.max(0, -now) : now;
   const { whole, cents } = splitCents(formatCurrency(figure));
   const series = useMemo(() => days.map((p) => ({ date: p.date, v: round2(p.byAccount[account.id] ?? 0) })), [days, account.id]);
-  const tone = series.length > 1 && series[series.length - 1].v > series[0].v + 0.004 ? 'var(--pine)'
-    : series.length > 1 && series[series.length - 1].v < series[0].v - 0.004 ? 'var(--wine)' : 'var(--ink-soft)';
+  const tone = series.length > 1 && series[series.length - 1].v > series[0].v + 0.004 ? 'var(--income)'
+    : series.length > 1 && series[series.length - 1].v < series[0].v - 0.004 ? 'var(--expense)' : 'var(--ink-soft)';
 
   const records = useMemo(() => recordsFor(account.id, expenses, income, adjustments), [account.id, expenses, income, adjustments]);
   const from = days[0]?.date ?? today;
@@ -236,9 +236,9 @@ export function AccountDetailSheet({
                           <YAxis orientation="right" width={52} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                           <ReferenceLine y={0} stroke="var(--ink-faint)" />
                           <Tooltip content={<MonthTip labels={{ moneyIn: x.moneyIn, transfersIn: x.transfersIn, moneyOut: x.moneyOut, transfersOut: x.transfersOut, correction: x.correction, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
-                          <Bar dataKey="in" stackId="m" fill="var(--pine)" maxBarSize={22} isAnimationActive={false} />
+                          <Bar dataKey="in" stackId="m" fill="var(--income)" maxBarSize={22} isAnimationActive={false} />
                           <Bar dataKey="gin" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="out" stackId="m" fill="var(--wine)" maxBarSize={22} isAnimationActive={false} />
+                          <Bar dataKey="out" stackId="m" fill="var(--expense)" maxBarSize={22} isAnimationActive={false} />
                           <Bar dataKey="gout" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[0, 0, 4, 4]} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -247,8 +247,8 @@ export function AccountDetailSheet({
                     <p className="pb-accounts-detail-quiet">{x.noRecordsHere}</p>
                   )}
                   <div className="pb-accounts-detail-legend" aria-hidden="true">
-                    <span><i style={{ background: 'var(--pine)' }} />{x.moneyIn}</span>
-                    <span><i style={{ background: 'var(--wine)' }} />{x.moneyOut}</span>
+                    <span><i style={{ background: 'var(--income)' }} />{x.moneyIn}</span>
+                    <span><i style={{ background: 'var(--expense)' }} />{x.moneyOut}</span>
                     <span><i style={{ background: 'color-mix(in srgb, var(--ink-soft) 45%, transparent)' }} />{x.moves}</span>
                   </div>
                 </div>

@@ -83,9 +83,9 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
       <div className="pb-transaction-icon-tile" style={{
         width: 36, height: 36, borderRadius: '0.65rem', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: isIncome ? 'var(--pine-soft)' : `${meta ? meta.color : '#999999'}20`,
+        backgroundColor: isIncome ? 'var(--income-soft)' : `${meta ? meta.color : '#999999'}20`,
       }}>
-        <TransactionIcon description={txn.description} fallback={<Icon size={16} style={{ color: isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)') }} />} />
+        <TransactionIcon description={txn.description} fallback={<Icon size={16} style={{ color: isIncome ? 'var(--income)' : (meta ? meta.color : 'var(--ink-soft)') }} />} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '0.87rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -100,7 +100,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
           </div>
         )}
       </div>
-      <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--pine)' : 'var(--wine)', whiteSpace: 'nowrap' }}>
+      <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--income)' : 'var(--expense)', whiteSpace: 'nowrap' }}>
         {isIncome ? '+' : ''}<RollingAmount value={formatCurrency(txn.amount)} />
       </div>
     </div>

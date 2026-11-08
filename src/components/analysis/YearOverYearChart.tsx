@@ -7,8 +7,8 @@ import type { YearStats } from '@/lib/analysis/projection';
 
 // Theme tokens, not hex: var() resolves in these SVG attributes, so the bars
 // and legend swatches follow the theme and dark mode.
-const PINE = 'var(--pine)';
-const WINE = 'var(--wine)';
+const INCOME = 'var(--income)';
+const EXPENSE = 'var(--expense)';
 const CURSOR = 'color-mix(in srgb, var(--pine) 8%, transparent)';
 
 /** Two-line tick: the year, then what was saved that year, under each
@@ -59,8 +59,8 @@ export function YearOverYearChart({ data }: { data: YearStats[] }) {
           <Tooltip cursor={{ fill: CURSOR }} formatter={(v) => formatCurrency(Number(v))} />
           <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="top" align="right" height={28} iconType="circle" iconSize={8}
             formatter={(value) => <span style={{ color: 'var(--ink)' }}>{value}</span>} />
-          <Bar dataKey="Income" name={dict.dashboard.income} fill={PINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={WINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+          <Bar dataKey="Income" name={dict.dashboard.income} fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+          <Bar dataKey="Spending" name={dict.dashboard.spending} fill={EXPENSE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

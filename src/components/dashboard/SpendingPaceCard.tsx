@@ -32,7 +32,7 @@ interface SpendingPaceCardProps {
   inProgress: boolean;
 }
 
-const SPEND = 'var(--wine)';
+const SPEND = 'var(--expense)';
 const PREVIOUS = 'var(--ink-faint)';
 const BUDGET = 'var(--gold)';
 
@@ -118,7 +118,7 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
     if (model.hasPrevious) {
       const diff = spentSoFar - previousAtPoint;
       const same = Math.abs(diff) <= PACE_TOLERANCE * Math.max(previousAtPoint, 1);
-      tone = same ? 'var(--ink-soft)' : diff < 0 ? 'var(--pine)' : 'var(--wine)';
+      tone = same ? 'var(--ink-soft)' : diff < 0 ? 'var(--income)' : 'var(--expense)';
       versus = same
         ? t(inProgress ? ux.paceSame : ux.paceSameDone, { unit })
         : renderTemplate(diff < 0 ? (inProgress ? ux.paceLess : ux.paceLessDone) : (inProgress ? ux.paceMore : ux.paceMoreDone), { amount: amount(Math.abs(diff)), unit });

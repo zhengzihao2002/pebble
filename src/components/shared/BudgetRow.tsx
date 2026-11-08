@@ -42,7 +42,7 @@ interface BudgetRowProps {
 export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFraction, status, statusColor, markerTip, markerLabel, note, className }: BudgetRowProps) {
   const tipId = useId();
   const over = pct > 100;
-  const barColor = over ? 'var(--wine)' : pct > 85 ? 'var(--gold)' : 'var(--pine)';
+  const barColor = over ? 'var(--expense)' : pct > 85 ? 'var(--gold)' : 'var(--pine)';
   return (
     <div className={className ? `pb-dash-budget ${className}` : 'pb-dash-budget'}>
       <div className="pb-dash-budget-top">
@@ -76,7 +76,7 @@ export function BudgetRow({ name, icon: Icon, color, budget, spent, pct, yearFra
               </span>
             )}
           </div>
-          <span className="font-mono-tab pb-dash-budget-figs" style={{ color: over ? 'var(--wine)' : undefined }}>
+          <span className="font-mono-tab pb-dash-budget-figs" style={{ color: over ? 'var(--expense)' : undefined }}>
             <RollingAmount value={formatCurrency(spent)} /> <span style={{ opacity: 0.6 }}>/ <RollingAmount value={formatCurrency(budget)} /></span>
           </span>
         </>

@@ -123,8 +123,8 @@
   font-size: 0.72rem; font-weight: 600; line-height: 1.5;
 }
 .pebble-root .pb-delta-num { font-variant-numeric: tabular-nums; }
-.pebble-root .pb-delta-good { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
-.pebble-root .pb-delta-bad { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-delta-good { color: var(--income); background-color: color-mix(in srgb, var(--income) 12%, transparent); }
+.pebble-root .pb-delta-bad { color: var(--expense); background-color: color-mix(in srgb, var(--expense) 12%, transparent); }
 .pebble-root .pb-delta-flat { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 7%, transparent); }
 
 /* Entrance: content rises in once, staggered by --pb-i (set inline: 0, 1,

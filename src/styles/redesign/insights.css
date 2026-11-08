@@ -177,8 +177,8 @@
 .pebble-root .pb-ins-charge-title { font-size: 0.86rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-ins-charge-sub { font-size: 0.72rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-ins-charge-amt { flex: none; font-size: 0.86rem; font-weight: 600; }
-.pebble-root .pb-ins-charge-amt.is-out { color: var(--wine); }
-.pebble-root .pb-ins-charge-amt.is-in { color: var(--pine); }
+.pebble-root .pb-ins-charge-amt.is-out { color: var(--expense); }
+.pebble-root .pb-ins-charge-amt.is-in { color: var(--income); }
 @media (pointer: coarse) {
   .pebble-root .pb-ins-charge { min-height: 48px; }
 }
@@ -195,17 +195,17 @@
 .pebble-root .pb-ins-tip-row > span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
 .pebble-root .pb-ins-tip-row .font-mono-tab { font-weight: 600; }
 .pebble-root .pb-ins-key { display: inline-block; width: 8px; height: 8px; border-radius: 99px; flex: none; }
-.pebble-root .pb-ins-key.is-in { box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
-.pebble-root .pb-ins-key.is-out { background-color: var(--wine); }
-.pebble-root .pb-ins-key.is-kept { background-color: var(--pine); }
-.pebble-root .pb-ins-key.is-over { background: repeating-linear-gradient(135deg, var(--wine) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--wine); }
+.pebble-root .pb-ins-key.is-in { box-shadow: inset 0 0 0 1.5px var(--income); }
+.pebble-root .pb-ins-key.is-out { background-color: var(--expense); }
+.pebble-root .pb-ins-key.is-kept { background-color: var(--income); }
+.pebble-root .pb-ins-key.is-over { background: repeating-linear-gradient(135deg, var(--expense) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--expense); }
 .pebble-root .pb-ins-key.is-usual { background-color: var(--ink-faint); }
 .pebble-root .pb-ins-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: 0.76rem; color: var(--ink-soft); }
 .pebble-root .pb-ins-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .pebble-root .pb-ins-key-line { display: inline-block; width: 14px; height: 2px; border-radius: 2px; flex: none; }
-.pebble-root .pb-ins-key-line.is-cur { background-color: var(--wine); }
+.pebble-root .pb-ins-key-line.is-cur { background-color: var(--expense); }
 .pebble-root .pb-ins-key-line.is-dashed { color: var(--ink-faint); background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 7px); }
-.pebble-root .pb-ins-key-line.is-dotted { height: 3px; color: var(--wine); background: radial-gradient(circle, currentColor 1.2px, transparent 1.4px) 0 0 / 5px 3px; }
+.pebble-root .pb-ins-key-line.is-dotted { height: 3px; color: var(--expense); background: radial-gradient(circle, currentColor 1.2px, transparent 1.4px) 0 0 / 5px 3px; }
 
 /* Skeletons in the shape of what is coming. */
 .pebble-root .pb-ins-skel-rows { display: flex; flex-direction: column; gap: 1rem; padding-top: 0.25rem; }
@@ -242,11 +242,11 @@
   position: relative; display: flex; height: 10px; border-radius: 99px; overflow: hidden;
   background-color: color-mix(in srgb, var(--ink) 7%, transparent);
 }
-.pebble-root .pb-ins-split-spent { display: block; height: 100%; background-color: color-mix(in srgb, var(--wine) 78%, var(--mist)); }
-.pebble-root .pb-ins-split-rest { display: block; height: 100%; background-color: var(--pine); border-left: 2px solid var(--mist); }
+.pebble-root .pb-ins-split-spent { display: block; height: 100%; background-color: color-mix(in srgb, var(--expense) 78%, var(--mist)); }
+.pebble-root .pb-ins-split-rest { display: block; height: 100%; background-color: var(--income); border-left: 2px solid var(--mist); }
 .pebble-root .pb-ins-split-rest.is-over {
   border-left: 0;
-  background: repeating-linear-gradient(135deg, var(--wine) 0 4px, color-mix(in srgb, var(--wine) 35%, transparent) 4px 7px);
+  background: repeating-linear-gradient(135deg, var(--expense) 0 4px, color-mix(in srgb, var(--expense) 35%, transparent) 4px 7px);
 }
 .pebble-root .pb-ins-split-mark { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 2px; background-color: var(--ink); }
 .pebble-root .pb-ins-split-bar:has(.pb-ins-split-mark) { overflow: visible; }
@@ -383,15 +383,15 @@
 .pebble-root .pb-ins-axis { fill: var(--ink-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
 .pebble-root .pb-ins-axis.is-strong { font-weight: 600; }
 .pebble-root .pb-ins-pace-usual { fill: none; stroke: var(--ink-faint); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.pebble-root .pb-ins-pace-area { fill: var(--wine); opacity: 0.1; }
-.pebble-root .pb-ins-pace-cur { fill: none; stroke: var(--wine); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.pebble-root .pb-ins-pace-proj { fill: none; stroke: var(--wine); stroke-width: 2; stroke-dasharray: 0.1 5; stroke-linecap: round; opacity: 0.85; }
+.pebble-root .pb-ins-pace-area { fill: var(--expense); opacity: 0.1; }
+.pebble-root .pb-ins-pace-cur { fill: none; stroke: var(--expense); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pebble-root .pb-ins-pace-proj { fill: none; stroke: var(--expense); stroke-width: 2; stroke-dasharray: 0.1 5; stroke-linecap: round; opacity: 0.85; }
 .pebble-root .pb-ins-pace-today { stroke: var(--ink-faint); stroke-width: 1; }
-.pebble-root .pb-ins-pace-dot { fill: var(--wine); stroke: var(--mist); stroke-width: 2; }
-.pebble-root .pb-ins-pace-end { fill: var(--mist); stroke: var(--wine); stroke-width: 1.5; }
+.pebble-root .pb-ins-pace-dot { fill: var(--expense); stroke: var(--mist); stroke-width: 2; }
+.pebble-root .pb-ins-pace-end { fill: var(--mist); stroke: var(--expense); stroke-width: 1.5; }
 .pebble-root .pb-ins-pace-hover line { stroke: var(--ink-faint); stroke-width: 1; }
 .pebble-root .pb-ins-pace-hover .is-usual { fill: var(--ink-faint); stroke: var(--mist); stroke-width: 1.5; }
-.pebble-root .pb-ins-pace-hover .is-cur { fill: var(--wine); stroke: var(--mist); stroke-width: 2; }
+.pebble-root .pb-ins-pace-hover .is-cur { fill: var(--expense); stroke: var(--mist); stroke-width: 2; }
 .pebble-root .pb-ins-pace-tip { top: -0.4rem; transform: translate(-50%, -100%); min-width: 11rem; }
 .pebble-root .pb-ins-pace-forecast { margin: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; }
 .pebble-root .pb-ins-pace-forecast strong { font-weight: 700; }
@@ -408,7 +408,7 @@
 .pebble-root .pb-ins-due-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .pebble-root .pb-ins-due-name { font-size: 0.84rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-ins-due-sub { font-size: 0.7rem; color: var(--ink-soft); }
-.pebble-root .pb-ins-due-amt { flex: none; font-size: 0.84rem; font-weight: 600; color: var(--wine); }
+.pebble-root .pb-ins-due-amt { flex: none; font-size: 0.84rem; font-weight: 600; color: var(--expense); }
 
 /* ---------- Day by day ---------- */
 .pebble-root .pb-ins-day { container: pb-ins-day / inline-size; }
@@ -443,7 +443,7 @@
   position: relative; aspect-ratio: 1 / 1; min-width: 0; padding: 4px 5px;
   display: flex; align-items: flex-start; justify-content: flex-start;
   border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: 0.72rem; color: var(--ink-soft);
-  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), transparent);
+  background-color: color-mix(in srgb, var(--expense) var(--pb-shade), transparent);
   transition: transform var(--pb-dur-micro) var(--pb-ease-out), box-shadow var(--pb-dur-micro) var(--pb-ease-out);
 }
 .pebble-root .pb-ins [data-level="1"] { --pb-shade: 16%; }
@@ -487,7 +487,7 @@
 .pebble-root .pb-ins-swatch {
   --pb-shade: 0%;
   display: inline-block; width: 14px; height: 14px; border-radius: 4px;
-  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), transparent);
+  background-color: color-mix(in srgb, var(--expense) var(--pb-shade), transparent);
 }
 .pebble-root .pb-ins-swatch.is-empty { border: 1px dashed var(--line); }
 
@@ -537,7 +537,7 @@
 .pebble-root .pb-ins-yday {
   --pb-shade: 0%;
   aspect-ratio: 1 / 1; min-width: 0; padding: 0; border: 0; border-radius: 3px;
-  background-color: color-mix(in srgb, var(--pine) var(--pb-shade), color-mix(in srgb, var(--ink) 4%, transparent));
+  background-color: color-mix(in srgb, var(--expense) var(--pb-shade), color-mix(in srgb, var(--ink) 4%, transparent));
 }
 .pebble-root .pb-ins-yday.is-empty { background-color: transparent; box-shadow: inset 0 0 0 1px var(--line); }
 .pebble-root .pb-ins-yday.is-before { background-color: transparent; box-shadow: none; opacity: 0.4; cursor: default; }
@@ -561,13 +561,13 @@
 }
 .pebble-root .pb-ins-week-bar {
   position: absolute; left: 0; right: 0; bottom: 0; border-radius: 7px 7px 3px 3px;
-  background-color: color-mix(in srgb, var(--ink) 20%, transparent);
+  background-color: color-mix(in srgb, var(--expense) 35%, transparent);
 }
-.pebble-root .pb-ins-week-col.is-top .pb-ins-week-bar { background-color: var(--pine); }
+.pebble-root .pb-ins-week-col.is-top .pb-ins-week-bar { background-color: var(--expense); }
 .pebble-root .pb-ins-week-chip {
   position: absolute; left: 50%; bottom: calc(100% + 5px); transform: translateX(-50%);
   padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.66rem; font-weight: 700; white-space: nowrap;
-  color: var(--paper); background-color: var(--pine);
+  color: var(--paper); background-color: var(--expense);
 }
 .pebble-root .pb-ins-week-typical {
   position: absolute; left: -2px; right: -2px; height: 0; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent);
@@ -589,8 +589,8 @@
 .pebble-root .pb-ins-week-split-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
 .pebble-root .pb-ins-week-split-row dt { font-size: 0.78rem; color: var(--ink-soft); }
 .pebble-root .pb-ins-week-split-track { margin: 0; height: 6px; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 6%, transparent); overflow: hidden; }
-.pebble-root .pb-ins-week-split-track > span { display: block; height: 100%; border-radius: 99px; background-color: color-mix(in srgb, var(--ink) 28%, transparent); }
-.pebble-root .pb-ins-week-split-track > span.is-top { background-color: var(--pine); }
+.pebble-root .pb-ins-week-split-track > span { display: block; height: 100%; border-radius: 99px; background-color: color-mix(in srgb, var(--expense) 35%, transparent); }
+.pebble-root .pb-ins-week-split-track > span.is-top { background-color: var(--expense); }
 .pebble-root .pb-ins-week-split-amt { margin: 0; font-size: 0.82rem; font-weight: 600; text-align: right; }
 
 /* ---------- Category movers (the shared .pb-trend-* grid, extended) ---------- */

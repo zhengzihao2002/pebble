@@ -88,8 +88,8 @@ export function LooksRecurringNotice({ transactions, rules, today, onSchedule }:
           return (
             <li key={idOf(c)} data-rec-id={idOf(c)} className="pb-dash-notice-row pb-dash-rec">
               {/* The arrow's direction is the kind; the colour only echoes it. */}
-              <span className="pb-dash-tile-icon" style={{ backgroundColor: `color-mix(in srgb, var(--${income ? 'pine' : 'wine'}) 13%, transparent)` }}>
-                <Icon size={16} style={{ color: income ? 'var(--pine)' : 'var(--wine)' }} aria-hidden="true" />
+              <span className="pb-dash-tile-icon" style={{ backgroundColor: `color-mix(in srgb, var(--${income ? 'income' : 'expense'}) 13%, transparent)` }}>
+                <Icon size={16} style={{ color: income ? 'var(--income)' : 'var(--expense)' }} aria-hidden="true" />
                 <span className="pb-dash-sr">{d.enums.kind[c.kind]}</span>
               </span>
               <div className="pb-dash-notice-main">

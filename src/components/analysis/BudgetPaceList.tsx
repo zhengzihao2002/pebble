@@ -63,16 +63,16 @@ export function BudgetPaceList({ variance, pace, categoryMeta }: {
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{categoryLabel(d, v.category)}</span>
                   </span>
                   <span className="pb-ana-pace-figs">
-                    <span className="font-mono-tab" style={{ color: v.overBudget ? 'var(--wine)' : undefined }}>
+                    <span className="font-mono-tab" style={{ color: v.overBudget ? 'var(--expense)' : undefined }}>
                       <RollingAmount value={formatCurrency(v.spent)} /> / <RollingAmount value={formatCurrency(v.budget)} />
                     </span>
-                    <span className="pb-tnum" style={{ color: v.overBudget ? 'var(--wine)' : undefined }}> · {pct(v.usedShare)}</span>
+                    <span className="pb-tnum" style={{ color: v.overBudget ? 'var(--expense)' : undefined }}> · {pct(v.usedShare)}</span>
                   </span>
                   <span className="pb-ana-pace-bar">
                     <span className="pb-row-track">
                       <span
                         className="pb-row-fill"
-                        style={{ display: 'block', width: `${Math.min(v.usedShare * 100, 100)}%`, backgroundColor: v.overBudget ? 'var(--wine)' : color }}
+                        style={{ display: 'block', width: `${Math.min(v.usedShare * 100, 100)}%`, backgroundColor: v.overBudget ? 'var(--expense)' : color }}
                       />
                     </span>
                     <span className="pb-row-marker" style={{ left: `${pace * 100}%` }} tabIndex={v.category === firstCategory ? 0 : -1} role="img" aria-label={marker} data-tip={marker} />

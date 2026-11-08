@@ -30,7 +30,7 @@ function DayTip({ active, payload }: { active?: boolean; payload?: ReadonlyArray
     <div className="pb-ana-tip">
       <p className="pb-ana-tip-title pb-tnum">{t(x.dayTick, { day: p.day })}</p>
       {p.spent !== null && (
-        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--wine)' }} />{x.thisMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.spent)} /></span></p>
+        <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--expense)' }} />{x.thisMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.spent)} /></span></p>
       )}
       {p.typical !== null && (
         <p className="pb-ana-tip-row"><span><i style={{ background: 'var(--ink-soft)' }} />{x.typicalMonth}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(p.typical)} /></span></p>
@@ -85,17 +85,17 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
         <div className="pb-ana-now-figs">
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.spent}</span>
-            <span className="font-mono-tab pb-ana-now-amt"><RollingAmount value={formatCurrency(current.spending)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(current.spending)} /></span>
             <span className="pb-ana-now-note pb-tnum">{countNote(current.expenseCount, d, t)}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.earned}</span>
-            <span className="font-mono-tab pb-ana-now-amt"><RollingAmount value={formatCurrency(current.income)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--income)' }}><RollingAmount value={formatCurrency(current.income)} /></span>
             <span className="pb-ana-now-note">{cm.earnedNote}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.net}</span>
-            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}><RollingAmount value={formatCurrency(current.net)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount value={formatCurrency(current.net)} /></span>
             <span className="pb-ana-now-note">{current.net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}</span>
           </div>
         </div>
@@ -140,11 +140,11 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
               <Line dataKey="typical" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
             )}
             <Area
-              dataKey="spent" stroke="var(--wine)" strokeWidth={2} fill="var(--wine)" fillOpacity={0.1}
+              dataKey="spent" stroke="var(--expense)" strokeWidth={2} fill="var(--expense)" fillOpacity={0.1}
               connectNulls={false} isAnimationActive={false}
               dot={(props: { cx?: number; cy?: number; index?: number }) => (
                 props.index === daily.length - 1 && props.cx != null && props.cy != null
-                  ? <circle key="end" cx={props.cx} cy={props.cy} r={4} fill="var(--wine)" stroke="var(--mist)" strokeWidth={2} />
+                  ? <circle key="end" cx={props.cx} cy={props.cy} r={4} fill="var(--expense)" stroke="var(--mist)" strokeWidth={2} />
                   : <g key={props.index} />
               )}
             />

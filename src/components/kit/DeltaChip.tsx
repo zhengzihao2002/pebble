@@ -18,7 +18,7 @@ interface DeltaChipProps {
 
 /**
  * A small signed change badge: an arrow for the direction (so it never relies
- * on colour alone) and pine or wine for whether that direction is good.
+ * on colour alone) and green or red for whether that direction is good.
  */
 export function DeltaChip({ delta, text, good = 'up', label, money = false }: DeltaChipProps) {
   const dir = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';

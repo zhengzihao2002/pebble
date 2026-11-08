@@ -81,7 +81,7 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null, a
         {g.date !== continues && (
           <div className="pb-dash-day-head">
             <span>{heading(g.date)}</span>
-            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
+            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
           </div>
         )}
         <div className="pb-dash-rows">

@@ -110,9 +110,9 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
       <li key={`${it.ruleId}-${it.date}`} className="pb-dash-up-row">
         <span
           aria-hidden="true" className="pb-dash-tile-icon"
-          style={{ backgroundColor: meta ? `${meta.color}20` : 'var(--pine-soft)' }}
+          style={{ backgroundColor: meta ? `${meta.color}20` : 'var(--income-soft)' }}
         >
-          <TransactionIcon description={it.description} fallback={<Icon size={16} style={{ color: meta ? meta.color : 'var(--pine)' }} />} />
+          <TransactionIcon description={it.description} fallback={<Icon size={16} style={{ color: meta ? meta.color : 'var(--income)' }} />} />
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>
           {/* Description and category are USER DATA; only the two
@@ -124,7 +124,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
             {categoryLabel(d, it.category)}
           </span>
         </span>
-        <span className="font-mono-tab pb-dash-row-amount" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
+        <span className="font-mono-tab pb-dash-row-amount" style={{ color: isIncome ? 'var(--income)' : 'var(--expense)' }}>
           {isIncome ? '+' : ''}<RollingAmount value={formatCurrency(it.amount)} />
         </span>
       </li>
@@ -143,7 +143,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
         {g.date !== continues && (
           <div className="pb-dash-day-head">
             <span>{heading(g.date)}</span>
-            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--pine)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
+            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
           </div>
         )}
         <ul className="pb-dash-rows">{g.items.map(itemRow)}</ul>
@@ -217,11 +217,11 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
                   {cardsShown.map((s) => {
                     const lvl = reminderLevel(s);
                     const overdue = lvl === 'overdue';
-                    const tone = overdue ? 'var(--wine)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)';
+                    const tone = overdue ? 'var(--expense)' : lvl === 'd1' ? 'var(--gold)' : 'var(--ink-soft)';
                     return (
                       <li key={`card-${s.card.id}`} className="pb-dash-up-row is-card">
-                        <span aria-hidden="true" className="pb-dash-tile-icon" style={{ backgroundColor: overdue ? 'color-mix(in srgb, var(--wine) 14%, transparent)' : 'color-mix(in srgb, var(--ink) 8%, transparent)' }}>
-                          <CreditCard size={16} style={{ color: overdue ? 'var(--wine)' : 'var(--ink-soft)' }} />
+                        <span aria-hidden="true" className="pb-dash-tile-icon" style={{ backgroundColor: overdue ? 'color-mix(in srgb, var(--expense) 14%, transparent)' : 'color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+                          <CreditCard size={16} style={{ color: overdue ? 'var(--expense)' : 'var(--ink-soft)' }} />
                         </span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           {/* Card names are USER DATA. */}
@@ -271,8 +271,8 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
             <p className="pb-dash-up-foot">
               <span>
                 {renderTemplate(ux.upcomingTotals, {
-                  income: <span className="font-mono-tab" style={{ color: 'var(--pine)' }}>+<RollingAmount value={formatCurrency(incomeTotal)} /></span>,
-                  expense: <span className="font-mono-tab"><RollingAmount value={formatCurrency(-expenseTotal)} /></span>,
+                  income: <span className="font-mono-tab" style={{ color: 'var(--income)' }}>+<RollingAmount value={formatCurrency(incomeTotal)} /></span>,
+                  expense: <span className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(-expenseTotal)} /></span>,
                 })}
               </span>
               <InfoTooltip label={ux.upcomingTotalsNote}>{ux.upcomingTotalsNote}</InfoTooltip>

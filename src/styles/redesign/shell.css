@@ -23,6 +23,36 @@
   }
 }
 
+/* Related to the header's glass, with a quiet brand tint and firmer fill so
+   navigation remains distinct from the page. Keep it on the scrolling aside
+   itself; sidebar dialogs are portalled to the app root. */
+@media (min-width: 760px) and (min-height: 600px) {
+  .pebble-root .pebble-sidebar {
+    --pb-sidebar-glass: color-mix(in srgb, var(--paper) 94%, var(--pine));
+    background-color: var(--pb-sidebar-glass);
+    border-right-color: color-mix(in srgb, var(--line) 90%, transparent);
+    box-shadow: inset -1px 0 0 color-mix(in srgb, var(--mist) 40%, transparent),
+      8px 0 24px -20px color-mix(in srgb, var(--ink) 30%, transparent);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .pebble-root .pebble-sidebar {
+      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 82%, transparent);
+      -webkit-backdrop-filter: saturate(1.6) blur(16px);
+      backdrop-filter: saturate(1.6) blur(16px);
+    }
+    .pebble-root:has(> .pb-ambient-background) .pebble-sidebar {
+      background-color: color-mix(in srgb, var(--pb-sidebar-glass) 58%, transparent);
+      -webkit-backdrop-filter: saturate(1.15) blur(16px);
+      backdrop-filter: saturate(1.15) blur(16px);
+    }
+  }
+  /* View-transition snapshots omit backdrop blur, just as for the header. */
+  html.pb-theme-vt .pebble-root .pebble-sidebar {
+    background-color: var(--pb-sidebar-glass);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+
 /* ------------------------------------------------------------
    Keyboard hint chip (header field, palette rows and legend). Display only - every shortcut lives in AppShell.
    ------------------------------------------------------------ */

@@ -236,8 +236,8 @@
   position: absolute; width: 5px; height: calc(50% - 1px);
   transition: transform var(--pb-dur-emph) var(--pb-ease-out);
 }
-.pebble-root .pb-txn-chip-in { left: 2px; bottom: calc(50% + 1px); border-radius: 2px 2px 0 0; background-color: var(--pine); transform-origin: bottom; }
-.pebble-root .pb-txn-chip-out { right: 2px; top: calc(50% + 1px); border-radius: 0 0 2px 2px; background-color: var(--wine); transform-origin: top; }
+.pebble-root .pb-txn-chip-in { left: 2px; bottom: calc(50% + 1px); border-radius: 2px 2px 0 0; background-color: var(--income); transform-origin: bottom; }
+.pebble-root .pb-txn-chip-out { right: 2px; top: calc(50% + 1px); border-radius: 0 0 2px 2px; background-color: var(--expense); transform-origin: top; }
 /* No records: dimmed, with a hollow ring where the bars would be. */
 .pebble-root .pb-txn-chip-empty { opacity: 0.6; }
 .pebble-root .pb-txn-chip-empty .pb-txn-chip-glyph::after {
@@ -260,8 +260,8 @@
 .pebble-root .pb-txn-fall-cell { position: relative; }
 .pebble-root .pb-txn-fall-bar { position: absolute; left: 50%; width: 24px; margin-left: -12px; border-radius: 4px; }
 .pebble-root .pb-txn-fall-open { background-color: color-mix(in srgb, var(--ink) 20%, transparent); }
-.pebble-root .pb-txn-fall-in { background-color: var(--pine); }
-.pebble-root .pb-txn-fall-out { background-color: var(--wine); }
+.pebble-root .pb-txn-fall-in { background-color: var(--income); }
+.pebble-root .pb-txn-fall-out { background-color: var(--expense); }
 .pebble-root .pb-txn-fall-adj,
 .pebble-root .pb-txn-flow-adj {
   background-color: color-mix(in srgb, var(--gold) 30%, transparent);
@@ -274,8 +274,8 @@
   border-top: 1px dashed var(--ink-soft); opacity: 0.55;
 }
 .pebble-root .pb-txn-fall-zero { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
-.pebble-root .pb-txn-flow-in { background-color: var(--pine); }
-.pebble-root .pb-txn-flow-out { background-color: var(--wine); }
+.pebble-root .pb-txn-flow-in { background-color: var(--income); }
+.pebble-root .pb-txn-flow-out { background-color: var(--expense); }
 .pebble-root .pb-txn-flow-in,
 .pebble-root .pb-txn-flow-out,
 .pebble-root .pb-txn-flow-adj { flex-basis: 0; min-width: 3px; }
@@ -396,8 +396,8 @@
    day's first row, directly below. */
 .pebble-root .pb-txn-day-eod { display: none; }
 @container pb-txn-stmt (min-width: 480px) { .pebble-root .pb-txn-day-eod { display: inline; } }
-.pebble-root .pb-txn-pos { color: var(--pine); }
-.pebble-root .pb-txn-neg { color: var(--wine); }
+.pebble-root .pb-txn-pos { color: var(--income); }
+.pebble-root .pb-txn-neg { color: var(--expense); }
 .pebble-root .pb-txn-zero { color: var(--ink-soft); }
 /* Picked from the chart: one soft wash of the brand tint, fading out. */
 .pebble-root .pb-txn-day-pulse::after {

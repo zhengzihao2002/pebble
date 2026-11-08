@@ -56,17 +56,17 @@
 .pebble-root .pb-tdlg-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-tdlg-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
 
-/* Gross -> net: take-home in pine, deductions hatched in a soft wine. */
+/* Gross -> net: take-home green, deductions hatched in a soft red. */
 .pebble-root .pb-tdlg-net { display: flex; flex-direction: column; gap: 0.5rem; padding: 0 0.15rem; }
 .pebble-root .pb-tdlg-net-track {
   display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden;
 }
-.pebble-root .pb-tdlg-net-seg { flex-basis: 0; min-width: 4px; background-color: var(--pine); }
+.pebble-root .pb-tdlg-net-seg { flex-basis: 0; min-width: 4px; background-color: var(--income); }
 .pebble-root .pb-tdlg-net-ded {
   flex-basis: 0; min-width: 4px;
   background:
-    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 42%, transparent) 0 2px, transparent 2px 5px),
-    color-mix(in srgb, var(--wine) 12%, transparent);
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--expense) 42%, transparent) 0 2px, transparent 2px 5px),
+    color-mix(in srgb, var(--expense) 12%, transparent);
 }
 .pebble-root .pb-tdlg-net-legend {
   display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem;
@@ -74,11 +74,11 @@
 }
 .pebble-root .pb-tdlg-net-legend > span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .pebble-root .pb-tdlg-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
-.pebble-root .pb-tdlg-key-net { background-color: var(--pine); }
+.pebble-root .pb-tdlg-key-net { background-color: var(--income); }
 .pebble-root .pb-tdlg-key-ded {
   background:
-    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 50%, transparent) 0 2px, transparent 2px 4px),
-    color-mix(in srgb, var(--wine) 12%, transparent);
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--expense) 50%, transparent) 0 2px, transparent 2px 4px),
+    color-mix(in srgb, var(--expense) 12%, transparent);
 }
 
 /* Balance strip: the record's own account, before -> after. */
@@ -111,8 +111,8 @@
 .pebble-root .pb-tdlg-slope line { stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .pebble-root .pb-tdlg-slope circle { fill: currentColor; stroke: var(--mist); stroke-width: 1.5; }
 .pebble-root .pb-tdlg-slope circle.pb-tdlg-slope-from { fill: var(--mist); stroke: currentColor; }
-.pebble-root .pb-tdlg-slope-up { color: var(--pine); }
-.pebble-root .pb-tdlg-slope-down { color: var(--wine); }
+.pebble-root .pb-tdlg-slope-up { color: var(--income); }
+.pebble-root .pb-tdlg-slope-down { color: var(--expense); }
 .pebble-root .pb-tdlg-slope-flat { color: var(--ink-faint); }
 
 /* The account chip and Balance strip wait, unseen but holding their place,
@@ -315,7 +315,8 @@
   font-size: 0.64rem; font-weight: 700; letter-spacing: 0.02em;
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, transparent);
 }
-.pebble-root .pb-tdlg-badge-debit { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 12%, transparent); }
+.pebble-root .pb-tdlg-badge-credit { color: var(--income); background-color: color-mix(in srgb, var(--income) 14%, transparent); }
+.pebble-root .pb-tdlg-badge-debit { color: var(--expense); background-color: color-mix(in srgb, var(--expense) 12%, transparent); }
 
 /* Review step: filter pills, rows with a status chip. */
 .pebble-root .pb-tdlg-filters {
@@ -405,11 +406,11 @@
 }
 .pebble-root .pb-tdlg-delta > span { flex-basis: 0; min-width: 3px; }
 .pebble-root .pb-tdlg-delta-base { background-color: color-mix(in srgb, var(--ink) 22%, transparent); }
-.pebble-root .pb-tdlg-delta-up { background-color: var(--pine); }
+.pebble-root .pb-tdlg-delta-up { background-color: var(--income); }
 .pebble-root .pb-tdlg-delta-down {
   background:
-    repeating-linear-gradient(135deg, color-mix(in srgb, var(--wine) 55%, transparent) 0 2px, transparent 2px 4px),
-    color-mix(in srgb, var(--wine) 14%, transparent);
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--expense) 55%, transparent) 0 2px, transparent 2px 4px),
+    color-mix(in srgb, var(--expense) 14%, transparent);
 }
 .pebble-root .pb-tdlg-review-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.15rem 0.5rem; margin-top: 0.1rem; }
 .pebble-root .pb-tdlg-review-line > .pb-tdlg-review-meta { margin-top: 0; }

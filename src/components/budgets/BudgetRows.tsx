@@ -100,7 +100,7 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
       </div>
       <div className="pb-row-bar">
         <div className="pb-row-track">
-          <div className="pb-row-fill" style={{ width: `${fill}%`, backgroundColor: over ? 'var(--wine)' : 'var(--pine)' }} />
+          <div className="pb-row-fill" style={{ width: `${fill}%`, backgroundColor: over ? 'var(--expense)' : 'var(--pine)' }} />
         </div>
         {expected !== null && (
           <span

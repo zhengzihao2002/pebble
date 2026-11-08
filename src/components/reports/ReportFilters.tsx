@@ -224,11 +224,12 @@ export function ReportFilters({
     const fits = () => !!contentRef.current
       && card.clientWidth >= contentRef.current.offsetWidth
       && card.clientHeight >= Math.ceil(contentRef.current.getBoundingClientRect().height);
-    const reveal = () => { if (expanded && fits()) setInspectorReady(true); };
+    const reveal = () => { if (expanded && !card.closest('[data-pb-inspector-motion]') && fits()) setInspectorReady(true); };
     const reconcile = () => {
       window.clearTimeout(timer);
       const floating = getComputedStyle(card).getPropertyValue('--pb-rep-floating').trim() === '1';
-      setInspectorReady(expanded && floating && (reduced.matches || fits()));
+      const managed = !!card.closest('[data-pb-inspector-motion]');
+      setInspectorReady(expanded && floating && (reduced.matches || (!managed && fits())));
       // No transition runs for a saved-open panel or a breakpoint change.
       // The final-size check also prevents premature reveals after reversals.
       if (expanded && floating) timer = window.setTimeout(reveal, 200);
@@ -237,12 +238,14 @@ export function ReportFilters({
       if (event.target === card && ['width', 'height'].includes(event.propertyName)) reveal();
     };
     card.addEventListener('transitionend', onEnd);
+    card.addEventListener('pb-report-inspector-settled', reveal);
     window.addEventListener('resize', reconcile);
     reduced.addEventListener('change', reconcile);
     reconcile();
     return () => {
       window.clearTimeout(timer);
       card.removeEventListener('transitionend', onEnd);
+      card.removeEventListener('pb-report-inspector-settled', reveal);
       window.removeEventListener('resize', reconcile);
       reduced.removeEventListener('change', reconcile);
     };

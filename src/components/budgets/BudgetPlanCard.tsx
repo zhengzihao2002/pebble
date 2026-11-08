@@ -82,7 +82,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
 
   const rows = [
     ...budgeted.map((e) => ({ key: `b:${e.name}`, name: e.name, color: e.color, value: e.budget, savings: false })),
-    ...(showSavings ? [{ key: 'savings', name: d.budgetPlan.savings, color: 'var(--pine)', value: savings as number, savings: true }] : []),
+    ...(showSavings ? [{ key: 'savings', name: d.budgetPlan.savings, color: 'var(--income)', value: savings as number, savings: true }] : []),
   ];
   const largest = rows.reduce((m, r) => Math.max(m, r.value), 0);
 
@@ -126,11 +126,11 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       note: totalBudget > 0 ? t(d.budgetRow.monthly, { amount: formatCurrency(totalBudget / 12) }) : '',
     },
     {
-      key: 'spent', label: d.budgetPlan.spent, value: formatCurrency(totalSpent), color: overall ? 'var(--wine)' : 'var(--ink)', icon: Receipt, tone: 'var(--wine)',
+      key: 'spent', label: d.budgetPlan.spent, value: formatCurrency(totalSpent), color: overall ? 'var(--expense)' : 'var(--ink)', icon: Receipt, tone: 'var(--expense)',
       note: monthsGone !== null && monthsGone > 0 && totalSpent > 0 ? t(ux.avgMonthly, { amount: formatCurrency(totalSpent / monthsGone) }) : '',
     },
     {
-      key: 'left', label: d.budgetPlan.left, value: totalBudget > 0 ? formatCurrency(left) : '—', color: left < 0 && totalBudget > 0 ? 'var(--wine)' : 'var(--ink)', icon: PiggyBank, tone: 'var(--gold)',
+      key: 'left', label: d.budgetPlan.left, value: totalBudget > 0 ? formatCurrency(left) : '—', color: left < 0 && totalBudget > 0 ? 'var(--expense)' : 'var(--ink)', icon: PiggyBank, tone: 'var(--gold)',
       note: monthsLeft !== null && monthsLeft >= 0.5 && left > 0 ? t(ux.leftPerMonth, { amount: formatCurrency(left / monthsLeft) }) : '',
     },
     { key: 'pace', label: d.budgetPlan.pace, value: paceLabel, color: 'var(--ink)', icon: Gauge, tone: 'var(--ink-soft)', note: paceNote },
@@ -162,7 +162,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                   ) : c.value}
                 </div>
                 {/* Every cell reserves its note line, so the four stay level. */}
-                <div className="pb-stats-note font-mono-tab" aria-hidden={c.note ? undefined : true} style={c.note ? (c.key === 'pace' && overBudget ? { color: 'var(--wine)' } : undefined) : { visibility: 'hidden' }}>
+                <div className="pb-stats-note font-mono-tab" aria-hidden={c.note ? undefined : true} style={c.note ? (c.key === 'pace' && overBudget ? { color: 'var(--expense)' } : undefined) : { visibility: 'hidden' }}>
                   {c.note || ' '}
                 </div>
               </div>
@@ -243,7 +243,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
               <p className="pb-plan-caption">{d.budgetPlan.noIncome}</p>
             )}
             {savings !== null && savings < 0 && (
-              <p className="pb-plan-caption" style={{ color: 'var(--wine)' }}>
+              <p className="pb-plan-caption" style={{ color: 'var(--expense)' }}>
                 <RollingMoneyText value={t(d.budgetPlan.overIncome, { amount: formatCurrency(Math.abs(savings)) })} />
               </p>
             )}

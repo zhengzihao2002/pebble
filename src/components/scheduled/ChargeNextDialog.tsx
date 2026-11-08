@@ -111,7 +111,7 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
               <div className="pb-sched-charge-who">
                 {/* rule.description is USER DATA - rendered as stored. */}
                 <span className="pb-sched-row-title">{title}</span>
-                <span className="font-mono-tab pb-sched-charge-amt" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
+                <span className="font-mono-tab pb-sched-charge-amt" style={{ color: isIncome ? 'var(--income)' : 'var(--expense)' }}>
                   {formatCurrency(rule.amount)}
                 </span>
               </div>

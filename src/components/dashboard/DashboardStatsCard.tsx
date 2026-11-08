@@ -146,7 +146,7 @@ export function DashboardStatsCard({
 
   const cells = [
     {
-      key: 'income', metric: 'income' as Metric, icon: ArrowUpRight, color: 'var(--pine)', label: d.dashboard.income,
+      key: 'income', metric: 'income' as Metric, icon: ArrowUpRight, color: 'var(--income)', label: d.dashboard.income,
       value: formatCurrency(income), note: d.dashboard.standardIncomeOnly,
       info: (
         <InfoTooltip label={d.dashboard.incomeTooltipLabel}>
@@ -155,7 +155,7 @@ export function DashboardStatsCard({
       ),
     },
     {
-      key: 'spending', metric: 'spending' as Metric, icon: ArrowDownRight, color: 'var(--wine)', label: d.dashboard.spending,
+      key: 'spending', metric: 'spending' as Metric, icon: ArrowDownRight, color: 'var(--expense)', label: d.dashboard.spending,
       value: formatCurrency(spending), note: '',
       info: <InfoTooltip label={d.dashboard.spendingTooltipLabel}>{d.dashboard.spendingTooltip}</InfoTooltip>,
     },
@@ -169,7 +169,7 @@ export function DashboardStatsCard({
       ),
     },
     {
-      key: 'saved', metric: 'saved' as Metric, icon: Wallet, color: 'var(--pine)', label: d.dashboard.saved,
+      key: 'saved', metric: 'saved' as Metric, icon: Wallet, color: 'var(--income)', label: d.dashboard.saved,
       value: formatCurrency(saved), note: '',
       info: <InfoTooltip label={d.dashboard.savedTooltipLabel}>{d.dashboard.savedTooltip}</InfoTooltip>,
     },

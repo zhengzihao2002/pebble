@@ -82,7 +82,7 @@ export function ReportSummary(p: ReportSummaryProps) {
   const text = formatCurrency(p.kind === 'net' || p.kind === 'none' ? p.total : Math.abs(p.total));
   const { whole, cents } = splitCents(text);
   const flowMax = p.inSum + p.outSum;
-  const color = (k: string) => (k === '__other__' ? 'var(--ink-faint)' : p.categoryMeta[k]?.color ?? 'var(--pine)');
+  const color = (k: string) => (k === '__other__' ? 'var(--ink-faint)' : p.categoryMeta[k]?.color ?? (p.shareSide === 'in' ? 'var(--income)' : 'var(--pine)'));
   const name = (k: string) => (k === '__other__' ? x.other : categoryLabel(d, k));
   const deltaWords = p.delta
     ? (Math.round(p.delta.delta * 100) === 0

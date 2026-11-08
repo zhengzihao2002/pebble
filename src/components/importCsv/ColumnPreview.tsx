@@ -74,7 +74,7 @@ export function ColumnPreview({ readRows, rawRows, headerRow, width, roles }: {
                           <span className={`pb-tdlg-bad${looksNumeric(r.rawAmount) ? ' font-mono-tab' : ''}`}>{r.rawAmount.trim()}</span>
                         ) : <span className="pb-tdlg-missing">—</span>
                       ) : (
-                        <span className="font-mono-tab" style={{ color: (r.cents as number) > 0 ? 'var(--pine)' : 'var(--wine)' }}>
+                        <span className="font-mono-tab" style={{ color: (r.cents as number) > 0 ? 'var(--income)' : 'var(--expense)' }}>
                           {(r.cents as number) > 0 ? '+' : '−'}{formatCurrency(Math.abs(r.cents as number) / 100)}
                         </span>
                       )}

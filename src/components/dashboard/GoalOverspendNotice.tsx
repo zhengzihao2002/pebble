@@ -41,9 +41,9 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
   return (
     <div
       className="card"
-      style={{ padding: '1rem 1.1rem', borderLeft: '3px solid var(--wine)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}
+      style={{ padding: '1rem 1.1rem', borderLeft: '3px solid var(--expense)', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}
     >
-      <AlertTriangle size={17} style={{ color: 'var(--wine)', flexShrink: 0, marginTop: 2 }} />
+      <AlertTriangle size={17} style={{ color: 'var(--expense)', flexShrink: 0, marginTop: 2 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0 }}>
           {d.goalOverspend.title}
@@ -53,7 +53,7 @@ export function GoalOverspendNotice({ totalBalance, allocated }: GoalOverspendNo
             // pb-money: amounts inside a sentence blur in privacy mode too.
             allocated: <span className="pb-money"><RollingAmount value={formatCurrency(allocated)} /></span>,
             balance: <span className="pb-money"><RollingAmount value={formatCurrency(totalBalance)} /></span>,
-            shortfall: <strong className="pb-money" style={{ color: 'var(--wine)' }}><RollingAmount value={formatCurrency(shortfall)} /></strong>,
+            shortfall: <strong className="pb-money" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(shortfall)} /></strong>,
           })}
         </p>
         <Link href="/goals" prefetch={false} className="link-btn" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>

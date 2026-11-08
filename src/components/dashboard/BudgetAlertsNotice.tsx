@@ -20,7 +20,7 @@ interface BudgetAlertsNoticeProps {
 }
 
 /** Pine under 80%, gold from 80%, wine from 100% - and the sentence says it in words too. */
-const barColor = (pct: number) => (pct >= 100 ? 'var(--wine)' : pct >= 80 ? 'var(--gold)' : 'var(--pine)');
+const barColor = (pct: number) => (pct >= 100 ? 'var(--expense)' : pct >= 80 ? 'var(--gold)' : 'var(--pine)');
 
 /**
  * Yearly-budget alerts for the top notice area: a category at 80% of its

@@ -12,6 +12,7 @@ import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
 import { compareSameDayIds } from '@/lib/stats';
 import { ReportFilters } from '@/components/reports/ReportFilters';
+import { useReportInspectorLayout } from '@/components/reports/useReportInspectorLayout';
 import { ReportResults, type ReportEmptyInfo } from '@/components/reports/ReportResults';
 import { ReportToolbar } from '@/components/reports/ReportToolbar';
 import { ReportFilterChips, type ActiveFilterChip } from '@/components/reports/ReportFilterChips';
@@ -559,8 +560,8 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // only at exactly zero. Rounded to cents so float noise cannot colour a zero.
   const netCents = Math.round(grandTotal * 100);
   const accent = mixed
-    ? (netCents > 0 ? 'var(--pine)' : netCents < 0 ? 'var(--wine)' : 'var(--ink)')
-    : includeExpense ? 'var(--wine)' : includeIncome ? 'var(--pine)' : 'var(--ink)';
+    ? (netCents > 0 ? 'var(--income)' : netCents < 0 ? 'var(--expense)' : 'var(--ink)')
+    : includeExpense ? 'var(--expense)' : includeIncome ? 'var(--income)' : 'var(--ink)';
 
   const allGroupKeys = categoryGroup === 'category'
     ? periodGroups.flatMap((pg) => (pg.subGroups ?? []).map((sg) => `${pg.key}::${sg.key}`))
@@ -845,6 +846,11 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     else { setSortField(field); setSortDir('desc'); }
   };
 
+  const ready = restored && today !== null;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const animateFiltersLayout = useReportInspectorLayout(pageRef, filtersExpanded, ready);
+
   // Page shortcuts, with exactly AppShell's single-key guards (not while
   // typing, composing, repeating, with a modifier, or under a dialog):
   // [ ] step the period, f opens Find, e expands or collapses every group,
@@ -864,8 +870,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       step(dir);
     } else if (k === 'f') {
       e.preventDefault();
-      setFiltersExpanded(true);
-      setFindExpanded(true);
+      if (!filtersExpanded) {
+        animateFiltersLayout(() => { setFiltersExpanded(true); setFindExpanded(true); });
+      } else setFindExpanded(true);
       // After the panel and section have opened (they are inert while closed,
       // and the card is visibility:hidden until the swap lands), so retry per
       // frame until the field takes focus.
@@ -899,9 +906,6 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
   // The toolbar's live height, for the sticky period and day headers under
   // it. Written straight to the wrapper's style: no re-render per resize.
-  const ready = restored && today !== null;
-  const pageRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const bar = barRef.current;
     const page = pageRef.current;
@@ -925,7 +929,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   const railRef = useRef<HTMLButtonElement>(null);
   const toggleFilters = () => {
     const opening = !filtersExpanded;
-    setFiltersExpanded(opening);
+    animateFiltersLayout(() => setFiltersExpanded(opening));
     const rail = railRef.current;
     if (!rail || rail.offsetParent === null) return;
     // The swapped-in control only becomes focusable once its visibility has
@@ -975,9 +979,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
 
       <ReportFilterChips chips={chips} onClearAll={clearAllFilters} summary={filterSummary} />
 
-      {/* Keep the desktop report's width fixed. The inspector unfolds over
-          its right edge from the same top-right anchor as the collapsed rail;
-          opening filters never reflows the summary, chart or transactions. */}
+      {/* Reserve a real side column for filters. The layout resolves once;
+          live report cards then move with the unfolding inspector, without
+          repeatedly remeasuring the chart or crossing layout breakpoints. */}
       <div className={`pb-rep-grid${filtersExpanded ? ' has-inspector' : ''}`}>
         <aside className="pb-rep-side-col">
           {/* Wide screens only (reports.css): the collapsed state of the card. */}

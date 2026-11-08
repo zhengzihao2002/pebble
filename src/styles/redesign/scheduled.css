@@ -42,8 +42,8 @@
 .pebble-root .pb-sched-chip {
   flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 0.65rem;
 }
-.pebble-root .pb-sched-tile.is-in, .pebble-root .pb-sched-chip.is-in { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 12%, transparent); }
-.pebble-root .pb-sched-tile.is-out, .pebble-root .pb-sched-chip.is-out { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 11%, transparent); }
+.pebble-root .pb-sched-tile.is-in, .pebble-root .pb-sched-chip.is-in { color: var(--income); background-color: color-mix(in srgb, var(--income) 12%, transparent); }
+.pebble-root .pb-sched-tile.is-out, .pebble-root .pb-sched-chip.is-out { color: var(--expense); background-color: color-mix(in srgb, var(--expense) 11%, transparent); }
 
 /* ---------- Summary hero ---------- */
 .pebble-root .pb-sched-hero {
@@ -85,8 +85,8 @@
 .pebble-root .pb-sched-kind-dot {
   flex: none; display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%;
 }
-.pebble-root .pb-sched-kind-dot.is-in { color: var(--pine); background-color: color-mix(in srgb, var(--pine) 14%, transparent); }
-.pebble-root .pb-sched-kind-dot.is-out { color: var(--wine); background-color: color-mix(in srgb, var(--wine) 13%, transparent); }
+.pebble-root .pb-sched-kind-dot.is-in { color: var(--income); background-color: color-mix(in srgb, var(--income) 14%, transparent); }
+.pebble-root .pb-sched-kind-dot.is-out { color: var(--expense); background-color: color-mix(in srgb, var(--expense) 13%, transparent); }
 
 /* The running net across the window, on a soft band. */
 .pebble-root .pb-sched-hero-trend {
@@ -164,8 +164,8 @@
 .pebble-root .pb-sched-day-dots { display: flex; align-items: center; gap: 2px; min-height: 6px; }
 .pebble-root .pb-sched-day-dots i,
 .pebble-root .pb-sched-cal-legend i { display: block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
-.pebble-root .pb-sched-day-dots .is-in, .pebble-root .pb-sched-cal-legend .is-in { background-color: var(--pine); }
-.pebble-root .pb-sched-day-dots .is-out, .pebble-root .pb-sched-cal-legend .is-out { background-color: var(--wine); }
+.pebble-root .pb-sched-day-dots .is-in, .pebble-root .pb-sched-cal-legend .is-in { background-color: var(--income); }
+.pebble-root .pb-sched-day-dots .is-out, .pebble-root .pb-sched-cal-legend .is-out { background-color: var(--expense); }
 .pebble-root .pb-sched-day-dots b { font-size: 0.56rem; font-weight: 600; color: var(--ink-soft); }
 .pebble-root .pb-sched-day-net { display: none; font-size: 0.58rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
 @container pb-sched-month (min-width: 290px) {

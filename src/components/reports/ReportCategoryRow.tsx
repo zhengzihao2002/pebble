@@ -45,7 +45,7 @@ export function ReportCategoryRow({ category, total, count, share, series, expan
   const { d, t } = useTranslation();
   const meta = categoryMeta[category];
   const Icon = meta ? meta.icon : Banknote;
-  const color = meta ? meta.color : 'var(--pine)';
+  const color = meta ? meta.color : 'var(--income)';
   const name = categoryLabel(d, category);
   const countText = t(count === 1 ? d.reports.transactionsOne : d.reports.transactionsOther, { count });
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

@@ -133,8 +133,8 @@
 .pebble-root .pb-ana-tile:is(.is-out, .is-in, .is-flat, .is-seasonal) .pb-ana-tile-label > span::before {
   content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 0.4rem; border-radius: 50%; vertical-align: 0.06em;
 }
-.pebble-root .pb-ana-tile.is-out .pb-ana-tile-label > span::before { background: var(--wine); }
-.pebble-root .pb-ana-tile.is-in .pb-ana-tile-label > span::before,
+.pebble-root .pb-ana-tile.is-out .pb-ana-tile-label > span::before { background: var(--expense); }
+.pebble-root .pb-ana-tile.is-in .pb-ana-tile-label > span::before { background: var(--income); }
 .pebble-root .pb-ana-tile.is-flat .pb-ana-tile-label > span::before { background: var(--pine); }
 .pebble-root .pb-ana-tile.is-seasonal .pb-ana-tile-label > span::before { background: var(--gold); }
 .pebble-root .pb-ana .card .stat-tabs.pb-ana-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -144,8 +144,8 @@
 .pebble-root .pb-ana-split { display: flex; gap: 2px; width: 100%; height: 8px; border-radius: 99px; overflow: hidden; background-color: var(--line); }
 .pebble-root .pb-ana-split.is-thick { height: 10px; }
 .pebble-root .pb-ana-split > span { min-width: 3px; flex-basis: 0; }
-.pebble-root .pb-ana-split > .is-in { background-color: var(--pine); }
-.pebble-root .pb-ana-split > .is-out { background-color: var(--wine); }
+.pebble-root .pb-ana-split > .is-in { background-color: var(--income); }
+.pebble-root .pb-ana-split > .is-out { background-color: var(--expense); }
 .pebble-root .pb-ana-split > .is-gold { background-color: var(--gold); }
 
 .pebble-root .pb-ana-paysplit { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -153,7 +153,7 @@
 .pebble-root .pb-ana-paysplit-key > span { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
 .pebble-root .pb-ana-paysplit-key b { color: var(--ink); font-weight: 600; }
 .pebble-root .pb-ana-paysplit-key i { width: 7px; height: 7px; border-radius: 50%; }
-.pebble-root .pb-ana-paysplit-key i.is-in { background: var(--pine); }
+.pebble-root .pb-ana-paysplit-key i.is-in { background: var(--income); }
 .pebble-root .pb-ana-paysplit-key i.is-gold { background: var(--gold); }
 
 /* Stability meter: four bands from the classifying thresholds, the
@@ -366,14 +366,14 @@
 .pebble-root .pb-ana-now-pace { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.8rem 0.9rem; border-radius: 0.9rem; background-color: color-mix(in srgb, var(--ink) 4%, transparent); }
 .pebble-root .pb-ana-now-pace-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; font-size: 0.8rem; font-weight: 500; }
 .pebble-root .pb-ana-now-track { position: relative; height: 10px; border-radius: 99px; background-color: var(--line); }
-.pebble-root .pb-ana-now-fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background-color: var(--pine); animation: pb-row-wipe 1000ms cubic-bezier(0.65, 0, 0.35, 1) both; }
-.pebble-root .pb-ana-now-fill.is-over { background-color: var(--wine); }
+.pebble-root .pb-ana-now-fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background-color: var(--expense); animation: pb-row-wipe 1000ms cubic-bezier(0.65, 0, 0.35, 1) both; }
+.pebble-root .pb-ana-now-fill.is-over { background-color: var(--expense); }
 .pebble-root .pb-ana-now-tick { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background-color: var(--ink); box-shadow: 0 0 0 2px var(--mist); }
 .pebble-root .pb-ana-now-legend { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; font-size: 0.68rem; color: var(--ink-soft); }
 .pebble-root .pb-ana-now-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
 .pebble-root .pb-ana-now-legend i { display: inline-block; }
-.pebble-root .pb-ana-now-legend i.is-spent { width: 12px; height: 6px; border-radius: 3px; background: var(--pine); }
-.pebble-root .pb-ana-now-legend i.is-spent.is-over { background: var(--wine); }
+.pebble-root .pb-ana-now-legend i.is-spent { width: 12px; height: 6px; border-radius: 3px; background: var(--expense); }
+.pebble-root .pb-ana-now-legend i.is-spent.is-over { background: var(--expense); }
 .pebble-root .pb-ana-now-legend i.is-typical { width: 3px; height: 10px; border-radius: 2px; background: var(--ink); }
 .pebble-root .pb-ana-now-chart { width: 100%; height: 120px; min-width: 0; }
 @container content (min-width: 880px) {
@@ -478,9 +478,9 @@
 .pebble-root .pb-ana-heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; font-size: 0.68rem; color: var(--ink-soft); }
 .pebble-root .pb-ana-heat-ramp { width: 4.5rem; height: 8px; border-radius: 99px; }
 .pebble-root .pb-ana-heat-ramp.is-net {
-  background: linear-gradient(90deg, var(--pine), color-mix(in srgb, var(--pine) 14%, var(--mist)) 48%, color-mix(in srgb, var(--wine) 14%, var(--mist)) 52%, var(--wine));
+  background: linear-gradient(90deg, var(--income), color-mix(in srgb, var(--income) 14%, var(--mist)) 48%, color-mix(in srgb, var(--expense) 14%, var(--mist)) 52%, var(--expense));
 }
-.pebble-root .pb-ana-heat-ramp.is-spend { background: linear-gradient(90deg, color-mix(in srgb, var(--wine) 12%, var(--mist)), var(--wine)); }
+.pebble-root .pb-ana-heat-ramp.is-spend { background: linear-gradient(90deg, color-mix(in srgb, var(--expense) 12%, var(--mist)), var(--expense)); }
 .pebble-root .pb-ana-heat-key { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.4rem; }
 .pebble-root .pb-ana-heat-key .pb-ana-heat-cell { width: 11px; height: 11px; border-radius: 3px; }
 
@@ -489,8 +489,8 @@
 .pebble-root .pb-ana-path-scale { position: relative; height: 58px; margin: 0 0.25rem; }
 .pebble-root .pb-ana-path-scale:has(.is-below) { height: 76px; }
 .pebble-root .pb-ana-path-axis { position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 1px; background: var(--line); }
-.pebble-root .pb-ana-path-run { position: absolute; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: color-mix(in srgb, var(--pine) 45%, transparent); }
-.pebble-root .pb-ana-path-run.is-down { background: color-mix(in srgb, var(--wine) 45%, transparent); }
+.pebble-root .pb-ana-path-run { position: absolute; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: color-mix(in srgb, var(--income) 45%, transparent); }
+.pebble-root .pb-ana-path-run.is-down { background: color-mix(in srgb, var(--expense) 45%, transparent); }
 .pebble-root .pb-ana-path-gap {
   position: absolute; top: 50%; height: 18px; margin-top: -9px; border-radius: 5px;
   background: color-mix(in srgb, var(--gold) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent);
@@ -498,7 +498,7 @@
 .pebble-root .pb-ana-path-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; }
 .pebble-root .pb-ana-path-mark i { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 3px var(--mist); }
 .pebble-root .pb-ana-path-mark.is-today i { background: var(--ink); }
-.pebble-root .pb-ana-path-mark.is-flat i { background: var(--pine); }
+.pebble-root .pb-ana-path-mark.is-flat i { background: var(--income); }
 .pebble-root .pb-ana-path-mark.is-seasonal i { background: var(--gold); }
 .pebble-root .pb-ana-path-mark > span {
   position: absolute; bottom: calc(100% + 6px); white-space: nowrap;

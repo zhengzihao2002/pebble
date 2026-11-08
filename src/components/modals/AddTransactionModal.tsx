@@ -475,8 +475,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
           </div>
           {showForm && (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              {/* A two-way switch: the thumb slides to the chosen side (wine for
-                  money out, pine for money in). Arrow keys flip it as well.
+              {/* A two-way switch: the thumb slides to the chosen side (red for
+                  money out, green for money in). Arrow keys flip it as well.
 
                   The array holds the STORED values; the dictionary is indexed by
                   them. setType therefore always receives the English literal.

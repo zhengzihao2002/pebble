@@ -6,11 +6,10 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { MonthlyFlow } from '@/lib/analysis/cashflow';
 import { ChartTooltip } from './ChartTooltip';
 
-// Theme tokens, not hex: var() resolves in these SVG attributes, so the bars
-// follow the theme and dark mode.
-const PINE = 'var(--pine)';
-const WINE = 'var(--wine)';
-const GOLD = 'var(--gold)';
+// Financial series keep their meaning across palettes; semantic tokens only
+// adjust their readable shade between light and dark mode.
+const INCOME = 'var(--income)';
+const EXPENSE = 'var(--expense)';
 const INK = 'color-mix(in srgb, var(--ink) 75%, transparent)';
 const CURSOR = 'color-mix(in srgb, var(--pine) 8%, transparent)';
 
@@ -28,8 +27,8 @@ function FlowTip({ active, payload }: { active?: boolean; payload?: ReadonlyArra
     <ChartTooltip
       title={m.label}
       rows={[
-        { name: x.income, value: formatCurrency(m.income), color: PINE },
-        { name: x.spending, value: formatCurrency(m.spending), color: WINE },
+        { name: x.income, value: formatCurrency(m.income), color: INCOME },
+        { name: x.spending, value: formatCurrency(m.spending), color: EXPENSE },
         { name: x.net, value: formatCurrency(m.net), strong: true },
         { name: x.savingsRate, value: m.savingsRate === null ? '—' : `${(m.savingsRate * 100).toFixed(1)}%`, money: false },
       ]}
@@ -37,7 +36,7 @@ function FlowTip({ active, payload }: { active?: boolean; payload?: ReadonlyArra
   );
 }
 
-/** Net flow per month. Negative bars are wine, so overspending reads instantly.
+/** Net flow per month. Negative bars are red, so overspending reads instantly.
  *  Bars appear with the wrapper's fade rather than growing from zero, so no
  *  bar ever shows a false value mid-animation.
  *
@@ -69,7 +68,7 @@ export function CashflowChart({ data, view = 'net' }: { data: MonthlyFlow[]; vie
             <Tooltip cursor={{ fill: CURSOR }} content={<FlowTip />} />
             <Bar dataKey="net" name={dict.analysis.currentMonth.net} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
               {rows.map((d) => (
-                <Cell key={d.key} fill={d.isPartial ? GOLD : d.net < 0 ? WINE : PINE} />
+                <Cell key={d.key} fill={d.net < 0 ? EXPENSE : INCOME} fillOpacity={d.isPartial ? 0.55 : 1} />
               ))}
             </Bar>
           </BarChart>
@@ -78,8 +77,8 @@ export function CashflowChart({ data, view = 'net' }: { data: MonthlyFlow[]; vie
             {axis}
             <ReferenceLine y={0} stroke="var(--line)" />
             <Tooltip cursor={{ fill: CURSOR }} content={<FlowTip />} />
-            <Bar dataKey="income" stackId="flow" name={dict.dashboard.income} fill={PINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-            <Bar dataKey="out" stackId="flow" name={dict.dashboard.spending} fill={WINE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+            <Bar dataKey="income" stackId="flow" name={dict.dashboard.income} fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+            <Bar dataKey="out" stackId="flow" name={dict.dashboard.spending} fill={EXPENSE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
             <Line dataKey="net" name={dict.analysis.currentMonth.net} stroke={INK} strokeWidth={2} strokeLinejoin="round" dot={{ r: 2.5, fill: INK, strokeWidth: 0 }} isAnimationActive={false} />
           </ComposedChart>
         )}

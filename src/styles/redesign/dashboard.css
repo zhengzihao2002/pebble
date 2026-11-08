@@ -616,8 +616,8 @@
 .pebble-root .pb-dash-rail-day.is-today .pb-dash-rail-n { box-shadow: inset 0 0 0 1.5px var(--pine); color: var(--pine); }
 .pebble-root .pb-dash-rail-dots { display: flex; gap: 3px; height: 6px; align-items: center; }
 .pebble-root .pb-dash-rail-dots i { display: block; width: 5px; height: 5px; border-radius: 99px; }
-.pebble-root .pb-dash-rail-dots .is-in { background-color: var(--pine); }
-.pebble-root .pb-dash-rail-dots .is-out { background-color: var(--wine); }
+.pebble-root .pb-dash-rail-dots .is-in { background-color: var(--income); }
+.pebble-root .pb-dash-rail-dots .is-out { background-color: var(--expense); }
 .pebble-root .pb-dash-rail-dots .is-card { background-color: var(--gold); }
 .pebble-root .pb-dash-rail-dots .is-overdue { background-color: transparent; box-shadow: inset 0 0 0 1.5px var(--wine); width: 6px; height: 6px; }
 .pebble-root .pb-dash-filter { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; font-size: 0.8rem; font-weight: 600; }

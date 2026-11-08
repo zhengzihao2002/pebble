@@ -7,11 +7,10 @@ import type { MonthlySpend } from '@/lib/analysis/spending';
 import { ChartTooltip } from './ChartTooltip';
 import { wholeDollars } from './parts';
 
-// Theme tokens, not hex: var() resolves in these SVG attributes, so the bars
-// follow the theme and dark mode.
-const PINE = 'var(--pine)';
-const GOLD = 'var(--gold)';
-const STRONG = 'var(--pine-strong)';
+// Expense red stays independent of the selected theme; partial months are
+// lighter in the same hue, while the peak is a deeper red.
+const EXPENSE = 'var(--expense)';
+const STRONG = 'color-mix(in srgb, var(--expense) 80%, black)';
 const CURSOR = 'color-mix(in srgb, var(--pine) 8%, transparent)';
 
 /** The average line's label, drawn past the right end of the line, outside
@@ -41,7 +40,7 @@ function SpendTip({ active, payload, average }: {
   return (
     <ChartTooltip
       title={m.label}
-      rows={[{ name: d.donutChart.total, value: formatCurrency(m.total), color: PINE }]}
+      rows={[{ name: d.donutChart.total, value: formatCurrency(m.total), color: EXPENSE }]}
       foot={vs === null ? undefined : t(d.ux.analysis.vsAverage, { pct: `${vs > 0 ? '+' : vs < 0 ? '\u2212' : ''}${Math.abs(vs)}%` })}
     />
   );
@@ -49,7 +48,7 @@ function SpendTip({ active, payload, average }: {
 
 /** `average` (optional): the period's average monthly spend, drawn as a
  *  reference line that gives the bars a scale without a Y axis. The highest
- *  month is a deeper pine, so the peak is found without reading every bar. */
+ *  month is a deeper red, so the peak is found without reading every bar. */
 export function MonthlySpendChart({ data, average = null }: { data: MonthlySpend[]; average?: number | null }) {
   // Destructured as `dict`, not `d`: data.map((d) => ...) below uses `d` for
   // the per-bar MonthlySpend entry, and that name must not be shadowed.
@@ -76,9 +75,9 @@ export function MonthlySpendChart({ data, average = null }: { data: MonthlySpend
           <Tooltip cursor={{ fill: CURSOR }} content={<SpendTip average={average} />} />
           <Bar dataKey="total" name={dict.donutChart.total} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
             {data.map((d) => (
-              // Gold marks the in-progress month, so a part-finished month is
-              // not misread as a genuine drop in spending.
-              <Cell key={d.key} fill={d.isPartial ? GOLD : d.total === peak && peak > 0 ? STRONG : PINE} />
+              // A lighter red marks the in-progress month, so a part-finished
+              // month is not misread as a genuine drop in spending.
+              <Cell key={d.key} fill={d.total === peak && peak > 0 ? STRONG : EXPENSE} fillOpacity={d.isPartial ? 0.55 : 1} />
             ))}
           </Bar>
           {average !== null && average > 0 && (

@@ -83,10 +83,10 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
     if (c.state !== 'data' || !c.flow) return undefined;
     if (metric === 'spending') {
       const k = 12 + Math.round((c.flow.spending / maxSpend) * 76);
-      return `color-mix(in srgb, var(--wine) ${k}%, var(--mist))`;
+      return `color-mix(in srgb, var(--expense) ${k}%, var(--mist))`;
     }
     const k = 14 + Math.round((Math.abs(c.flow.net) / maxAbs) * 74);
-    return `color-mix(in srgb, ${c.flow.net >= 0 ? 'var(--pine)' : 'var(--wine)'} ${k}%, var(--mist))`;
+    return `color-mix(in srgb, ${c.flow.net >= 0 ? 'var(--income)' : 'var(--expense)'} ${k}%, var(--mist))`;
   };
 
   const nameOf = (c: Cell) => {
@@ -180,9 +180,9 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
               <span className="pb-ana-heat-detail-month">{shown.label}</span>
               {shown.state === 'data' && shown.flow ? (
                 <>
-                  <span>{x.income} <b className="font-mono-tab">{formatCurrency(shown.flow.income)}</b></span>
-                  <span>{x.spending} <b className="font-mono-tab">{formatCurrency(shown.flow.spending)}</b></span>
-                  <span>{x.net} <b className="font-mono-tab" style={{ color: shown.flow.net >= 0 ? 'var(--pine)' : 'var(--wine)' }}>{formatCurrency(shown.flow.net)}</b></span>
+                  <span>{x.income} <b className="font-mono-tab" style={{ color: 'var(--income)' }}>{formatCurrency(shown.flow.income)}</b></span>
+                  <span>{x.spending} <b className="font-mono-tab" style={{ color: 'var(--expense)' }}>{formatCurrency(shown.flow.spending)}</b></span>
+                  <span>{x.net} <b className="font-mono-tab" style={{ color: shown.flow.net >= 0 ? 'var(--income)' : 'var(--expense)' }}>{formatCurrency(shown.flow.net)}</b></span>
                 </>
               ) : (
                 <span>{shown.state === 'progress' ? x.inProgress : shown.state === 'future' ? x.notYet : x.noActivity}</span>

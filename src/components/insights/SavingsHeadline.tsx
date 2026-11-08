@@ -108,7 +108,7 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
   const range = months === 1 ? toLabel : `${formatMonthYear(Math.floor(first / 12), first % 12, locale)} – ${toLabel}`;
   const label = months === 1 ? d.insights.savedLabelOne : t(d.insights.savedLabelMany, { months: String(months) });
   const figure = good ? `${Math.round((kept / income) * 100)}%` : wholeDollars(kept);
-  const tone = good ? 'var(--pine)' : 'var(--wine)';
+  const tone = good ? 'var(--income)' : 'var(--expense)';
 
   // Spent | Kept as shares of what was earned. Overspent: the bar is the
   // spending, with a marker where income ran out and the rest hatched.
@@ -139,8 +139,8 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
           {!good && <span className="pb-ins-split-mark" style={{ left: `${incomePct}%` }} />}
         </div>
         <dl className="pb-ins-split-legend">
-          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(income)} /></dd></div>
-          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(spending)} /></dd></div>
+          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--income)' }}><RollingAmount value={wholeDollars(income)} /></dd></div>
+          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount value={wholeDollars(spending)} /></dd></div>
           <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(Math.abs(kept))} /></dd></div>
         </dl>
       </div>

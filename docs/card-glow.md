@@ -13,9 +13,10 @@ CSS anchors follow cards where supported, including sticky surfaces. Older
 browsers use content-space positions for flow cards and omit sticky/fixed
 surfaces rather than chasing them with JavaScript. No root scroll listener,
 viewport paint canvas or CSS blur surface is used for these scroll surfaces.
-The desktop Reports inspector is the exception: its single unfolding card
-uses native theme-colored shadow falloffs above report content, including in
-its collapsed state. This avoids cold SVG rerasterization during expansion.
+Desktop Reports is the exception: report cards and the single unfolding filter
+surface use native theme-colored shadow falloffs, including the collapsed rail.
+The halos move with the live cards as they make room for filters, avoiding
+SVG rerasterization on every animation frame.
 Its parent permits the full shadow tail, and the same saved preference and
 live-background dimming apply. Mobile keeps the shared scroll-surface glow.
 

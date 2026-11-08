@@ -155,7 +155,7 @@ function PendingRow({ item, confirming, onAskRemove, onCancelRemove, onRemove, o
   const glyph = isIncome ? <ArrowUpRight size={16} />
     : item.display.iconKey ? createElement(resolveCategoryIcon(item.display.iconKey), { size: 16 })
     : <ArrowDownRight size={16} />;
-  const tint = isIncome ? 'var(--pine)' : item.display.color || 'var(--ink-soft)';
+  const tint = isIncome ? 'var(--income)' : item.display.color || 'var(--ink-soft)';
   const busy = q.running;
 
   return (

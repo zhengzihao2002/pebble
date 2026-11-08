@@ -210,7 +210,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
           </span>
         </div>
         <div className="pb-sched-rule-money">
-          <span className="font-mono-tab pb-sched-rule-amt" style={{ color: isIncome ? 'var(--pine)' : 'var(--ink)' }}>
+          <span className="font-mono-tab pb-sched-rule-amt" style={{ color: isIncome ? 'var(--income)' : 'var(--expense)' }}>
             <RollingAmount value={formatCurrency(rule.amount)} />
           </span>
           {approx && <span className="pb-sched-rule-approx">{approx}</span>}
@@ -226,7 +226,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
             <span className="pb-sched-life">
               <ProgressRing
                 value={progress.done / progress.total} size={22} stroke={3}
-                color={finished ? 'var(--ink-soft)' : isIncome ? 'var(--pine)' : 'var(--gold)'}
+                color={finished ? 'var(--ink-soft)' : isIncome ? 'var(--income)' : 'var(--gold)'}
               />
               <span className="pb-tnum">{t(x.progress, { done: progress.done, total: progress.total })}</span>
             </span>

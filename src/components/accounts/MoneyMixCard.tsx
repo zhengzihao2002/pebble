@@ -19,7 +19,7 @@ const ASSET_RAMP = [
   'color-mix(in oklch, var(--gold) 50%, var(--ink-soft))',
   'var(--ink-soft)',
 ];
-const OWED_RAMP = ['var(--wine)', 'color-mix(in oklch, var(--wine) 62%, var(--mist))', 'color-mix(in oklch, var(--wine) 60%, var(--ink))'];
+const OWED_RAMP = ['var(--expense)', 'color-mix(in oklch, var(--expense) 62%, var(--mist))', 'color-mix(in oklch, var(--expense) 60%, var(--ink))'];
 
 interface Seg { id: string; name: string; last4: string | null; amount: number; color: string; sleeping: boolean; owed: boolean }
 

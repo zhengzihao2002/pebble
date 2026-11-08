@@ -60,7 +60,7 @@ export function MonthBalanceChart({ points, opening, hasActivity, onPickDay, sub
     // Only worth a label when it is actually below where the month began.
     return best.balance < opening - 0.005 ? best : null;
   }, [points, opening, hasActivity, owed]);
-  const lineColor = owed ? 'var(--wine)' : 'var(--pine)';
+  const lineColor = owed ? 'var(--expense)' : 'var(--income)';
   // BalanceFigure negates for "owed"; these values are already owed amounts.
   const figure = (v: number) => <BalanceFigure value={owed ? -v : v} owed={owed} />;
 

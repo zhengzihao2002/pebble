@@ -9,7 +9,7 @@ import { ChartTooltip } from './ChartTooltip';
 // A theme token, not hex: var() resolves in these SVG attributes (the tick
 // text has always used it), so the line follows the theme and dark mode.
 const GOLD = 'var(--gold)';
-const PINE = 'var(--pine)';
+const INCOME = 'var(--income)';
 const CURSOR = 'color-mix(in srgb, var(--pine) 8%, transparent)';
 
 export type DeductionView = 'rate' | 'paycheck';
@@ -28,7 +28,7 @@ function PayTip({ active, payload }: { active?: boolean; payload?: ReadonlyArray
       title={m.label}
       rows={[
         { name: x.gross, value: formatCurrency(m.gross) },
-        { name: x.takeHome, value: formatCurrency(m.net), color: PINE },
+        { name: x.takeHome, value: formatCurrency(m.net), color: INCOME },
         { name: x.withheld, value: formatCurrency(m.withheld), color: GOLD },
         { name: d.analysis.income.rateSeriesName, value: `${m.rate.toFixed(1)}%`, money: false, strong: true },
       ]}
@@ -60,7 +60,7 @@ export function DeductionChart({ data, view = 'rate' }: { data: MonthlyDeduction
               minTickGap={16}
             />
             <Tooltip cursor={{ fill: CURSOR }} content={<PayTip />} />
-            <Bar dataKey="net" stackId="pay" name={dict.ux.analysis.takeHome} fill={PINE} maxBarSize={24} isAnimationActive={false} />
+            <Bar dataKey="net" stackId="pay" name={dict.ux.analysis.takeHome} fill={INCOME} maxBarSize={24} isAnimationActive={false} />
             <Bar dataKey="withheld" stackId="pay" name={dict.ux.analysis.withheld} fill={GOLD} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>

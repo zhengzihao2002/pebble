@@ -192,7 +192,7 @@ function Group({ id, icon: Icon, title, count, subtotal, subtotalNote, quiet = f
 function bankFacts(item: Item, days: DayPointLite[], total: number, noChange: string) {
   const { a, now, then } = item;
   const change = Math.round((now - then) * 100) / 100;
-  const tone = change > 0 ? 'var(--pine)' : change < 0 ? 'var(--wine)' : 'var(--ink-soft)';
+  const tone = change > 0 ? 'var(--income)' : change < 0 ? 'var(--expense)' : 'var(--ink-soft)';
   const pct = then !== 0 ? ` (${change >= 0 ? '+' : '−'}${Math.abs((change / Math.abs(then)) * 100).toFixed(1)}%)` : '';
   // The amount and the percent apart, so a narrow row can drop the percent.
   const changeAmount = change === 0 ? noChange : `${change > 0 ? '+' : '−'}${formatCurrency(Math.abs(change))}`;

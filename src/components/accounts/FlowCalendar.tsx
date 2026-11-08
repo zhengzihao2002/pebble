@@ -31,7 +31,7 @@ const levelOf = (v: number, cuts: number[]) => {
 /**
  * Daily flow: a calendar of money in and out across all accounts for the
  * page's range - weeks as columns, weekdays as rows. Each day is tinted by
- * its net (income minus spending): pine for a net-in day, wine for net-out,
+ * its net (income minus spending): green for a net-in day, red for net-out,
  * five steps each by quantile so one rent day does not wash the rest out.
  * Days with no income or spending are faint; today is outlined.
  *

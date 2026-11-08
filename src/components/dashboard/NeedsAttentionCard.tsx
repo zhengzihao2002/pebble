@@ -82,7 +82,7 @@ export function NeedsAttentionCard({ transactions, categoryMeta, today = null }:
   const statusOf = (b: (typeof topBudgets)[number]) => {
     if (b.budget <= 0) return { text: ux.noBudget, color: 'var(--ink-soft)' };
     const expected = b.budget * yf;
-    if (b.spent > b.budget) return { text: renderTemplate(d.budgetPlan.overBudgetBy, { amount: money(b.spent - b.budget) }), color: 'var(--wine)' };
+    if (b.spent > b.budget) return { text: renderTemplate(d.budgetPlan.overBudgetBy, { amount: money(b.spent - b.budget) }), color: 'var(--expense)' };
     if (Math.abs(b.spent - expected) <= PACE_TOLERANCE * b.budget) return { text: d.budgetPlan.onPace, color: 'var(--pine)' };
     return b.spent > expected
       ? { text: renderTemplate(d.budgetPlan.overPaceBy, { amount: money(b.spent - expected) }), color: 'var(--gold)' }

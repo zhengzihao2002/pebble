@@ -225,11 +225,11 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const meta = isAdjustment ? undefined : categoryMeta[txn.category];
   const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
   const isIncome = !isAdjustment && txn.amount > 0;
-  const iconColor = isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)');
+  const iconColor = isIncome ? 'var(--income)' : (meta ? meta.color : 'var(--ink-soft)');
   // The tile's tint and its soft highlight are mixed from this one hue in
   // CSS (.pb-tdlg-tile). No category colour: the soft ink token, never a hex.
   // Adjustments stay neutral.
-  const tileHue = isIncome ? 'var(--pine)' : (meta ? meta.color : 'var(--ink-soft)');
+  const tileHue = isIncome ? 'var(--income)' : (meta ? meta.color : 'var(--ink-soft)');
 
   // balance_adjustment.amount has no sign CHECK - corrections go both ways -
   // so the figure is coloured by sign rather than always red, matching how
@@ -240,8 +240,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     ? (txn.amount > 0 ? '+' : txn.amount < 0 ? '\u2212' : '')
     : (isIncome ? '+' : '');
   const amountColor = isAdjustment
-    ? (txn.amount > 0 ? 'var(--pine)' : txn.amount < 0 ? 'var(--wine)' : 'var(--ink-soft)')
-    : (isIncome ? 'var(--pine)' : 'var(--wine)');
+    ? (txn.amount > 0 ? 'var(--income)' : txn.amount < 0 ? 'var(--expense)' : 'var(--ink-soft)')
+    : (isIncome ? 'var(--income)' : 'var(--expense)');
   const amountText = isAdjustment
     ? formatCurrency(Math.abs(txn.amount))
     : formatCurrency(txn.amount);
