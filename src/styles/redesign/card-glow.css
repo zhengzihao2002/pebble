@@ -37,3 +37,11 @@
       0 0 14px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 20%), transparent);
   }
 }
+
+/* Static browser-native halos scroll with the cards on touch devices. No SVG
+   filters, per-card resize observers or moving shadow layers are mounted. */
+.pebble-root:has(> .pb-card-glows[data-pb-glow-native]) :is(.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accounts-cc, .add-goal-tile, .stat-tab):not(.card *, [data-slot="card"] *, .pb-hero *, .pb-accounts-tile *, .pb-accounts-cc *, .add-goal-tile *, .stat-tab *) {
+  box-shadow: var(--shadow), 0 0 24px -4px color-mix(in srgb, var(--pine) var(--pb-mobile-glow-strength, 25%), transparent);
+}
+
+.pebble-root:has(> .pb-card-glows[data-pb-glow-native]):has(> .pb-ambient-background) { --pb-mobile-glow-strength: 16%; }

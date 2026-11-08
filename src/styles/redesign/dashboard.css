@@ -901,3 +901,7 @@
   .pebble-root .pb-dash-yoy-mover + .pb-dash-yoy-mover { padding-left: 1.25rem; border-left: 1px solid var(--line); }
   .pebble-root .pb-dash-yoy-list > * + *::before { display: none; }
 }
+/* iOS must not synthesize a hover state before activating a period arrow. */
+@media (hover: none) {
+  .pebble-root .pb-dash-step:hover:not(:disabled) { color: var(--ink-soft); background-color: transparent; }
+}

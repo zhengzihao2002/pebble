@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, type PointerEvent, type MouseEvent } from 'react';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Percent, Wallet } from 'lucide-react';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
@@ -140,6 +141,24 @@ export function DashboardStatsCard({
     if (next) onPeriodChange(next.key);
   };
 
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const lastTouch = useRef(-Infinity);
+  const pointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    if (event.pointerType === 'mouse') { lastTouch.current = -Infinity; press.current = null; }
+    else press.current = { x: event.clientX, y: event.clientY };
+  };
+  const pointerUp = (event: PointerEvent<HTMLButtonElement>, direction: 1 | -1) => {
+    const start = press.current; press.current = null;
+    if (event.pointerType === 'mouse' || !start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
+    lastTouch.current = performance.now();
+    stepPeriod(direction);
+  };
+  const clickStep = (event: MouseEvent<HTMLButtonElement>, direction: 1 | -1) => {
+    if (event.detail !== 0 && performance.now() - lastTouch.current < 750) return;
+    stepPeriod(direction);
+  };
+
   // A tile's figure for one side of the comparison, written as the tile writes it.
   const figure = (metric: Metric, r: RangeStats) =>
     metric === 'savingsRate' ? `${r.savingsRate.toFixed(2)}%` : formatCurrency(r[metric]);
@@ -216,7 +235,8 @@ export function DashboardStatsCard({
             <span className="pb-dash-stepper">
               <button
                 type="button" className="pb-dash-step" aria-label={ux.prevPeriod}
-                disabled={!older} onClick={() => stepPeriod(1)}
+                disabled={!older} onPointerDown={pointerDown} onPointerCancel={() => { press.current = null; }}
+                onPointerUp={event => pointerUp(event, 1)} onClick={event => clickStep(event, 1)}
               >
                 <ChevronLeft size={16} aria-hidden="true" />
               </button>
@@ -236,7 +256,8 @@ export function DashboardStatsCard({
               </span>
               <button
                 type="button" className="pb-dash-step" aria-label={ux.nextPeriod}
-                disabled={!newer} onClick={() => stepPeriod(-1)}
+                disabled={!newer} onPointerDown={pointerDown} onPointerCancel={() => { press.current = null; }}
+                onPointerUp={event => pointerUp(event, -1)} onClick={event => clickStep(event, -1)}
               >
                 <ChevronRight size={16} aria-hidden="true" />
               </button>

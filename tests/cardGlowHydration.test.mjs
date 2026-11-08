@@ -20,10 +20,10 @@ function fixture(saved) {
       };
       if (name === 'react/jsx-runtime') return { jsx: (type, props) => ({ type, props }) };
       if (name === '@/store/usePebbleStore') return {
-        // Hydration starts with the server's ON default even when saved OFF.
+        // Simulate an ON hydration render before a saved OFF value settles.
         usePebbleStore: Object.assign(() => true, { getState: () => ({ cardGlow: saved }) }),
       };
-      return { mountCardGlows: () => { mounted++; return () => { cleaned++; }; } };
+      return { mountAdaptiveCardGlows: () => { mounted++; return () => { cleaned++; }; } };
     },
   });
   compiled.exports.CardGlow();

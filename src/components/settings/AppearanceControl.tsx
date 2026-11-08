@@ -44,12 +44,12 @@ export function AppearanceControl({ appearance, onChange }: AppearanceControlPro
               <span className="pb-settings-tile-face" style={{ background: bg }}>
                 <span style={{ position: 'absolute', left: 8, right: 8, top: 8, height: 12, borderRadius: 4, background: card }} />
                 <span style={{ position: 'absolute', left: 8, bottom: 8, width: 36, height: 8, borderRadius: 4, background: bar }} />
+                {active && <Check size={18} style={{ position: 'absolute', top: 3, right: 3, color: 'var(--pine)', background: 'var(--mist)', borderRadius: '50%', padding: 2 }} />}
               </span>
               <span className="pb-settings-tile-name">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <Icon size={14} />{d.appearance[choice]}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                  <Icon size={14} style={{ flexShrink: 0 }} />{d.appearance[choice]}
                 </span>
-                {active && <Check size={14} style={{ color: 'var(--pine)', flexShrink: 0 }} />}
               </span>
             </button>
           );

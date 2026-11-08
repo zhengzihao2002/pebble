@@ -33,7 +33,12 @@ export function AmbientRoutePreview() {
   const [requested, setRequested] = useState<{ playing: boolean; reduced: boolean } | null>(null);
   // A changed device preference takes precedence over an older play request.
   // Someone with Reduced Motion can still deliberately play this preview.
-  const playing = requested?.reduced === reduced ? requested.playing : !reduced;
+  const playing = requested?.reduced === reduced ? requested.playing : false;
+  // Preview playback is explicit, and changing the actual background toggle
+  // cancels an old play request rather than leaving hidden work running.
+  useEffect(() => usePebbleStore.subscribe((state, before) => {
+    if (state.ambientBackground !== before.ambientBackground) setRequested(null);
+  }), []);
   const frameRef = useRef<SVGSVGElement>(null);
   const markersRef = useRef<(SVGCircleElement | null)[]>([]);
   const trailsRef = useRef<(SVGPathElement | null)[]>([]);

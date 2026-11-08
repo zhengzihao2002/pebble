@@ -180,7 +180,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   cjkFontChoice: 'sans',
   showHealthBar: false,
   ambientBackground: false,
-  cardGlow: true,
+  cardGlow: false,
   ambientSettings: normalizeAmbientSettings(undefined),
   showBrandIcons: true,
   themeChoice: 'original',
@@ -271,7 +271,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, cardGlow: merged.cardGlow !== false, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, cardGlow: merged.cardGlow === true, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.

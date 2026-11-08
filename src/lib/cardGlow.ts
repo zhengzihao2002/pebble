@@ -191,3 +191,24 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
     window.removeEventListener('resize', onResize); document.removeEventListener('visibilitychange', visibility);
   };
 }
+
+
+/** Touch screens use one static CSS shadow per card. Avoid SVG blur surfaces,
+ * anchor tracking and per-card measurement entirely on scrolling phones. */
+export function mountAdaptiveCardGlows(layer: HTMLDivElement, prefix: string) {
+  const touch = window.matchMedia('(pointer: coarse)');
+  const narrow = window.matchMedia('(max-width: 759px)');
+  let cleanup: (() => void) | undefined;
+  const sync = () => {
+    cleanup?.(); cleanup = undefined;
+    delete layer.dataset.pbGlowNative;
+    if (touch.matches || narrow.matches) layer.dataset.pbGlowNative = 'true';
+    else cleanup = mountCardGlows(layer, prefix);
+  };
+  touch.addEventListener('change', sync); narrow.addEventListener('change', sync);
+  sync();
+  return () => {
+    cleanup?.(); delete layer.dataset.pbGlowNative;
+    touch.removeEventListener('change', sync); narrow.removeEventListener('change', sync);
+  };
+}
