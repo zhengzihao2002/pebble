@@ -223,7 +223,7 @@ export function ReportFilters({
     let timer = 0;
     const fits = () => !!contentRef.current
       && card.clientWidth >= contentRef.current.offsetWidth
-      && card.clientHeight >= Math.ceil(contentRef.current.getBoundingClientRect().height);
+      && card.clientHeight >= contentRef.current.offsetHeight;
     const reveal = () => { if (expanded && !card.closest('[data-pb-inspector-motion]') && fits()) setInspectorReady(true); };
     const reconcile = () => {
       window.clearTimeout(timer);
@@ -263,7 +263,7 @@ export function ReportFilters({
       // Keep a little air below it unless the window is exceptionally short.
       const gap = Math.min(16, Math.max(0, room - 48));
       card.style.setProperty('--pb-rep-filter-available', `${Math.max(0, room - gap)}px`);
-      if (contentRef.current) card.style.setProperty('--pb-rep-filter-height', `${Math.ceil(contentRef.current.getBoundingClientRect().height) + 2}px`);
+      if (contentRef.current) card.style.setProperty('--pb-rep-filter-height', `${Math.ceil(parseFloat(getComputedStyle(contentRef.current).height) || contentRef.current.offsetHeight) + 2}px`);
     };
     const queue = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const observer = new ResizeObserver(entries => {

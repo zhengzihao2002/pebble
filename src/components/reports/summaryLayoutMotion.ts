@@ -44,7 +44,7 @@ export function fadeSummaryOut(summary: SummaryCapture) {
  * dissolves at a column change. Precomputed keyframes need no per-frame JS. */
 export function animateSummary(summary: SummaryCapture, before: DOMRect, after: DOMRect, duration: number, delay: number, easing: string) {
   const current = captureSummary(summary.hero.parentElement!);
-  if (!current || (current.columns === summary.columns && summary.support.every(item => item.opacity >= .99))) return [];
+  if (!current) return [];
   const animations: Animation[] = [];
   const mix = (a: number, b: number, progress: number) => a + (b - a) * progress;
   const targets = summary.anchors.map(anchor => ({ ...anchor, after: anchor.element.getBoundingClientRect() }));

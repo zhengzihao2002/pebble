@@ -22,12 +22,13 @@ moves with the card. There is no transform scaling or fixed final height.
   animator pauses during this managed motion. Layout caching waits
   until the live transforms settle. Charts resize once at the final layout;
   their viewport clips any pending Recharts resize before paint.
-- When the Reports summary switches between columns and a stacked layout,
+- When the desktop Reports summary changes width,
   supporting details dissolve for 70ms before committing the new arrangement.
   The eyebrow, Net label and amount remain visible; sampled counter-transforms
   preserve their screen position and text size while the card reshapes.
   Supporting figures, charts and filter contents then return together on a
-  shared 80ms fade after geometry settles. Changes that keep the same column arrangement do not dissolve content.
+  shared 80ms fade after geometry settles. This also covers wide screens that keep both sections in columns, so text
+  never visibly stretches with the card.
 - A second toggle during the short exit cancels the queued change. Later
   reversals continue from the visible geometry, and explicit Find/open intent
   remains queued correctly. Resize, backgrounding and Reduced Motion cancel
@@ -56,3 +57,7 @@ queued steps. Months, quarters and years use the same bounded navigation.
 
 The app retains its original typography and native system cursors. Text size
 still has a 100% minimum; the rejected Small preset remains removed.
+
+Filter height and readiness use unscaled layout measurements, including while
+the filter shell is transformed. Screen-space rectangles must not be saved as
+layout heights; doing so can leave controls permanently hidden after opening.

@@ -348,13 +348,15 @@ for (const reason of ['resize', 'pagehide', 'hidden', 'reduced', 'unmount']) {
   });
 }
 
-test('same-column summaries avoid staging and commit immediately', () => {
+test('same-column summaries also hide supporting text before a width change', async () => {
   const f = fixture({ summary: true, reflow: false });
   const run = f.render(false);
   let commits = 0;
   run(() => { commits++; f.layout(true); f.render(true); });
+  assert.equal(commits, 0);
+  for (const element of f.contentSurfaces) element.active?.finish();
+  await flush();
   assert.equal(commits, 1);
-  assert.ok(f.supports.every(element => !element.animations.length));
   assert.equal(f.grid.getAttribute('data-pb-summary-exit'), null);
   f.stop();
 });

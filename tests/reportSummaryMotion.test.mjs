@@ -74,11 +74,13 @@ for (const opening of [true, false]) test(`headline world-space geometry stays c
   });
 });
 
-test('same-layout resizing leaves visible summary contents alone', () => {
+test('same-layout resizing protects text from parent scaling', () => {
   const f = fixture(), capture = f.captureSummary(f.page), before = { ...f.hero.rect };
   f.layout(true, rect(40, 198, 1300, 371));
-  assert.deepEqual(Array.from(f.animateSummary(capture, before, f.hero.rect, 360, 0, 'ease')), []);
-  assert.ok([...f.anchors, ...f.support].every(e => !e.animations.length));
+  const motions = f.animateSummary(capture, before, f.hero.rect, 360, 0, 'ease');
+  assert.ok(motions.length > 0);
+  assert.ok(f.anchors.every(e => e.animations.length === 1));
+  assert.ok(f.support.every(e => e.animations.at(-1).frames.at(-1).opacity === 0));
 });
 
 test('all supporting regions stay masked until the shared geometry completes', () => {

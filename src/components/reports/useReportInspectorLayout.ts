@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { reportGeometryFrames } from './reportGeometryMotion';
 import { settleCardResizes } from '@/lib/cardResize';
-import { animateSummary, captureSummary, fadeSummaryOut, summaryWillReflow, type SummaryCapture } from './summaryLayoutMotion';
+import { animateSummary, captureSummary, fadeSummaryOut, type SummaryCapture } from './summaryLayoutMotion';
 
 const DURATION = 360;
 const CLOSE_DELAY = 60;
@@ -86,7 +86,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const inspector = capture.inspector;
     if (inspector && expanded) {
       const content = inspector.element.querySelector<HTMLElement>('.pb-rep-filter-content');
-      if (content) inspector.element.style.setProperty('--pb-rep-filter-height', `${Math.ceil(content.getBoundingClientRect().height) + 2}px`);
+      if (content) inspector.element.style.setProperty('--pb-rep-filter-height', `${Math.ceil(parseFloat(getComputedStyle(content).height) || content.offsetHeight) + 2}px`);
     }
     const inspectorAfter = inspector?.element.getBoundingClientRect();
     // Read all final geometry together before creating any animations.
@@ -193,8 +193,7 @@ export function useReportInspectorLayout(pageRef: RefObject<HTMLDivElement | nul
     const grid = page?.querySelector<HTMLElement>('.pb-rep-grid');
     const summary = page && captureSummary(page);
     if (grid && summary && !motions.current.length && getComputedStyle(grid).display === 'grid'
-      && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      && summaryWillReflow(summary, grid)) {
+      && !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const token = {};
       exit.current = { grid, token, update };
       grid.setAttribute('data-pb-summary-exit', '');
