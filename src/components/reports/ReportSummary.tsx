@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { observeLegendMotion } from './legendMotion';
 import { ArrowDownLeft, ArrowUpRight, Banknote, BarChart3, EyeOff } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, splitCents } from '@/lib/format';
@@ -75,6 +76,9 @@ const pct = (v: number) => (v > 0 && v < 0.01 ? '<1%' : `${Math.round(v * 100)}%
  * bars sit in pb-chart-fill.
  */
 export function ReportSummary(p: ReportSummaryProps) {
+  const legendRef = useRef<HTMLUListElement>(null);
+  const hasShares = p.shares.length > 0;
+  useLayoutEffect(() => { if (legendRef.current) return observeLegendMotion(legendRef.current); }, [hasShares]);
   const { d, t } = useTranslation();
   const x = d.ux.reports;
   const r = d.reports;
@@ -190,7 +194,7 @@ export function ReportSummary(p: ReportSummaryProps) {
                 />
               ))}
             </div>
-            <ul className="pb-rep-legend">
+            <ul ref={legendRef} className="pb-rep-legend">
               {p.shares.map((s) => {
                 const on = p.isolated === s.key;
                 const Icon = p.categoryMeta[s.key]?.icon ?? Banknote;
