@@ -29,14 +29,22 @@ test('text cursors stay centered on the click point at every size and in both th
     const f = fixture(size);
     assert(f.classes.has('pb-soft-cursor'));
     for (const tone of ['light', 'dark']) {
-      const cursor = f.styles.get(`--pb-text-${tone}`);
-      const [, file, x, y] = cursor.match(/^url\('([^']+)'\) (\d+) (\d+), text$/);
-      const svg = readFileSync(`public${file}`, 'utf8');
-      const [, width, height] = svg.match(/width="(\d+)" height="(\d+)"/);
-      assert(Math.abs(Number(x) - Number(width) / 2) <= .5);
-      assert(Math.abs(Number(y) - Number(height) / 2) <= .5);
-      assert(svg.includes('stroke-linecap="round"'));
-      assert(f.styles.get(`--pb-arrow-${tone}`).endsWith(', auto'));
+      for (const kind of ['text', 'text-pressed']) {
+        const cursor = f.styles.get(`--pb-${kind}-${tone}`);
+        const [, file, x, y] = cursor.match(/^url\('([^']+)'\) (\d+) (\d+), text$/);
+        const svg = readFileSync(`public${file}`, 'utf8');
+        const [, width, height] = svg.match(/width="(\d+)" height="(\d+)"/);
+        assert(Math.abs(Number(x) - Number(width) / 2) <= .5);
+        assert(Math.abs(Number(y) - Number(height) / 2) <= .5);
+        assert(svg.includes('stroke-linecap="round"'));
+        assert(f.styles.get(`--pb-arrow-${tone}`).endsWith(', auto'));
+      }
+      const normalized = size === 40 ? 48 : size;
+      const suffix = normalized === 32 ? '' : `-${normalized}`;
+      const normal = readFileSync(`public/cursors/soft-text-${tone}-long${suffix}.svg`, 'utf8');
+      const pressed = readFileSync(`public/cursors/soft-text-${tone}${suffix}.svg`, 'utf8');
+      assert(normal.includes('M16 6V42'), 'released bar must be longer');
+      assert(pressed.includes('M16 6V30'), 'pressed bar must retain its original short length');
     }
     assert.notEqual(readFileSync('public/cursors/soft-text-light.svg', 'utf8'), readFileSync('public/cursors/soft-text-dark.svg', 'utf8'));
     f.cleanup();

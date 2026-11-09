@@ -2395,15 +2395,20 @@ html.pebble-dark .pebble-auth-brand .pebble-auth-lang button.active { background
 @media (pointer: fine) {
   .pebble-root.pb-soft-cursor {
     --pb-arrow: var(--pb-arrow-light, url('/cursors/soft-arrow-light.svg') 6 4, auto);
-    --pb-text: var(--pb-text-light, url('/cursors/soft-text-light.svg') 16 18, text);
+    --pb-text: var(--pb-text-light, url('/cursors/soft-text-light-long.svg') 16 24, text);
+    --pb-text-pressed: var(--pb-text-pressed-light, url('/cursors/soft-text-light.svg') 16 18, text);
   }
   html.pebble-dark .pebble-root.pb-soft-cursor,
   .pebble-root.pb-soft-cursor.dark,
   .pebble-root.pb-soft-cursor :is(.pb-hero, .hero-card, .pb-accounts-cc) {
     --pb-arrow: var(--pb-arrow-dark, url('/cursors/soft-arrow-dark.svg') 6 4, auto);
-    --pb-text: var(--pb-text-dark, url('/cursors/soft-text-dark.svg') 16 18, text);
+    --pb-text: var(--pb-text-dark, url('/cursors/soft-text-dark-long.svg') 16 24, text);
+    --pb-text-pressed: var(--pb-text-pressed-dark, url('/cursors/soft-text-dark.svg') 16 18, text);
   }
   .pebble-root.pb-soft-cursor, .pebble-root.pb-soft-cursor * { cursor: var(--pb-arrow) !important; }
   .pebble-root.pb-soft-cursor :is(textarea, [contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"], input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="url"], input[type="tel"]),
   .pebble-root.pb-soft-cursor :is([contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"]) * { cursor: var(--pb-text) !important; }
+  /* Native :active stays short while held and clears on release/cancel. */
+  .pebble-root.pb-soft-cursor :is(textarea, [contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"], input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="url"], input[type="tel"]):active,
+  .pebble-root.pb-soft-cursor :is([contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"]):active * { cursor: var(--pb-text-pressed) !important; }
 }

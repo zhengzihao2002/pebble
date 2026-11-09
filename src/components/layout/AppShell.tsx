@@ -25,13 +25,11 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 import { SHELL_EVENTS } from './shellEvents';
-import { useTypographyPreferences } from './useTypographyPreferences';
 import { useCardResize } from './useCardResize';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const locale = usePebbleStore((s) => s.locale);
-  useTypographyPreferences();
   const privacyOn = usePebbleStore((s) => s.privacyOn);
   // Text selection is off unless the user turned it on (exactly true only).
   const allowTextSelect = usePebbleStore((s) => s.allowTextSelect);

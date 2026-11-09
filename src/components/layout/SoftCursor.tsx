@@ -16,12 +16,14 @@ export function SoftCursor() {
         `url('/cursors/soft-arrow-${tone}${suffix}.svg') ${Math.round(size * 6 / 32)} ${Math.round(size * 4 / 32)}, auto`);
       // The text cursor's hit point stays at the center of the vertical bar.
       root?.style.setProperty(`--pb-text-${tone}`,
+        `url('/cursors/soft-text-${tone}-long${suffix}.svg') ${Math.round(size / 2)} ${Math.round(size * 24 / 32)}, text`);
+      root?.style.setProperty(`--pb-text-pressed-${tone}`,
         `url('/cursors/soft-text-${tone}${suffix}.svg') ${Math.round(size / 2)} ${Math.round(size * 18 / 32)}, text`);
     }
     root?.classList.toggle('pb-soft-cursor', enabled);
     return () => {
       root?.classList.remove('pb-soft-cursor');
-      for (const tone of ['light', 'dark']) for (const kind of ['arrow', 'text']) root?.style.removeProperty(`--pb-${kind}-${tone}`);
+      for (const tone of ['light', 'dark']) for (const kind of ['arrow', 'text', 'text-pressed']) root?.style.removeProperty(`--pb-${kind}-${tone}`);
     };
   }, [enabled, size]);
   return null;
