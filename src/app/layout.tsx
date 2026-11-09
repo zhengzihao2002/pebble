@@ -47,10 +47,10 @@ const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
 });
 
-// Settings > Appearance > Font. preload: false - each family's @font-face is
-// declared, but a file only downloads once text actually uses it, so these
-// cost nothing for anyone on the default.
-const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", preload: false });
+// Rounded is also used by the persistent sidebar. Discover its Latin font in
+// the head, before the sidebar can paint with a visibly different fallback.
+const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", preload: true });
+// Other optional families download only when selected.
 const sourceSerif = Source_Serif_4({ subsets: ["latin"], variable: "--font-source-serif", preload: false });
 const atkinson = Atkinson_Hyperlegible({
   subsets: ["latin"],

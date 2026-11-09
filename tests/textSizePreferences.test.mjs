@@ -13,6 +13,7 @@ const source = buildSync({
     export * from './src/lib/textSize';
     export * from './src/lib/themeChoice';
     export * from './src/lib/fontChoice';
+    export * from './src/lib/preinitPreferences';
   `, resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external',
 }).outputFiles[0].text;
@@ -43,12 +44,11 @@ test('persisted small sizes migrate to 100%, and setters enforce the same bounds
 
 test('the actual first-paint script clamps legacy saved sizes before rendering', () => {
   const layout = readFileSync('src/app/layout.tsx', 'utf8');
-  const template = layout.match(/__html: (`[^`]+`)/)[1];
+  assert.match(layout, /__html:\s*PREINIT_PREFERENCES_SCRIPT/);
   for (const [saved, expected] of [[85, '16px'], [100, '16px'], [115, '18.4px'], [200, '24px']]) {
     const f = fixture(saved);
     const root = { style: {}, classList: { add() {} }, setAttribute() {} };
-    const script = vm.runInNewContext(template, f);
-    vm.runInNewContext(script, {
+    vm.runInNewContext(f.PREINIT_PREFERENCES_SCRIPT, {
       localStorage: f.localStorage, sessionStorage: { getItem: () => null },
       location: { pathname: '/settings' }, matchMedia: () => ({ matches: false }),
       document: { documentElement: root },
