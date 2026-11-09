@@ -5,11 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
-import { useResolvedDark } from '@/lib/useResolvedDark';
 import { authClient } from '@/lib/auth/client';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
-import { THEME_ATTRIBUTE, isThemeChoice } from '@/lib/themeChoice';
-import { runThemeChange, themeChangePending } from '@/lib/themeTransition';
 import { playEventSound } from '@/lib/sound/useSound';
 import { NavigationContent } from '@/components/loading/NavigationContent';
 import { Sidebar } from './Sidebar';
@@ -33,11 +30,8 @@ import { useCardResize } from './useCardResize';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
-  // Resolved: Light, Dark, or the device's setting when on System.
-  const darkMode = useResolvedDark();
   const locale = usePebbleStore((s) => s.locale);
   useTypographyPreferences();
-  const themeChoice = usePebbleStore((s) => s.themeChoice);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
   // Text selection is off unless the user turned it on (exactly true only).
   const allowTextSelect = usePebbleStore((s) => s.allowTextSelect);
@@ -224,50 +218,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
     return () => handlers.forEach(([name, h]) => window.removeEventListener(name, h));
   }, []);
-
-  // Mirrors darkMode onto <html> (so the class the pre-paint script set stays
-  // truthful after a toggle) and onto the .pebble-root div. Both change in ONE
-  // step, inside runThemeChange, so the switch is a single cross-fade rather
-  // than a restyle of the whole tree on every frame (see themeTransition.ts).
-  //
-  // .dark on the root div is set HERE, not in its className: the resolved
-  // mode can differ between the server render (which cannot see the device)
-  // and the first client render, and React does not patch attribute
-  // mismatches - it would leave a stale class it believes is current. React
-  // renders a fixed className, so it never strips this one. Until this runs,
-  // html.pebble-dark from the pre-paint script covers the palette.
-  useEffect(() => {
-    const html = document.documentElement;
-    const apply = () => {
-      html.classList.toggle('pebble-dark', darkMode);
-      rootRef.current?.classList.toggle('dark', darkMode);
-    };
-    // Already in step (first mount, or the pre-paint script got there first):
-    // nothing to animate. Not while an earlier change is still waiting behind a
-    // running fade: the page is in step with THIS value only because that
-    // earlier one has not landed yet, and it would land after us and win
-    // (toggle, toggle back, quickly). Joining the queue keeps the order.
-    if (!themeChangePending() && html.classList.contains('pebble-dark') === darkMode) {
-      // Hydration only mirrors the already-correct prepaint theme onto the
-      // root. Taking theme snapshots here captured the pre-hydration pill.
-      apply();
-      return;
-    }
-    runThemeChange(apply);
-  }, [darkMode]);
-
-  // Same for the colour theme. Unknown stored values fall back to Original.
-  useEffect(() => {
-    const root = document.documentElement;
-    const next = isThemeChoice(themeChoice) && themeChoice !== 'original' ? themeChoice : null;
-    if (!themeChangePending() && root.getAttribute(THEME_ATTRIBUTE) === next) return; // see the darkMode effect: a queued change must not land after this one
-    // A palette change moves the same tokens as light/dark, so it takes the
-    // same single cross-fade.
-    runThemeChange(() => {
-      if (next) root.setAttribute(THEME_ATTRIBUTE, next);
-      else root.removeAttribute(THEME_ATTRIBUTE);
-    });
-  }, [themeChoice]);
 
   // Removes the pre-migration store (transactions and balances from before
   // the database existed). Nothing reads it; it only sat on disk. A no-op

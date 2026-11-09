@@ -210,6 +210,8 @@ html, body { position: fixed; inset: 0; width: 100%; max-width: 100%; height: 10
    at this point in the load. */
 html { background-color: #F1F3EE; }
 html.pebble-dark { background-color: #121C18; }
+/* The streamed body must not cover the pre-painted palette with base white. */
+body { background-color: inherit; }
 
 /* The colour transitions below are for the settings toggle, where a 300ms fade
    is the point. On load they would animate the involuntary light-to-dark
