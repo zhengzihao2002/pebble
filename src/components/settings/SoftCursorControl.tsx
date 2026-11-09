@@ -17,10 +17,12 @@ export function SoftCursorControl() {
   const id = useId();
   return <SettingsRow className="pb-cursor-setting" id={SETTING_TARGETS.softCursor} icon={MousePointer2} title={d.softCursor.title} hint={d.softCursor.hint} titleId={id} layout="side">
     <Switch checked={enabled} onChange={setEnabled} labelledBy={id} className="pb-settings-switch" />
-    {enabled && <label className="pb-cursor-size">
-      <span>{d.softCursor.size}</span>
-      <input aria-label={d.softCursor.size} type="range" min="24" max="48" step="8" value={size} onChange={event => setSize(Number(event.target.value))} className="pb-settings-range" />
-      <output className="pb-tnum">{size}px</output>
-    </label>}
+    {enabled && <div className="pb-cursor-size" role="group" aria-label={d.softCursor.size}>
+      {([{ value: 24, label: d.softCursor.small }, { value: 32, label: d.softCursor.default }, { value: 48, label: d.softCursor.large }]).map(option =>
+        <button key={option.value} type="button" aria-pressed={size === option.value}
+          className={`pb-settings-preset${size === option.value ? ' is-active' : ''}`} onClick={() => setSize(option.value)}>
+          {option.label}
+        </button>)}
+    </div>}
   </SettingsRow>;
 }

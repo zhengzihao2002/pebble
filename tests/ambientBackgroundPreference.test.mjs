@@ -196,6 +196,8 @@ test('cursor size defaults to32, is validated, persists and stays separate per u
   assert.equal(f.usePebbleStore.getState().cursorSize, 32);
   await f.switchPebbleUser('size-alice');
   assert.equal(f.usePebbleStore.getState().cursorSize, 48);
+  f.usePebbleStore.getState().setCursorSize(40);
+  assert.equal(f.usePebbleStore.getState().cursorSize, 48, 'Retired slider values select Large');
   f.usePebbleStore.getState().setCursorSize(999);
   assert.equal(f.usePebbleStore.getState().cursorSize, 32);
 });

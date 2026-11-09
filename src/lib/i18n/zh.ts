@@ -415,7 +415,7 @@ export const zh: typeof en = {
     cjk: { sans: '黑体', serif: '宋体', kai: '楷体' },
   },
 
-  softCursor: { size: '大小', title: '柔和箭头光标', hint: '柔和的灰色箭头，移到按钮上也保持箭头。关闭可恢复系统光标。' },
+  softCursor: { small: '小', default: '默认', large: '大', size: '大小', title: '柔和箭头光标', hint: '柔和的灰色箭头，移到按钮上也保持箭头。关闭可恢复系统光标。' },
   cardGlow: {
     title: '卡片柔光',
     hint: '在卡片周围添上一层柔和的主题色光晕。开启灵动背景时，柔光会自动减弱。',
