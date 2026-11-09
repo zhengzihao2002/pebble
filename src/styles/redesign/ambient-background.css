@@ -1,10 +1,11 @@
 /* One small transparent framebuffer, stretched behind the app. Soft Gaussian
    edges are rendered into it; no giant filtered DOM surfaces are retained. */
-.pebble-root:has(> .pb-ambient-background) { isolation: isolate; }
+html[data-pb-ambient] .pebble-root { isolation: isolate; }
+html:not([data-pb-ambient]) .pebble-root > .pb-ambient-background { display: none; }
 .pebble-root > .pb-ambient-background {
   --ambient-core: 14%;
   position: fixed; inset: 0; z-index: -1;
-  overflow: hidden; pointer-events: none; contain: strict;
+  overflow: hidden; pointer-events: none; contain: strict; container-type: size;
 }
 html.pebble-dark .pebble-root > .pb-ambient-background,
 .pebble-root.dark > .pb-ambient-background { --ambient-core: 21%; }
@@ -12,3 +13,8 @@ html.pebble-dark .pebble-root > .pb-ambient-background,
   display: block; width: 100%; height: 100%; pointer-events: none;
 }
 .pebble-root .pb-ambient-palette { display: none; }
+/* A matching first frame is already present before the app bundle runs. */
+.pebble-root > .pb-ambient-background::before {
+  content: ''; position: absolute; inset: 0;
+}
+.pebble-root > .pb-ambient-background[data-renderer]::before { display: none; }

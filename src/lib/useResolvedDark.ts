@@ -17,13 +17,12 @@ function readSystemDark(): boolean {
 /**
  * The device's light/dark setting, live. false on the server.
  *
- * The SAME reader serves as the hydration snapshot: React uses the "server"
- * snapshot while hydrating in the browser too, and answering false there made
- * System + a dark device drop the pre-paint dark class for a frame - a flash
- * of light on every load. In the browser it now reads the real setting.
+ * The hydration snapshot must match the server. The parser-time preference
+ * script and HtmlPreferenceSync own the page's colours; this hook only reads
+ * state for controls and must not invalidate the server's markup.
  */
 export function useSystemDark(): boolean {
-  return useSyncExternalStore(subscribe, readSystemDark, readSystemDark);
+  return useSyncExternalStore(subscribe, readSystemDark, readServerDark);
 }
 
 /**
@@ -41,13 +40,9 @@ function readResolvedDark(): boolean {
   const choice = isAppearance(appearance) ? appearance : 'system';
   return choice === 'system' ? readSystemDark() : choice === 'dark';
 }
-function readBootDark(): boolean {
-  // Zustand's hydration snapshot contains static defaults (System), even when
-  // localStorage has Light. Honor the pre-paint result until hydration finishes.
-  return typeof document !== 'undefined' && document.documentElement.classList.contains('pebble-dark');
-}
+const readServerDark = () => false;
 export function useResolvedDark(forceSystem = false): boolean {
-  const savedDark = useSyncExternalStore(subscribeAppearance, readResolvedDark, readBootDark);
+  const savedDark = useSyncExternalStore(subscribeAppearance, readResolvedDark, readServerDark);
   const systemDark = useSystemDark();
   return forceSystem ? systemDark : savedDark;
 }

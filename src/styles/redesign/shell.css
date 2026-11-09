@@ -16,7 +16,7 @@
    header keeps its existing surface when the optional background is off.
    Blur stays on ::before so fixed header menus remain viewport-relative. */
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .pebble-root:has(> .pb-ambient-background) .pebble-header::before {
+  html[data-pb-ambient] .pebble-root .pebble-header::before {
     background-color: color-mix(in srgb, var(--paper) 40%, transparent);
     -webkit-backdrop-filter: saturate(1.15) blur(16px);
     backdrop-filter: saturate(1.15) blur(16px);
@@ -40,7 +40,7 @@
       -webkit-backdrop-filter: saturate(1.6) blur(16px);
       backdrop-filter: saturate(1.6) blur(16px);
     }
-    .pebble-root:has(> .pb-ambient-background) .pebble-sidebar {
+    html[data-pb-ambient] .pebble-root .pebble-sidebar {
       background-color: color-mix(in srgb, var(--pb-sidebar-glass) 12%, transparent);
       -webkit-backdrop-filter: saturate(1.15) blur(16px);
       backdrop-filter: saturate(1.15) blur(16px);

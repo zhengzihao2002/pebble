@@ -21,14 +21,19 @@ export function ambientFramebufferSize(width: number, height: number) {
 }
 
 /** The same sRGB hue rotation used by CSS filters, without a filtered DOM layer. */
-export function rotateAmbientColour([r, g, b]: AmbientColour, degrees: number): AmbientColour {
+export function ambientColourMatrix(degrees: number) {
   const angle = degrees * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
-  const clamp = (n: number) => Math.max(0, Math.min(1, n));
   return [
-    clamp((.213 + .787 * c - .213 * s) * r + (.715 - .715 * c - .715 * s) * g + (.072 - .072 * c + .928 * s) * b),
-    clamp((.213 - .213 * c + .143 * s) * r + (.715 + .285 * c + .140 * s) * g + (.072 - .072 * c - .283 * s) * b),
-    clamp((.213 - .213 * c - .787 * s) * r + (.715 - .715 * c + .715 * s) * g + (.072 + .928 * c + .072 * s) * b),
+    [.213 + .787 * c - .213 * s, .715 - .715 * c - .715 * s, .072 - .072 * c + .928 * s],
+    [.213 - .213 * c + .143 * s, .715 + .285 * c + .140 * s, .072 - .072 * c - .283 * s],
+    [.213 - .213 * c - .787 * s, .715 - .715 * c + .715 * s, .072 + .928 * c + .072 * s],
   ];
+}
+
+export function rotateAmbientColour(colour: AmbientColour, degrees: number): AmbientColour {
+  return ambientColourMatrix(degrees).map(row => Math.max(0, Math.min(1,
+    row.reduce((sum, coefficient, i) => sum + coefficient * colour[i], 0),
+  ))) as [number, number, number];
 }
 
 interface AmbientFrame {

@@ -110,6 +110,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${workSans.variable} ${ibmPlexMono.variable} ${nunito.variable} ${sourceSerif.variable} ${atkinson.variable} ${notoSerifSC.variable} h-full antialiased`}
     >
       <head>
+        {/* Parser-time visual preferences populate this sheet through CSSOM. */}
+        <style id="pb-visual-startup" />
         {/*
           Runs before first paint, which is the whole point: appearance lives in
           localStorage, the server cannot read it, so without this the server

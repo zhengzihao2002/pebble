@@ -36,7 +36,14 @@ and saved per user in localStorage; existing saved preferences receive the curre
 look. Invalid routes, non-finite numbers and invalid colours fall back safely.
 
 One pointer-inert, fixed canvas belongs to AppShell and persists across route
-changes. The transparent WebGL framebuffer is capped at 700px on its longer
+changes. Its markup is included in streamed HTML. The parser-time preference
+script enables the saved background and prepares a CSS first frame from the
+renderer's starting positions, colour rotation, radius and Gaussian envelope,
+including custom count, colours, route and frost. It is visible while the app
+bundle loads; the first canvas draw replaces it before paint. Disabled and auth
+pages keep the layer hidden and do not create a renderer.
+
+The transparent WebGL framebuffer is capped at 700px on its longer
 side, independent of device pixel ratio, and draws at no more than 24fps. A
 bounded Canvas 2D fallback uses the same paths, colours and Gaussian envelope.
 Softness is rendered into the image: there are no screen-sized blurred DOM
@@ -63,9 +70,9 @@ when the living background is on. See [card-glow.md](card-glow.md) for its
 scrolling, clipping and transparent-tail guarantees.
 
 The main scrollbar is restored to the app's original native treatment.
-Native system cursors preserve the platform's regular pointer, clickable hand,
-text selection, drag, resize, disabled and loading states. No cursor images or
-custom cursor styles are shipped.
+Native system cursors are the default. The optional soft cursor is applied
+before hydration and embeds its artwork to avoid first-use downloads; see
+[cursors.md](cursors.md).
 
 Validation uses synthetic data and local fixtures only. Pure tests cover
 preference persistence/defaults, shared easing, framebuffer limits, colour

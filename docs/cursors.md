@@ -5,6 +5,11 @@ content use a rounded vertical bar; other elements keep the soft arrow.
 Both follow the light/dark theme and the existing Small, Default and Large
 size presets. Turning the setting off restores the browser's own cursors.
 
+The saved choice and size are applied by the parser-time preference script.
+Cursor SVGs are embedded as data URLs, including the pressed state, so the
+first click does not wait for React or a separate image download. The root
+preference synchronizer handles later changes and account switches.
+
 The released text bar is longer. While the mouse button is held on an editable
 field, native `:active` shortens the bar slightly (32 units versus 36 when
 released, about 10% including the rounded caps). Releasing restores the long

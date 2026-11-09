@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { AMBIENT_FRAME_INTERVAL, createAmbientRenderer, type AmbientColour } from '@/lib/ambientRenderer';
 
-function AmbientLight() {
+function AmbientLight({ enabled }: { enabled: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!enabled) return;
     const layer = ref.current, canvas = canvasRef.current;
     if (!layer || !canvas) return;
     let renderer = createAmbientRenderer(canvas);
@@ -67,6 +68,7 @@ function AmbientLight() {
     });
     const contextLost = (event: Event) => {
       event.preventDefault(); lost = true; cancelAnimationFrame(frame); frame = 0; previous = 0;
+      delete layer.dataset.renderer;
     };
     const contextRestored = () => {
       renderer = createAmbientRenderer(canvas); lost = false; sync();
@@ -96,8 +98,9 @@ function AmbientLight() {
       canvas.removeEventListener('webglcontextlost', contextLost);
       canvas.removeEventListener('webglcontextrestored', contextRestored);
       renderer?.dispose();
+      delete layer.dataset.renderer;
     };
-  }, []);
+  }, [enabled]);
 
   return <div ref={ref} className="pb-ambient-background" aria-hidden="true">
     <canvas ref={canvasRef} className="pb-ambient-canvas" />
@@ -110,5 +113,7 @@ function AmbientLight() {
 /** AppShell owns one bounded canvas, so navigation retains the scene and clock. */
 export function AmbientBackground() {
   const enabled = usePebbleStore(s => s.ambientBackground) === true;
-  return enabled ? <AmbientLight /> : null;
+  // The startup sheet paints the saved scene in streamed HTML. Hydration
+  // starts its animation without adding/removing the background's markup.
+  return <AmbientLight enabled={enabled} />;
 }
