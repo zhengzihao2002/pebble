@@ -44,7 +44,7 @@ test('text cursors stay centered on the click point at every size and in both th
       const normal = readFileSync(`public/cursors/soft-text-${tone}-long${suffix}.svg`, 'utf8');
       const pressed = readFileSync(`public/cursors/soft-text-${tone}${suffix}.svg`, 'utf8');
       assert(normal.includes('M16 6V42'), 'released bar must be longer');
-      assert(pressed.includes('M16 6V30'), 'pressed bar must retain its original short length');
+      assert(pressed.includes('M16 2V34'), 'pressed bar should only shorten slightly, from 36 to 32 units');
     }
     assert.notEqual(readFileSync('public/cursors/soft-text-light.svg', 'utf8'), readFileSync('public/cursors/soft-text-dark.svg', 'utf8'));
     f.cleanup();
