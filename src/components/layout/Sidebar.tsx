@@ -1,6 +1,6 @@
 'use client';
 
-import { Languages, Monitor, Moon, Sun } from 'lucide-react';
+import { Languages, Moon, Sun } from 'lucide-react';
 import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
@@ -15,12 +15,8 @@ import { useNavGlass } from './useNavGlass';
 export function Sidebar() {
   const pathname = usePathname();
   const { ref, indicatorRef } = useNavGlass<HTMLElement>(pathname);
-  const appearance = usePebbleStore((s) => s.appearance);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const darkMode = useResolvedDark();
-  // On System the button says so. A click leaves System for the OPPOSITE
-  // of what is on screen; returning to System happens only in Settings.
-  const onSystem = appearance === 'system';
   const { name, email, initials } = useCurrentUser();
   const { d, locale } = useTranslation();
   const setLocale = usePebbleStore(state => state.setLocale);
@@ -59,8 +55,8 @@ export function Sidebar() {
       )}
       <div className="pb-shell-side-foot" style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn">
-          {onSystem ? <Monitor size={18} /> : darkMode ? <Moon size={18} /> : <Sun size={18} />}
-          <span className="nav-label">{onSystem ? d.sidebar.system : darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}</span>
+          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          <span className="nav-label">{darkMode ? d.sidebar.lightMode : d.sidebar.darkMode}</span>
         </button>
         <button type="button" onClick={() => setLocale(nextLocale)} className="nav-btn"
           aria-label={`${d.settings.language.label}: ${nextLanguage}`}>

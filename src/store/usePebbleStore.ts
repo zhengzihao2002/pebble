@@ -230,10 +230,14 @@ const perUserStorage: StateStorage = {
 
 export const usePebbleStore = create<PebbleUIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...DEFAULT_PREFS,
       setAppearance: (value) => set({ appearance: value }),
-      setLocale: (value) => set({ locale: value }),
+      setLocale: (value) => {
+        if (get().locale === value) return;
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('pebble:before-language-change'));
+        set({ locale: value });
+      },
       setTextSize: (value) => set({ textSize: normalizeTextSize(value) }),
       setReportFilters: (value) => set({ reportFilters: value }),
       setDashboardPrefs: (patch) => set((state) => ({ dashboardPrefs: { ...state.dashboardPrefs, ...patch } })),

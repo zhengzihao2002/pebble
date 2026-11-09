@@ -28,6 +28,13 @@ export function observeCardResizes(root: HTMLElement) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const states = new Map<HTMLElement, CardState>();
   let disposed = false;
+  let languageHeights: Map<HTMLElement, number> | null = null;
+  const beforeLanguage = () => {
+    if (reduced.matches || document.hidden) return;
+    languageHeights = new Map([...states.values()].filter(state => state.element.isConnected && !state.element.closest(EXCLUDED))
+      .map(state => [state.element, state.element.offsetHeight]));
+    settleCardResizes(root);
+  };
 
   const resize = new ResizeObserver(entries => {
     for (const entry of entries) {
@@ -36,14 +43,14 @@ export function observeCardResizes(root: HTMLElement) {
     }
   });
 
-  function update(state: CardState, from = state.height) {
+  function update(state: CardState, from = state.height, languageChange = false) {
     const card = state.element;
     const width = card.offsetWidth, height = card.offsetHeight;
     const previousWidth = state.width;
     state.width = width; state.height = height;
     if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
       || !card.getClientRects().length || !width || !height || !from
-      || Math.abs(width - previousWidth) > 1 || Math.abs(height - from) < 2) return;
+      || (!languageChange && Math.abs(width - previousWidth) > 1) || Math.abs(height - from) < 2) return;
     // Existing expanding sections already move the surrounding layout smoothly.
     // Let those transitions finish instead of adding another lagging animation.
     const alreadyResizing = card.getAnimations({ subtree: true }).some(animation =>
@@ -94,10 +101,11 @@ export function observeCardResizes(root: HTMLElement) {
   }
   root.querySelectorAll<HTMLElement>(CARDS).forEach(register);
   const mutation = new MutationObserver(records => {
+    const language = languageHeights; languageHeights = null;
     for (const [card, state] of states) {
       if (!card.isConnected) {
         states.delete(card); resize.unobserve(card); state.animation?.cancel();
-      } else if (state.animation && records.some(record => card.contains(record.target))) {
+      } else if (!language?.has(card) && state.animation && records.some(record => card.contains(record.target))) {
         // A rapid update continues from the visible height, not an old target.
         const currentHeight = card.offsetHeight;
         state.animation.onfinish = null; state.animation.oncancel = null;
@@ -111,9 +119,16 @@ export function observeCardResizes(root: HTMLElement) {
       if (record.type === 'attributes') discover(record.target);
       record.addedNodes.forEach(discover);
     }
+    // Translation can change both wrapping and width without a viewport resize.
+    // Animate from the pre-language height instead of dropping the transition.
+    if (language) for (const [card, height] of language) {
+      const state = states.get(card);
+      if (state) update(state, height, true);
+    }
   });
   mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });
-  const settle = () => settleCardResizes(root);
+  const settle = () => { languageHeights = null; settleCardResizes(root); };
+  window.addEventListener('pebble:before-language-change', beforeLanguage);
   const visibility = () => { if (document.hidden) settle(); };
   window.addEventListener('resize', settle, { passive: true });
   document.addEventListener('visibilitychange', visibility);
@@ -122,6 +137,7 @@ export function observeCardResizes(root: HTMLElement) {
     disposed = true;
     mutation.disconnect(); resize.disconnect();
     settle(); states.clear();
+    window.removeEventListener('pebble:before-language-change', beforeLanguage);
     window.removeEventListener('resize', settle);
     document.removeEventListener('visibilitychange', visibility);
     reduced.removeEventListener('change', settle);

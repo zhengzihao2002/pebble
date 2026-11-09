@@ -146,3 +146,27 @@ test('a card excluded during loading starts observing when its busy state clears
   assert.equal(loading.active.frames[1].height, '260px');
   f.stop();
 });
+
+test('language changes animate from captured heights even when translated layout changes width', () => {
+  const f = fixture();
+  f.events.get('pebble:before-language-change')();
+  f.card.offsetWidth = 340; f.card.naturalHeight = 180;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active.frames[0].height, '100px');
+  assert.equal(f.card.active.frames[1].height, '180px');
+  f.card.active.visibleHeight = 145;
+  f.events.get('pebble:before-language-change')();
+  f.card.offsetWidth = 300; f.card.naturalHeight = 100;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active.frames[0].height, '145px', 'A rapid language reversal starts at the visible size');
+  f.card.active.finish(); f.stop();
+});
+
+for (const reason of ['reduced', 'hidden']) test(`language resize respects ${reason} state`, () => {
+  const f = fixture();
+  if (reason === 'reduced') f.media.matches = true; else f.document.hidden = true;
+  f.events.get('pebble:before-language-change')();
+  f.card.offsetWidth = 340; f.card.naturalHeight = 180;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]); f.resize.emit(f.card);
+  assert.equal(f.card.active, null); f.stop();
+});

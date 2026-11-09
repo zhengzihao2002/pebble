@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -34,6 +34,14 @@ interface CategoryDonutChartProps {
 // is paged, so a long category list cannot stretch the page (and the
 // Income vs spending card beside it).
 const PAGE_SIZE = 6;
+const subscribeReducedMotion = (notify: () => void) => {
+  const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+  media.addEventListener('change', notify);
+  return () => media.removeEventListener('change', notify);
+};
+const reducedMotionSnapshot = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const serverReducedMotion = () => false;
+
 
 /** Share of the total, display only. Tiny non-zero shares read "<0.1%". */
 function formatShare(value: number, total: number): string {
@@ -70,6 +78,23 @@ function formatWholeDollars(n: number): string {
  * change chip against the previous comparable period (like-for-like - see
  * src/lib/periodCompare.ts). Spending going DOWN is the good direction.
  */
+const CategoryRing = memo(function CategoryRing({ data, period, reduceMotion, onHover, onPin }: {
+  data: ReturnType<typeof buildCategoryBreakdown>; period: string; reduceMotion: boolean;
+  onHover: (name: string | null) => void; onPin: (name: string) => void;
+}) {
+  return <ResponsiveContainer width="100%" height={240}><PieChart>
+    <Pie key={period} data={data} dataKey="value" nameKey="name"
+      innerRadius={82} outerRadius={100} paddingAngle={2} cornerRadius={3} strokeWidth={0}
+      isAnimationActive={!reduceMotion} animationDuration={1600} animationEasing="cubic-bezier(0.65, 0, 0.35, 1)"
+      onClick={(_: unknown, index: number) => { if (data[index]) onPin(data[index].name); }}
+      onMouseEnter={(_: unknown, index: number) => { if (data[index]) onHover(data[index].name); }}
+      onMouseLeave={() => onHover(null)}>
+      {data.map((entry, index) => <Cell key={entry.name} fill={entry.color}
+        style={{ cursor: 'pointer', outline: 'none', fillOpacity: `var(--pb-slice-${index}, 1)`, transition: 'fill-opacity 240ms ease' }} />)}
+    </Pie>
+  </PieChart></ResponsiveContainer>;
+});
+
 export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey, today, ready, timeFrame }: CategoryDonutChartProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
@@ -78,10 +103,7 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
   const breakdownChart = usePebbleStore((s) => s.breakdownChart) === 'bar' ? 'bar' : 'donut';
   // Recharts animates in JavaScript, so the global CSS reduced-motion block
   // cannot cover it. Read in an effect, never during render.
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }, []);
+  const reduceMotion = useSyncExternalStore(subscribeReducedMotion, reducedMotionSnapshot, serverReducedMotion);
 
   // Hover follows the pointer; pinned is what a tap or Enter chose.
   const [hover, setHover] = useState<string | null>(null);
@@ -90,7 +112,11 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
   const cardRef = useRef<HTMLElement>(null);
 
   // A new period starts the legend on its first page, with nothing singled out.
-  useEffect(() => { setPage(0); setPinned(null); setHover(null); }, [mode, periodKey]);
+  const periodIdentity = `${mode}:${periodKey ?? ''}`;
+  const [renderedPeriod, setRenderedPeriod] = useState(periodIdentity);
+  if (renderedPeriod !== periodIdentity) {
+    setRenderedPeriod(periodIdentity); setPage(0); setPinned(null); setHover(null);
+  }
 
   // A tap anywhere else lets go of a pinned category.
   useEffect(() => {
@@ -153,7 +179,7 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
   });
 
   const focused = focus ? donutData.find((e) => e.name === focus) ?? null : null;
-  const toggle = (name: string) => setPinned((p) => (p === name ? null : name));
+  const toggle = useCallback((name: string) => setPinned(p => p === name ? null : name), []);
   // Hover only from a real mouse: a phone's simulated hover would fight the tap.
   const hoverProps = (name: string) => ({
     onPointerEnter: (e: { pointerType: string }) => { if (e.pointerType === 'mouse') setHover(name); },
@@ -245,24 +271,8 @@ export function CategoryDonutChart({ transactions, categoryMeta, mode, periodKey
                 </div>
               </div>
             ) : (
-              <div className="pb-donut-ring" style={{ position: 'relative' }}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <PieChart>
-                    <Pie
-                      key={`${mode}-${periodKey ?? ''}`}
-                      data={donutData} dataKey="value" nameKey="name"
-                      innerRadius={82} outerRadius={100} paddingAngle={2} cornerRadius={3}
-                      strokeWidth={0} isAnimationActive={!reduceMotion} animationDuration={1600} animationEasing="cubic-bezier(0.65, 0, 0.35, 1)"
-                      onClick={(_: unknown, i: number) => { const e = donutData[i]; if (e) toggle(e.name); }}
-                      onMouseEnter={(_: unknown, i: number) => { const e = donutData[i]; if (e) setHover(e.name); }}
-                      onMouseLeave={() => setHover(null)}
-                    >
-                      {donutData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} fillOpacity={focus && focus !== entry.name ? 0.3 : 1} style={{ cursor: 'pointer', outline: 'none', transition: 'fill-opacity 160ms ease' }} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="pb-donut-ring" style={{ position: 'relative', ...Object.fromEntries(donutData.map((entry, index) => [`--pb-slice-${index}`, focus && focus !== entry.name ? .3 : 1])) } as CSSProperties}>
+                <CategoryRing data={donutData} period={`${mode}-${periodKey ?? ''}`} reduceMotion={reduceMotion} onHover={setHover} onPin={toggle} />
                 {/* Not a live region: hovering slices would read out every
                     category. The legend rows (aria-pressed) carry the same. */}
                 <div className="pb-donut-center">{centre}</div>
