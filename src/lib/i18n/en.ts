@@ -470,7 +470,7 @@ export const en = {
     cjk: { sans: 'Hei (sans)', serif: 'Song (serif)', kai: 'Kai' },
   },
 
-  softCursor: { title: 'Soft arrow cursor', hint: 'A soft gray arrow that stays an arrow over buttons. Turn off to use the system cursor.' },
+  softCursor: { size: 'Size', title: 'Soft arrow cursor', hint: 'A soft gray arrow that stays an arrow over buttons. Turn off to use the system cursor.' },
   cardGlow: {
     title: 'Card glow',
     hint: 'Soft, theme-colored light around your cards. Gently dims when the living background is on.',

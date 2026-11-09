@@ -744,3 +744,9 @@
   .pebble-root .pb-settings-font-mobile { display: block; width: 100%; }
   .pebble-root .pb-settings-font-group { align-items: stretch; }
 }
+
+.pebble-root .pb-cursor-setting > .pb-settings-row-control { display: contents; }
+.pebble-root .pb-cursor-setting > .pb-settings-row-control > .pb-settings-switch { grid-row: 1; grid-column: 3; }
+.pebble-root .pb-cursor-size { grid-row: 2; grid-column: 2 / -1; display: flex; align-items: center; gap: .75rem; width: 100%; max-width: 22rem; font-size: .85rem; color: var(--ink-soft); }
+.pebble-root .pb-cursor-size > input { flex: 1; min-width: 0; }
+.pebble-root .pb-cursor-size > output { min-width: 4ch; text-align: right; }

@@ -2391,10 +2391,10 @@ html.pebble-dark .pebble-auth-brand .pebble-auth-lang button.active { background
 
 /* Optional native cursor. Hardware cursors stay smooth without DOM tracking. */
 @media (pointer: fine) {
-  .pebble-root.pb-soft-cursor { --pb-arrow: url('/cursors/soft-arrow-light.svg') 6 4, auto; }
+  .pebble-root.pb-soft-cursor { --pb-arrow: var(--pb-arrow-light, url('/cursors/soft-arrow-light.svg') 6 4, auto); }
   html.pebble-dark .pebble-root.pb-soft-cursor,
   .pebble-root.pb-soft-cursor.dark,
-  .pebble-root.pb-soft-cursor :is(.pb-hero, .hero-card, .pb-accounts-cc) { --pb-arrow: url('/cursors/soft-arrow-dark.svg') 6 4, auto; }
+  .pebble-root.pb-soft-cursor :is(.pb-hero, .hero-card, .pb-accounts-cc) { --pb-arrow: var(--pb-arrow-dark, url('/cursors/soft-arrow-dark.svg') 6 4, auto); }
   .pebble-root.pb-soft-cursor, .pebble-root.pb-soft-cursor * { cursor: var(--pb-arrow) !important; }
   .pebble-root.pb-soft-cursor :is(textarea, [contenteditable="true"], input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="url"], input[type="tel"]) { cursor: text !important; }
 }

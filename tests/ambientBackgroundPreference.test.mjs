@@ -184,3 +184,18 @@ test('soft cursor defaults to normal, persists an explicit choice, and resets pe
   f.usePebbleStore.getState().setSoftCursor(false);
   assert.equal(fixture(f.values).usePebbleStore.getState().softCursor, false);
 });
+
+
+test('cursor size defaults to32, is validated, persists and stays separate per user', async () => {
+  const f = fixture();
+  assert.equal(f.usePebbleStore.getState().cursorSize, 32);
+  await f.switchPebbleUser('size-alice');
+  f.usePebbleStore.getState().setCursorSize(48);
+  assert.equal(fixture(f.values).usePebbleStore.getState().cursorSize, 48);
+  await f.switchPebbleUser('size-bob');
+  assert.equal(f.usePebbleStore.getState().cursorSize, 32);
+  await f.switchPebbleUser('size-alice');
+  assert.equal(f.usePebbleStore.getState().cursorSize, 48);
+  f.usePebbleStore.getState().setCursorSize(999);
+  assert.equal(f.usePebbleStore.getState().cursorSize, 32);
+});

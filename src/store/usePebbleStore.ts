@@ -11,6 +11,7 @@ import { DEFAULT_SAFETY_LOCKS, type SafetyLockKey, type SafetyLocks } from '@/li
 import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { clearManualIncomeDraft } from '@/lib/budgets/manualIncomeDraft';
 import { normalizeAmbientSettings, type AmbientSettings } from '@/lib/ambientSettings';
+import { normalizeCursorSize } from '@/lib/cursorSize';
 import { normalizeTextSize } from '@/lib/textSize';
 
 /**
@@ -102,6 +103,7 @@ interface PebblePrefs {
   ambientBackground: boolean;
   cardGlow: boolean;
   softCursor: boolean;
+  cursorSize: number;
   ambientSettings: AmbientSettings;
   // Recognized merchant logos in transaction tiles. On unless disabled.
   showBrandIcons: boolean;
@@ -151,6 +153,7 @@ interface PebbleUIState extends PebblePrefs {
   setAmbientBackground: (value: boolean) => void;
   setCardGlow: (value: boolean) => void;
   setSoftCursor: (value: boolean) => void;
+  setCursorSize: (value: number) => void;
   setAmbientSettings: (patch: Partial<AmbientSettings>) => void;
   resetAmbientSettings: () => void;
   setShowBrandIcons: (value: boolean) => void;
@@ -184,6 +187,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   ambientBackground: false,
   cardGlow: false,
   softCursor: false,
+  cursorSize: 32,
   ambientSettings: normalizeAmbientSettings(undefined),
   showBrandIcons: true,
   themeChoice: 'original',
@@ -248,6 +252,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setAmbientBackground: (value) => set({ ambientBackground: value }),
       setCardGlow: (value) => set({ cardGlow: value }),
       setSoftCursor: (value) => set({ softCursor: value }),
+      setCursorSize: (value) => set({ cursorSize: normalizeCursorSize(value) }),
       setAmbientSettings: (patch) => set((state) => ({ ambientSettings: normalizeAmbientSettings({ ...state.ambientSettings, ...patch }) })),
       resetAmbientSettings: () => set({ ambientSettings: normalizeAmbientSettings(undefined) }),
       setShowBrandIcons: (value) => set({ showBrandIcons: value }),
@@ -275,7 +280,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.
@@ -320,6 +325,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         ambientBackground: state.ambientBackground,
         cardGlow: state.cardGlow,
         softCursor: state.softCursor,
+        cursorSize: state.cursorSize,
         ambientSettings: state.ambientSettings,
         showBrandIcons: state.showBrandIcons,
         themeChoice: state.themeChoice,
