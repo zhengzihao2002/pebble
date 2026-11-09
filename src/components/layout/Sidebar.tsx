@@ -1,6 +1,6 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Languages, Monitor, Moon, Sun } from 'lucide-react';
 import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
@@ -22,7 +22,10 @@ export function Sidebar() {
   // of what is on screen; returning to System happens only in Settings.
   const onSystem = appearance === 'system';
   const { name, email, initials } = useCurrentUser();
-  const { d } = useTranslation();
+  const { d, locale } = useTranslation();
+  const setLocale = usePebbleStore(state => state.setLocale);
+  const nextLocale = locale === 'en' ? 'zh' : 'en';
+  const nextLanguage = nextLocale === 'zh' ? d.settings.language.chinese : d.settings.language.english;
   const byHref = new Map(navItems.map((i) => [i.href, i]));
   const settings = byHref.get('/settings');
 
@@ -58,6 +61,11 @@ export function Sidebar() {
         <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn">
           {onSystem ? <Monitor size={18} /> : darkMode ? <Moon size={18} /> : <Sun size={18} />}
           <span className="nav-label">{onSystem ? d.sidebar.system : darkMode ? d.sidebar.darkMode : d.sidebar.lightMode}</span>
+        </button>
+        <button type="button" onClick={() => setLocale(nextLocale)} className="nav-btn"
+          aria-label={`${d.settings.language.label}: ${nextLanguage}`}>
+          <Languages size={18} aria-hidden="true" />
+          <span className="nav-label" lang={nextLocale}>{nextLanguage}</span>
         </button>
         <SignOutButton />
         <div className="pb-sidebar-profile" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem' }}>
