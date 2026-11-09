@@ -13,6 +13,7 @@ export const SETTING_TARGETS = {
   appearance: 'pb-set-appearance',
   ambientBackground: 'pb-set-ambient-background',
   cardGlow: 'pb-set-card-glow',
+  softCursor: 'pb-set-soft-cursor',
   ambientRoute: 'pb-set-ambient-route',
   ambientSpeed: 'pb-set-ambient-speed',
   ambientFrost: 'pb-set-ambient-frost',

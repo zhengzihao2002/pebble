@@ -83,3 +83,9 @@ test('unrelated queries do not expand all settings', () => {
   assert.equal(matches[0].id, 'textSize');
   assert.equal(matches.filter((entry) => entry.id === 'textSize').length, 1);
 });
+
+test('cursor searches find the optional arrow setting in either language', () => {
+  for (const [dictionary, query] of [[en, 'mouse cursor'], [zh, '鼠标'], [zh, '柔和箭头光标']]) {
+    assert.equal(searchSettings(dictionary, query)[0].target, 'pb-set-soft-cursor');
+  }
+});

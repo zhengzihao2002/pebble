@@ -34,6 +34,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     entry('font', d.font.title, appearance, d.font.blurb,
       [d.font.latinTitle, d.font.cjkTitle, d.font.default, d.font.system, d.font.rounded, d.font.serif, d.font.legible, 'font typeface letters numbers Chinese 字体 英文 数字 中文 黑体 宋体 楷体']),
     entry('appearance', d.appearance.title, appearance, d.appearance.blurb, ['appearance light dark system mode 外观 浅色 深色 自动']),
+    entry('softCursor', d.softCursor.title, appearance, d.softCursor.hint, ['mouse cursor pointer arrow normal system 鼠标 光标 箭头 系统']),
     entry('cardGlow', d.cardGlow.title, appearance, d.cardGlow.hint, ['card glow halo shadow light bloom 卡片 柔光 光晕 阴影']),
     entry('ambientBackground', d.ambientBackground.title, appearance, d.ambientBackground.hint, ['living background ambient fluid motion balls breathing route orbit weave sweep frost blur softness speed colour color number count 灵动 背景 流动 呼吸 光球 动画 路线 环绕 交织 扫掠 雾化 磨砂 模糊 柔和 速度 颜色 数量']),
     entry('ambientRoute', `${d.ambientBackground.title} · ${d.ambientBackground.routesTitle}`, appearance, Object.values(d.ambientBackground.routes).join(' · '), ['background route orbit weave sweep 背景 路线 环绕 交织 扫掠']),

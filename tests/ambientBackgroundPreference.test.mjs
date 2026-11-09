@@ -170,3 +170,17 @@ test('card glow is restored separately for each user', async () => {
   await f.switchPebbleUser('glow-alice');
   assert.equal(f.usePebbleStore.getState().cardGlow, false);
 });
+
+test('soft cursor defaults to normal, persists an explicit choice, and resets per user', async () => {
+  const f = fixture();
+  assert.equal(f.usePebbleStore.getState().softCursor, false);
+  await f.switchPebbleUser('cursor-alice');
+  f.usePebbleStore.getState().setSoftCursor(true);
+  assert.equal(fixture(f.values).usePebbleStore.getState().softCursor, true);
+  await f.switchPebbleUser('cursor-bob');
+  assert.equal(f.usePebbleStore.getState().softCursor, false);
+  await f.switchPebbleUser('cursor-alice');
+  assert.equal(f.usePebbleStore.getState().softCursor, true);
+  f.usePebbleStore.getState().setSoftCursor(false);
+  assert.equal(fixture(f.values).usePebbleStore.getState().softCursor, false);
+});

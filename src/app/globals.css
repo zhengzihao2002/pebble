@@ -2388,3 +2388,13 @@ html.pebble-dark .pebble-auth-brand .pebble-auth-lang button.active { background
 .welcome .pb-mark-ring { animation: welcome-draw 0.6s cubic-bezier(0.4, 0, 1, 1) 0.6s both; }
 .welcome .pb-mark-share { animation: welcome-draw 0.44s cubic-bezier(0, 0, 0.6, 1) 1.2s both; }
 @keyframes welcome-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+
+/* Optional native cursor. Hardware cursors stay smooth without DOM tracking. */
+@media (pointer: fine) {
+  .pebble-root.pb-soft-cursor { --pb-arrow: url('/cursors/soft-arrow-light.svg') 6 4, auto; }
+  html.pebble-dark .pebble-root.pb-soft-cursor,
+  .pebble-root.pb-soft-cursor.dark,
+  .pebble-root.pb-soft-cursor :is(.pb-hero, .hero-card, .pb-accounts-cc) { --pb-arrow: url('/cursors/soft-arrow-dark.svg') 6 4, auto; }
+  .pebble-root.pb-soft-cursor, .pebble-root.pb-soft-cursor * { cursor: var(--pb-arrow) !important; }
+  .pebble-root.pb-soft-cursor :is(textarea, [contenteditable="true"], input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="url"], input[type="tel"]) { cursor: text !important; }
+}
