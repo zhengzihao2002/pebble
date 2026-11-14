@@ -31,8 +31,8 @@ export function Sidebar() {
     <aside ref={ref} className="pebble-sidebar pb-nav-glass-host pb-nav-glass-side">
       <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <div className="pb-sidebar-brand">
-        <span className="pb-sidebar-brand-identity"><PebbleMark size={34} />
-          <span className="font-display pb-sidebar-wordmark">Pebble</span></span>
+        <PebbleMark size={34} />
+        <span className="font-display pb-sidebar-wordmark">Pebble</span>
         <button type="button" className="pb-sidebar-collapse" aria-expanded={!collapsed}
           aria-label={collapsed ? d.sidebar.expand : d.sidebar.collapse} title={collapsed ? d.sidebar.expand : d.sidebar.collapse}
           onClick={() => setCollapsed(!usePebbleStore.getState().sidebarCollapsed)}>
