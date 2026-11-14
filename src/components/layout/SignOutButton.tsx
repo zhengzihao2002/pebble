@@ -45,7 +45,7 @@ export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: S
 
   return (
     <>
-      <button onClick={() => (offlineQueue.items.length > 0 ? setConfirmPending(true) : void run(false))} className={className} style={style} disabled={phase !== 'idle'}>
+      <button onClick={() => (offlineQueue.items.length > 0 ? setConfirmPending(true) : void run(false))} className={className} style={style} title={d.auth.signOut} aria-label={d.auth.signOut} disabled={phase !== 'idle'}>
         <LogOut size={iconSize} />
         <span className="nav-label">{d.auth.signOut}</span>
       </button>

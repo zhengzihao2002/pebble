@@ -79,3 +79,12 @@ test('OFF, unavailable storage and auth pages retain ordinary cursors and backgr
     assert.equal(f.sceneStyle.values.size, 0);
   }
 });
+
+
+test('collapsed desktop navigation is restored before paint and disabled on auth pages', () => {
+  assert(boot({ sidebarCollapsed: true }).attributes.has('data-pb-sidebar-collapsed'));
+  for (const value of [false, undefined, 'true', 1]) {
+    assert(!boot({ sidebarCollapsed: value }).attributes.has('data-pb-sidebar-collapsed'));
+  }
+  assert(!boot({ sidebarCollapsed: true }, { auth: true }).attributes.has('data-pb-sidebar-collapsed'));
+});

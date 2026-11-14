@@ -80,7 +80,7 @@ export function createVisualPreferenceTools(config: typeof VISUAL_STARTUP_CONFIG
   function apply(root: HTMLElement, preferences: unknown, onAuth = false, still = false) {
     const prefs = preferences && typeof preferences === 'object' ? preferences as Record<string, unknown> : {};
     const enabledCursor = !onAuth && prefs.softCursor === true, enabledAmbient = !onAuth && prefs.ambientBackground === true;
-    for (const [attribute, enabled] of [['data-pb-soft-cursor', enabledCursor], ['data-pb-ambient', enabledAmbient]] as const) {
+    for (const [attribute, enabled] of [['data-pb-soft-cursor', enabledCursor], ['data-pb-ambient', enabledAmbient], ['data-pb-sidebar-collapsed', !onAuth && prefs.sidebarCollapsed === true]] as const) {
       if (enabled && root.getAttribute(attribute) === null) root.setAttribute(attribute, '');
       else if (!enabled && root.getAttribute(attribute) !== null) root.removeAttribute(attribute);
     }

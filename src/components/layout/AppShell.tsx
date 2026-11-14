@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { isServerReachable, readOffline, subscribeConnectivity } from '@/lib/offline/connectivity';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
@@ -250,25 +251,30 @@ export function AppShell({ children }: { children: ReactNode }) {
   // OFFLINE. Timezone discovery below ends in router.refresh(). With no connection
   // that request fails, and Next answers a failed refresh with a hard
   // navigation to the same URL - which, over and over, is a reload loop
-  // (the installed app's web view can freeze). So while navigator.onLine is
-  // false the cookie is still written but the refresh is deferred, and runs
+  // (the installed app's web view can freeze). The cookie is still written,
+  // but a real reachability check gates the refresh, which runs
   // once when the connection returns. Online behaviour is unchanged.
   const refreshOnReconnect = useRef(false);
   const refreshSoon = useCallback(() => {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (readOffline()) {
       refreshOnReconnect.current = true;
       return;
     }
-    router.refresh();
+    refreshOnReconnect.current = true;
+    void isServerReachable().then(ok => {
+      if (ok && refreshOnReconnect.current) {
+        refreshOnReconnect.current = false;
+        router.refresh();
+      }
+    });
   }, [router]);
   useEffect(() => {
     const onOnline = () => {
-      if (!refreshOnReconnect.current) return;
+      if (!refreshOnReconnect.current || readOffline()) return;
       refreshOnReconnect.current = false;
       router.refresh();
     };
-    window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
+    return subscribeConnectivity(onOnline);
   }, [router]);
 
   useEffect(() => {

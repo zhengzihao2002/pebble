@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { addTransactionAction, getAccountsAction, getCategoriesAction, type AddTransactionActionInput } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
-import { isServerReachable } from '@/lib/offline/connectivity';
+import { isServerReachable, readOffline, subscribeConnectivity, onlineServerSnapshot } from '@/lib/offline/connectivity';
 import {
   clearOtherSnapshots, clearQueue, clearSnapshot, dequeue, enqueue, listQueue, loadSnapshot, saveSnapshot, subscribeQueueChanges,
   queueKey, type QueuedPayload, type QueuedTransaction, type ReferenceSnapshot,
@@ -58,7 +58,7 @@ export interface OfflineApi {
   items: QueuedTransaction[];
   /** True once the queue has been read from the device. */
   ready: boolean;
-  /** navigator.onLine === false. Only a hint that a connection is missing. */
+  /** An uncached reachability check could not reach this app. */
   offline: boolean;
   uploads: Record<string, ItemUpload>;
   running: boolean;
@@ -99,16 +99,6 @@ const INERT: OfflineApi = {
 const OfflineContext = createContext<OfflineApi>(INERT);
 export function useOfflineQueue(): OfflineApi { return useContext(OfflineContext); }
 
-function subscribeOnline(onChange: () => void): () => void {
-  window.addEventListener('online', onChange);
-  window.addEventListener('offline', onChange);
-  return () => {
-    window.removeEventListener('online', onChange);
-    window.removeEventListener('offline', onChange);
-  };
-}
-const readOffline = () => navigator.onLine === false;
-
 // A fresh snapshot is not rewritten on every load: it is two small queries.
 const SNAPSHOT_FRESH_MS = 10 * 60 * 1000;
 
@@ -125,7 +115,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   const [ready, setReady] = useState(false);
   // A subscription, not state set from an effect: the server and the first
   // client render both say "online", then React switches to the real value.
-  const offline = useSyncExternalStore(subscribeOnline, readOffline, () => false);
+  const offline = useSyncExternalStore(subscribeConnectivity, readOffline, onlineServerSnapshot);
   const [uploads, setUploads] = useState<Record<string, ItemUpload>>({});
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<RunBanner>(null);
@@ -193,17 +183,12 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
     setDialogOpen(true);
   }, []);
 
-  // ---- connectivity hint -------------------------------------------------
+  // Verified recovery, even when Chrome emits no online event. Only offer
+  // the queue; uploading still requires the user's explicit choice.
   useEffect(() => {
-    const goOffline = () => { promptedRef.current = false; };
-    const goOnline = () => { promptedRef.current = false; void maybePrompt(); };
-    window.addEventListener('offline', goOffline);
-    window.addEventListener('online', goOnline);
-    return () => {
-      window.removeEventListener('offline', goOffline);
-      window.removeEventListener('online', goOnline);
-    };
-  }, [maybePrompt]);
+    promptedRef.current = false;
+    if (!offline) void maybePrompt();
+  }, [offline, maybePrompt]);
 
   // Startup (once the queue is read), and coming back to the app.
   useEffect(() => { if (ready) void maybePrompt(); }, [ready, maybePrompt]);
@@ -260,7 +245,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   // On each online load: keep the snapshot fresh so the dialog is complete the
   // first time it is opened without a connection.
   useEffect(() => {
-    if (!userId || navigator.onLine === false) return;
+    if (!userId || readOffline()) return;
     let cancelled = false;
     void (async () => {
       const existing = await readReference();
@@ -270,14 +255,14 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       rememberReference(accounts.accounts, categories.categories);
     })();
     return () => { cancelled = true; };
-  }, [userId, readReference, rememberReference]);
+  }, [userId, readReference, rememberReference, offline]);
 
   // ---- safe refresh ------------------------------------------------------
   const refresh = useCallback((): boolean => {
     // Offline there is nothing new to fetch, and a failed refresh makes Next
     // fall back to a full navigation - exactly what must not happen to an
     // installed app with no network.
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+    if (readOffline()) return false;
     startTransition(() => router.refresh());
     return true;
   }, [router]);
@@ -340,12 +325,12 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   }, [reload, refresh, setStatus]);
 
   const uploadAll = useCallback(() => {
-    if (navigator.onLine === false) return;
+    if (readOffline()) return;
     void runUploads(itemsRef.current);
   }, [runUploads]);
 
   const uploadOne = useCallback((clientId: string) => {
-    if (navigator.onLine === false) return;
+    if (readOffline()) return;
     const one = itemsRef.current.find((i) => i.clientId === clientId);
     if (one) void runUploads([one]);
   }, [runUploads]);

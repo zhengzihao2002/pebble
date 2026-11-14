@@ -1,25 +1,68 @@
 /**
- * navigator.onLine only says a network INTERFACE is up: it is true on Wi-Fi
- * with no internet behind it, and it can lag after a change. So before
- * offering to upload, a cheap real request confirms the server is reachable.
+ * Browser online/offline events are hints about network interfaces. Verify
+ * the app with an uncached request even when that hint is false: Chrome can
+ * keep a stale offline flag until its network process restarts.
  *
- * /ping.txt is a 2-byte static file containing "ok". public/sw.js never
- * intercepts it, and cache: 'no-store' keeps the browser's own cache out of
- * it, so the answer is the network's. The body is READ and compared: a
- * captive-portal Wi-Fi answers every request with a 200 page of its own, which
- * a status check alone (or a HEAD) would take for "online". Redirects count as
- * failure for the same reason.
+ * The service worker bypasses /ping.txt. Read its body, not just its status,
+ * so a captive portal or redirect cannot masquerade as a successful check.
  */
-export async function isServerReachable(timeoutMs = 4000): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+let reachable: boolean | null = null;
+let pending: Promise<boolean> | null = null;
+const listeners = new Set<() => void>();
+export const readOffline = () => reachable === false;
+export const onlineServerSnapshot = () => false;
+
+export function isServerReachable(timeoutMs = 4000): Promise<boolean> {
+  if (pending) return pending;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(`/ping.txt?t=${Date.now()}`, { cache: 'no-store', redirect: 'manual', signal: controller.signal });
-    return res.ok && (await res.text()).trim() === 'ok';
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
+  pending = (async () => {
+    let next = false;
+    try {
+      const res = await fetch(`/ping.txt?t=${Date.now()}`, { cache: 'no-store', redirect: 'manual', signal: controller.signal });
+      next = res.ok && (await res.text()).trim() === 'ok';
+    } catch { /* Retried on return/focus and while disconnected. */ }
+    finally { clearTimeout(timer); }
+    if (reachable !== next) {
+      reachable = next;
+      listeners.forEach(listener => listener());
+    }
+    return next;
+  })().finally(() => { pending = null; });
+  return pending;
+}
+
+/** One monitor shared by subscribers; no queued writes or reloads on recovery. */
+let stopMonitor: (() => void) | null = null;
+export function subscribeConnectivity(listener: () => void) {
+  listeners.add(listener);
+  if (!stopMonitor && typeof window !== 'undefined') {
+    const check = () => { if (!document.hidden) void isServerReachable(); };
+    window.addEventListener('online', check);
+    window.addEventListener('offline', check);
+    window.addEventListener('focus', check);
+    window.addEventListener('pageshow', check);
+    document.addEventListener('visibilitychange', check);
+    // Retry even if Chrome never emits another online event. Healthy tabs do
+    // not poll the server; only failed checks or a stale interface hint do.
+    const timer = setInterval(() => {
+      if (readOffline() || navigator.onLine === false) check();
+    }, 15_000);
+    stopMonitor = () => {
+      clearInterval(timer);
+      window.removeEventListener('online', check);
+      window.removeEventListener('offline', check);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('pageshow', check);
+      document.removeEventListener('visibilitychange', check);
+    };
+    check();
   }
+  return () => {
+    listeners.delete(listener);
+    if (!listeners.size) {
+      stopMonitor?.();
+      stopMonitor = null;
+    }
+  };
 }

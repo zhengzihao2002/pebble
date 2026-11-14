@@ -1,5 +1,6 @@
 'use client';
 
+import { readOffline } from '@/lib/offline/connectivity';
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 import { useUndoDelete } from '@/components/shared/UndoDelete';
@@ -99,7 +100,7 @@ function fetchDetailAccounts(): Promise<void> {
 if (typeof window !== 'undefined') {
   // Not offline: the request cannot succeed, and the first dialog will ask
   // again by itself once it is open.
-  const warm = () => { if (navigator.onLine !== false) void fetchDetailAccounts(); };
+  const warm = () => { if (!readOffline()) void fetchDetailAccounts(); };
   // Safari has no requestIdleCallback.
   if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 4000 });
   else window.setTimeout(warm, 2000);

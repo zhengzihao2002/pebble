@@ -1,6 +1,6 @@
 'use client';
 
-import { Languages, Moon, Sun } from 'lucide-react';
+import { Languages, Moon, Sun, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useNavigationPathname as usePathname } from '@/components/loading/navigation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
@@ -14,6 +14,8 @@ import { useNavGlass } from './useNavGlass';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const collapsed = usePebbleStore(state => state.sidebarCollapsed);
+  const setCollapsed = usePebbleStore(state => state.setSidebarCollapsed);
   const { ref, indicatorRef } = useNavGlass<HTMLElement>(pathname);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const darkMode = useResolvedDark();
@@ -29,8 +31,14 @@ export function Sidebar() {
     <aside ref={ref} className="pebble-sidebar pb-nav-glass-host pb-nav-glass-side">
       <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <div className="pb-sidebar-brand">
-        <PebbleMark size={34} />
-        <span className="font-display pb-sidebar-wordmark">Pebble</span>
+        <span className="pb-sidebar-brand-identity"><PebbleMark size={34} />
+          <span className="font-display pb-sidebar-wordmark">Pebble</span></span>
+        <button type="button" className="pb-sidebar-collapse" aria-expanded={!collapsed}
+          aria-label={collapsed ? d.sidebar.expand : d.sidebar.collapse} title={collapsed ? d.sidebar.expand : d.sidebar.collapse}
+          onClick={() => setCollapsed(!usePebbleStore.getState().sidebarCollapsed)}>
+          <PanelLeftClose size={18} className="pb-sidebar-collapse-icon" aria-hidden="true" />
+          <PanelLeftOpen size={18} className="pb-sidebar-expand-icon" aria-hidden="true" />
+        </button>
       </div>
       {/* Grouped for scanning (NAV_GROUPS); the links themselves are the same
           NavButtons in the same order. Each caption labels its group, so a
@@ -54,12 +62,12 @@ export function Sidebar() {
         </nav>
       )}
       <div className="pb-shell-side-foot" style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn">
+        <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn" title={darkMode ? d.sidebar.lightMode : d.sidebar.darkMode} aria-label={darkMode ? d.sidebar.lightMode : d.sidebar.darkMode}>
           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
           <span className="nav-label">{darkMode ? d.sidebar.lightMode : d.sidebar.darkMode}</span>
         </button>
         <button type="button" onClick={() => setLocale(nextLocale)} className="nav-btn"
-          aria-label={`${d.settings.language.label}: ${nextLanguage}`}>
+          title={nextLanguage} aria-label={`${d.settings.language.label}: ${nextLanguage}`}>
           <Languages size={18} aria-hidden="true" />
           <span className="nav-label" lang={nextLocale}>{nextLanguage}</span>
         </button>

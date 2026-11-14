@@ -8,6 +8,7 @@
  * it off in production (a kill switch that does not need a code change).
  * Registering an off build also removes a worker an earlier build left behind.
  */
+import { readOffline } from '@/lib/offline/connectivity';
 
 export function serviceWorkerWanted(): boolean {
   const flag = process.env.NEXT_PUBLIC_PB_SW;
@@ -79,7 +80,7 @@ export async function tellWorkerWho(userId: string): Promise<void> {
  * The tag ("who + which build") decides the first of those.
  */
 export async function warmServiceWorker(pages: string[], userId: string, buildId: string): Promise<void> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || navigator.onLine === false) return;
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || readOffline()) return;
   try {
     const registration = await navigator.serviceWorker.ready;
     const worker = registration.active;

@@ -100,6 +100,8 @@ export const en = {
   },
 
   sidebar: {
+    collapse: 'Collapse sidebar',
+    expand: 'Expand sidebar',
     // These describe the CURRENT state, not the action taken on click, which
     // is how the toggle already reads. Do not turn them into imperatives.
     darkMode: 'Dark Mode',

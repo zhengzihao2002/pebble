@@ -1,5 +1,6 @@
 'use client';
 
+import { readOffline } from '@/lib/offline/connectivity';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Briefcase, Coins } from 'lucide-react';
@@ -117,7 +118,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       applyCategories(snap.categories);
       return true;
     };
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (readOffline()) {
       void fromSnapshot().then((used) => {
         if (active && !used) setCategoryError(d.ux.offline.needsConnection);
       });
@@ -156,7 +157,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [savedPicks] = useState(() => {
     if (!picksUserId) return { names: null as string[] | null, ask: false };
     const saved = readQuickPicks(picksUserId);
-    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const offline = readOffline();
     return { names: saved ? saved.expense : null, ask: !offline && isQuickPicksStale(saved) };
   });
   const [fetchedPicks, setFetchedPicks] = useState<string[] | null>(null);
@@ -191,7 +192,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       applyAccounts(snap.accounts.filter((a) => a.status === 'active'));
       return true;
     };
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (readOffline()) {
       void fromSnapshot().then((used) => {
         if (active && !used) setAccountError(d.ux.offline.needsConnection);
       });
@@ -320,7 +321,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
     let result;
     let queued = false;
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (readOffline()) {
       // No connection: do not even try. Straight to the device.
       queued = await saveOnDevice();
       result = queued
@@ -401,7 +402,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     //
     // Skipped offline: it needs the server, and it is advisory anyway (the
     // entry is queued and uploaded later with no shortfall prompt).
-    if (type === 'expense' && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+    if (type === 'expense' && !readOffline()) {
       setSaving(true);
       setSaveError(null);
       const summary = await callAction(getAllocationSummaryAction);

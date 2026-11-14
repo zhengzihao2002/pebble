@@ -67,3 +67,23 @@ test('switching users restores their size independently and clamps old small pre
   await f.switchPebbleUser('size-alice');
   assert.equal(f.usePebbleStore.getState().textSize, 130);
 });
+
+
+test('sidebar collapse survives a fresh store and stays separate for each user', async () => {
+  const f = fixture(115);
+  assert.equal(f.usePebbleStore.getState().sidebarCollapsed, false);
+  await f.switchPebbleUser('sidebar-alice');
+  f.usePebbleStore.getState().setSidebarCollapsed(true);
+  const saved = f.values.get('pebble-ui:sidebar-alice');
+  assert.equal(JSON.parse(saved).state.sidebarCollapsed, true);
+  const compiled = { exports: {} };
+  f.values.set('pebble-ui:last-user', 'sidebar-alice');
+  vm.runInNewContext(source, { module: compiled, exports: compiled.exports, require, console, window: { localStorage: f.localStorage } });
+  assert.equal(compiled.exports.usePebbleStore.getState().sidebarCollapsed, true);
+  await f.switchPebbleUser('sidebar-bob');
+  assert.equal(f.usePebbleStore.getState().sidebarCollapsed, false);
+  await f.switchPebbleUser('sidebar-alice');
+  assert.equal(f.usePebbleStore.getState().sidebarCollapsed, true);
+  f.usePebbleStore.getState().setSidebarCollapsed(false);
+  assert.equal(JSON.parse(f.values.get('pebble-ui:sidebar-alice')).state.sidebarCollapsed, false);
+});

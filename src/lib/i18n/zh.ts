@@ -75,6 +75,8 @@ export const zh: typeof en = {
   },
 
   sidebar: {
+    collapse: '收起侧边栏',
+    expand: '展开侧边栏',
     darkMode: '深色模式',
     lightMode: '浅色模式',
     system: '跟随系统',

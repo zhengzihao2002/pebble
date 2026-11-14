@@ -1,3 +1,4 @@
+import { isServerReachable, readOffline } from '@/lib/offline/connectivity';
 /**
  * Wraps a Server Action call so a transport-layer rejection becomes a normal
  * { ok: false } result instead of an unhandled rejection.
@@ -60,13 +61,12 @@ export async function callAction<T extends { ok: true } | ActionFailure>(
     // when the caller did not supply something more specific (many call
     // sites already do, e.g. d.addTxn.categoriesFailed).
     //
-    // OFFLINE is different: with no connection the request never left the
-    // device, so we KNOW nothing changed - and the useful thing to say is that
-    // this needs a connection, not "something went wrong" or "check before
-    // trying again". Wins over a call site's own fallback (those are written
-    // for a flaky server, not a missing connection). The kind stays 'network'.
+    // A failed reachability check supplies the connection-specific wording.
+    // Check again after a transport rejection, but never retry a write: its
+    // response may have been lost after the server committed it.
     const dictionary = getDictionary(usePebbleStore.getState().locale);
-    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const offline = readOffline();
+    void isServerReachable();
     const message = offline ? dictionary.ux.offline.needsConnection : (fallbackError ?? dictionary.common.transportError);
     // 'network', deliberately NOT 'database': a server-side database error
     // proves the write did not land, whereas a request that never came back
