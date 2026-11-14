@@ -43,6 +43,8 @@ function fixture() {
   const root = {
     animate() {},
     querySelectorAll: selector => selector === '.pb-card-resizing' ? cards.filter(c => c.classes.has('pb-card-resizing')) : cards,
+    addEventListener: (name, fn) => events.set(name, fn),
+    removeEventListener: name => events.delete(name),
   };
   class Resize {
     observed = new Set();
@@ -169,4 +171,30 @@ for (const reason of ['reduced', 'hidden']) test(`language resize respects ${rea
   f.card.offsetWidth = 340; f.card.naturalHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]); f.resize.emit(f.card);
   assert.equal(f.card.active, null); f.stop();
+});
+
+
+test('sidebar width motion settles active card tweens and keeps subsequent height changes on the same clock', () => {
+  const f = fixture();
+  f.card.naturalHeight = 140; f.resize.emit(f.card);
+  assert(f.card.active);
+  const sidebar = new f.Element();
+  f.events.get('transitionrun')({ target: sidebar, propertyName: 'width', type: 'transitionrun' });
+  assert.equal(f.card.active, null, 'An earlier content-height tween must not trail the sidebar');
+  f.card.naturalHeight = 180; f.resize.emit(f.card);
+  assert.equal(f.card.active, null, 'Even a height change at the same rounded width follows the shell directly');
+  // A rapid reversal cancels one CSS transition but starts its replacement.
+  sidebar.active = { playState: 'running', transitionProperty: 'width' };
+  f.events.get('transitioncancel')({ target: sidebar, propertyName: 'width', type: 'transitioncancel' });
+  f.card.naturalHeight = 200; f.resize.emit(f.card);
+  assert.equal(f.card.active, null);
+  sidebar.active = null;
+  f.events.get('transitionend')({ target: sidebar, propertyName: 'width', type: 'transitionend' });
+  f.card.naturalHeight = 240; f.resize.emit(f.card);
+  assert(f.card.active, 'Normal content height animation resumes after the shell settles');
+  const inspector = new f.Element(); inspector.matches = () => false;
+  f.events.get('transitionrun')({ target: inspector, propertyName: 'width', type: 'transitionrun' });
+  assert(f.card.active, 'Other expanding sections keep their existing animation behavior');
+  f.stop();
+  assert(!f.events.has('transitionrun'));
 });

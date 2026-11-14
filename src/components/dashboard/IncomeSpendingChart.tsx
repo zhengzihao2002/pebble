@@ -1,5 +1,7 @@
 'use client';
 
+import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
+
 import { useId, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, Cell, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -239,7 +241,7 @@ export function IncomeSpendingChart({ transactions, mode, periodKey, today, read
           <Bar dataKey="spending" name={d.dashboard.spending} fill={SPENDING} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
             {data.map((p, i) => <Cell key={i} fill={p.partial ? `url(#${uid}-spd)` : SPENDING} />)}
           </Bar>
-          <Line dataKey="cum" name={ux.savedSoFar} type="linear" stroke={CUMULATIVE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" dot={endDot} activeDot={{ r: 3.5, fill: CUMULATIVE, stroke: 'var(--mist)', strokeWidth: 2 }} isAnimationActive={false} />
+          <Line shape={<StaticChartCurve />} dataKey="cum" name={ux.savedSoFar} type="linear" stroke={CUMULATIVE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" dot={endDot} activeDot={{ r: 3.5, fill: CUMULATIVE, stroke: 'var(--mist)', strokeWidth: 2 }} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
       </div>

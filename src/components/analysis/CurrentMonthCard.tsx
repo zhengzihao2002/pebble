@@ -1,5 +1,7 @@
 'use client';
 
+import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { Area, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { CalendarDays } from 'lucide-react';
@@ -137,7 +139,7 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
             />
             <Tooltip content={<DayTip />} cursor={{ stroke: 'var(--line)' }} />
             {typical !== null && (
-              <Line dataKey="typical" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
+              <Line shape={<StaticChartCurve />} dataKey="typical" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
             )}
             <Area
               dataKey="spent" stroke="var(--expense)" strokeWidth={2} fill="var(--expense)" fillOpacity={0.1}

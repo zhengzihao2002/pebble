@@ -1,5 +1,7 @@
 'use client';
 
+import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo } from 'react';
 import { ComposedChart, Area, Line, ReferenceLine, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
@@ -101,12 +103,19 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
   }, [ready, today, mode, periodKey, transactions, categoryMeta]);
 
   const unit = mode === 'month' ? ux.unitMonth : mode === 'quarter' ? ux.unitQuarter : mode === 'year' ? ux.unitYear : ux.unitPeriod;
-  const dateOfDay = (day: number) => {
-    if (!model) return '';
-    const s = model.current.start;
-    const dt = new Date(s.getFullYear(), s.getMonth(), s.getDate() + day - 1);
-    return locale === 'zh' ? `${dt.getMonth() + 1}月${dt.getDate()}日` : dt.toLocaleDateString(INTL_LOCALE.en, { month: 'short', day: 'numeric' });
-  };
+  // Tick fitting calls this repeatedly while the sidebar changes width.
+  // Keep both the Intl formatter and day labels until the period/locale changes.
+  const dateOfDay = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(INTL_LOCALE.en, { month: 'short', day: 'numeric' });
+    const format = (day: number) => {
+      if (!model) return '';
+      const s = model.current.start;
+      const dt = new Date(s.getFullYear(), s.getMonth(), s.getDate() + day - 1);
+      return locale === 'zh' ? `${dt.getMonth() + 1}月${dt.getDate()}日` : formatter.format(dt);
+    };
+    const labels = new Map(model?.data.map(point => [point.day, format(point.day)]) ?? []);
+    return (day: number) => labels.get(day) ?? format(day);
+  }, [model, locale]);
 
   let headline: React.ReactNode = null;
   let tone = 'var(--ink-soft)';
@@ -180,10 +189,10 @@ export function SpendingPaceCard({ transactions, categoryMeta, mode, periodKey, 
                     <ReferenceLine x={todayDay} stroke="var(--ink-faint)" label={{ value: d.upcomingCard.today, position: 'insideTopRight', fill: 'var(--ink-soft)', fontSize: 11 }} />
                   )}
                   {model.budget > 0 && (
-                    <Line dataKey="budget" type="linear" stroke={BUDGET} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" dot={false} activeDot={false} isAnimationActive={false} />
+                    <Line shape={<StaticChartCurve />} dataKey="budget" type="linear" stroke={BUDGET} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" dot={false} activeDot={false} isAnimationActive={false} />
                   )}
                   {model.hasPrevious && (
-                    <Line dataKey="previous" type="linear" stroke={PREVIOUS} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+                    <Line shape={<StaticChartCurve />} dataKey="previous" type="linear" stroke={PREVIOUS} strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                   )}
                   <Area dataKey="current" type="linear" stroke={SPEND} strokeWidth={2} strokeLinejoin="round" fill={SPEND} fillOpacity={0.1} dot={endDot} activeDot={{ r: 3.5, fill: SPEND, stroke: 'var(--mist)', strokeWidth: 2 }} isAnimationActive={false} connectNulls={false} />
                 </ComposedChart>

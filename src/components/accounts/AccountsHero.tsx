@@ -256,7 +256,10 @@ const BalanceChart = memo(function BalanceChart({ days, range, tone, label, onSc
   }, [days]);
   const end = days[days.length - 1];
 
-  const tick = (v: string) => dateOf(v).toLocaleDateString(tag, long ? { month: 'short', year: '2-digit' } : { month: 'short', day: 'numeric' });
+  const tick = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(tag, long ? { month: 'short', year: '2-digit' } : { month: 'short', day: 'numeric' });
+    return (v: string) => formatter.format(dateOf(v));
+  }, [tag, long]);
   const move = (s: ChartState) => { const k = indexOf(s); if (k !== null) onScrub(k); };
   const leave = () => onScrub(null);
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
+
 import { Bar, BarChart, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -79,7 +81,7 @@ export function CashflowChart({ data, view = 'net' }: { data: MonthlyFlow[]; vie
             <Tooltip cursor={{ fill: CURSOR }} content={<FlowTip />} />
             <Bar dataKey="income" stackId="flow" name={dict.dashboard.income} fill={INCOME} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
             <Bar dataKey="out" stackId="flow" name={dict.dashboard.spending} fill={EXPENSE} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
-            <Line dataKey="net" name={dict.analysis.currentMonth.net} stroke={INK} strokeWidth={2} strokeLinejoin="round" dot={{ r: 2.5, fill: INK, strokeWidth: 0 }} isAnimationActive={false} />
+            <Line shape={<StaticChartCurve />} dataKey="net" name={dict.analysis.currentMonth.net} stroke={INK} strokeWidth={2} strokeLinejoin="round" dot={{ r: 2.5, fill: INK, strokeWidth: 0 }} isAnimationActive={false} />
           </ComposedChart>
         )}
       </ResponsiveContainer>
