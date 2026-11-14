@@ -38,6 +38,15 @@ export function RollingAmount({ value, className = '', fractionClassName }: { va
     // ($109 → $9). Give the leading retained digit one turn in that case.
     const changed = /\d/.test(character) && (frame.entry || !hadDigits || old !== character || (fewerDigits && index === firstDigit));
     if (!changed) return <span key={current.length - index}>{character}</span>;
+    if (frame.entry) {
+      // One complete odometer turn, starting/ending at the true digit. A
+      // single text strip avoids mounting eleven extra elements per digit.
+      const strip = Array.from({ length: 11 }, (_, step) => String((Number(character) + step) % 10)).join('\n');
+      return <span className="pb-rolling-cell is-entry" key={current.length - index}>
+        <span className="pb-rolling-entry-base">{character}</span>
+        <span className="pb-rolling-track" key={`entry-${frame.revision}`}>{strip}</span>
+      </span>;
+    }
     return <span className={`pb-rolling-cell${down ? ' is-down' : ''}`} key={current.length - index}>
       {/* The first grid item supplies the inline baseline. It must always
           contain a glyph, including newly added leading places. */}

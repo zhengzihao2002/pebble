@@ -18,7 +18,13 @@ test('server HTML retains the exact current amount and readable final glyphs bef
   assert.match(html, /class="pb-rolling-visual" aria-hidden="true"/);
   assert.match(html, /class="cents"/);
   assert.equal((html.match(/class="pb-rolling-cell/g) ?? []).length, 6);
-  assert.equal([...html.matchAll(/class="pb-rolling-old"[^>]*>(\d)</g)].map(match => match[1]).join(''), '123456', 'The paused old slots show the final value, never an incorrect zero balance');
+  assert.equal([...html.matchAll(/class="pb-rolling-entry-base"[^>]*>(\d)</g)].map(match => match[1]).join(''), '123456');
+  for (const match of html.matchAll(/class="pb-rolling-track"[^>]*>([\s\S]*?)<\/span>/g)) {
+    const digits = match[1].split('\n');
+    assert.equal(digits.length, 11, 'Entry makes a full digit cycle instead of a one-step wiggle');
+    assert.equal(digits[0], digits.at(-1), 'The paused strip and settled strip both show the real digit');
+    assert.equal(new Set(digits).size, 10);
+  }
 });
 
 test('zero balances, percentages and counts all get entry digits; placeholders remain plain', () => {

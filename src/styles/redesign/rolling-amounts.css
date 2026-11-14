@@ -17,12 +17,22 @@
 @keyframes pb-money-next-up { from { transform: translateY(110%); opacity: .3; } to { transform: translateY(0); opacity: 1; } }
 @keyframes pb-money-old-down { to { transform: translateY(110%); opacity: 0; } }
 @keyframes pb-money-next-down { from { transform: translateY(-110%); opacity: .3; } to { transform: translateY(0); opacity: 1; } }
-/* Server HTML keeps the exact final digit readable in the old slot. Entry
+/* A real digit cycle is visible on narrow screens as well as desktop.
+   The baseline fixes the line box; only the clipped text strip moves. */
+.pebble-root .pb-rolling-cell.is-entry { position: relative; }
+.pebble-root .pb-rolling-entry-base { visibility: hidden; }
+.pebble-root .pb-rolling-track {
+  position: absolute; inset: 0 auto auto 0; white-space: pre; line-height: inherit;
+  animation: pb-money-entry-up 1400ms cubic-bezier(.35,0,.25,1) both;
+}
+@keyframes pb-money-entry-up { from { transform: translateY(0); } to { transform: translateY(-10lh); } }
+/* Server HTML keeps the exact final digit readable at the start of the strip. Entry
    starts only when this amount is visible and the page has handed off data. */
-.pebble-root .pb-rolling-amount[data-pb-roll-entry]:not([data-pb-roll-visible]) :is(.pb-rolling-old, .pb-rolling-next) {
+.pebble-root .pb-rolling-amount[data-pb-roll-entry]:not([data-pb-roll-visible]) :is(.pb-rolling-old, .pb-rolling-next, .pb-rolling-track) {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-  .pebble-root .pb-rolling-old { display: none; }
+  .pebble-root .pb-rolling-old, .pebble-root .pb-rolling-track { display: none; }
+  .pebble-root .pb-rolling-entry-base { visibility: visible; }
   .pebble-root .pb-rolling-next { animation: none !important; transform: none; opacity: 1; }
 }
