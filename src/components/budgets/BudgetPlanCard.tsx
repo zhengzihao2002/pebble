@@ -211,7 +211,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                     {base > 0 && r.value / base >= LABEL_SHARE && (
                       <>
                         <span className="pb-bud-ribbon-name">{r.name}</span>
-                        <span className="pb-bud-ribbon-share font-mono-tab">{formatShare(r.value, base)}</span>
+                        <span className="pb-bud-ribbon-share font-mono-tab"><RollingAmount value={formatShare(r.value, base)} /></span>
                       </>
                     )}
                   </span>
@@ -231,7 +231,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                       <span>{r.name}</span>
                     </div>
                     <div className="font-mono-tab pb-plan-pop-figs">
-                      <RollingAmount value={formatCurrency(r.value)} /> · {formatShare(r.value, base)}
+                      <RollingAmount value={formatCurrency(r.value)} /> · <RollingAmount value={formatShare(r.value, base)} />
                     </div>
                     {r.savings && <div className="pb-plan-pop-note">{d.budgetPage.plannedSavingsHint}</div>}
                   </div>
@@ -257,7 +257,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                     aria-hidden="true"
                   />
                   <span className="pb-donut-name">{r.name}</span>
-                  <span className="pb-donut-share font-mono-tab">{formatShare(r.value, base)}</span>
+                  <span className="pb-donut-share font-mono-tab"><RollingAmount value={formatShare(r.value, base)} /></span>
                   <span className="pb-donut-amount font-mono-tab"><RollingAmount value={formatCurrency(r.value)} /></span>
                   {/* NEW: a hairline of the row's size against the largest, so
                       the list reads as magnitudes, not only numbers. */}

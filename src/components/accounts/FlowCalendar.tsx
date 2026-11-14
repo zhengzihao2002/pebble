@@ -1,5 +1,7 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
+
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ExpenseTransaction, IncomeTransaction } from '@/types';
@@ -226,10 +228,10 @@ export function FlowCalendar({ days, expenses, income, today, periodChip }: {
               style={{ left: `calc(${LABEL_W}px + ${shownCol} * (var(--pb-cell) + ${GAP}px) + var(--pb-cell) / 2)`, top: `calc(1.1rem + ${shownRow} * (var(--pb-cell) + ${GAP}px))` }}
             >
               <span className="pb-accounts-pop-title">{formatLongDate(shown, locale)}</span>
-              <span className="pb-accounts-flow-pop-row"><span>{x.flowIn}</span><span className="font-mono-tab">{formatCurrency(shownFlow?.in ?? 0)}</span></span>
-              <span className="pb-accounts-flow-pop-row"><span>{x.flowOut}</span><span className="font-mono-tab">{formatCurrency(shownFlow?.out ?? 0)}</span></span>
-              <span className="pb-accounts-flow-pop-row is-net"><span>{x.flowNet}</span><span className="font-mono-tab">{formatCurrency((shownFlow?.in ?? 0) - (shownFlow?.out ?? 0))}</span></span>
-              <span className="pb-accounts-flow-pop-row"><span>{x.flowBalance}</span><span className="font-mono-tab">{formatCurrency(balanceOf.get(shown) ?? 0)}</span></span>
+              <span className="pb-accounts-flow-pop-row"><span>{x.flowIn}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(shownFlow?.in ?? 0)} /></span></span>
+              <span className="pb-accounts-flow-pop-row"><span>{x.flowOut}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(shownFlow?.out ?? 0)} /></span></span>
+              <span className="pb-accounts-flow-pop-row is-net"><span>{x.flowNet}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency((shownFlow?.in ?? 0) - (shownFlow?.out ?? 0))} /></span></span>
+              <span className="pb-accounts-flow-pop-row"><span>{x.flowBalance}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(balanceOf.get(shown) ?? 0)} /></span></span>
             </div>
           )}
         </div>
@@ -246,15 +248,15 @@ export function FlowCalendar({ days, expenses, income, today, periodChip }: {
       <dl className="pb-accounts-flow-facts">
         <div>
           <dt>{x.flowLowest}</dt>
-          <dd>{facts.low ? <><span className="font-mono-tab">{formatCurrency(facts.low.total)}</span><span className="pb-tnum"> · {formatDate(facts.low.date, locale)}</span></> : x.flowNone}</dd>
+          <dd>{facts.low ? <><span className="font-mono-tab"><RollingAmount value={formatCurrency(facts.low.total)} /></span><span className="pb-tnum"> · {formatDate(facts.low.date, locale)}</span></> : x.flowNone}</dd>
         </div>
         <div>
           <dt>{x.flowBiggest}</dt>
-          <dd>{facts.big ? <><span className="font-mono-tab">{formatCurrency(facts.big.out)}</span><span className="pb-tnum"> · {formatDate(facts.big.date, locale)}</span></> : x.flowNone}</dd>
+          <dd>{facts.big ? <><span className="font-mono-tab"><RollingAmount value={formatCurrency(facts.big.out)} /></span><span className="pb-tnum"> · {formatDate(facts.big.date, locale)}</span></> : x.flowNone}</dd>
         </div>
         <div>
           <dt>{x.flowNoSpend}</dt>
-          <dd className="pb-tnum">{t(x.flowNoSpendValue, { count: facts.noSpend, total: facts.total })}</dd>
+          <dd className="pb-tnum"><RollingAmount value={t(x.flowNoSpendValue, { count: facts.noSpend, total: facts.total })} /></dd>
         </div>
       </dl>
       <p className="pb-accounts-flow-note">{x.flowExplain}</p>

@@ -136,7 +136,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
               {avg.map((v, i) => (
                 <div key={order[i]} className={`pb-ins-week-col${i === topIdx ? ' is-top' : ''}`}>
                   <span className="pb-ins-week-bar" style={{ height: `${max > 0 ? Math.max(3, (v / max) * 100) : 3}%` }}>
-                    {i === topIdx && ratio >= 1.2 && <span className="pb-ins-week-chip pb-tnum">{t(ux.ratioChip, { ratio: ratio.toFixed(1) })}</span>}
+                    {i === topIdx && ratio >= 1.2 && <span className="pb-ins-week-chip pb-tnum"><RollingAmount value={t(ux.ratioChip, { ratio: ratio.toFixed(1) })} /></span>}
                   </span>
                 </div>
               ))}

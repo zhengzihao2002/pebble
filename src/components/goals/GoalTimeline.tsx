@@ -267,7 +267,7 @@ function GoalFacts({ goal, today, compact = false }: { goal: Goal; today: string
       <Line className="pb-goals-tl-fname">{goal.name}</Line>
       <Line className="pb-goals-tl-figs">
         {renderTemplate(d.ux.dashboard.goalOf, { current: money(goal.current), target: money(goal.target) })}
-        <span className="pb-tnum"> · {Math.round(progressOf(goal) * 100)}%</span>
+        <span className="pb-tnum"> · <RollingAmount value={`${Math.round(progressOf(goal) * 100)}%`} /></span>
       </Line>
       <Line className="pb-goals-tl-meta">
         {!compact && <CalendarDays size={13} aria-hidden="true" />}

@@ -129,7 +129,7 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
       </div>
       <div className="pb-ins-hero-head">
         <p id="pb-ins-hero-label" className="pb-ins-hero-label">{label} · <span className="pb-tnum">{range}</span></p>
-        <span className="font-display pb-money pb-ins-hero-figure"><RollingMoneyText value={figure} /></span>
+        <span className="font-display pb-money pb-ins-hero-figure"><RollingAmount value={figure} /></span>
       </div>
       <p className="pb-money pb-ins-hero-sentence"><RollingMoneyText value={sentence} /></p>
       <div className="pb-ins-hero-split">

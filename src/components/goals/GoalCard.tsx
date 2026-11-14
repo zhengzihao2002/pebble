@@ -74,7 +74,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
             <span className="pb-goal-of">{renderTemplate(ux.cardOfTarget, { total: money(goal.target) })}</span>
           </p>
           <p className="pb-goal-there">
-            {renderTemplate(d.goalCard.thereSuffix, { pct: <span className="pb-tnum">{Math.round(pct)}</span>, rest })}
+            {renderTemplate(d.goalCard.thereSuffix, { pct: <span className="pb-tnum"><RollingAmount value={String(Math.round(pct))} /></span>, rest })}
           </p>
         </div>
         <button

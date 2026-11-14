@@ -51,7 +51,7 @@ export function YearRing({ totalBudget, totalSpent, fraction }: {
       aria-label={usedPct === null ? t(ux.yearGone, { pct: String(yearPct) }) : t(ux.ringLabel, { used: String(usedPct), year: String(yearPct) })}
     >
       <ProgressRing value={used ?? 0} size={148} stroke={12} color={used !== null && used > 1 ? 'var(--expense)' : 'var(--pine)'}>
-        <span className="pb-bud-ring-pct pb-tnum">{usedPct === null ? '—' : `${usedPct}%`}</span>
+        <span className="pb-bud-ring-pct pb-tnum"><RollingAmount value={usedPct === null ? '—' : `${usedPct}%`} /></span>
         {usedPct !== null && <span className="pb-bud-ring-sub">{ux.used}</span>}
       </ProgressRing>
       {/* Where an even pace would be today: a tick across the ring. */}
@@ -88,7 +88,7 @@ export function YearForecast({ totalBudget, totalSpent, fraction, status, unbudg
   const yearLine = (
     <p className="pb-bud-fc-year">
       <span className="pb-bud-fc-tick" aria-hidden="true" />
-      <span className="pb-tnum">{t(ux.yearGone, { pct: String(Math.round(fraction * 100)) })}</span>
+      <span className="pb-tnum"><RollingAmount value={t(ux.yearGone, { pct: String(Math.round(fraction * 100)) })} /></span>
     </p>
   );
   if (totalBudget <= 0 || status === null) {

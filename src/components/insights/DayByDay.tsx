@@ -305,7 +305,7 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
                   })}
                   <span className="pb-ins-cal-wk">
                     <span className="pb-ins-sr">{ux.weekTotal}: </span>
-                    {weekTotal > 0 ? <span className="font-mono-tab">{formatCurrency(Math.round(weekTotal)).replace(/\.00$/, '')}</span> : <span aria-hidden="true">–</span>}
+                    {weekTotal > 0 ? <span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.round(weekTotal)).replace(/\.00$/, '')} /></span> : <span aria-hidden="true">–</span>}
                   </span>
                 </div>
               );

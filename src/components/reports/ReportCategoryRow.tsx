@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { KeyboardEvent } from 'react';
 import { Banknote, ChevronRight } from 'lucide-react';
 import type { CategoryMeta } from '@/types';
@@ -61,22 +62,22 @@ export function ReportCategoryRow({ category, total, count, share, series, expan
       <span className="pb-rep-cat-tile" aria-hidden="true"><Icon size={16} /></span>
       <span className="pb-rep-cat-text">
         <span className="pb-rep-cat-name">{name}</span>
-        <span className="pb-rep-cat-meta pb-tnum">{countText} · {pctText(share)}</span>
+        <span className="pb-rep-cat-meta pb-tnum"><RollingAmount value={countText} /> · <RollingAmount value={pctText(share)} /></span>
         <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true">
           <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />
         </span>
       </span>
-      <span className="pb-rep-cat-count pb-tnum">{count}</span>
+      <span className="pb-rep-cat-count pb-tnum"><RollingAmount value={String(count)} /></span>
       <span className="pb-rep-cat-share">
         <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true">
           <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />
         </span>
-        <span className="pb-tnum">{pctText(share)}</span>
+        <span className="pb-tnum"><RollingAmount value={pctText(share)} /></span>
       </span>
       <span className="pb-rep-cat-trend">
         {series && series.some((v) => v > 0) && <Sparkline values={series} height={22} color={color} endDot area={false} />}
       </span>
-      <span className="pb-rep-cat-total font-mono-tab">{formatCurrency(total)}</span>
+      <span className="pb-rep-cat-total font-mono-tab"><RollingAmount value={formatCurrency(total)} /></span>
       <ChevronRight size={16} aria-hidden="true" className="pb-rep-cat-chev" />
     </div>
   );

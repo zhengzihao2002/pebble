@@ -107,7 +107,7 @@ export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllo
               </dt>
               <dd className="font-mono-tab" style={r.color ? { color: r.color } : undefined}><RollingAmount value={formatCurrency(r.value)} /></dd>
               <dd className="pb-goals-hero-pct pb-tnum" aria-hidden={r.pct === null ? true : undefined}>
-                {r.pct === null ? ' ' : `${r.pct > 0 && r.pct < 1 ? '<1' : Math.round(r.pct)}%`}
+                {r.pct === null ? ' ' : <RollingAmount value={`${r.pct > 0 && r.pct < 1 ? '<1' : Math.round(r.pct)}%`} />}
               </dd>
             </div>
           ))}

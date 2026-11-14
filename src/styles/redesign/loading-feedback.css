@@ -103,3 +103,13 @@ html[data-pb-loading-style="spinner"] .pebble-root .pb-loading-traditional {
   .pebble-root .pb-loading-traditional-circle { animation:none; }
   .pebble-root .pb-page-handoff:has(.pb-loading-traditional) { display:block; }
 }
+
+/* Native SSR plots must not complete their entry behind a loader before
+   hydration. Keep their geometry (and natural opacity) while waiting for the
+   page-visible handoff. Match the chart families in lib/chartReveal.ts. */
+@media (prefers-reduced-motion: no-preference) {
+  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) :is(.pb-chart-fade, .pb-chart-fill, [data-pb-chart-load], .pb-goals-tl-plot, .pb-ins-year-inner, .pb-ins-cal-grid, .pb-sched-month-grid, .pb-plan-barwrap, .pb-ana-meter, .pb-ana-split, .pb-txn-mix-strip),
+  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) :is(.pb-chart-fade, .pb-chart-fill, [data-pb-chart-load], .pb-goals-tl-plot, .pb-ins-year-inner, .pb-ins-cal-grid, .pb-sched-month-grid, .pb-plan-barwrap, .pb-ana-meter, .pb-ana-split, .pb-txn-mix-strip) * {
+    visibility: hidden !important;
+  }
+}

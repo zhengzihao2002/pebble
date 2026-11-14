@@ -292,7 +292,7 @@ function BankTile({ item, days, total, seen, words, onOpen, index }: {
       <AccountSpark data={f.data} tone={f.tone} gradId={f.gradId} label={words.sparkLabel(a.name)} height={64} />
       <p className="pb-accounts-tile-foot">
         <span>{seen ? t(d.accountsPage.lastActivity, { date: formatDate(seen, locale) }) : d.accountsPage.noActivity}</span>
-        {f.share !== null && <span className="font-mono-tab">{t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })}</span>}
+        {f.share !== null && <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span>}
       </p>
     </article>
   );
@@ -349,7 +349,7 @@ function BankRow({ item, days, total, seen, words, onOpen }: {
                 <span className="pb-accounts-change-label">{words.changeOver} · </span>{f.changeText}
               </p>
               <div className="pb-accounts-row-panel-foot">
-                {f.share !== null ? <span className="font-mono-tab">{t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })}</span> : <span />}
+                {f.share !== null ? <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span> : <span />}
                 {onOpen && (
                   <button type="button" className="pill pb-accounts-details" onClick={() => onOpen(a)} aria-label={t(x.showDetails, { name: a.name })}>
                     {x.details}<ChevronRight size={14} aria-hidden="true" />

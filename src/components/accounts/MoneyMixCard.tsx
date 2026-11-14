@@ -161,7 +161,7 @@ export function MoneyMixCard({ items, total }: {
                   {s.last4 && <span className="font-mono-tab pb-accounts-last4"> ····{s.last4}</span>}
                 </span>
                 <span className="font-mono-tab pb-accounts-legend-amt"><RollingAmount value={formatCurrency(s.owed ? -s.amount : s.amount)} /></span>
-                <span className="font-mono-tab pb-accounts-legend-pct">{s.owed ? '' : shareOfTotal(s.amount)}</span>
+                <span className="font-mono-tab pb-accounts-legend-pct">{s.owed ? '' : <RollingAmount value={shareOfTotal(s.amount)} />}</span>
               </button>
             </li>
           ))}

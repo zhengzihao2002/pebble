@@ -278,7 +278,7 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="pb-dash-tile-value">
-                <div className="font-mono-tab pb-stats-value">{c.metric === 'savingsRate' ? c.value : <RollingAmount value={c.value} />}</div>
+                <div className="font-mono-tab pb-stats-value"><RollingAmount value={c.value} /></div>
               </div>
               {/* Undefined changes (for example, income compared with zero)
                   have no row: supporting text stays directly below the value. */}

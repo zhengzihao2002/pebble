@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState, type ReactNode } from 'react';
 import { ArrowDownLeft, ArrowUpRight, CalendarX2, SearchX, SlidersHorizontal } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
@@ -169,11 +170,11 @@ export function ReportResults({
                 <span className="pb-rep-phead-figs">
                   {tinted && (
                     <span className="pb-rep-phead-split">
-                      <span className="font-mono-tab is-in">+{formatCurrency(inSum)}</span>
-                      <span className="font-mono-tab is-out">{formatCurrency(-outSum)}</span>
+                      <span className="font-mono-tab is-in">+<RollingAmount value={formatCurrency(inSum)} /></span>
+                      <span className="font-mono-tab is-out"><RollingAmount value={formatCurrency(-outSum)} /></span>
                     </span>
                   )}
-                  <span className={`font-mono-tab pb-rep-phead-total${tone(pg.total)}`}>{signed(pg.total)}</span>
+                  <span className={`font-mono-tab pb-rep-phead-total${tone(pg.total)}`}><RollingAmount value={signed(pg.total)} /></span>
                 </span>
               </header>
             )}
@@ -250,7 +251,7 @@ export function ReportResults({
                           <div key={day.ymd} className="pb-rep-day">
                             <div className="pb-rep-day-head">
                               <span><b>{l.weekday}</b> <span className="pb-tnum">{l.date}</span></span>
-                              <span className={`font-mono-tab${tone(day.total)}`}>{signed(day.total)}</span>
+                              <span className={`font-mono-tab${tone(day.total)}`}><RollingAmount value={signed(day.total)} /></span>
                             </div>
                             {day.items.map((t) => rowOf(t))}
                           </div>

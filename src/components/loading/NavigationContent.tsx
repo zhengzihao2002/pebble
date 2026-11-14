@@ -11,7 +11,7 @@ export function NavigationContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const contentRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  usePageReveal(stageRef,contentRef);
+  usePageReveal(stageRef,contentRef,pathname);
   useRememberedLayout(contentRef, pathname);
   const pending = useNavigationDestination();
   useLayoutEffect(() => { finishNavigation(pathname); }, [pathname]);

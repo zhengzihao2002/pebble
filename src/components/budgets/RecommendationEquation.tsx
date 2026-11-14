@@ -1,5 +1,7 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
+
 import type { ReactNode } from 'react';
 import type { BudgetRecommendation } from '@/lib/budgets/recommendations';
 import { recommendationAdjustments } from '@/lib/budgets/recommendationExplanation';
@@ -8,7 +10,7 @@ import { formatCurrency } from '@/lib/format';
 
 function Box({ amount, label, detail, final = false }: { amount: number; label: string; detail?: ReactNode; final?: boolean }) {
   return <div className={`pb-plan-equation-box${final ? ' pb-plan-equation-result' : ''}`} data-final={final || undefined}>
-    <strong className="font-mono-tab">{formatCurrency(amount)}</strong><small>{label}</small>{detail && <small>{detail}</small>}
+    <strong className="font-mono-tab"><RollingAmount value={formatCurrency(amount)} /></strong><small>{label}</small>{detail && <small>{detail}</small>}
   </div>;
 }
 

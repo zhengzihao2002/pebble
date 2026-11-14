@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { observeNumberEntry, refreshNumberEntry } from '@/lib/numberEntryMotion';
 
-/** Animate an already-formatted monetary value without changing its precision.
+/** Animate an already-formatted numeric value without changing its precision.
  * The current value remains the only accessible/copyable text. Digits roll
- * only after an update; signs, currency, grouping, and the initial render stay still.
+ * on first visible page entry and after an update; signs, currency and grouping stay still.
  */
 export function RollingAmount({ value, className = '', fractionClassName }: { value: string; className?: string; fractionClassName?: string }) {
-  const [frame, setFrame] = useState({ value, previous: value, revision: 0 });
+  const ref = useRef<HTMLSpanElement>(null);
+  const [frame, setFrame] = useState({ value, previous: value, revision: 0, entry: true, visible: false });
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    return observeNumberEntry(ref.current, {
+      onStart: () => setFrame(current => current.visible ? current : { ...current, visible: true }),
+      onFinish: () => setFrame(current => current.entry ? { ...current, previous: current.value, entry: false } : current),
+      onReplay: () => setFrame(current => ({ ...current, previous: current.value, revision: current.revision + 1, entry: true, visible: false })),
+    });
+  }, []);
+  useLayoutEffect(() => { if (ref.current) refreshNumberEntry(ref.current); }, [value]);
   if (frame.value !== value) {
-    setFrame({ value, previous: frame.value, revision: frame.revision + 1 });
+    setFrame({ value, previous: frame.value, revision: frame.revision + 1, entry: frame.entry && !frame.visible, visible: frame.visible });
   }
   const current = [...value];
   const previous = [...frame.previous];
@@ -22,10 +33,10 @@ export function RollingAmount({ value, className = '', fractionClassName }: { va
   const glyphs = current.map((character, index) => {
     // Align from the decimal/right edge, including when a new digit appears.
     const aligned = previous[previous.length - current.length + index];
-    const old = aligned !== undefined && /\d/.test(aligned) ? aligned : '';
+    const old = frame.entry ? character : aligned !== undefined && /\d/.test(aligned) ? aligned : '';
     // A disappearing leading digit can leave all retained digits unchanged
     // ($109 → $9). Give the leading retained digit one turn in that case.
-    const changed = hadDigits && /\d/.test(character) && (old !== character || (fewerDigits && index === firstDigit));
+    const changed = /\d/.test(character) && (frame.entry || !hadDigits || old !== character || (fewerDigits && index === firstDigit));
     if (!changed) return <span key={current.length - index}>{character}</span>;
     return <span className={`pb-rolling-cell${down ? ' is-down' : ''}`} key={current.length - index}>
       {/* The first grid item supplies the inline baseline. It must always
@@ -35,7 +46,7 @@ export function RollingAmount({ value, className = '', fractionClassName }: { va
     </span>;
   });
 
-  return <span className={`pb-rolling-amount${className ? ` ${className}` : ''}`}>
+  return <span ref={ref} className={`pb-rolling-amount${className ? ` ${className}` : ''}`} data-pb-roll-entry={frame.entry ? '' : undefined}>
     <span className="pb-rolling-accessible">{value}</span>
     <span className="pb-rolling-visual" aria-hidden="true">
       {decimal < 0 ? glyphs : <>{glyphs.slice(0, decimal)}<span className={fractionClassName}>{glyphs.slice(decimal)}</span></>}

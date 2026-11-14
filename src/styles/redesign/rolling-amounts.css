@@ -17,6 +17,11 @@
 @keyframes pb-money-next-up { from { transform: translateY(110%); opacity: .3; } to { transform: translateY(0); opacity: 1; } }
 @keyframes pb-money-old-down { to { transform: translateY(110%); opacity: 0; } }
 @keyframes pb-money-next-down { from { transform: translateY(-110%); opacity: .3; } to { transform: translateY(0); opacity: 1; } }
+/* Server HTML keeps the exact final digit readable in the old slot. Entry
+   starts only when this amount is visible and the page has handed off data. */
+.pebble-root .pb-rolling-amount[data-pb-roll-entry]:not([data-pb-roll-visible]) :is(.pb-rolling-old, .pb-rolling-next) {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .pebble-root .pb-rolling-old { display: none; }
   .pebble-root .pb-rolling-next { animation: none !important; transform: none; opacity: 1; }

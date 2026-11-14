@@ -537,7 +537,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                         <td className="is-wide font-mono-tab"><RollingAmount value={formatCurrency(y.spending)} /></td>
                         <td className="font-mono-tab" style={{ color: y.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount value={formatCurrency(y.net)} /></td>
                         <td className="pb-tnum">
-                          {y.savingsRate === null ? '—' : pct(y.savingsRate)}
+                          <RollingAmount value={y.savingsRate === null ? '—' : pct(y.savingsRate)} />
                         </td>
                       </tr>
                     ))}

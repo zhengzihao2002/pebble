@@ -1,5 +1,6 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
@@ -180,9 +181,9 @@ export function SeasonalityHeatmap({ months, today, currentLabel }: SeasonalityH
               <span className="pb-ana-heat-detail-month">{shown.label}</span>
               {shown.state === 'data' && shown.flow ? (
                 <>
-                  <span>{x.income} <b className="font-mono-tab" style={{ color: 'var(--income)' }}>{formatCurrency(shown.flow.income)}</b></span>
-                  <span>{x.spending} <b className="font-mono-tab" style={{ color: 'var(--expense)' }}>{formatCurrency(shown.flow.spending)}</b></span>
-                  <span>{x.net} <b className="font-mono-tab" style={{ color: shown.flow.net >= 0 ? 'var(--income)' : 'var(--expense)' }}>{formatCurrency(shown.flow.net)}</b></span>
+                  <span>{x.income} <b className="font-mono-tab" style={{ color: 'var(--income)' }}><RollingAmount value={formatCurrency(shown.flow.income)} /></b></span>
+                  <span>{x.spending} <b className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(shown.flow.spending)} /></b></span>
+                  <span>{x.net} <b className="font-mono-tab" style={{ color: shown.flow.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount value={formatCurrency(shown.flow.net)} /></b></span>
                 </>
               ) : (
                 <span>{shown.state === 'progress' ? x.inProgress : shown.state === 'future' ? x.notYet : x.noActivity}</span>

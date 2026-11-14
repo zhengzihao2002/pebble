@@ -1,5 +1,7 @@
 'use client';
 
+import { RollingAmount } from '@/components/shared/RollingAmount';
+
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
@@ -54,7 +56,7 @@ function AllocationTip({ row, total, anchor, id }: { row: ChartRow; total: numbe
   }, [anchor, row.name, row.next, total]);
   return <div ref={ref} id={id} role="tooltip" className="pb-plan-pop pb-annual-allocation-pop">
     <div className="pb-plan-pop-title"><span className="pb-donut-dot" style={{ backgroundColor: row.color }} aria-hidden="true" /><span>{row.name}</span></div>
-    <div className="font-mono-tab pb-plan-pop-figs pb-money">{formatCurrency(row.next)} · {share(row.next, total)}</div>
+    <div className="font-mono-tab pb-plan-pop-figs pb-money"><RollingAmount value={formatCurrency(row.next)} /> · <RollingAmount value={share(row.next, total)} /></div>
   </div>;
 }
 
@@ -113,8 +115,8 @@ export function AnnualPlanCharts({ categories, current, proposed }: { categories
       {total === 0 && <p className="pb-annual-chart-empty">{x.noAllocation}</p>}
       <div className="pb-annual-chart-rows">{visible.map(c=><div key={c.id} className="pb-annual-chart-row">
         <span className="pb-annual-chart-name"><i style={{background:c.color}} />{c.name}</span>
-        <div className="pb-annual-chart-series"><span className="pb-annual-chart-track"><i style={{width:`${c.current/max*100}%`,background:c.color,opacity:.3}} /></span><span className="font-mono-tab" aria-label={x.chartCurrent}>{formatCurrency(c.current)}</span></div>
-        <div className="pb-annual-chart-series"><span className="pb-annual-chart-track"><i style={{width:`${c.next/max*100}%`,background:c.color}} /></span><span className="font-mono-tab" aria-label={x.chartNext}>{formatCurrency(c.next)}</span></div>
+        <div className="pb-annual-chart-series"><span className="pb-annual-chart-track"><i style={{width:`${c.current/max*100}%`,background:c.color,opacity:.3}} /></span><span className="font-mono-tab" aria-label={x.chartCurrent}><RollingAmount value={formatCurrency(c.current)} /></span></div>
+        <div className="pb-annual-chart-series"><span className="pb-annual-chart-track"><i style={{width:`${c.next/max*100}%`,background:c.color}} /></span><span className="font-mono-tab" aria-label={x.chartNext}><RollingAmount value={formatCurrency(c.next)} /></span></div>
       </div>)}</div>
     </div>
   </section>;

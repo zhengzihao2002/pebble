@@ -149,12 +149,12 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
                     <span className="pb-ins-place-name">{p.name}</span>
                     <span className="pb-ins-place-meta">
                       <span className="pb-ins-meta-bit">
-                        <span className="pb-tnum">{p.count === 1 ? d.insights.once : t(d.insights.times, { count: p.count })}</span>
+                        <span className="pb-tnum"><RollingAmount value={p.count === 1 ? d.insights.once : t(d.insights.times, { count: p.count })} /></span>
                         {p.count > 1 && (
                           <><span className="pb-ins-sep" aria-hidden="true">·</span>{renderTemplate(ux.placesAvg, { amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.total / p.count)} /></span> })}</>
                         )}
                       </span>
-                      <span className="pb-ins-meta-bit pb-tnum">{t(ux.placesShare, { pct: `${share}%` })}</span>
+                      <span className="pb-ins-meta-bit pb-tnum"><RollingAmount value={t(ux.placesShare, { pct: `${share}%` })} /></span>
                     </span>
                     <span className="pb-ins-place-track pb-chart-fade" aria-hidden="true">
                       <span style={{ width: `${max > 0 ? (p.total / max) * 100 : 0}%` }} />

@@ -105,7 +105,7 @@ export function ReportSummary(p: ReportSummaryProps) {
           </p>
         </div>
         <div className="pb-rep-subline">
-          <span className="pb-tnum">{t(p.count === 1 ? r.transactionsOne : r.transactionsOther, { count: p.count })}</span>
+          <span className="pb-tnum"><RollingAmount value={t(p.count === 1 ? r.transactionsOne : r.transactionsOther, { count: p.count })} /></span>
           {p.delta && (
             <>
               <DeltaChip
@@ -202,7 +202,7 @@ export function ReportSummary(p: ReportSummaryProps) {
                   <>
                     <span className="pb-rep-dot" style={{ background: color(s.key) }} aria-hidden="true" />
                     <span className="pb-rep-legend-name">{name(s.key)}</span>
-                    <span className="pb-tnum pb-rep-legend-pct">{pct(s.share)}</span>
+                    <span className="pb-tnum pb-rep-legend-pct"><RollingAmount value={pct(s.share)} /></span>
                   </>
                 );
                 return (

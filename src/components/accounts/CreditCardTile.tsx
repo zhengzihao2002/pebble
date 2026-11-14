@@ -59,7 +59,7 @@ export function LimitMeter({ owed, limit, over }: { owed: number; limit: number;
         label={t(d.ux.accounts.utilizationLabel, { pct: `${pct}%` })}
         className="pb-chart-fill"
       >
-        <span className="pb-tnum pb-accounts-limit-pct">{pct}%</span>
+        <span className="pb-tnum pb-accounts-limit-pct"><RollingAmount value={`${pct}%`} /></span>
       </ProgressRing>
       <p className={`font-mono-tab pb-money pb-accounts-limit-line${over ? ' is-over' : ''}`}>
         {over
