@@ -27,7 +27,6 @@ interface Glow {
   paths: SVGPathElement[];
   previousAnchor: string;
   geometry: string;
-  visible: boolean;
 }
 
 /** The layer belongs to the actual scroll surface. No viewport canvas or scroll
@@ -43,30 +42,10 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
   const glows = new Map<HTMLElement, Glow>();
   let nextId = 0, frame = 0, disposed = false, targetsDirty = true;
   let rootWidth = root.clientWidth;
-  const content = root.querySelector<HTMLElement>('.pebble-main-content');
-  // Match Reports' local-halo container query, including sidebar-only resizes.
-  let wideContent = (content?.getBoundingClientRect().width ?? 0) >= 1040;
-  // Keep the full halo ready before a card reaches the scroll viewport, but
-  // do not rebuild offscreen Gaussian filters on every sidebar resize frame.
-  const visibility = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
-    for (const entry of entries) {
-      const glow = glows.get(entry.target as HTMLElement);
-      if (!glow || glow.visible === entry.isIntersecting) continue;
-      glow.visible = entry.isIntersecting;
-      if (glow.visible) resize.observe(glow.target);
-      else resize.unobserve(glow.target);
-    }
-    queue();
-  }, { root, rootMargin: `${CARD_GLOW_PAD}px` });
-  const resize = new ResizeObserver(entries => {
+  const resize = new ResizeObserver(() => {
     // Height changes move existing halos; only a new width can change the
     // container breakpoint that chooses local versus shared Reports glows.
     if (root.clientWidth !== rootWidth) { rootWidth = root.clientWidth; targetsDirty = true; }
-    const column = entries.find(entry => entry.target === content);
-    if (column && (column.contentRect.width >= 1040) !== wideContent) {
-      wideContent = column.contentRect.width >= 1040;
-      targetsDirty = true;
-    }
     paint();
   });
 
@@ -114,12 +93,12 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
       target.style.setProperty('anchor-name', currentAnchor && currentAnchor !== 'none' ? `${currentAnchor}, ${anchor}` : anchor);
       frame.style.setProperty('position-anchor', anchor);
     }
-    const glow = { target, frame, svg, filters, mask, background, paths: [...paths, interior], previousAnchor, geometry: '', visible: true };
+    const glow = { target, frame, svg, filters, mask, background, paths: [...paths, interior], previousAnchor, geometry: '' };
     frame.append(svg);
-    glows.set(target, glow); layer.append(frame); resize.observe(target); visibility?.observe(target);
+    glows.set(target, glow); layer.append(frame); resize.observe(target);
   }
   function remove(glow: Glow) {
-    resize.unobserve(glow.target); visibility?.unobserve(glow.target); glow.frame.remove();
+    resize.unobserve(glow.target); glow.frame.remove();
     if (anchors) {
       if (glow.previousAnchor) glow.target.style.setProperty('anchor-name', glow.previousAnchor);
       else glow.target.style.removeProperty('anchor-name');
@@ -141,11 +120,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
     const moving = new Map<HTMLElement, boolean>();
     let active = false;
     // Read layout together, then write only changed SVG geometry.
-    const measurements = [...glows.values()].filter(glow => {
-      if (glow.visible) return true;
-      glow.frame.style.display = 'none';
-      return false;
-    }).map(glow => {
+    const measurements = [...glows.values()].map(glow => {
       const rect = glow.target.getBoundingClientRect();
       let opacity = 1;
       for (let node: HTMLElement | null = glow.target; node && node !== root; node = node.parentElement) {
@@ -203,17 +178,17 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
     if (changed) queue();
   });
   mutation.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'aria-busy'] });
-  const documentVisibility = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else queue(); };
+  const visibility = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else queue(); };
   for (const event of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) root.addEventListener(event, queue, true);
   const onResize = () => { targetsDirty = true; queue(); };
   window.addEventListener('resize', onResize, { passive: true });
-  document.addEventListener('visibilitychange', documentVisibility);
-  resize.observe(root); if (content) resize.observe(content); paint();
+  document.addEventListener('visibilitychange', visibility);
+  resize.observe(root); paint();
   return () => {
-    disposed = true; delete layer.dataset.pbGlowReady; cancelAnimationFrame(frame); mutation.disconnect(); resize.disconnect(); visibility?.disconnect();
+    disposed = true; delete layer.dataset.pbGlowReady; cancelAnimationFrame(frame); mutation.disconnect(); resize.disconnect();
     for (const glow of [...glows.values()]) remove(glow);
     for (const event of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) root.removeEventListener(event, queue, true);
-    window.removeEventListener('resize', onResize); document.removeEventListener('visibilitychange', documentVisibility);
+    window.removeEventListener('resize', onResize); document.removeEventListener('visibilitychange', visibility);
   };
 }
 

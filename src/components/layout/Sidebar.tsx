@@ -11,12 +11,13 @@ import { SignOutButton } from './SignOutButton';
 import { NAV_GROUPS, navItems } from './navItems';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useNavGlass } from './useNavGlass';
+import { useSidebarMotion } from './useSidebarMotion';
 
 export function Sidebar() {
   const pathname = usePathname();
   const collapsed = usePebbleStore(state => state.sidebarCollapsed);
-  const setCollapsed = usePebbleStore(state => state.setSidebarCollapsed);
   const { ref, indicatorRef } = useNavGlass<HTMLElement>(pathname);
+  const toggleSidebar = useSidebarMotion(ref);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const darkMode = useResolvedDark();
   const { name, email, initials } = useCurrentUser();
@@ -35,7 +36,7 @@ export function Sidebar() {
         <span className="font-display pb-sidebar-wordmark">Pebble</span>
         <button type="button" className="pb-sidebar-collapse" aria-expanded={!collapsed}
           aria-label={collapsed ? d.sidebar.expand : d.sidebar.collapse} title={collapsed ? d.sidebar.expand : d.sidebar.collapse}
-          onClick={() => setCollapsed(!usePebbleStore.getState().sidebarCollapsed)}>
+          onClick={toggleSidebar}>
           <PanelLeftClose size={18} className="pb-sidebar-collapse-icon" aria-hidden="true" />
           <PanelLeftOpen size={18} className="pb-sidebar-expand-icon" aria-hidden="true" />
         </button>

@@ -28,7 +28,6 @@ export function observeCardResizes(root: HTMLElement) {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const states = new Map<HTMLElement, CardState>();
   let disposed = false;
-  let sidebarResizing = false;
   let languageHeights: Map<HTMLElement, number> | null = null;
   const beforeLanguage = () => {
     if (reduced.matches || document.hidden) return;
@@ -49,7 +48,7 @@ export function observeCardResizes(root: HTMLElement) {
     const width = card.offsetWidth, height = card.offsetHeight;
     const previousWidth = state.width;
     state.width = width; state.height = height;
-    if (disposed || sidebarResizing || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
+    if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
       || !card.getClientRects().length || !width || !height || !from
       || (!languageChange && Math.abs(width - previousWidth) > 1) || Math.abs(height - from) < 2) return;
     // Existing expanding sections already move the surrounding layout smoothly.
@@ -129,17 +128,6 @@ export function observeCardResizes(root: HTMLElement) {
   });
   mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });
   const settle = () => { languageHeights = null; settleCardResizes(root); };
-  // The sidebar already drives a continuous, live layout resize. A second
-  // height tween can lag behind it (especially near the last subpixel width
-  // changes). Let cards follow that one clock; keep normal content/language
-  // height animation everywhere else, including the Reports inspector.
-  const sidebarMotion = (event: TransitionEvent) => {
-    if (!(event.target instanceof HTMLElement) || !event.target.matches('.pebble-sidebar') || event.propertyName !== 'width') return;
-    sidebarResizing = event.type === 'transitionrun' || event.target.getAnimations().some(animation =>
-      animation.playState === 'running' && (animation as CSSTransition).transitionProperty === 'width');
-    if (sidebarResizing) settle();
-  };
-  for (const event of ['transitionrun', 'transitionend', 'transitioncancel']) root.addEventListener(event, sidebarMotion as EventListener, true);
   window.addEventListener('pebble:before-language-change', beforeLanguage);
   const visibility = () => { if (document.hidden) settle(); };
   window.addEventListener('resize', settle, { passive: true });
@@ -148,7 +136,6 @@ export function observeCardResizes(root: HTMLElement) {
   return () => {
     disposed = true;
     mutation.disconnect(); resize.disconnect();
-    for (const event of ['transitionrun', 'transitionend', 'transitioncancel']) root.removeEventListener(event, sidebarMotion as EventListener, true);
     settle(); states.clear();
     window.removeEventListener('pebble:before-language-change', beforeLanguage);
     window.removeEventListener('resize', settle);

@@ -16,7 +16,7 @@ export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathn
     const measure = () => {
       timer = 0;
       // Cache the settled layout, never an in-between animation frame.
-      if (content.querySelector('.pb-card-resizing, [data-pb-inspector-motion]')) { schedule(); return; }
+      if (main.hasAttribute('data-pb-sidebar-phase') || content.querySelector('.pb-card-resizing, [data-pb-inspector-motion]')) { schedule(); return; }
       for (const el of [...content.children,...content.querySelectorAll(LAYOUT_CONTOUR_SELECTOR)]) {
         if (!observed.has(el)) { observed.add(el); resize.observe(el); }
       }

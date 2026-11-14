@@ -1,7 +1,5 @@
 'use client';
 
-import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
-
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { MonthlyDeduction } from '@/lib/analysis/income';
 import { formatCurrency } from '@/lib/format';
@@ -92,7 +90,7 @@ export function DeductionChart({ data, view = 'rate' }: { data: MonthlyDeduction
           {/* Colours, border and size come from the global
               .recharts-default-tooltip rule in globals.css. */}
           <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} cursor={{ stroke: 'var(--line)' }} />
-          <Line shape={<StaticChartCurve />}
+          <Line
             type="monotone"
             dataKey="rate"
             name={dict.analysis.income.rateSeriesName}

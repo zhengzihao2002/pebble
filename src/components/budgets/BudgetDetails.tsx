@@ -1,7 +1,5 @@
 'use client';
 
-import { StaticChartCurve } from '@/components/shared/StaticChartCurve';
-
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useId, useState } from 'react';
 import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -266,9 +264,9 @@ export function BudgetDetails({ name, color, budget, history, today, onSuggest, 
                 <Tooltip cursor={{ stroke: 'var(--ink-soft)', strokeWidth: 1 }} content={<CumTip spentLabel={d.budgetPage.spentSoFar} paceLabel={ux.evenPace} estimatedLabel={ux.estimatedYearTotal} />} />
                 {isCurrent && <ReferenceLine x={todayX} stroke="var(--ink-soft)" strokeWidth={1} label={{ value: ux.todayTick, position: 'top', fontSize: 10, fill: 'var(--ink-soft)' }} />}
                 {hasBudget && (
-                  <Line shape={<StaticChartCurve />} dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
+                  <Line dataKey="pace" type="linear" stroke="var(--ink-soft)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} isAnimationActive={false} />
                 )}
-                {projection && projection.remaining > 0 && <Line shape={<StaticChartCurve />} dataKey="estimated" type="linear" stroke={color} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} isAnimationActive={false} />}
+                {projection && projection.remaining > 0 && <Line dataKey="estimated" type="linear" stroke={color} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} isAnimationActive={false} />}
                 <Area
                   dataKey="spent" type="linear" stroke={color} strokeWidth={2} strokeLinejoin="round" fill={color} fillOpacity={0.1}
                   connectNulls={false} dot={false} activeDot={{ r: 3.5, stroke: 'var(--mist)', strokeWidth: 2 }} isAnimationActive={false}

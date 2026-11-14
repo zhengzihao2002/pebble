@@ -560,3 +560,17 @@
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-collapse-icon { opacity: 0; transform: translateX(3px); }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-expand-icon { opacity: 1; transform: translateX(0); }
 }
+
+
+/* During sidebar resizing only the data is hidden. Real card surfaces keep
+   their natural responsive geometry; reveal starts after layout has settled. */
+@media (min-width: 760px) and (min-height: 600px) {
+  .pebble-root .pebble-main[data-pb-sidebar-phase="resize"] :is(.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accounts-cc, .pb-settings-tile, .add-goal-tile, .stat-tab) * {
+    visibility: hidden !important;
+  }
+  /* Retain the width freed by the icon rail even beyond the ordinary cap. */
+  .pebble-root .pebble-main,
+  .pebble-root .pebble-header > div { transition: max-width 320ms cubic-bezier(.4,0,.2,1); }
+  html[data-pb-sidebar-collapsed] .pebble-root .pebble-main { max-width: 107.25rem; }
+  html[data-pb-sidebar-collapsed] .pebble-root .pebble-header > div { max-width: 102.25rem; }
+}

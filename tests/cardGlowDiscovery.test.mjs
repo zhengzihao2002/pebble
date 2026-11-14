@@ -7,9 +7,9 @@ const source = buildSync({ entryPoints: ['src/lib/cardGlow.ts'], bundle: true, w
   platform: 'node', format: 'cjs' }).outputFiles[0].text;
 const CARDS = '.card,[data-slot="card"],.pb-hero,.pb-accounts-tile,.pb-accounts-cc,.add-goal-tile,.stat-tab';
 
-function fixture({ width = 1200, localAtWide = false, anchors = false, intersections = false, contentWidth = null } = {}) {
+function fixture({ width = 1200, localAtWide = false, anchors = false } = {}) {
   let root, scans = 0, nextFrame = 0;
-  const frames = new Map(), resizes = [], mutations = [], visibility = [], reads = new Map();
+  const frames = new Map(), resizes = [], mutations = [], reads = new Map();
   const eventTarget = () => {
     const listeners = new Map();
     return {
@@ -55,9 +55,7 @@ function fixture({ width = 1200, localAtWide = false, anchors = false, intersect
   class HTMLElement extends Element {}
   class SVGElement extends Element {}
   root = new HTMLElement(); root.className = 'pebble-root'; root.clientWidth = width;
-  const content = contentWidth === null ? null : new HTMLElement();
-  if (content) { content.className = 'pebble-main-content'; content.clientWidth = contentWidth; content.rect.width = contentWidth; root.append(content); }
-  const report = new HTMLElement(); report.className = 'pb-rep'; (content ?? root).append(report);
+  const report = new HTMLElement(); report.className = 'pb-rep'; root.append(report);
   const card = new HTMLElement(); card.className = 'card'; report.append(card);
   const layer = new HTMLElement(); layer.className = 'pb-card-glows'; root.append(layer);
   const document = Object.assign(eventTarget(), {
@@ -69,12 +67,8 @@ function fixture({ width = 1200, localAtWide = false, anchors = false, intersect
     module: compiled, exports: compiled.exports, document, window, Element, HTMLElement,
     getComputedStyle(element) { return { opacity: '1', visibility: 'visible', display: 'block', position: 'static', overflowY: 'visible',
       borderTopLeftRadius: '20px', borderTopRightRadius: '20px', borderBottomRightRadius: '20px', borderBottomLeftRadius: '20px',
-      getPropertyValue: name => name === '--pb-card-glow-local' ? (localAtWide && (content?.clientWidth ?? root.clientWidth) >= 1040 ? '1' : '0') : '' }; },
+      getPropertyValue: name => name === '--pb-card-glow-local' ? (localAtWide && root.clientWidth >= 1040 ? '1' : '0') : '' }; },
     requestAnimationFrame(fn) { frames.set(++nextFrame, fn); return nextFrame; }, cancelAnimationFrame(id) { frames.delete(id); },
-    IntersectionObserver: intersections ? class {
-      constructor(callback, options) { this.callback = callback; this.options = options; this.observed = new Set(); visibility.push(this); }
-      observe(element) { this.observed.add(element); } unobserve(element) { this.observed.delete(element); } disconnect() { this.disconnected = true; }
-    } : undefined,
     ResizeObserver: class {
       constructor(callback) { this.callback = callback; this.observed = new Set(); resizes.push(this); }
       observe(element) { this.observed.add(element); } unobserve(element) { this.observed.delete(element); } disconnect() { this.disconnected = true; }
@@ -87,8 +81,8 @@ function fixture({ width = 1200, localAtWide = false, anchors = false, intersect
   const flush = () => { for (const [id, fn] of [...frames]) { frames.delete(id); fn(); } };
   const mutate = record => { mutations[0].callback([record]); flush(); };
   const attribute = target => mutate({ type: 'attributes', target, addedNodes: [], removedNodes: [] });
-  const resize = target => resizes[0].callback([{ target, contentRect: { width: target.clientWidth } }]);
-  return { root, content, report, card, layer, document, window, HTMLElement, SVGElement, cleanup, flush, mutate, attribute, resize, scans: () => scans, rectReads: element => reads.get(element) ?? 0, resizes, mutations, visibility };
+  const resize = target => resizes[0].callback([{ target }]);
+  return { root, report, card, layer, document, window, HTMLElement, SVGElement, cleanup, flush, mutate, attribute, resize, scans: () => scans, rectReads: element => reads.get(element) ?? 0, resizes, mutations };
 }
 
 test('chart SVG redraws and size-only updates reuse discovery while updating real halo geometry', () => {
@@ -180,44 +174,5 @@ test('an entirely local roster does not read geometry on root height or chart up
   f.attribute(chart); f.root.rect.height = 1000; f.resize(f.root);
   assert.equal(f.rectReads(f.root), 0, 'No shared halo needs a root origin when the roster is empty');
   assert.equal(f.scans(), 1);
-  f.cleanup();
-});
-
-
-test('offscreen glow filters stop measuring and catch up before cards enter the visible scroll area', () => {
-  const f = fixture({ anchors: true, intersections: true });
-  const observer = f.visibility[0], frame = f.layer.children[0], svg = frame.children[0];
-  assert.equal(observer.options.root, f.root);
-  assert.equal(observer.options.rootMargin, '88px', 'Prewarm the full halo beyond the viewport edge');
-  assert(observer.observed.has(f.card));
-  observer.callback([{ target: f.card, isIntersecting: false }]); f.flush();
-  assert.equal(frame.style.display, 'none');
-  assert(!f.resizes[0].observed.has(f.card));
-  const reads = f.rectReads(f.card);
-  f.card.rect.width = 550; f.resize(f.root);
-  assert.equal(f.rectReads(f.card), reads, 'Hidden Gaussian geometry does not redraw during sidebar resizing');
-  assert.equal(svg.getAttribute('viewBox'), '0 0 300 200');
-  observer.callback([{ target: f.card, isIntersecting: true }]); f.flush();
-  assert.equal(frame.style.display, '');
-  assert.equal(svg.getAttribute('viewBox'), '0 0 550 200');
-  assert(f.resizes[0].observed.has(f.card));
-  f.cleanup();
-  assert(observer.disconnected);
-});
-
-
-test('sidebar-only width changes switch Reports halo mode once per container boundary', () => {
-  const f = fixture({ width: 1500, localAtWide: true, contentWidth: 900 });
-  assert.equal(f.layer.children.length, 1);
-  assert(f.resizes[0].observed.has(f.content));
-  f.content.clientWidth = 1000; f.resize(f.content);
-  assert.equal(f.scans(), 1, 'Intermediate sidebar frames do not rediscover the card roster');
-  f.content.clientWidth = 1100; f.resize(f.content);
-  assert.equal(f.scans(), 2); assert.equal(f.layer.children.length, 0, 'Use the native Reports halo without duplicating the shared glow');
-  f.content.clientWidth = 1120; f.resize(f.content);
-  assert.equal(f.scans(), 2);
-  f.content.clientWidth = 900; f.resize(f.content);
-  assert.equal(f.layer.children.length, 1, 'Restore shared glows when the main column narrows');
-  assert.equal(f.root.clientWidth, 1500, 'The browser viewport never changed');
   f.cleanup();
 });

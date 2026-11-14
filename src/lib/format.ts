@@ -81,25 +81,14 @@ export function splitCents(text: string): { whole: string; cents: string } {
 // produced here and must never be localized - those strings are compared
 // LEXICOGRAPHICALLY throughout src/lib/analysis/, so any other shape silently
 // reorders history.
-
-// Resizable chart axes can format the same dates many times per frame.
-// Four formatter variants cover both locales with/without a year; never cache
-// the comparison year itself, which must advance in a long-lived tab.
-const shortDateFormatters = new Map<string, Intl.DateTimeFormat>();
-
 export function formatDate(dateStr: string, locale: Locale = DEFAULT_LOCALE): string {
   const d = parseLocalDate(dateStr);
-  if (!Number.isFinite(d.getTime())) return 'Invalid Date';
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  const key = `${locale}:${sameYear}`;
-  let formatter = shortDateFormatters.get(key);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat(INTL_LOCALE[locale], {
-      month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }),
-    });
-    shortDateFormatters.set(key, formatter);
-  }
-  return formatter.format(d);
+  return d.toLocaleDateString(INTL_LOCALE[locale], {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
 }
 
 // 'Monday, August 21, 2025'. Used where a single date is the subject of the
