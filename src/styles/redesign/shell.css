@@ -511,19 +511,25 @@
     width: 16rem; overflow-x: hidden;
     transition: width 320ms cubic-bezier(.4,0,.2,1), padding-inline 320ms cubic-bezier(.4,0,.2,1);
   }
-  /* The mark and toggle share the navigation icon rail in both states. Keep
-     both rows in place so collapsing never moves the navigation vertically. */
+  /* Expanded: toggle beside the wordmark. Collapsed: toggle below the mark.
+     Keep the mark on the same first row and interpolate the real button's
+     coordinates, so its position and hit target move together. */
   .pebble-root .pb-sidebar-brand {
     display: grid; grid-template-columns: var(--pb-sidebar-rail) minmax(0,1fr);
-    grid-template-rows: 2.25rem 2.25rem; gap: .35rem 0;
-    height: 4.85rem; padding-inline: calc(.25rem + 1px);
+    position: relative; grid-template-rows: 2.75rem; gap: 0;
+    height: 2.75rem; padding-inline: calc(.25rem + 1px);
+    transition: height 320ms cubic-bezier(.4,0,.2,1);
   }
   .pebble-root .pb-sidebar-brand > .pb-mark { grid-area: 1 / 1; justify-self: center; }
   .pebble-root .pb-sidebar-wordmark {
-    grid-area: 1 / 2; min-width: 0; white-space: nowrap;
+    grid-area: 1 / 2; min-width: 0; margin-right: 2.6rem; white-space: nowrap;
     overflow-x: clip; overflow-y: visible; opacity: 1; transition: opacity 140ms ease;
   }
-  .pebble-root .pb-sidebar-brand > .pb-sidebar-collapse { grid-area: 2 / 1; justify-self: center; }
+  .pebble-root .pb-sidebar-brand > .pb-sidebar-collapse {
+    position: absolute; top: .25rem; left: calc(100% - 2.5rem - 1px);
+    transition: left 140ms cubic-bezier(.4,0,.2,1), top 320ms cubic-bezier(.4,0,.2,1),
+      background-color 160ms ease, color 160ms ease;
+  }
   .pebble-root .pb-sidebar-collapse { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: .65rem; border: 1px solid var(--line); background: var(--mist); color: var(--ink-soft); cursor: pointer; }
   .pebble-root .pb-sidebar-collapse:hover { background: var(--pine-soft); color: var(--pine); }
   .pebble-root .pb-sidebar-collapse:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
@@ -543,6 +549,13 @@
   .pebble-root .pb-sidebar-profile > div:last-child { overflow: hidden; transition: opacity 140ms ease; }
   html[data-pb-sidebar-collapsed] .pebble-root .pebble-sidebar { width: 4.75rem; padding-inline: .5rem; }
   html[data-pb-sidebar-collapsed] .pebble-root .pebble-sidebar :is(.nav-label, .pb-shell-side-cap, .pb-sidebar-profile > div:last-child) { opacity: 0; pointer-events: none; }
+  html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-brand { height: 5.35rem; }
+  html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-brand > .pb-sidebar-collapse {
+    top: 3.1rem; left: .75rem;
+    /* Move below the logo before reaching its column; reverse by moving
+       sideways first, so the control never crosses over the logo. */
+    transition-duration: 320ms, 140ms, 160ms, 160ms;
+  }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-wordmark { opacity: 0; pointer-events: none; }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-collapse-icon { opacity: 0; transform: translateX(3px); }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-expand-icon { opacity: 1; transform: translateX(0); }
