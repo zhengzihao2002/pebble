@@ -196,3 +196,32 @@ test('language changes measure paired stretched cards before either animation st
   assert.equal(f.card.active, null); assert.equal(peer.active, null);
   f.stop();
 });
+
+test('language transitions include nested cards without adding ordinary resize feedback', () => {
+  const f = fixture();
+  f.events.get('pebble:before-language-change')();
+  f.card.naturalHeight = 240; f.nested.naturalHeight = 180;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active.options.duration, 420);
+  assert.equal(f.nested.active.options.duration, 420);
+  assert.equal(f.card.active.options.easing, 'cubic-bezier(.4,0,.2,1)');
+  f.card.active.finish(); f.nested.active.finish();
+  assert.equal(f.nested.active, null);
+  assert.equal(f.resize.observed.has(f.nested), false);
+  f.stop();
+});
+
+test('incidental content updates do not restart a language transition', () => {
+  const f = fixture();
+  f.events.get('pebble:before-language-change')();
+  f.card.naturalHeight = 180;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  const transition = f.card.active;
+  transition.visibleHeight = 130;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active, transition);
+  assert.equal(f.card.animations.length, 1);
+  transition.finish();
+  assert.equal(f.card.offsetHeight, 180);
+  f.stop();
+});

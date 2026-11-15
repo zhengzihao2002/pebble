@@ -2,6 +2,7 @@ const CARDS = '.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accou
 const EXCLUDED = '[role="dialog"], .pb-modal-overlay, [aria-busy="true"], [data-pb-resize="off"], .pb-navigation-preview, .pb-page-skeleton, .pb-cached-layout';
 const ANIMATION_ID = 'pb-card-resize';
 const DURATION = 260;
+const LANGUAGE_DURATION = 420;
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];
 
 interface CardState {
@@ -9,6 +10,7 @@ interface CardState {
   width: number;
   height: number;
   animation: Animation | null;
+  languageChange: boolean;
 }
 
 /** Settle before saving a page's geometry, or when the page becomes hidden. */
@@ -29,6 +31,11 @@ export function observeCardResizes(root: HTMLElement) {
   const states = new Map<HTMLElement, CardState>();
   let disposed = false;
   let languageHeights: Map<HTMLElement, number> | null = null;
+  const observe = (card: HTMLElement) => {
+    // Nested cards join the language batch, but ordinary resize observation
+    // stays on outer cards so a parent animation cannot feed back into a child.
+    if (!card.parentElement?.closest(CARDS)) resize.observe(card);
+  };
   const beforeLanguage = () => {
     if (reduced.matches || document.hidden) return;
     languageHeights = new Map([...states.values()].filter(state => state.element.isConnected && !state.element.closest(EXCLUDED))
@@ -50,7 +57,7 @@ export function observeCardResizes(root: HTMLElement) {
     state.width = width; state.height = height;
     if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
       || !card.getClientRects().length || !width || !height || !from
-      || (!languageChange && Math.abs(width - previousWidth) > 1) || Math.abs(height - from) < 2) return;
+      || (!languageChange && (card.parentElement?.closest(CARDS) || Math.abs(width - previousWidth) > 1)) || Math.abs(height - from) < 2) return;
     // Existing expanding sections already move the surrounding layout smoothly.
     // Let those transitions finish instead of adding another lagging animation.
     const alreadyResizing = card.getAnimations({ subtree: true }).some(animation =>
@@ -64,35 +71,33 @@ export function observeCardResizes(root: HTMLElement) {
     card.classList.add('pb-card-resizing');
     const animation = card.animate(
       [{ height: `${from}px` }, { height: `${height}px` }],
-      { duration: DURATION, easing: 'cubic-bezier(.22,.78,.22,1)' },
+      { duration: languageChange ? LANGUAGE_DURATION : DURATION, easing: languageChange ? 'cubic-bezier(.4,0,.2,1)' : 'cubic-bezier(.22,.78,.22,1)' },
     );
     animation.id = ANIMATION_ID;
-    state.animation = animation;
+    state.animation = animation; state.languageChange = languageChange;
     animation.onfinish = () => {
       if (disposed || state.animation !== animation) return;
-      state.animation = null;
+      state.animation = null; state.languageChange = false;
       card.classList.remove('pb-card-resizing');
       if (!card.isConnected || !states.has(card)) return;
       // Content may have changed while resizing. The final height remains auto.
       update(state);
-      if (!state.animation) resize.observe(card);
+      if (!state.animation) observe(card);
     };
     animation.oncancel = () => {
       if (disposed || state.animation !== animation) return;
-      state.animation = null;
+      state.animation = null; state.languageChange = false;
       card.classList.remove('pb-card-resizing');
       if (!card.isConnected || !states.has(card)) return;
       state.width = card.offsetWidth; state.height = card.offsetHeight;
-      resize.observe(card);
+      observe(card);
     };
   }
 
   function register(card: HTMLElement) {
     if (states.has(card) || card.closest(EXCLUDED)) return;
-    // Nested cards naturally follow their containing card's animated layout.
-    if (card.parentElement?.closest(CARDS)) return;
-    states.set(card, { element: card, width: card.offsetWidth, height: card.offsetHeight, animation: null });
-    resize.observe(card);
+    states.set(card, { element: card, width: card.offsetWidth, height: card.offsetHeight, animation: null, languageChange: false });
+    observe(card);
   }
   function discover(node: Node) {
     if (!(node instanceof HTMLElement)) return;
@@ -105,14 +110,14 @@ export function observeCardResizes(root: HTMLElement) {
     for (const [card, state] of states) {
       if (!card.isConnected) {
         states.delete(card); resize.unobserve(card); state.animation?.cancel();
-      } else if (!language?.has(card) && state.animation && records.some(record => card.contains(record.target))) {
+      } else if (!language?.has(card) && state.animation && !state.languageChange && records.some(record => card.contains(record.target))) {
         // A rapid update continues from the visible height, not an old target.
         const currentHeight = card.offsetHeight;
         state.animation.onfinish = null; state.animation.oncancel = null;
         state.animation.cancel(); state.animation = null;
         card.classList.remove('pb-card-resizing');
         update(state, currentHeight);
-        if (!state.animation) resize.observe(card);
+        if (!state.animation) observe(card);
       }
     }
     for (const record of records) {
