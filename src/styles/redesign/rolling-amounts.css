@@ -1,5 +1,8 @@
 /* Financial digits retain their original font, precision, and privacy wrapper. */
-.pebble-root .pb-rolling-amount { position: relative; white-space: inherit; font-variant-numeric: tabular-nums; }
+.pebble-root .pb-rolling-amount {
+  --pb-number-roll-duration: 1600ms;
+  --pb-number-roll-easing: cubic-bezier(.16,.8,.22,1);
+  position: relative; white-space: inherit; font-variant-numeric: tabular-nums; }
 /* Inline glyphs preserve each parent's existing wrapping policy (planner
    columns allow overflow-wrap:anywhere; one-line balances use nowrap). */
 .pebble-root .pb-rolling-visual { display: inline; user-select: none; }
@@ -9,8 +12,8 @@
 }
 .pebble-root .pb-rolling-cell { display: inline-grid; grid-template-areas: 'digit'; vertical-align: baseline; overflow: clip; }
 .pebble-root .pb-rolling-old, .pebble-root .pb-rolling-next { grid-area: digit; }
-.pebble-root .pb-rolling-old { animation: pb-money-old-up 680ms cubic-bezier(.22,.61,.36,1) both; }
-.pebble-root .pb-rolling-next { animation: pb-money-next-up 680ms cubic-bezier(.22,.61,.36,1) both; }
+.pebble-root .pb-rolling-old { animation: pb-money-old-up var(--pb-number-roll-duration) var(--pb-number-roll-easing) both; }
+.pebble-root .pb-rolling-next { animation: pb-money-next-up var(--pb-number-roll-duration) var(--pb-number-roll-easing) both; }
 .pebble-root .pb-rolling-cell.is-down .pb-rolling-old { animation-name: pb-money-old-down; }
 .pebble-root .pb-rolling-cell.is-down .pb-rolling-next { animation-name: pb-money-next-down; }
 @keyframes pb-money-old-up { to { transform: translateY(-110%); opacity: 0; } }
@@ -23,7 +26,7 @@
 .pebble-root .pb-rolling-entry-base { visibility: hidden; }
 .pebble-root .pb-rolling-track {
   position: absolute; inset: 0 auto auto 0; white-space: pre; line-height: inherit;
-  animation: pb-money-entry-up 1400ms cubic-bezier(.12,.7,.18,1) both;
+  animation: pb-money-entry-up var(--pb-number-roll-duration) var(--pb-number-roll-easing) both;
 }
 @keyframes pb-money-entry-up { from { transform: translateY(0); } to { transform: translateY(-10lh); } }
 /* Server HTML keeps the exact final digit readable at the start of the strip. Entry
