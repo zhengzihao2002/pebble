@@ -152,12 +152,14 @@ test('language changes animate from captured heights even when translated layout
   f.events.get('pebble:before-language-change')();
   f.card.offsetWidth = 340; f.card.naturalHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  f.events.get('pebble:after-language-change')();
   assert.equal(f.card.active.frames[0].height, '100px');
   assert.equal(f.card.active.frames[1].height, '180px');
   f.card.active.visibleHeight = 145;
   f.events.get('pebble:before-language-change')();
   f.card.offsetWidth = 300; f.card.naturalHeight = 100;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  f.events.get('pebble:after-language-change')();
   assert.equal(f.card.active.frames[0].height, '145px', 'A rapid language reversal starts at the visible size');
   f.card.active.finish(); f.stop();
 });
@@ -168,6 +170,7 @@ for (const reason of ['reduced', 'hidden']) test(`language resize respects ${rea
   f.events.get('pebble:before-language-change')();
   f.card.offsetWidth = 340; f.card.naturalHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]); f.resize.emit(f.card);
+  f.events.get('pebble:after-language-change')();
   assert.equal(f.card.active, null); f.stop();
 });
 
@@ -184,6 +187,7 @@ test('language changes measure paired stretched cards before either animation st
   f.events.get('pebble:before-language-change')();
   f.card.naturalHeight = 100; peer.naturalHeight = 80;
   f.mutation.callback([{ target: f.card, addedNodes: [] }, { target: peer, addedNodes: [] }]);
+  f.events.get('pebble:after-language-change')();
   assert.equal(f.card.active.frames[0].height, '300px');
   assert.equal(peer.active.frames[0].height, '300px');
   assert.equal(f.card.active.frames[1].height, '100px');
@@ -202,6 +206,7 @@ test('language transitions include nested cards without adding ordinary resize f
   f.events.get('pebble:before-language-change')();
   f.card.naturalHeight = 240; f.nested.naturalHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  f.events.get('pebble:after-language-change')();
   assert.equal(f.card.active.options.duration, 420);
   assert.equal(f.nested.active.options.duration, 420);
   assert.equal(f.card.active.options.easing, 'cubic-bezier(.4,0,.2,1)');
@@ -216,6 +221,7 @@ test('incidental content updates do not restart a language transition', () => {
   f.events.get('pebble:before-language-change')();
   f.card.naturalHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  f.events.get('pebble:after-language-change')();
   const transition = f.card.active;
   transition.visibleHeight = 130;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
@@ -224,4 +230,20 @@ test('incidental content updates do not restart a language transition', () => {
   transition.finish();
   assert.equal(f.card.offsetHeight, 180);
   f.stop();
+});
+
+test('early shell mutations cannot consume the language snapshot before translated cards commit', () => {
+  const f = fixture();
+  f.events.get('pebble:before-language-change')();
+  f.mutation.callback([{ target: f.root, addedNodes: [] }]);
+  f.resize.emit(f.card);
+  assert.equal(f.card.active, null);
+  f.card.naturalHeight = 220;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active, null, 'Wait for the translated React commit, not an arbitrary mutation');
+  f.events.get('pebble:after-language-change')();
+  assert.equal(f.card.active.frames[0].height, '100px');
+  assert.equal(f.card.active.frames[1].height, '220px');
+  assert.equal(f.card.active.options.duration, 420);
+  f.card.active.finish(); f.stop();
 });

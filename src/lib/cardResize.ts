@@ -46,7 +46,7 @@ export function observeCardResizes(root: HTMLElement) {
   const resize = new ResizeObserver(entries => {
     for (const entry of entries) {
       const state = states.get(entry.target as HTMLElement);
-      if (state && !state.animation) update(state);
+      if (state && !state.animation && !languageHeights) update(state);
     }
   });
 
@@ -106,11 +106,13 @@ export function observeCardResizes(root: HTMLElement) {
   }
   root.querySelectorAll<HTMLElement>(CARDS).forEach(register);
   const mutation = new MutationObserver(records => {
-    const language = languageHeights; languageHeights = null;
+    // Locale subscribers can commit separately. Never consume the snapshot
+    // on an incidental mutation before translated content has committed.
+    if (languageHeights) return;
     for (const [card, state] of states) {
       if (!card.isConnected) {
         states.delete(card); resize.unobserve(card); state.animation?.cancel();
-      } else if (!language?.has(card) && state.animation && !state.languageChange && records.some(record => card.contains(record.target))) {
+      } else if (state.animation && !state.languageChange && records.some(record => card.contains(record.target))) {
         // A rapid update continues from the visible height, not an old target.
         const currentHeight = card.offsetHeight;
         state.animation.onfinish = null; state.animation.oncancel = null;
@@ -124,6 +126,9 @@ export function observeCardResizes(root: HTMLElement) {
       if (record.type === 'attributes') discover(record.target);
       record.addedNodes.forEach(discover);
     }
+  });
+  const afterLanguage = () => {
+    const language = languageHeights; languageHeights = null;
     // Translation can change both wrapping and width without a viewport resize.
     // Animate from the pre-language height instead of dropping the transition.
     if (language) {
@@ -136,10 +141,11 @@ export function observeCardResizes(root: HTMLElement) {
       });
       for (const { state, from, width, height } of targets) update(state, from, true, { width, height });
     }
-  });
+  };
   mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });
   const settle = () => { languageHeights = null; settleCardResizes(root); };
   window.addEventListener('pebble:before-language-change', beforeLanguage);
+  window.addEventListener('pebble:after-language-change', afterLanguage);
   const visibility = () => { if (document.hidden) settle(); };
   window.addEventListener('resize', settle, { passive: true });
   document.addEventListener('visibilitychange', visibility);
@@ -149,6 +155,7 @@ export function observeCardResizes(root: HTMLElement) {
     mutation.disconnect(); resize.disconnect();
     settle(); states.clear();
     window.removeEventListener('pebble:before-language-change', beforeLanguage);
+    window.removeEventListener('pebble:after-language-change', afterLanguage);
     window.removeEventListener('resize', settle);
     document.removeEventListener('visibilitychange', visibility);
     reduced.removeEventListener('change', settle);
