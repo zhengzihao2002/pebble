@@ -101,6 +101,7 @@ interface PebblePrefs {
   // Dashboard health status bar. Off by default - opt-in decoration.
   showHealthBar: boolean;
   ambientBackground: boolean;
+  numberRolling: boolean;
   cardGlow: boolean;
   sidebarCollapsed: boolean;
   softCursor: boolean;
@@ -152,6 +153,7 @@ interface PebbleUIState extends PebblePrefs {
   setCjkFontChoice: (value: CjkFontChoice) => void;
   setShowHealthBar: (value: boolean) => void;
   setAmbientBackground: (value: boolean) => void;
+  setNumberRolling: (value: boolean) => void;
   setCardGlow: (value: boolean) => void;
   setSidebarCollapsed: (value: boolean) => void;
   setSoftCursor: (value: boolean) => void;
@@ -187,6 +189,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   cjkFontChoice: 'sans',
   showHealthBar: false,
   ambientBackground: false,
+  numberRolling: true,
   cardGlow: false,
   sidebarCollapsed: false,
   softCursor: false,
@@ -257,6 +260,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setCjkFontChoice: (value) => set({ cjkFontChoice: value }),
       setShowHealthBar: (value) => set({ showHealthBar: value }),
       setAmbientBackground: (value) => set({ ambientBackground: value }),
+      setNumberRolling: (value) => set({ numberRolling: value }),
       setCardGlow: (value) => set({ cardGlow: value }),
       setSidebarCollapsed: (value) => set({ sidebarCollapsed: value === true }),
       setSoftCursor: (value) => set({ softCursor: value }),
@@ -288,7 +292,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, sidebarCollapsed: merged.sidebarCollapsed === true, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, numberRolling: merged.numberRolling !== false, sidebarCollapsed: merged.sidebarCollapsed === true, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.
@@ -331,6 +335,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         cjkFontChoice: state.cjkFontChoice,
         showHealthBar: state.showHealthBar,
         ambientBackground: state.ambientBackground,
+        numberRolling: state.numberRolling,
         cardGlow: state.cardGlow,
         sidebarCollapsed: state.sidebarCollapsed,
         softCursor: state.softCursor,

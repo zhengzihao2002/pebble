@@ -41,36 +41,37 @@ function fixture() {
     return { element, calls, stop };
   };
   const flush = () => { for (const [key, fn] of [...frames]) { frames.delete(key); fn(); } };
-  const visible = (element, isIntersecting = true) => intersections[0].callback([{ target: element, isIntersecting }]);
+  const visible = () => {}; // Scrolling has no role in page-entry rolls.
   const page = () => { content.dataset.pbPageVisible = 'true'; listeners.get('pebble:page-visible')?.({ detail: { content } }); };
   return { ...compiled.exports, node, flush, visible, page, window, document, content, nodes, listeners, frames, intersections, mutations };
 }
 
-test('numbers wait for viewport exposure and the actual data handoff, then finish once', async () => {
+test('numbers start together at the data handoff, then finish once', async () => {
   const f = fixture(), n = f.node(); f.visible(n.element); f.flush();
   assert.equal(n.calls.start, 0, 'Skeleton/opacity-hidden data must not consume the entrance');
   f.page(); f.flush(); assert.equal(n.calls.start, 1); assert.equal(n.element.dataset.pbRollVisible, 'true');
   n.element.finish(); await settle(); assert.equal(n.calls.finish, 1);
-  assert(!f.intersections[0].observed.has(n.element), 'Completed numbers no longer observe scrolling');
+  assert.equal(f.intersections.length, 0, 'No viewport observer can trigger scrolling rolls');
   f.visible(n.element, false); f.visible(n.element); f.page(); f.flush();
   assert.equal(n.calls.start, 1, 'Same-page handoff and scrolling cannot replay completed numbers');
-  n.stop(); assert.equal(f.listeners.size, 0); assert(f.intersections[0].disconnected);
+  n.stop(); assert.equal(f.listeners.size, 0); assert.equal(f.intersections.length, 0);
 });
 
-test('one monitor serves many amounts, offscreen amounts remain pending, and late values can enter', async () => {
+test('offscreen amounts start together and late-mounted amounts settle without rolling', async () => {
   const f = fixture(), first = f.node(), late = f.node({ digits: false }); f.page();
   f.visible(first.element); f.visible(late.element); f.flush();
-  assert.equal(f.intersections.length, 1); assert.equal(f.mutations.length, 1);
+  assert.equal(f.intersections.length, 0); assert.equal(f.mutations.length, 1);
   assert.equal(first.calls.start, 1); assert.equal(late.calls.start, 0);
-  late.element.digits = true; f.refreshNumberEntry(late.element); f.flush(); assert.equal(late.calls.start, 1);
+  late.element.digits = true; f.refreshNumberEntry(late.element); f.flush(); assert.equal(late.calls.start, 0); assert.equal(late.calls.finish, 1);
   const below = f.node(); f.flush(); assert.equal(below.calls.start, 0);
-  f.visible(below.element); f.flush(); assert.equal(below.calls.start, 1);
+  assert.equal(below.calls.finish, 1);
+  f.visible(below.element); f.flush(); assert.equal(below.calls.start, 0);
   first.element.finish(); late.element.finish(); below.element.finish(); await settle();
   first.stop(); late.stop(); below.stop(); assert.equal(f.listeners.size, 0);
 });
 
 test('sidebar masking defers pending amounts and never replays numbers already shown', async () => {
-  const f = fixture(), old = f.node(), pending = f.node(); f.page();
+  const f = fixture(), old = f.node(), pending = f.node(); pending.element.sidebar = true; f.page();
   f.visible(old.element); f.flush(); old.element.finish(); await settle();
   pending.element.sidebar = true; f.visible(pending.element); f.flush(); assert.equal(pending.calls.start, 0);
   pending.element.sidebar = false; f.mutations[0].callback(); f.flush(); assert.equal(pending.calls.start, 1);

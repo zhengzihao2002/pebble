@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import { usePebbleStore } from '@/store/usePebbleStore';
 import { observeNumberEntry, refreshNumberEntry } from '@/lib/numberEntryMotion';
 
 /** Animate an already-formatted numeric value without changing its precision.
@@ -8,19 +9,24 @@ import { observeNumberEntry, refreshNumberEntry } from '@/lib/numberEntryMotion'
  * on first visible page entry and after an update; signs, currency and grouping stay still.
  */
 export function RollingAmount({ value, className = '', fractionClassName }: { value: string; className?: string; fractionClassName?: string }) {
+  const enabled = usePebbleStore(state => state.numberRolling);
   const ref = useRef<HTMLSpanElement>(null);
   const [frame, setFrame] = useState({ value, previous: value, revision: 0, entry: true, visible: false });
   useLayoutEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current || !enabled) return;
     return observeNumberEntry(ref.current, {
       onStart: () => setFrame(current => current.visible ? current : { ...current, visible: true }),
       onFinish: () => setFrame(current => current.entry ? { ...current, previous: current.value, entry: false } : current),
       onReplay: () => setFrame(current => ({ ...current, previous: current.value, revision: current.revision + 1, entry: true, visible: false })),
     });
-  }, []);
+  }, [enabled]);
   useLayoutEffect(() => { if (ref.current) refreshNumberEntry(ref.current); }, [value]);
   if (frame.value !== value) {
     setFrame({ value, previous: frame.value, revision: frame.revision + 1, entry: frame.entry && !frame.visible, visible: frame.visible });
+  }
+  if (!enabled) {
+    const decimal = fractionClassName ? value.lastIndexOf('.') : -1;
+    return <span className={className}>{decimal < 0 ? value : <>{value.slice(0, decimal)}<span className={fractionClassName}>{value.slice(decimal)}</span></>}</span>;
   }
   const current = [...value];
   const previous = [...frame.previous];
@@ -36,7 +42,7 @@ export function RollingAmount({ value, className = '', fractionClassName }: { va
     const old = frame.entry ? character : aligned !== undefined && /\d/.test(aligned) ? aligned : '';
     // A disappearing leading digit can leave all retained digits unchanged
     // ($109 → $9). Give the leading retained digit one turn in that case.
-    const changed = /\d/.test(character) && (frame.entry || !hadDigits || old !== character || (fewerDigits && index === firstDigit));
+    const changed = !(!frame.entry && !frame.visible && !hadDigits) && /\d/.test(character) && (frame.entry || !hadDigits || old !== character || (fewerDigits && index === firstDigit));
     if (!changed) return <span key={current.length - index}>{character}</span>;
     if (frame.entry) {
       // One complete odometer turn, starting/ending at the true digit. A

@@ -100,7 +100,7 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
         animation=content.animate([{opacity:0},{opacity:1}],{duration:300,easing:'ease-out'});
         ghostAnimation=ghost.animate([{opacity:1},{opacity:0}],{duration:300,easing:'ease-out',fill:'forwards'});
         animation.onfinish=finish;
-      },80);
+      },0);
     };
     const observer = new MutationObserver(inspect);
     observer.observe(stage,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','data-layout-restored','data-layout-ready','aria-busy']});

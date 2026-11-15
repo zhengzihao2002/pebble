@@ -12,6 +12,7 @@ export const SETTING_TARGETS = {
   font: 'pb-set-font',
   appearance: 'pb-set-appearance',
   ambientBackground: 'pb-set-ambient-background',
+  numberRolling: 'pb-set-number-rolling',
   cardGlow: 'pb-set-card-glow',
   softCursor: 'pb-set-soft-cursor',
   ambientRoute: 'pb-set-ambient-route',

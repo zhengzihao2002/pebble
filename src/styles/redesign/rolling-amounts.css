@@ -23,7 +23,7 @@
 .pebble-root .pb-rolling-entry-base { visibility: hidden; }
 .pebble-root .pb-rolling-track {
   position: absolute; inset: 0 auto auto 0; white-space: pre; line-height: inherit;
-  animation: pb-money-entry-up 1400ms cubic-bezier(.35,0,.25,1) both;
+  animation: pb-money-entry-up 1400ms cubic-bezier(.12,.7,.18,1) both;
 }
 @keyframes pb-money-entry-up { from { transform: translateY(0); } to { transform: translateY(-10lh); } }
 /* Server HTML keeps the exact final digit readable at the start of the strip. Entry

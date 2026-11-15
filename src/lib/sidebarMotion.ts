@@ -66,7 +66,7 @@ export function createSidebarMotion(sidebar: HTMLElement, read: () => boolean, w
     const values = targets.map(target => ({ ...target, to: Number(getComputedStyle(target.element).opacity) }));
     animations = values.map(({ element, index, from, to }) => {
       const animation = element.animate([{ opacity: from }, { opacity: to }],
-        { duration: 100, delay: Math.min(index, 4) * 8, easing: 'ease-out', fill: 'both' });
+        { duration: 190, delay: Math.min(index, 4) * 10, easing: 'ease-out', fill: 'both' });
       animation.id = 'pb-sidebar-content-reveal';
       return animation;
     });
@@ -129,7 +129,7 @@ export function createSidebarMotion(sidebar: HTMLElement, read: () => boolean, w
     cancel();
     main.setAttribute('inert', ''); phase = 'exit'; main.dataset.pbSidebarPhase = phase;
     animations = values.map(({ element, opacity }) => {
-      const animation = element.animate([{ opacity }, { opacity: 0 }], { duration: 55, easing: 'ease-out', fill: 'both' });
+      const animation = element.animate([{ opacity }, { opacity: 0 }], { duration: 110, easing: 'ease-out', fill: 'both' });
       animation.id = 'pb-sidebar-content-exit'; return animation;
     });
     void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {

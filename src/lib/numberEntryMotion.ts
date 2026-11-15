@@ -1,6 +1,5 @@
 interface NumberEntry {
   element: HTMLElement;
-  inView: boolean;
   started: boolean;
   path: string | null;
   token: number;
@@ -9,17 +8,16 @@ interface NumberEntry {
   onReplay: () => void;
 }
 
-// One set of observers for all amounts, including long transaction lists.
-// Completed entries stop observing the viewport but remain registered until
-// unmount so a reused component can enter again on a different page.
+// A single page handoff starts every mounted amount, including offscreen cards.
+// Late-mounted sections settle immediately instead of rolling during scrolling.
 const entries = new Map<HTMLElement, NumberEntry>();
-let intersection: IntersectionObserver | null = null;
+const landed = new WeakMap<HTMLElement, string>();
 let mutations: MutationObserver | null = null;
 let frame = 0;
 let mounted = false;
 const pathname = () => window.location.pathname;
 const canStart = (entry: NumberEntry) => {
-  if (document.hidden || entry.started || !entry.inView || !entry.element.isConnected) return false;
+  if (document.hidden || entry.started || !entry.element.isConnected) return false;
   if (!entry.element.hasAttribute('data-pb-roll-entry') || !entry.element.querySelector('.pb-rolling-cell')) return false;
   if (entry.element.closest('[data-pb-sidebar-phase]')) return false;
   const content = entry.element.closest<HTMLElement>('.pb-navigation-content');
@@ -27,7 +25,7 @@ const canStart = (entry: NumberEntry) => {
 };
 
 function flush() {
-  frame = 0;
+  cancelAnimationFrame(frame); frame = 0;
   const starting = [...entries.values()].filter(canStart);
   // Batch DOM writes before asking for CSS animations, avoiding one style
   // flush per digit/amount on a populated dashboard.
@@ -44,7 +42,6 @@ function flush() {
     entry.onStart();
     void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
       if (entries.get(entry.element) !== entry || entry.token !== token) return;
-      intersection?.unobserve(entry.element);
       entry.onFinish();
     });
   }
@@ -55,28 +52,23 @@ function pageVisible(event: Event) {
   if (!content) return;
   for (const entry of entries.values()) {
     if (!content.contains(entry.element)) continue;
+    if (!entry.started && !entry.element.querySelector('.pb-rolling-cell')) {
+      entry.started = true; entry.path = pathname(); entry.onFinish();
+      continue;
+    }
     if (entry.started && entry.path !== pathname()) {
       entry.token++; entry.started = false;
-      entry.inView = !intersection;
       delete entry.element.dataset.pbRollVisible;
-      entry.onReplay(); intersection?.observe(entry.element);
+      entry.onReplay();
     }
   }
-  queue();
+  landed.set(content, pathname());
+  flush();
 }
 function visible() { if (!document.hidden) queue(); }
 function mount() {
   if (mounted) return;
   mounted = true;
-  if (typeof IntersectionObserver !== 'undefined') {
-    intersection = new IntersectionObserver(changes => {
-      for (const change of changes) {
-        const entry = entries.get(change.target as HTMLElement);
-        if (entry) entry.inView = change.isIntersecting;
-      }
-      queue();
-    }, { rootMargin: '0px 0px 40px 0px' });
-  }
   if (typeof MutationObserver !== 'undefined') {
     mutations = new MutationObserver(queue);
     mutations.observe(document.documentElement, { subtree: true, attributes: true,
@@ -86,27 +78,31 @@ function mount() {
   document.addEventListener('visibilitychange', visible);
 }
 function stop() {
-  intersection?.disconnect(); intersection = null;
   mutations?.disconnect(); mutations = null;
   cancelAnimationFrame(frame); frame = 0; mounted = false;
   window.removeEventListener('pebble:page-visible', pageVisible);
   document.removeEventListener('visibilitychange', visible);
 }
 
-/** Registers first-visible entry only; regular value updates remain local to
+/** Registers page entry only; regular value updates remain local to
  * RollingAmount and sidebar fade/reveal never restarts a completed amount. */
 export function observeNumberEntry(element: HTMLElement, callbacks: Pick<NumberEntry, 'onStart' | 'onFinish' | 'onReplay'>) {
   mount();
-  const entry: NumberEntry = { element, inView: !intersection, started: false, path: null, token: 0, ...callbacks };
-  entries.set(element, entry); intersection?.observe(element); queue();
+  const entry: NumberEntry = { element, started: false, path: null, token: 0, ...callbacks };
+  entries.set(element, entry);
+  const content = element.closest<HTMLElement>('.pb-navigation-content');
+  // Amounts mounted later by lazy sections must arrive already settled.
+  if (content && (landed.get(content) === pathname() || content.dataset.pbPageVisible === 'true')) {
+    entry.started = true; entry.path = pathname(); entry.onFinish();
+  } else queue();
   return () => {
     if (entries.get(element) !== entry) return;
-    entries.delete(element); intersection?.unobserve(element);
+    entries.delete(element);
     if (!entries.size) stop();
   };
 }
 
-/** A placeholder may resolve after its viewport observation already fired. */
+/** A placeholder may resolve during the page handoff. */
 export function refreshNumberEntry(element: HTMLElement) {
   const entry = entries.get(element);
   if (entry && !entry.started) queue();

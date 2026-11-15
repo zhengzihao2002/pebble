@@ -13,6 +13,7 @@ import { HealthBarControl } from '@/components/settings/HealthBarControl';
 import { ChartTypeControl } from '@/components/settings/ChartTypeControl';
 import { WelcomeAnimationControl } from '@/components/settings/WelcomeAnimationControl';
 import { SoftCursorControl } from '@/components/settings/SoftCursorControl';
+import { NumberRollingControl } from '@/components/settings/NumberRollingControl';
 import { CardGlowControl } from '@/components/settings/CardGlowControl';
 import { LoadingStyleControl } from '@/components/settings/LoadingStyleControl';
 import { LanguageControl } from '@/components/settings/LanguageControl';
@@ -150,6 +151,7 @@ export function SettingsClient({
             <AppearanceControl appearance={appearance} onChange={setAppearance} />
             <AmbientBackgroundControl />
             <CardGlowControl />
+            <NumberRollingControl />
             <SoftCursorControl />
             <BrandIconsControl />
             <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
