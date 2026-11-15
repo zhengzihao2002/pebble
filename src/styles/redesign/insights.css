@@ -11,7 +11,7 @@
    Motion is opacity / transform; the global reduced-motion rule stops it. */
 
 /* ---------- Page: jump bar + one grid ----------
-   DOM order is the phone order (hero, attention, pace, calendar, week,
+   DOM order is the phone order (hero, attention, calendar, week, pace,
    movers, places, good news); wider screens place the same cards by area. */
 .pebble-root .pb-ins { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
 .pebble-root .pb-ins-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; }
@@ -30,7 +30,7 @@
       "hero hero"
       "rail rail"
       "cal cal"
-      "pace week"
+      "week pace"
       "trends places"
       "good good";
   }

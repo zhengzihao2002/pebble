@@ -43,9 +43,9 @@ export function observeCardResizes(root: HTMLElement) {
     }
   });
 
-  function update(state: CardState, from = state.height, languageChange = false) {
+  function update(state: CardState, from = state.height, languageChange = false, measured?: { width: number; height: number }) {
     const card = state.element;
-    const width = card.offsetWidth, height = card.offsetHeight;
+    const width = measured?.width ?? card.offsetWidth, height = measured?.height ?? card.offsetHeight;
     const previousWidth = state.width;
     state.width = width; state.height = height;
     if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
@@ -121,9 +121,15 @@ export function observeCardResizes(root: HTMLElement) {
     }
     // Translation can change both wrapping and width without a viewport resize.
     // Animate from the pre-language height instead of dropping the transition.
-    if (language) for (const [card, height] of language) {
-      const state = states.get(card);
-      if (state) update(state, height, true);
+    if (language) {
+      // Read every natural endpoint before animating any card. In stretched
+      // grid rows, the first card's animated height otherwise becomes the
+      // second card's target, creating an endless shrinking feedback loop.
+      const targets = [...language].flatMap(([card, from]) => {
+        const state = states.get(card);
+        return state ? [{ state, from, width: card.offsetWidth, height: card.offsetHeight }] : [];
+      });
+      for (const { state, from, width, height } of targets) update(state, from, true, { width, height });
     }
   });
   mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });

@@ -41,7 +41,7 @@ const rise = (i: number) => ({ ['--pb-i' as string]: i }) as CSSProperties;
 
 /**
  * The Insights page, attention first. One grid whose DOM order is the phone
- * order - savings hero, what needs attention, month pace, calendar, week,
+ * order - savings hero, what needs attention, calendar, week, month pace,
  * category movers, top places, good news - placed by content width
  * (insights.css): pairs from 560px, and from 1100px a 12-column grid of
  * balanced pairs under the full-width hero and attention cards. Nothing is
@@ -87,9 +87,9 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
 
   const jumps: JumpItem[] = [
     { id: SECTION_IDS.attention, label: ux.sectionAttention, count: attentionCount },
-    { id: SECTION_IDS.pace, label: ux.sectionPace },
     { id: SECTION_IDS.calendar, label: ux.sectionCalendar },
     { id: SECTION_IDS.week, label: ux.sectionWeek },
+    { id: SECTION_IDS.pace, label: ux.sectionPace },
     { id: SECTION_IDS.trends, label: ux.sectionTrends },
     { id: SECTION_IDS.places, label: ux.sectionPlaces },
     { id: SECTION_IDS.good, label: ux.sectionGood },
@@ -107,14 +107,14 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
         <div id={SECTION_IDS.attention} className="pb-ins-area pb-ins-area-rail pb-rise" style={rise(1)}>
           <WorthKnowing items={attention} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
         </div>
-        <div id={SECTION_IDS.pace} className="pb-ins-area pb-ins-area-pace pb-rise" style={rise(2)}>
-          <MonthPace transactions={transactions} rules={rules} categoryMeta={categoryMeta} today={today} />
-        </div>
-        <div id={SECTION_IDS.calendar} className="pb-ins-area pb-ins-area-cal pb-rise" style={rise(3)}>
+        <div id={SECTION_IDS.calendar} className="pb-ins-area pb-ins-area-cal pb-rise" style={rise(2)}>
           <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={setSelected} />
         </div>
-        <div id={SECTION_IDS.week} className="pb-ins-area pb-ins-area-week pb-rise" style={rise(4)}>
+        <div id={SECTION_IDS.week} className="pb-ins-area pb-ins-area-week pb-rise" style={rise(3)}>
           <YourWeek transactions={transactions} today={today} />
+        </div>
+        <div id={SECTION_IDS.pace} className="pb-ins-area pb-ins-area-pace pb-rise" style={rise(4)}>
+          <MonthPace transactions={transactions} rules={rules} categoryMeta={categoryMeta} today={today} />
         </div>
         <div id={SECTION_IDS.trends} className="pb-ins-area pb-ins-area-trends pb-rise" style={rise(5)}>
           <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} />

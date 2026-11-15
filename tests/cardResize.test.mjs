@@ -170,3 +170,29 @@ for (const reason of ['reduced', 'hidden']) test(`language resize respects ${rea
   f.mutation.callback([{ target: f.card, addedNodes: [] }]); f.resize.emit(f.card);
   assert.equal(f.card.active, null); f.stop();
 });
+
+test('language changes measure paired stretched cards before either animation starts', () => {
+  const f = fixture();
+  const peer = new f.Element(); f.cards.push(peer);
+  f.mutation.callback([{ target: f.root, addedNodes: [peer] }]);
+  for (const [card, other] of [[f.card, peer], [peer, f.card]]) {
+    Object.defineProperty(card, 'offsetHeight', { get() {
+      return card.active?.visibleHeight ?? Math.max(card.naturalHeight, other.active?.visibleHeight ?? other.naturalHeight);
+    } });
+    card.naturalHeight = 300;
+  }
+  f.events.get('pebble:before-language-change')();
+  f.card.naturalHeight = 100; peer.naturalHeight = 80;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }, { target: peer, addedNodes: [] }]);
+  assert.equal(f.card.active.frames[0].height, '300px');
+  assert.equal(peer.active.frames[0].height, '300px');
+  assert.equal(f.card.active.frames[1].height, '100px');
+  assert.equal(peer.active.frames[1].height, '100px', 'A sibling animation must not contaminate the natural endpoint');
+  f.card.active.visibleHeight = 100; peer.active.visibleHeight = 100;
+  f.card.active.finish(); peer.active.finish();
+  f.resize.emit(f.card); f.resize.emit(peer);
+  assert.equal(f.card.animations.length, 1);
+  assert.equal(peer.animations.length, 1);
+  assert.equal(f.card.active, null); assert.equal(peer.active, null);
+  f.stop();
+});
