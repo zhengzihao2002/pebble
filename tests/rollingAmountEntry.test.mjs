@@ -12,7 +12,7 @@ const compiled = { exports: {} }; vm.runInNewContext(source, { module: compiled,
 const { RollingAmount } = compiled.exports;
 
 test('server HTML retains the exact current amount and readable final glyphs before JavaScript entry', () => {
-  const html = renderToStaticMarkup(createElement(RollingAmount, { value: '−$1,234.56', fractionClassName: 'cents' }));
+  const html = renderToStaticMarkup(createElement(RollingAmount, { headline: true, value: '−$1,234.56', fractionClassName: 'cents' }));
   assert.match(html, /data-pb-roll-entry=""/);
   assert.match(html, /class="pb-rolling-accessible">−\$1,234\.56</);
   assert.match(html, /class="pb-rolling-visual" aria-hidden="true"/);
@@ -27,9 +27,21 @@ test('server HTML retains the exact current amount and readable final glyphs bef
   }
 });
 
-test('zero balances, percentages and counts all get entry digits; placeholders remain plain', () => {
-  for (const [value, digits] of [['$0.00', 3], ['58.62%', 4], ['12', 2], ['—', 0]]) {
-    const html = renderToStaticMarkup(createElement(RollingAmount, { value }));
+test('explicit headline amounts animate, while supporting figures are static by default', () => {
+  for (const [value, digits] of [['$0.00', 3], ['—', 0]]) {
+    const html = renderToStaticMarkup(createElement(RollingAmount, { value, headline: true }));
     assert.equal((html.match(/class="pb-rolling-cell/g) ?? []).length, digits);
   }
+});
+
+test('supporting amounts, percentages, counts and dates have no rolling markup', () => {
+  for (const value of ['$1,234.56', '58.62%', '12', '2026-11-14']) {
+    const html = renderToStaticMarkup(createElement(RollingAmount, { value }));
+    assert(!html.includes('pb-rolling'), 'Static figures must not mount digit tracks or observers');
+    assert(html.includes(value));
+  }
+  const percent = renderToStaticMarkup(createElement(RollingAmount, { value: '58.62%', headline: true }));
+  assert(!percent.includes('pb-rolling'), 'Percentages remain static even in a headline');
+  const cents = renderToStaticMarkup(createElement(RollingAmount, { value: '$1,234.56', fractionClassName: 'cents' }));
+  assert.match(cents, /class="cents">.56/);
 });

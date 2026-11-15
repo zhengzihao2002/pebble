@@ -133,9 +133,9 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
       </header>
       {!data.available && <div className="card pb-annual-message" role="status">{x.unavailable}</div>}
       <section className="card pb-annual-summary" aria-label={t(x.title, { year: String(year) })}>
-        <div><span>{t(x.currentYear, { year: String(data.year) })}</span><strong className="font-mono-tab"><RollingAmount value={formatCurrency(currentTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(currentTotal / 12) })} /></small></div>
+        <div><span>{t(x.currentYear, { year: String(data.year) })}</span><strong className="font-mono-tab"><RollingAmount headline value={formatCurrency(currentTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(currentTotal / 12) })} /></small></div>
         <ArrowRight size={22} className="pb-annual-summary-arrow" aria-hidden="true" />
-        <div><span>{t(x.nextYear, { year: String(year) })}</span><strong className="font-mono-tab"><RollingAmount value={formatCurrency(nextTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(nextTotal / 12) })} /></small></div>
+        <div><span>{t(x.nextYear, { year: String(year) })}</span><strong className="font-mono-tab"><RollingAmount headline value={formatCurrency(nextTotal)} /></strong><small><RollingMoneyText value={t(x.monthly, { amount: formatCurrency(nextTotal / 12) })} /></small></div>
         <div className="pb-annual-difference"><span>{x.difference}</span><strong className="font-mono-tab">{delta === 0 ? x.same : signedMoney(delta)}</strong><small>{totalPct !== null && delta !== 0 ? `${signedPercent(totalPct)}% · ` : ''}{t(x.monthly, { amount: signedMoney(delta / 12) })}</small></div>
       </section>
       <AnnualPlanCharts categories={categories} current={data.currentAmounts} proposed={amounts} />

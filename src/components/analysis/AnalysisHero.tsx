@@ -115,7 +115,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
             <InfoTooltip label={cf.avgNetTooltipLabel}>{cf.avgNetTooltip}</InfoTooltip>
           </p>
           <p className="pb-ana-kpi-value pb-money font-display">
-            <RollingAmount value={whole + cents} fractionClassName="pb-ana-cents" />
+            <RollingAmount headline value={whole + cents} fractionClassName="pb-ana-cents" />
           </p>
           <p className="pb-ana-kpi-note">
             {net === null ? cf.avgNetNeedsOne : net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}
@@ -144,7 +144,7 @@ export function AnalysisHero({ cashflow, range }: AnalysisHeroProps) {
           return (
             <div key={k.key} className="pb-ana-kpi">
               <p className="pb-ana-kpi-label">{k.label}</p>
-              <p className="pb-ana-kpi-value pb-money font-display"><RollingAmount value={k.value === null ? '—' : wholeDollars(k.value)} /></p>
+              <p className="pb-ana-kpi-value pb-money font-display"><RollingAmount headline value={k.value === null ? '—' : wholeDollars(k.value)} /></p>
               {months.length > 1 && (
                 <Sparkline values={k.series} height={30} color="var(--pb-hero-fg)" label={t(x.trendLabel, { name: k.label })} />
               )}

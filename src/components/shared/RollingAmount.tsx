@@ -4,29 +4,39 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { observeNumberEntry, refreshNumberEntry } from '@/lib/numberEntryMotion';
 
-/** Animate an already-formatted numeric value without changing its precision.
- * The current value remains the only accessible/copyable text. Digits roll
- * on first visible page entry and after an update; signs, currency and grouping stay still.
- */
-export function RollingAmount({ value, className = '', fractionClassName }: { value: string; className?: string; fractionClassName?: string }) {
+type AmountProps = { value: string; className?: string; fractionClassName?: string };
+
+function StaticAmount({ value, className, fractionClassName }: AmountProps) {
+  const decimal = fractionClassName ? value.lastIndexOf('.') : -1;
+  return <span className={className}>{decimal < 0 ? value : <>{value.slice(0, decimal)}<span className={fractionClassName}>{value.slice(decimal)}</span></>}</span>;
+}
+
+/** Supporting amounts are static by default. Only explicitly chosen headline
+ * totals mount animation state, observers, or a preference subscription. */
+export function RollingAmount({ headline = false, ...props }: AmountProps & { headline?: boolean }) {
+  return headline && !props.value.includes('%') ? <HeadlineAmount {...props} /> : <StaticAmount {...props} />;
+}
+
+function HeadlineAmount(props: AmountProps) {
   const enabled = usePebbleStore(state => state.numberRolling);
+  return enabled ? <AnimatedAmount {...props} /> : <StaticAmount {...props} />;
+}
+
+/** Preserve the exact formatted value and baseline while rolling digits. */
+function AnimatedAmount({ value, className = '', fractionClassName }: AmountProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const [frame, setFrame] = useState({ value, previous: value, revision: 0, entry: true, visible: false });
   useLayoutEffect(() => {
-    if (!ref.current || !enabled) return;
+    if (!ref.current) return;
     return observeNumberEntry(ref.current, {
       onStart: () => setFrame(current => current.visible ? current : { ...current, visible: true }),
       onFinish: () => setFrame(current => current.entry ? { ...current, previous: current.value, entry: false } : current),
       onReplay: () => setFrame(current => ({ ...current, previous: current.value, revision: current.revision + 1, entry: true, visible: false })),
     });
-  }, [enabled]);
+  }, []);
   useLayoutEffect(() => { if (ref.current) refreshNumberEntry(ref.current); }, [value]);
   if (frame.value !== value) {
     setFrame({ value, previous: frame.value, revision: frame.revision + 1, entry: frame.entry && !frame.visible, visible: frame.visible });
-  }
-  if (!enabled) {
-    const decimal = fractionClassName ? value.lastIndexOf('.') : -1;
-    return <span className={className}>{decimal < 0 ? value : <>{value.slice(0, decimal)}<span className={fractionClassName}>{value.slice(decimal)}</span></>}</span>;
   }
   const current = [...value];
   const previous = [...frame.previous];

@@ -92,7 +92,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
           </InfoTooltip>
         </p>
         <p className="font-display hero-balance">
-          <RollingAmount value={whole + cents} fractionClassName="pb-hero-cents" />
+          <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />
         </p>
         {/* Reserved line: blank until today resolves, so nothing shifts. */}
         <p className="pb-dash-hero-change">

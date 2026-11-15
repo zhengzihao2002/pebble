@@ -473,7 +473,7 @@ export const en = {
   },
 
   softCursor: { small: 'Small', default: 'Default', large: 'Large', size: 'Size', title: 'Soft arrow cursor', hint: 'A soft gray arrow that stays an arrow over buttons. Turn off to use the system cursor.' },
-  numberRolling: { title: 'Rolling numbers', hint: 'Animate numbers on page entry and when values change.' },
+  numberRolling: { title: 'Rolling numbers', hint: 'Animate headline totals on page entry and when values change.' },
   cardGlow: {
     title: 'Card glow',
     hint: 'Soft, theme-colored light around your cards. Gently dims when the living background is on.',

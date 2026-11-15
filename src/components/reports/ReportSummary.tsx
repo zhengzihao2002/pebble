@@ -101,7 +101,7 @@ export function ReportSummary(p: ReportSummaryProps) {
         <div className="pb-rep-figure-row">
           <span className="pb-rep-figure-label">{label}</span>
           <p className="pb-rep-figure font-display pb-money" style={{ color: p.accent }}>
-            <RollingAmount value={whole + cents} fractionClassName="pb-rep-cents" />
+            <RollingAmount headline value={whole + cents} fractionClassName="pb-rep-cents" />
           </p>
         </div>
         <div className="pb-rep-subline">
@@ -128,15 +128,15 @@ export function ReportSummary(p: ReportSummaryProps) {
             <div className="pb-rep-flow-figs">
               <div className="pb-rep-flow-fig is-in">
                 <span className="pb-rep-flow-name"><ArrowDownLeft size={14} aria-hidden="true" />{x.moneyIn}</span>
-                <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.inSum)} /></span>
+                <span className="font-mono-tab"><RollingAmount headline value={formatCurrency(p.inSum)} /></span>
               </div>
               <div className="pb-rep-flow-fig is-out">
                 <span className="pb-rep-flow-name"><ArrowUpRight size={14} aria-hidden="true" />{x.moneyOut}</span>
-                <span className="font-mono-tab"><RollingAmount value={formatCurrency(p.outSum)} /></span>
+                <span className="font-mono-tab"><RollingAmount headline value={formatCurrency(p.outSum)} /></span>
               </div>
               <div className="pb-rep-flow-fig">
                 <span className="pb-rep-flow-name">{x.net}</span>
-                <span className="font-mono-tab" style={{ color: p.accent }}><RollingAmount value={`${p.total > 0 ? '+' : ''}${formatCurrency(p.total)}`} /></span>
+                <span className="font-mono-tab" style={{ color: p.accent }}><RollingAmount headline value={`${p.total > 0 ? '+' : ''}${formatCurrency(p.total)}`} /></span>
               </div>
             </div>
             {flowMax > 0 && (

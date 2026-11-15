@@ -86,7 +86,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
         <div className="pb-txn-total" style={{ minWidth: 0 }}>
           <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
           <p className="font-display pb-money pb-txn-total-amount" style={{ fontWeight: 600 }}>
-            <RollingAmount value={total.whole + total.cents} fractionClassName="pb-txn-cents" />
+            <RollingAmount headline value={total.whole + total.cents} fractionClassName="pb-txn-cents" />
           </p>
         </div>
         {/* Each account's balance as a quiet ledger: one row each, figures

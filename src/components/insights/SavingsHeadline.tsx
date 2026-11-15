@@ -139,9 +139,9 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
           {!good && <span className="pb-ins-split-mark" style={{ left: `${incomePct}%` }} />}
         </div>
         <dl className="pb-ins-split-legend">
-          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--income)' }}><RollingAmount value={wholeDollars(income)} /></dd></div>
-          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount value={wholeDollars(spending)} /></dd></div>
-          <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab"><RollingAmount value={wholeDollars(Math.abs(kept))} /></dd></div>
+          <div><dt><i className="pb-ins-key is-in" />{ux.incomeLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--income)' }}><RollingAmount headline value={wholeDollars(income)} /></dd></div>
+          <div><dt><i className="pb-ins-key is-out" />{ux.spentLabel}</dt><dd className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount headline value={wholeDollars(spending)} /></dd></div>
+          <div><dt><i className={`pb-ins-key ${good ? 'is-kept' : 'is-over'}`} />{good ? ux.keptLabel : ux.overLabel}</dt><dd className="font-mono-tab"><RollingAmount headline value={wholeDollars(Math.abs(kept))} /></dd></div>
         </dl>
       </div>
       {months >= 2 && (

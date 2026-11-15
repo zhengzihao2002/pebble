@@ -75,9 +75,9 @@ export function AnnualPlanBalance({ year, budget, transactions, today }: { year:
         <span className="pb-annual-balance-deficit" style={{ width: `${deficitShare}%` }} />
       </div>
       <dl className="pb-annual-balance-figures">
-        <div><dt>{x.balanceIncome}</dt><dd className="font-mono-tab"><RollingAmount value={known ? formatCurrency(income) : '—'} /></dd></div>
-        <div data-tone="budget"><dt><i aria-hidden="true" />{x.balanceBudget}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(safeBudget)} /></dd></div>
-        <div data-tone={shortfall ? 'deficit' : 'saved'}><dt><i aria-hidden="true" />{shortfall ? x.balanceShortfall : x.balanceSavings}</dt><dd className="font-mono-tab"><RollingAmount value={savings !== null ? formatCurrency(Math.abs(savings)) : '—'} /></dd></div>
+        <div><dt>{x.balanceIncome}</dt><dd className="font-mono-tab"><RollingAmount headline value={known ? formatCurrency(income) : '—'} /></dd></div>
+        <div data-tone="budget"><dt><i aria-hidden="true" />{x.balanceBudget}</dt><dd className="font-mono-tab"><RollingAmount headline value={formatCurrency(safeBudget)} /></dd></div>
+        <div data-tone={shortfall ? 'deficit' : 'saved'}><dt><i aria-hidden="true" />{shortfall ? x.balanceShortfall : x.balanceSavings}</dt><dd className="font-mono-tab"><RollingAmount headline value={savings !== null ? formatCurrency(Math.abs(savings)) : '—'} /></dd></div>
       </dl>
       {!known && <p className="pb-annual-balance-note">{x.balanceNeedsIncome}</p>}
     </section>

@@ -79,16 +79,16 @@ export function ScheduleSummary({ rules, upcoming, previewDays, today }: Schedul
           <p className="pb-sched-hero-label">{x.perMonthNet}</p>
           {/* formatCurrency stays en-US in every locale: real dollars. */}
           <p className="font-display pb-money pb-sched-hero-num">
-            <RollingAmount value={`${net > 0 ? '+' : ''}${whole}${cents}`} fractionClassName="pb-hero-cents" />
+            <RollingAmount headline value={`${net > 0 ? '+' : ''}${whole}${cents}`} fractionClassName="pb-hero-cents" />
           </p>
           <dl className="pb-sched-hero-split">
             <div className="pb-sched-hero-cell">
               <dt><span className="pb-sched-kind-dot is-in" aria-hidden="true"><ArrowUpRight size={11} strokeWidth={2.6} /></span>{x.perMonthIn}</dt>
-              <dd className="font-mono-tab" style={{ color: 'var(--income)' }}>+<RollingAmount value={formatCurrency(incomeMonthly)} /></dd>
+              <dd className="font-mono-tab" style={{ color: 'var(--income)' }}>+<RollingAmount headline value={formatCurrency(incomeMonthly)} /></dd>
             </div>
             <div className="pb-sched-hero-cell">
               <dt><span className="pb-sched-kind-dot is-out" aria-hidden="true"><ArrowDownRight size={11} strokeWidth={2.6} /></span>{x.perMonthOut}</dt>
-              <dd className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(-expenseMonthly)} /></dd>
+              <dd className="font-mono-tab" style={{ color: 'var(--expense)' }}><RollingAmount headline value={formatCurrency(-expenseMonthly)} /></dd>
             </div>
           </dl>
         </div>

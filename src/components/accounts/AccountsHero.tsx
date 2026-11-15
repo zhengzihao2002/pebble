@@ -102,7 +102,7 @@ export function AccountsHero({
             // No aria-live: the text changes back to today's total whenever a
             // scrub ends, which would announce it after every hover.
             <p className="font-display hero-balance pb-money pb-accounts-hero-figure">
-              <RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" />
+              <RollingAmount headline value={whole + cents} fractionClassName="pb-accounts-cents" />
             </p>
           ) : (
             <p className="font-display hero-balance pb-accounts-hero-figure" aria-hidden="true">

@@ -85,17 +85,17 @@ export function CurrentMonthCard({ current, daily, typical }: CurrentMonthCardPr
         <div className="pb-ana-now-figs">
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.spent}</span>
-            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--expense)' }}><RollingAmount value={formatCurrency(current.spending)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--expense)' }}><RollingAmount headline value={formatCurrency(current.spending)} /></span>
             <span className="pb-ana-now-note pb-tnum">{countNote(current.expenseCount, d, t)}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.earned}</span>
-            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--income)' }}><RollingAmount value={formatCurrency(current.income)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: 'var(--income)' }}><RollingAmount headline value={formatCurrency(current.income)} /></span>
             <span className="pb-ana-now-note">{cm.earnedNote}</span>
           </div>
           <div className="pb-ana-now-fig">
             <span className="pb-ana-now-name">{cm.net}</span>
-            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount value={formatCurrency(current.net)} /></span>
+            <span className="font-mono-tab pb-ana-now-amt" style={{ color: current.net >= 0 ? 'var(--income)' : 'var(--expense)' }}><RollingAmount headline value={formatCurrency(current.net)} /></span>
             <span className="pb-ana-now-note">{current.net >= 0 ? d.analysis.puttingAside : d.analysis.drawingDown}</span>
           </div>
         </div>
