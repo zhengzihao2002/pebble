@@ -9,11 +9,11 @@ const ast = parse(source, { sourceType: 'module', plugins: ['typescript'] });
 const fn = ast.program.body.find(node => node.type === 'FunctionDeclaration' && node.id?.name === 'setAccountGhost');
 assert(fn);
 const code = transformSync(source.slice(fn.start, fn.end), { loader: 'ts', target: 'es2022' }).code;
-function fixture({ updated = true } = {}) {
+function fixture({ updated = true, kind = 'bank' } = {}) {
   const runs = [];
   let revalidated = 0;
   const neonSql = (parts, ...params) => ({ sql: parts.join('?'), params });
-  neonSql.transaction = async (statements, options) => { runs.push({ statements, options }); return [[], updated ? [{ id: 'owned' }] : []]; };
+  neonSql.transaction = async (statements, options) => { runs.push({ statements, options }); return [[], updated ? [{kind}] : [], updated && (!statements[2].params.at(-1) || kind !== 'credit') ? [{ id: 'owned' }] : []]; };
   const toggle = vm.runInNewContext(`${code}\nsetAccountGhost;`, {
     neonSql,
     userWriteLockStatement: userId => ({ lock: userId }),
@@ -38,7 +38,7 @@ test('toggle uses owner-scoped, user-locked atomic SQL and clears preference onl
     assert.equal((await f.toggle('session-owner', 'account-id', enabled)).ok, true);
     const run = f.runs.at(-1);
     assert.equal(run.statements[0].lock, 'session-owner');
-    const update = run.statements[1];
+    const update = run.statements[2];
     assert.match(update.sql, /WHERE user_id = \?::uuid AND id = \?/);
     assert.match(update.sql, /is_preferred = CASE WHEN \? THEN false ELSE is_preferred END/);
     assert.equal(update.params[0], enabled);
@@ -59,4 +59,22 @@ test('invalid flags never reach SQL and missing or foreign accounts do not succe
   assert.equal(result.ok, false);
   assert.equal(result.code, 'notFound.account');
   assert.equal(missing.revalidated, 0);
+});
+
+test('credit cards cannot enable ghost mode, including direct action calls', async () => {
+  const f = fixture({kind:'credit'});
+  const result = await f.toggle('owner','card',true);
+  assert.equal(result.ok,false);
+  assert.equal(result.code,'validation.creditCannotBeGhost');
+  assert.equal(f.revalidated,0);
+  assert.match(f.runs[0].statements[2].sql, /AND \(NOT \? OR kind IN \('bank', 'cash'\)\)/);
+  assert.equal(f.runs[0].statements[2].params.at(-1),true);
+});
+
+test('existing ghost credit cards can still be restored, and cash remains eligible', async () => {
+  const credit = fixture({kind:'credit'});
+  assert.equal((await credit.toggle('owner','card',false)).ok,true);
+  assert.equal(credit.revalidated,1);
+  const cash = fixture({kind:'cash'});
+  assert.equal((await cash.toggle('owner','cash',true)).ok,true);
 });

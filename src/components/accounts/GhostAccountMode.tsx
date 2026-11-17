@@ -27,6 +27,8 @@ export function GhostAccountMode({ account, disabled = false }: { account: Accou
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ghost = account.isGhost === true;
+  // Keep a way out for credit cards enabled before this restriction.
+  if (account.kind === 'credit' && !ghost) return null;
   const label = ghost ? (zh ? '恢复计入' : 'Include again') : (zh ? '幽灵模式' : 'Ghost mode');
   const save = async (close: () => void) => {
     if (busy) return;

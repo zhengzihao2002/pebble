@@ -3332,14 +3332,20 @@ async function setAccountGhost(userId: string, accountId: string, enabled: boole
   try {
     const results = await neonSql.transaction([
       userWriteLockStatement(userId),
+      neonSql`SELECT kind FROM account WHERE user_id = ${userId}::uuid AND id = ${accountId}`,
       neonSql`UPDATE account
         SET is_ghost = ${enabled},
             is_preferred = CASE WHEN ${enabled} THEN false ELSE is_preferred END,
             updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ${userId}::uuid AND id = ${accountId}
+          AND (NOT ${enabled} OR kind IN ('bank', 'cash'))
         RETURNING id`,
     ], { isolationLevel: 'ReadCommitted' });
-    const updated = results[1] as unknown;
+    const targets = results[1] as unknown as { kind: string }[];
+    if (enabled && targets[0]?.kind === 'credit') {
+      return fail('Ghost mode is available for cash and bank accounts only.', 'validation', 'validation.creditCannotBeGhost');
+    }
+    const updated = results[2] as unknown;
     if (!Array.isArray(updated) || updated.length !== 1) {
       return fail('That account no longer exists.', 'validation', 'notFound.account');
     }

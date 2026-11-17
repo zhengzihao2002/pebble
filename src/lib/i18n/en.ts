@@ -1614,6 +1614,7 @@ export const en = {
     'validation.transferSameAccount': 'Choose two different accounts.',
     'validation.transferAmountPositive': 'Transfer amount must be greater than zero.',
     'validation.transferInactiveAccount': 'Both accounts must be active to transfer between them.',
+    'validation.creditCannotBeGhost': 'Ghost mode is available for cash and bank accounts only.',
     'validation.ghostCannotBePreferred': 'Ghost accounts cannot be preferred. Turn off ghost mode first.',
     'validation.preferredMustBeActive': 'A hibernated account cannot be the preferred one.',
     'validation.moveDestinationInactive': 'Records can only be moved into an active account.',

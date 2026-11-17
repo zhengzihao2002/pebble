@@ -1,7 +1,8 @@
 # Ghost accounts
 
-Ghost mode is an independent account flag, available for cash, bank and credit
-accounts, including seeded accounts. It does not hibernate, pause, settle or
+Ghost mode is an independent account flag, available for cash and bank accounts, including
+seeded accounts. Credit cards cannot enable it. Credit cards that were already
+in ghost mode can still use **Include again** to return to normal finances. It does not hibernate, pause, settle or
 delete an account. Existing active schedules continue posting to their account.
 
 Enable it from the account controls in Settings or the Accounts page. The

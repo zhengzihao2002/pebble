@@ -1504,6 +1504,7 @@ export const zh: typeof en = {
     'validation.transferSameAccount': '请选择两个不同的账户。',
     'validation.transferAmountPositive': '转账金额必须大于零。',
     'validation.transferInactiveAccount': '两个账户都必须处于活跃状态才能转账。',
+    'validation.creditCannotBeGhost': '幽灵模式仅适用于现金和银行账户。',
     'validation.ghostCannotBePreferred': '幽灵账户不能设为首选账户。请先关闭幽灵模式。',
     'validation.preferredMustBeActive': '休眠账户无法设为首选账户。',
     'validation.moveDestinationInactive': '记录只能移动到活跃账户。',
