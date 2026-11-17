@@ -7,3 +7,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Release numbering
+
+Every new commit must include a `Release-Type: major|minor|patch|none` footer.
+Use major for a broad app/architecture milestone, minor for an additive feature,
+patch for a fix/refinement, and none for documentation/tests/merge-only work.
+Minor resets patch; major resets minor and patch. Keep detailed commit bodies.
+Settings derives its version and build count from full Git history at build time.
+Historical classifications live in `src/lib/releaseHistory.ts`; do not rewrite
+those decisions casually or change dependency versions for release numbering.

@@ -1,0 +1,53 @@
+/** Retrospective milestones: this repository had no release tags. Keep these
+ * reviewed decisions explicit; future commits use a Release-Type footer. */
+export const MAJOR_MILESTONES: Record<string, string> = {
+  '8215d03': 'First complete Pebble application',
+  'e92b744': 'Financial storage moves from localStorage to Postgres',
+  '8019dd3': 'Multi-account financial model replaces the fixed account pair',
+  '854e90c': 'Complete app redesign and shared application frame',
+};
+
+/** Additive features released after the most recent major milestone. UI
+ * corrections, tuning, restrictions and restores of existing features are patches. */
+export const FEATURE_RELEASES: Record<string, string> = {
+  'e2fc951': 'Year-over-year dashboard, budget alerts and recurring detection',
+  'da5a5e1': 'Offline use',
+  'db22363': 'Terms of Use page and sign-up agreement',
+  '27c3e10': 'Latin and Chinese font choices in both languages',
+  '41b3fff': 'Automatic and manual account ordering',
+  '08bd6d1': 'Draft drag-and-drop account ordering',
+  '6e76ac4': 'Optional breathing background',
+  '072faa9': 'Individual font-option previews',
+  '0507e35': 'Annual budget plans, recommendations and year rollover',
+  '947e9f6': 'Visual annual-plan comparisons',
+  'e35cbb2': 'Recommendation explanation and safe zero suggestions',
+  'd152d91': 'Per-category plan choices and spending forecasts',
+  '1933907': 'Whole-year income and savings planner balance',
+  '7febffb': 'Confirmation of aged sign-ins',
+  '53e1f14': 'Immediate route-specific skeletons',
+  'f7f840a': 'Remembered card geometry for loading skeletons',
+  'db62204': 'Additional theme palettes',
+  '632ebff': 'Glacier palette',
+  '58b6437': 'Card glow preference',
+  'de19cb6': 'Independent Transactions panes',
+  '3c2d4ca': 'Choice of spinner or cached-card loading',
+  'c82907f': 'Merchant brand icons',
+  '843c596': 'Merchant logo size preference',
+  '637b9f2': 'Scheduled text date shortcuts',
+  '3c72736': 'Explicit next-payment date editing',
+  'a6124a9': 'Swipe-down dialog dismissal',
+  '111d309': 'Optional fluid WebGL background',
+  'fe6cf1b': 'Theme-localized living background',
+  '782d6a2': 'Search individual settings',
+  '25b7e16': 'Background route preview',
+  '5e90408': 'Configurable background routes, frost, speed and colors',
+  'fa7bec0': 'Optional themed pointer',
+  '53fa548': 'Optional soft gray cursor',
+  '456281b': 'Saved cursor size preference',
+  'ab8b5a4': 'Desktop language shortcut',
+  '32db771': 'Matching text cursors',
+  '99324d5': 'Persistent collapsible desktop sidebar',
+  'c7caf6f': 'Page-entry headline and chart motion',
+  'b89e008': 'Rolling-number preference',
+  '09dfcc0': 'Ghost accounts',
+};
