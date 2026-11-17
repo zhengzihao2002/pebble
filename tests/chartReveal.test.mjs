@@ -108,3 +108,12 @@ test('native goals timelines, calendar heatmaps and allocation bars share the sa
   }
   f.controller.dispose();
 });
+
+test('dialog charts never receive page visibility holds', () => {
+  const f = fixture();
+  const overlay = new f.Element('pb-modal-overlay');
+  const chart = new f.Element('pb-chart-fade');
+  overlay.append(chart); f.content.append(overlay); f.mutate(f.content, [overlay]);
+  assert.equal(chart.animations.length, 0, 'A sheet chart must remain visible independently of the page scroll observer');
+  f.controller.dispose();
+});

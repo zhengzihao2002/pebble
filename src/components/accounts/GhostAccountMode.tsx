@@ -43,7 +43,7 @@ export function GhostAccountMode({ account, disabled = false }: { account: Accou
     </button>
     {open && <ModalFrame onClose={() => setOpen(false)} busy={busy} labelledBy={titleId} maxWidth={460} cardClassName="pb-ghost-dialog">
       {close => <>
-        <div className="pb-modal-head"><div><span className="pb-ghost-dialog-icon"><Ghost size={25} aria-hidden="true" /></span><h2 id={titleId} className="font-display">{ghost ? (zh ? '让账户回归' : 'Bring this account back') : (zh ? '留在自己的世界里' : 'Keep it in its own world')}</h2><p className="pb-ghost-account-name">{account.name}</p></div><ModalCloseButton onClick={close} disabled={busy} /></div>
+        <div className="pb-modal-head"><div className="pb-ghost-dialog-heading"><span className="pb-ghost-dialog-icon"><Ghost size={24} aria-hidden="true" /></span><div><h2 id={titleId} className="font-display">{ghost ? (zh ? '恢复计入财务' : 'Include this account again?') : (zh ? '启用幽灵模式' : 'Enable ghost mode?')}</h2><p className="pb-ghost-account-name">{account.name}</p></div></div><ModalCloseButton onClick={close} disabled={busy} /></div>
         <div className="pb-modal-body">
           <p className="pb-ghost-dialog-intro">{ghost
             ? (zh ? '此账户及其全部历史记录将重新计入余额、预算、报表和其他财务计算。' : 'This account and its full history will rejoin your balances, budgets, reports, and other financial calculations.')

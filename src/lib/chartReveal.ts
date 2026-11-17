@@ -1,5 +1,5 @@
 const CHARTS = '.pb-chart-fade, .pb-chart-fill, [data-pb-chart-load], .pb-goals-tl-plot, .pb-ins-year-inner, .pb-ins-cal-grid, .pb-sched-month-grid, .pb-plan-barwrap, .pb-ana-meter, .pb-ana-split, .pb-txn-mix-strip';
-const EXCLUDED = '.pb-layout-skeleton-host, .pb-navigation-preview, .pb-cached-layout, [data-slot="skeleton"], [aria-busy="true"]';
+const EXCLUDED = '[role="dialog"], .pb-modal-overlay, .pb-layout-skeleton-host, .pb-navigation-preview, .pb-cached-layout, [data-slot="skeleton"], [aria-busy="true"]';
 interface Entry { hold: Animation | null; animation: Animation | null; opacity: number }
 
 /** One chart entry per actual page visit, including charts mounted by later

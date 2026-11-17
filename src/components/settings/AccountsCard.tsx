@@ -419,7 +419,9 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 </p>
               )}
 
-              <div className="pb-ghost-settings-control"><small>{a.isGhost ? (locale === 'zh' ? '此账户不计入任何总额' : 'Excluded from every total') : (locale === 'zh' ? '计入日常财务' : 'Included in your finances')}</small><GhostAccountMode account={a} disabled={saving} /></div>
+              <p className="pb-settings-acct-scope">{a.isGhost ? (locale === 'zh' ? '此账户不计入任何总额' : 'Excluded from every total') : (locale === 'zh' ? '计入日常财务' : 'Included in your finances')}</p>
+              <div className="pb-settings-acct-footer">
+                <GhostAccountMode account={a} disabled={saving} />
 
               {/* Second line, left-aligned. Absent entirely for the defaults,
                   which are neither hibernatable nor deletable - so they stay a
@@ -452,6 +454,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   </button>
                 </div>
               )}
+
+              </div>
 
               {rowErrorId === a.id && error && (
                 <ActionError message={error} kind={errorKind} busy={saving} />

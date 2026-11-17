@@ -1,5 +1,7 @@
 'use client';
 
+import { lockModalBackground } from '@/lib/modalScrollLock';
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { sheetReleaseVelocity, shouldDismissSheet, type SheetMotionSample } from '@/lib/mobileSheetGesture';
 
@@ -9,9 +11,8 @@ import { sheetReleaseVelocity, shouldDismissSheet, type SheetMotionSample } from
  * and back to the trigger on close, the enter and exit motion, and a smooth
  * change of size when the content changes.
  *
- * Renders in place, never through a document.body portal: every Pebble style
- * is scoped under .pebble-root, and the modals already mount inside it
- * (AppShell), so a body portal would render unstyled.
+ * Portals to the themed app root, escaping cards' container queries,
+ * transforms and stacking contexts without losing scoped Pebble styles.
  *
  * LAYOUT. The card is capped at the screen's height. Put the part that may
  * run long in <div className="pb-modal-body">: it scrolls inside the card
@@ -162,6 +163,11 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     };
   }, [keyboardResize, followPan]);
 
+  useEffect(() => {
+    const host = cardRef.current?.closest<HTMLElement>('.pebble-root');
+    if (host) return lockModalBackground(host);
+  }, []);
+
   // Phones: the page behind a dialog must not move. A drag on the backdrop is
   // stopped in CSS (touch-action on .pb-modal-overlay); this puts back any
   // scroll iOS applies to the page's scroll areas when it brings a focused
@@ -310,7 +316,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     };
   }, [close, busy]);
 
-  return (
+  const frame = (
     <div
       className={`pb-modal-overlay${closing ? ' closing' : ''}`}
       style={{ zIndex }}
@@ -338,4 +344,6 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
       </div>
     </div>
   );
+  const host = typeof document === 'undefined' ? null : document.querySelector('.pebble-root');
+  return host ? createPortal(frame, host) : frame;
 }
