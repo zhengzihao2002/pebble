@@ -175,8 +175,16 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               </Link>
             </li>
           )}
-          {ghosts.length > 0 && <li className="pb-hero-ghost-heading"><Ghost size={13} aria-hidden="true" />{locale === 'zh' ? '幽灵账户 · 不计入总额' : 'Ghost accounts · excluded from total'}</li>}
-          {ghosts.map(account => <li key={account.id} className="pb-hero-account pb-hero-ghost-row"><span className="pb-hero-account-name"><Ghost size={13} aria-hidden="true" />{account.name}{account.last4 && ` ····${account.last4}`}</span><span className="pb-hero-account-amount font-mono-tab"><RollingAmount value={formatCurrency(balancesByAccount[account.id] ?? 0)} /></span></li>)}
+          {ghosts.map(account => (
+            <li key={account.id} className="pb-hero-account pb-hero-ghost-row pb-ghost-account-visual"
+              title={locale === 'zh' ? '幽灵账户 · 不计入总额' : 'Ghost account · excluded from total'}>
+              <span className="pb-hero-account-name">
+                <span className="pb-ghost-account-mark" role="img" aria-label={locale === 'zh' ? '幽灵账户，不计入总额' : 'Ghost account, excluded from total'}><Ghost size={18} aria-hidden="true" /></span>
+                <span className="pb-hero-ghost-name">{account.name}{account.last4 && <span className="pb-hero-ghost-last4"> ····{account.last4}</span>}</span>
+              </span>
+              <span className="pb-hero-account-amount font-mono-tab"><RollingAmount value={formatCurrency(balancesByAccount[account.id] ?? 0)} /></span>
+            </li>
+          ))}
         </ul>
       )}
     </div>

@@ -906,6 +906,15 @@
   .pebble-root .pb-dash-step:hover:not(:disabled) { color: var(--ink-soft); background-color: transparent; }
 }
 
-.pebble-root .pb-hero-ghost-heading { display: flex; align-items: center; gap: .35rem; font-size: .7rem; opacity: .8; border-top: 1px dashed currentColor; margin-top: .65rem; padding-top: .65rem; }
-.pebble-root .pb-hero-ghost-row { border-left: 2px dashed color-mix(in srgb, currentColor 45%, transparent); padding-left: .5rem; }
-.pebble-root .pb-hero-ghost-row .pb-hero-account-name { display: flex; align-items: center; gap: .35rem; }
+/* Ghost balances sit in their own satin inset, outside the normal share list.
+   The emblem carries the state; explanations remain accessible on demand. */
+.pebble-root .pb-dash .pb-hero-ghost-row {
+  --pb-ghost-accent: color-mix(in oklch, var(--pb-hero-fg) 60%, #c4aceb);
+  align-items: center; gap: .6rem; margin-top: .55rem; padding: .6rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--pb-ghost-accent) 25%, transparent);
+  border-radius: .9rem;
+  background: linear-gradient(115deg, color-mix(in srgb, #b9a0e0 20%, transparent), color-mix(in srgb, var(--pb-hero-fg) 5%, transparent));
+}
+.pebble-root .pb-dash .pb-hero-ghost-row .pb-hero-account-name { display: flex; align-items: center; gap: .6rem; opacity: 1; }
+.pebble-root .pb-hero-ghost-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pebble-root .pb-hero-ghost-last4 { opacity: .65; }

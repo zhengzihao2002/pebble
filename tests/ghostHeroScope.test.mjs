@@ -15,7 +15,7 @@ const balancesByAccount={bank:100,cash:999};
 test('dashboard ghost rows show own balances without joining shares or the headline',()=>{
  const html=renderToStaticMarkup(createElement(module.exports.BalanceHero,{accounts,balancesByAccount,totalBalance:100}));
  assert.match(html,/pb-rolling-accessible">\$100\.00/);
- assert.match(html,/Ghost accounts · excluded from total/);
+ assert.match(html,/Ghost account · excluded from total/);
  const ghost=html.match(/<li[^>]+pb-hero-ghost-row[\s\S]*?<\/li>/)?.[0];
  assert(ghost?.includes('Ghost Cash'));assert(ghost?.includes('$999.00'));
  assert(!ghost.includes('pb-dash-hero-share'));

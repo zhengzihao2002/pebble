@@ -626,4 +626,13 @@
   .pebble-root .pb-txn-ghost-amount { margin-left:auto; }
 }
 
-.pebble-root .pb-txn-acc.is-ghost { border-left: 2px dashed var(--gold); background: color-mix(in srgb, var(--gold) 5%, transparent); }
+/* Same ghost inset as the dashboard, adapted to the neutral ledger. */
+.pebble-root #pb-txn-accounts > .pb-txn-ghost-account-item { padding-top: .35rem; }
+.pebble-root .pb-txn-acc.is-ghost {
+  padding: .5rem .6rem; border-radius: .9rem;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--pb-ghost-accent) 12%, transparent), color-mix(in srgb, var(--pb-ghost-accent) 4%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pb-ghost-accent) 22%, transparent);
+}
+.pebble-root .pb-txn-acc.is-ghost:hover { background-color: color-mix(in srgb, var(--pb-ghost-accent) 7%, transparent); }
+.pebble-root .pb-txn-acc.is-ghost.pb-txn-acc-on { background-color: color-mix(in srgb, var(--pb-ghost-accent) 12%, transparent); box-shadow: inset 0 0 0 1.5px var(--pb-ghost-accent); }
+.pebble-root .pb-txn-acc.is-ghost:focus-visible { outline-color: var(--pb-ghost-accent); }
