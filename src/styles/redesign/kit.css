@@ -138,13 +138,10 @@
 /* Anchor card overlays without changing fixed dialog containing blocks. */
 :where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) { position: relative; }
 
-/* Ghost account identity. Static paint only: no filters, animation or glow
-   layers. The hero supplies a lighter accent against its saturated surface. */
+/* Compact ghost identity fits the same line box as ordinary account icons. */
 .pebble-root .pb-ghost-account-visual { --pb-ghost-accent: color-mix(in oklch, var(--pine) 25%, #9b82bd); }
 .pebble-root .pb-ghost-account-mark {
-  display: inline-grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem;
-  border-radius: .7rem; color: var(--pb-ghost-accent);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--pb-ghost-accent) 22%, transparent), color-mix(in srgb, var(--pb-ghost-accent) 8%, transparent));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--pb-ghost-accent) 24%, transparent);
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 1em; height: 1em; color: var(--pb-ghost-accent);
 }
-.pebble-root .pb-ghost-account-mark svg { fill: color-mix(in srgb, var(--pb-ghost-accent) 18%, transparent); stroke-width: 1.7; }
+.pebble-root .pb-ghost-account-mark svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--pb-ghost-accent) 18%, transparent); stroke-width: 1.7; }

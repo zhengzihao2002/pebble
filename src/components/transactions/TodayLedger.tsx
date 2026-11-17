@@ -60,7 +60,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
         const meta = li.querySelector<HTMLElement>('[data-acc-meta]');
         const star = li.querySelector('[data-acc-star]') ? 18 : 0; // the star beside a starred account
         const text = Math.max((name?.scrollWidth ?? 0) + star, meta?.scrollWidth ?? 0);
-        // Measure the actual chrome: ghost emblems are wider than bank icons.
+        // Measure actual icon and spacing sizes for the current text scale.
         const icon = li.querySelector<HTMLElement>('[data-acc-icon]');
         const button = li.querySelector('button');
         if (name && amount && button) {
@@ -112,7 +112,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
             const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
             const selected = selectedAccountId === a.id;
             return (
-              <li key={a.id} className={a.isGhost ? 'pb-txn-ghost-account-item' : undefined} style={{ borderTop: a.isGhost ? 'none' : '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
+              <li key={a.id} style={{ borderTop: '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
                 <button
                   type="button"
                   className={`pb-txn-acc${a.isGhost ? ' is-ghost pb-ghost-account-visual' : ''}${selected ? ' pb-txn-acc-on' : ''}`}
