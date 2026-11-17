@@ -348,10 +348,10 @@ export function TransactionsClient({
       <div className="pb-txn-rail">
         <TodayLedger
           currentBalance={currentBalance}
-          accounts={sortedAccounts}
+          accounts={[...sortedAccounts, ...ghostAccounts]}
           balancesByAccount={balancesByAccount}
-          selectedAccountId={lensId}
-          onPickAccount={pickAccount}
+          selectedAccountId={ghostLens ? accountFilter : lensId}
+          onPickAccount={id => { if (ghostIds.has(id)) setShowGhostAccounts(true); pickAccount(id); }}
         />
 
         <section className="card pb-txn-month" aria-label={monthLabel}>

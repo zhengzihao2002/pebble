@@ -905,3 +905,7 @@
 @media (hover: none) {
   .pebble-root .pb-dash-step:hover:not(:disabled) { color: var(--ink-soft); background-color: transparent; }
 }
+
+.pebble-root .pb-hero-ghost-heading { display: flex; align-items: center; gap: .35rem; font-size: .7rem; opacity: .8; border-top: 1px dashed currentColor; margin-top: .65rem; padding-top: .65rem; }
+.pebble-root .pb-hero-ghost-row { border-left: 2px dashed color-mix(in srgb, currentColor 45%, transparent); padding-left: .5rem; }
+.pebble-root .pb-hero-ghost-row .pb-hero-account-name { display: flex; align-items: center; gap: .35rem; }

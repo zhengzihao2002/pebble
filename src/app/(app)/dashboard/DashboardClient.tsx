@@ -42,6 +42,7 @@ interface DashboardClientProps {
   totalBalance: number;
   /** Already loaded on the server for the total; passed for the hero's account list. */
   accounts: Account[];
+  heroAccounts?: Account[];
   balancesByAccount: Record<string, number>;
   /** Sum of every goal's set-aside amount, for the overspend notice. */
   allocated: number;
@@ -54,7 +55,7 @@ interface DashboardClientProps {
   goals?: Goal[];
 }
 
-export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, balancesByAccount, allocated, catchUp, rules, adjustments = [], goals = [] }: DashboardClientProps) {
+export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, heroAccounts = accounts, balancesByAccount, allocated, catchUp, rules, adjustments = [], goals = [] }: DashboardClientProps) {
   const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
@@ -246,7 +247,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
         {/* All of these render nothing in the common case. */}
         <CatchUpNotice {...catchUp} />
         <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
-        <BalanceHero totalBalance={totalBalance} accounts={accounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
+        <BalanceHero totalBalance={totalBalance} accounts={heroAccounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
         {/* Under the hero, not above it: on a phone up to six rows of notices would
             push the balance off the first screen. */}
         <BudgetAlertsNotice transactions={transactions} categoryMeta={categoryMeta} today={today} />

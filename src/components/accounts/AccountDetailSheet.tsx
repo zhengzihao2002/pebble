@@ -193,7 +193,7 @@ export function AccountDetailSheet({
           </div>
 
           <div className="pb-modal-body themed-scroll">
-            {account.isGhost && <p className="pb-ghost-detail-note">{locale === 'zh' ? '仅限此账户的记录与余额；全部不计入概览、预算、报表或其他全局计算。' : 'This account’s own records and balance only. Everything here is excluded from dashboard, budgets, reports, and other app-wide calculations.'}</p>}
+            {account.isGhost && <p className="pb-ghost-detail-note">{locale === 'zh' ? '此账户的记录与余额不计入日常财务计算。报表仍按其账户筛选独立计算。' : 'This account’s records and balance stay outside normal financial calculations. Reports follows its own account filters.'}</p>}
             <div className="pb-accounts-detail-grid">
               <div className="pb-accounts-detail-main">
                 <div>

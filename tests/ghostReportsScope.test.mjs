@@ -1,0 +1,22 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {createRequire} from 'node:module';
+import {transformSync} from 'esbuild';
+const require=createRequire(import.meta.url);
+const source=fs.readFileSync('src/app/(app)/reports/page.tsx','utf8');
+const fn=source.slice(source.indexOf('export default async function')).replace('export default ','');
+const code=transformSync(fn,{loader:'tsx',jsx:'automatic',format:'cjs'}).code;
+test('Reports explicitly loads ghost history and account choices for its own filters',async()=>{
+ const calls=[];
+ const records=[{id:'cash-expense',accountId:'cash',amount:-30},{id:'bank-expense',accountId:'bank',amount:-20}];
+ const accounts=[{id:'cash',kind:'cash',isGhost:true},{id:'bank',kind:'bank'}];
+ const reader=(name,all)=>async(userId,scope)=>{calls.push({name,userId,scope});return scope?.includeGhost?all:all.filter(row=>row.accountId!=='cash'&&row.id!=='cash');};
+ const page=vm.runInNewContext(`${code}\nReportsPage`,{require,getSessionUserIdOrRedirect:async()=>'owner',runRecurringCatchUp:async()=>{},getExpenses:reader('expenses',records),getIncome:reader('income',[]),getAccounts:reader('accounts',accounts),getBudgets:async()=>({}),getCategories:async()=>[],mergeTransactions:(a,b)=>[...a,...b],ReportsClient:'reports'});
+ const result=await page();
+ assert.equal(result.props.transactions.length,2);
+ assert.equal(result.props.accounts.length,2);
+ assert(result.props.transactions.some(row=>row.accountId==='cash'));
+ assert(calls.every(call=>call.userId==='owner'&&call.scope.includeGhost===true));
+});

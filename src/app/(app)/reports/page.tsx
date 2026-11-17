@@ -14,17 +14,18 @@ export default async function ReportsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
+  // Reports uses its own explicit account filters, including ghost accounts.
   // Reports sees the COMPLETE history. The 13-month limit on the
   // transactions page is a statement-navigator view constraint only;
   // expense and income rows are permanent and all of them are reported on.
   const [expenses, income, budgets, categories, accounts] = await Promise.all([
-    getExpenses(userId),
-    getIncome(userId),
+    getExpenses(userId, { includeGhost: true }),
+    getIncome(userId, { includeGhost: true }),
     getBudgets(userId),
     getCategories(userId),
     // Hibernated accounts included: Reports covers complete history, and a
     // hibernated account still holds real past spending.
-    getAccounts(userId),
+    getAccounts(userId, { includeGhost: true }),
   ]);
 
   return (

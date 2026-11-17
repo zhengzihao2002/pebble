@@ -2,7 +2,7 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import Link from '@/components/loading/PendingLink';
-import { ChevronRight } from 'lucide-react';
+import { Ghost, ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate, splitCents } from '@/lib/format';
 import { InfoTooltip } from '@/components/shared/InfoTooltip';
@@ -63,17 +63,18 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
 
   // Sleeping accounts stay out of the list; their money still counts in the total.
   const rows = accounts
-    .filter((a) => a.status !== 'hibernated')
+    .filter((a) => a.status !== 'hibernated' && !a.isGhost)
     .map((a) => ({
       id: a.id,
       label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
       balance: balancesByAccount[a.id] ?? 0,
     }))
     .sort((a, b) => b.balance - a.balance);
+  const ghosts = accounts.filter(account => account.isGhost);
   const shown = rows.length > MAX_ROWS ? rows.slice(0, MAX_ROWS - 1) : rows;
   const moreCount = rows.length - shown.length;
   // One account would only repeat the total.
-  const showAccounts = rows.length > 1;
+  const showAccounts = rows.length > 1 || ghosts.length > 0;
   // Each account's share of the money that is there; a card owing money has
   // no share rather than a negative one.
   const positive = rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
@@ -174,6 +175,8 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               </Link>
             </li>
           )}
+          {ghosts.length > 0 && <li className="pb-hero-ghost-heading"><Ghost size={13} aria-hidden="true" />{locale === 'zh' ? '幽灵账户 · 不计入总额' : 'Ghost accounts · excluded from total'}</li>}
+          {ghosts.map(account => <li key={account.id} className="pb-hero-account pb-hero-ghost-row"><span className="pb-hero-account-name"><Ghost size={13} aria-hidden="true" />{account.name}{account.last4 && ` ····${account.last4}`}</span><span className="pb-hero-account-amount font-mono-tab"><RollingAmount value={formatCurrency(balancesByAccount[account.id] ?? 0)} /></span></li>)}
         </ul>
       )}
     </div>

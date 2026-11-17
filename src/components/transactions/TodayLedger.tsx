@@ -1,8 +1,9 @@
 'use client';
 
+import { GhostBadge } from '@/components/accounts/GhostAccountMode';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Landmark, Coins, CreditCard, Star, Sun } from 'lucide-react';
+import { Landmark, Coins, CreditCard, Star, Sun, Ghost } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, splitCents } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -99,7 +100,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
             nudged up 1px; the list clips, so only the first row's line hides. */}
         <ul id="pb-txn-accounts" ref={accountsRef} style={{ listStyle: 'none', margin: 0, padding: 0, minWidth: 0 }}>
           {accounts.map((a) => {
-            const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
+            const AccountIcon = a.isGhost ? Ghost : a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
             const value = balancesByAccount[a.id] ?? 0;
             const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
             const selected = selectedAccountId === a.id;
@@ -107,7 +108,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
               <li key={a.id} style={{ borderTop: '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
                 <button
                   type="button"
-                  className={`pb-txn-acc${selected ? ' pb-txn-acc-on' : ''}`}
+                  className={`pb-txn-acc${a.isGhost ? ' is-ghost' : ''}${selected ? ' pb-txn-acc-on' : ''}`}
                   aria-pressed={selected}
                   onClick={() => onPickAccount(a.id)}
                 >
@@ -125,8 +126,9 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
                         <Star data-acc-star="" size={12} fill="var(--gold)" color="var(--gold)" aria-label={d.accounts.preferred} style={{ flexShrink: 0 }} />
                       )}
                     </span>
-                    {(a.last4 || a.status === 'hibernated') && (
+                    {(a.last4 || a.status === 'hibernated' || a.isGhost) && (
                       <span data-acc-meta="" className="pb-txn-acc-meta">
+                        {a.isGhost && <GhostBadge />}
                         {/* Not money: pb-tnum, so privacy mode leaves it readable
                             (the Account filter shows it unblurred anyway). */}
                         {a.last4 && <span className="pb-tnum">····{a.last4}</span>}

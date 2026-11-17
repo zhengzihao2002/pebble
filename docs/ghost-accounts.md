@@ -12,10 +12,16 @@ Turning ghost mode off includes the account and its history again. Enabling
 it clears its preferred-account status; restoring it does not silently make
 it preferred again.
 
-Normal balances, income/spending, savings, reports/exports, charts, budgets,
+Normal balances, income/spending, savings, charts, budgets,
 recommendations, forecasts, goal funding capacity, search and category quick
-picks exclude ghost accounts. Budgets and existing goal allocations are not
+picks exclude ghost accounts. Reports is an exception: its own account filters
+control inclusion, and its figures and exports include whichever accounts you
+select, even when they are ghost accounts. Budgets and existing goal allocations are not
 erased; review allocations if excluding funds leaves them over-allocated.
+
+Dashboard and Transactions heroes also list ghost balances with explicit ghost
+markings, separately from their included total. This display does not add ghost
+records to any normal calculations.
 
 Transactions and Scheduled have a **Show ghost accounts** checkbox, off by
 default. It reveals separate ghost history or schedule controls without

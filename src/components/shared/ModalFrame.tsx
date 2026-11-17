@@ -64,7 +64,7 @@ interface ModalFrameProps {
   cardClassName?: string;
   /** A specialized layout can animate its own surfaces without resizing its contents. */
   animateResize?: boolean;
-  children: (close: () => void) => ReactNode;
+  children: (close: () => void, complete: () => void) => ReactNode;
 }
 
 export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, zIndex = 50, cardStyle, keyboardResize = true, followPan = true, cardClassName, animateResize = true, children }: ModalFrameProps) {
@@ -88,6 +88,10 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     timerRef.current = window.setTimeout(() => onCloseRef.current(), reduced ? 0 : EXIT_MS);
   }, []);
+
+  // A successful write may finish before React commits busy=false. Its owner
+  // explicitly completes the dialog without opening user dismissal mid-write.
+  const complete = useCallback(() => { busyRef.current = false; close(); }, [close]);
 
   useEffect(() => () => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -340,7 +344,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
         <div className="pb-modal-drag-handle" aria-hidden="true" />
         {/* close reads its refs only when an event invokes it. */}
         {/* eslint-disable-next-line react-hooks/refs */}
-        {children(close)}
+        {children(close, complete)}
       </div>
     </div>
   );

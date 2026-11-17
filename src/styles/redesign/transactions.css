@@ -625,3 +625,5 @@
   .pebble-root .pb-txn-ghost-row { flex-wrap:wrap; column-gap:.65rem; }
   .pebble-root .pb-txn-ghost-amount { margin-left:auto; }
 }
+
+.pebble-root .pb-txn-acc.is-ghost { border-left: 2px dashed var(--gold); background: color-mix(in srgb, var(--gold) 5%, transparent); }

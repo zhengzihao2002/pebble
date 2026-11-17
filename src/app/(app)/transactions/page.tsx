@@ -47,7 +47,7 @@ export default async function TransactionsPage() {
   const ordinaryById = new Map(ordinaryLedger.map(entry => [entry.transId, entry]));
   const ledger = rawLedger.map(entry => ordinaryById.get(entry.transId) ?? entry);
   const balances = computeCurrentBalances(
-    mergeTransactions(visibleExpenses, visibleIncome), ordinaryAccounts, visibleAdjustments,
+    transactions, accounts, adjustments,
   );
 
   return (
