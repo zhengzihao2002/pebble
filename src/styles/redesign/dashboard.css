@@ -910,9 +910,21 @@
    distinguish them. No extra gap, padding, badge background or outline. */
 .pebble-root .pb-dash .pb-hero-ghost-row {
   --pb-ghost-accent: color-mix(in oklch, var(--pb-hero-fg) 60%, #c4aceb);
-  background: linear-gradient(90deg, color-mix(in srgb, #b9a0e0 9%, transparent), transparent);
+  isolation: isolate;
 }
-.pebble-root .pb-dash .pb-hero-ghost-row .pb-hero-account-name { position: relative; padding-left: 1.4em; opacity: 1; }
+.pebble-root .pb-dash .pb-hero-ghost-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline: -1.5rem -2rem;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(100deg, rgb(152 116 212 / 54%), rgb(159 130 213 / 30%));
+}
+@container content (max-width: 639px) {
+  .pebble-root .pb-dash .pb-hero-ghost-row::before { inset-inline: -1.25rem; }
+}
+.pebble-root .pb-dash .pb-hero-ghost-row .pb-hero-account-name { position: relative; padding-left: 1.65em; opacity: 1; }
 .pebble-root .pb-dash .pb-hero-ghost-row .pb-ghost-account-mark { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
 .pebble-root .pb-hero-ghost-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pebble-root .pb-hero-ghost-last4 { opacity: .65; }
