@@ -1,5 +1,3 @@
-import snapshot from './releaseSnapshot.json';
-import { execFileSync } from 'node:child_process';
 import { FEATURE_RELEASES, MAJOR_MILESTONES } from './releaseHistory';
 
 export interface VersionCommit { sha: string; subject: string; body: string }
@@ -17,23 +15,4 @@ export function versionFromHistory(commits: VersionCommit[]) {
     else if (type === 'patch') patch++;
   }
   return `${major}.${minor}.${patch}`;
-}
-
-/** Build-only: fetch missing history if necessary, never count a shallow clone
- * as a complete release history. No dependency updates or source mutations. */
-export function resolveBuildVersion() {
-  const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', timeout: 30000, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-  try {
-    if (git('rev-parse', '--is-shallow-repository') === 'true') git('fetch', '--unshallow', 'origin');
-    const history = git('log', '--reverse', '--topo-order', '--format=%H%x1f%s%x1f%b%x1e', 'HEAD');
-    const commits = history.split('\x1e').map(record => record.trim()).filter(Boolean).map(record => {
-      const [sha, subject, ...body] = record.split('\x1f');
-      return { sha, subject, body: body.join('\x1f') };
-    });
-    return { version: versionFromHistory(commits), count: git('rev-list', '--count', 'HEAD'), revision: git('rev-parse', '--short=7', 'HEAD') };
-  } catch {
-    // Hosting providers can strip .git after checkout. Use the reviewed
-    // release snapshot, generated immediately before the source commit.
-    return { version: snapshot.version, count: snapshot.count, revision: (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || '').slice(0, 7) };
-  }
 }

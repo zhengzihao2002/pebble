@@ -1,13 +1,12 @@
 # App versioning
 
-Settings ends with `Pebble · Version MAJOR.MINOR.PATCH · revision`.
-The build count is retained for internal verification and is not shown in Settings.
-The build number counts every commit reachable from the deployed revision,
-from the repository's start. The revision identifies the actual source build.
-Both are calculated at build time, identically for server and browser output.
-Shallow checkouts fetch missing Git history before calculating. Vercel strips
-Git metadata from build inputs, so a reviewed, commit-time release snapshot
-provides the same version there; Vercel supplies the actual commit revision.
+Settings ends with `Pebble · Version MAJOR.MINOR.PATCH`.
+The displayed version is read directly from the checked-in
+`src/lib/releaseSnapshot.json`, on local development, downloaded source and
+hosted production alike. It does not require Git history, Vercel variables,
+an external API or a runtime request. Build counts and commit hashes are not
+shown. Version changes are recorded in source control, rather than inferred
+by each hosting environment.
 
 The repository had no release tags. These retrospective major milestones were
 chosen to represent broad changes to the application or its financial model:
@@ -48,5 +47,5 @@ Before each new commit, run `node scripts/prepare-release.mjs TYPE` with the
 same major/minor/patch/none classification used in its Release-Type footer.
 Stage the generated `src/lib/releaseSnapshot.json` with the change. The script
 computes the planned release from full history, counts the pending commit,
-and records its parent revision. This keeps source-only deployment builds
-accurate without requiring Git credentials or an external API at build time.
+and records the release classification. This updates the version file before
+it ships; building or running the app never recalculates or increments it.

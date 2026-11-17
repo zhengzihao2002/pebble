@@ -1,5 +1,6 @@
 'use client';
 
+import { AppVersion } from '@/components/settings/AppVersion';
 import { useEffect, type ReactNode } from 'react';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -261,13 +262,7 @@ export function SettingsClient({
             <div className="settings-section-cards">{section.cards}</div>
           </section>
         ))}
-        <footer className="pb-settings-version" aria-label={locale === 'zh' ? '应用版本' : 'App version'}>
-          <span className="pb-settings-version-brand">Pebble</span>
-          <span>{process.env.NEXT_PUBLIC_PEBBLE_VERSION
-            ? `${locale === 'zh' ? '版本' : 'Version'} ${process.env.NEXT_PUBLIC_PEBBLE_VERSION}`
-            : (locale === 'zh' ? '版本信息暂不可用' : 'Version information unavailable')}</span>
-          {process.env.NEXT_PUBLIC_PEBBLE_REVISION && <code title={locale === 'zh' ? '提交版本' : 'Commit'}>{process.env.NEXT_PUBLIC_PEBBLE_REVISION}</code>}
-        </footer>
+        <AppVersion locale={locale} />
       </div>
     </div>
   );

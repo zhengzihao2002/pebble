@@ -15,8 +15,9 @@ Use major for a broad app/architecture milestone, minor for an additive feature,
 patch for a fix/refinement, and none for documentation/tests/merge-only work.
 Minor resets patch; major resets minor and patch. Keep detailed commit bodies.
 Before committing, run `node scripts/prepare-release.mjs TYPE` using the same
-release type and stage `src/lib/releaseSnapshot.json`. This provides accurate
-metadata when Vercel strips .git. The build uses full history when available,
-otherwise the prepared snapshot; the displayed revision comes from the host.
+release type and stage `src/lib/releaseSnapshot.json`. The app reads its
+displayed version directly from this checked-in file on all platforms, including
+downloaded source without Git or hosting metadata.
+Do not add a visible build counter or commit hash.
 Historical classifications live in `src/lib/releaseHistory.ts`; do not rewrite
 those decisions casually or change dependency versions for release numbering.

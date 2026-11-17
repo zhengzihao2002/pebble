@@ -10,11 +10,10 @@ const require = createRequire(import.meta.url);
 const compiled = buildSync({ entryPoints: ['src/lib/buildVersion.ts'], bundle: true, write: false, platform: 'node', format: 'cjs' }).outputFiles[0].text;
 const compiledModule = { exports: {} };
 new Function('module', 'exports', 'require', compiled)(compiledModule, compiledModule.exports, require);
-const parent = git('rev-parse', 'HEAD');
 const records = git('log', '--reverse', '--topo-order', '--format=%H%x1f%s%x1f%b%x1e', 'HEAD').split('\x1e').map(x => x.trim()).filter(Boolean).map(x => {
   const [sha, subject, ...body] = x.split('\x1f'); return { sha, subject, body: body.join('\x1f') };
 });
 records.push({ sha: 'pending', subject: 'Pending release', body: `Release-Type: ${type}` });
-const snapshot = { version: compiledModule.exports.versionFromHistory(records), count: String(Number(git('rev-list', '--count', 'HEAD')) + 1), parent, releaseType: type };
+const snapshot = { version: compiledModule.exports.versionFromHistory(records), count: String(Number(git('rev-list', '--count', 'HEAD')) + 1), releaseType: type };
 await writeFile('src/lib/releaseSnapshot.json', JSON.stringify(snapshot, null, 2) + '\n');
-console.log(`Prepared release ${snapshot.version} from parent ${parent.slice(0, 7)}.`);
+console.log(`Prepared release ${snapshot.version}.`);
