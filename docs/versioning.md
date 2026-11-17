@@ -1,6 +1,7 @@
 # App versioning
 
-Settings ends with `Pebble · Version MAJOR.MINOR.PATCH · Build N · revision`.
+Settings ends with `Pebble · Version MAJOR.MINOR.PATCH · revision`.
+The build count is retained for internal verification and is not shown in Settings.
 The build number counts every commit reachable from the deployed revision,
 from the repository's start. The revision identifies the actual source build.
 Both are calculated at build time, identically for server and browser output.

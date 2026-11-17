@@ -12,7 +12,7 @@ const APP_REVISION = resolveBuildVersion();
 console.info(`Pebble release: ${APP_REVISION.version || "unavailable"} · Build ${APP_REVISION.count || "unavailable"} · ${APP_REVISION.revision}`);
 
 const nextConfig: NextConfig = {
-  env: { NEXT_PUBLIC_PEBBLE_BUILD: BUILD_ID, NEXT_PUBLIC_PEBBLE_VERSION: APP_REVISION.version, NEXT_PUBLIC_PEBBLE_COMMIT_COUNT: APP_REVISION.count, NEXT_PUBLIC_PEBBLE_REVISION: APP_REVISION.revision },
+  env: { NEXT_PUBLIC_PEBBLE_BUILD: BUILD_ID, NEXT_PUBLIC_PEBBLE_VERSION: APP_REVISION.version, NEXT_PUBLIC_PEBBLE_REVISION: APP_REVISION.revision },
   async headers() {
     return [
       {

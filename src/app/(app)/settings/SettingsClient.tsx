@@ -266,7 +266,6 @@ export function SettingsClient({
           <span>{process.env.NEXT_PUBLIC_PEBBLE_VERSION
             ? `${locale === 'zh' ? '版本' : 'Version'} ${process.env.NEXT_PUBLIC_PEBBLE_VERSION}`
             : (locale === 'zh' ? '版本信息暂不可用' : 'Version information unavailable')}</span>
-          {process.env.NEXT_PUBLIC_PEBBLE_COMMIT_COUNT && <span>{locale === 'zh' ? '构建' : 'Build'} {process.env.NEXT_PUBLIC_PEBBLE_COMMIT_COUNT}</span>}
           {process.env.NEXT_PUBLIC_PEBBLE_REVISION && <code title={locale === 'zh' ? '提交版本' : 'Commit'}>{process.env.NEXT_PUBLIC_PEBBLE_REVISION}</code>}
         </footer>
       </div>
