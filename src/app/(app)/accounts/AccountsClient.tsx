@@ -10,6 +10,7 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { AccountCards } from '@/components/accounts/AccountCards';
+import { GhostAccounts } from '@/components/accounts/GhostAccounts';
 import { AccountsHero } from '@/components/accounts/AccountsHero';
 import { MoneyMixCard } from '@/components/accounts/MoneyMixCard';
 import { FlowCalendar } from '@/components/accounts/FlowCalendar';
@@ -46,7 +47,13 @@ interface AccountsClientProps {
   accounts: Account[];
 }
 
-export function AccountsClient({ expenses, income, adjustments, accounts }: AccountsClientProps) {
+export function AccountsClient({ expenses: allExpenses, income: allIncome, adjustments: allAdjustments, accounts: allAccounts }: AccountsClientProps) {
+  const accounts = useMemo(() => allAccounts.filter(account => !account.isGhost), [allAccounts]);
+  const ghostAccounts = useMemo(() => allAccounts.filter(account => account.isGhost), [allAccounts]);
+  const ghostIds = useMemo(() => new Set(ghostAccounts.map(account => account.id)), [ghostAccounts]);
+  const expenses = useMemo(() => allExpenses.filter(record => !ghostIds.has(record.accountId)), [allExpenses, ghostIds]);
+  const income = useMemo(() => allIncome.filter(record => !ghostIds.has(record.accountId)), [allIncome, ghostIds]);
+  const adjustments = useMemo(() => allAdjustments.filter(record => !ghostIds.has(record.accountId)), [allAdjustments, ghostIds]);
   const { d, t, locale } = useTranslation();
   // The server and the hydrating render see no stored range (6M); the
   // stored one applies right after, without a render-time storage read.
@@ -90,17 +97,33 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
     return buildDays(chrono, today, rangeStart(range, today, chrono));
   }, [chrono, today, range]);
 
+  // Ghost history remains account-local. It never contributes to the page's
+  // hero, money mix, flow calendar, or range-wide financial totals.
+  const ghostDays = useMemo<DayPoint[]>(() => {
+    if (!today || !ghostAccounts.length) return [];
+    const running = Object.fromEntries(ghostAccounts.map(account => [account.id, 0]));
+    const records = [...allExpenses, ...allIncome, ...allAdjustments]
+      .filter(record => ghostIds.has(record.accountId))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+    const history = records.map(record => {
+      running[record.accountId] = Math.round((running[record.accountId] + record.amount) * 100) / 100;
+      return { date: record.date, total: 0, byAccount: { ...running } };
+    });
+    return buildDays(history, today, rangeStart(range, today, history));
+  }, [allExpenses, allIncome, allAdjustments, ghostAccounts, ghostIds, range, today]);
+  const ghostBalances = useMemo(() => ghostDays[ghostDays.length - 1]?.byAccount ?? {}, [ghostDays]);
+
   // Each account's latest record up to today: expenses, income, transfers and corrections.
   const lastActivity = useMemo(() => {
     const map = new Map<string, string>();
     if (!today) return map;
-    for (const r of [...expenses, ...income, ...adjustments]) {
+    for (const r of [...allExpenses, ...allIncome, ...allAdjustments]) {
       if (r.date > today) continue;
       const prev = map.get(r.accountId);
       if (!prev || r.date > prev) map.set(r.accountId, r.date);
     }
     return map;
-  }, [expenses, income, adjustments, today]);
+  }, [allExpenses, allIncome, allAdjustments, today]);
 
   const words = periodWords(d, t, range, days && days.length > 0 ? formatDate(days[0].date, locale) : '');
   const current = days && days.length > 0 ? days[days.length - 1].total : null;
@@ -154,10 +177,12 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
           )}
       </>
 
+      <GhostAccounts accounts={ghostAccounts} balances={ghostBalances} onOpen={setDetail} />
+
       {detail && days && today && (
         <AccountDetailSheet
-          account={detail} accounts={accounts} days={days}
-          expenses={expenses} income={income} adjustments={adjustments}
+          account={detail} accounts={allAccounts} days={detail.isGhost ? ghostDays : days}
+          expenses={detail.isGhost ? allExpenses : expenses} income={detail.isGhost ? allIncome : income} adjustments={detail.isGhost ? allAdjustments : adjustments}
           today={today} lastActivity={lastActivity.get(detail.id)} rangeLabel={words.changeOver}
           onClose={() => setDetail(null)}
           onTransfer={(a) => setTransferFrom(a.id)}
@@ -165,15 +190,15 @@ export function AccountsClient({ expenses, income, adjustments, accounts }: Acco
         />
       )}
       {transferFrom && (
-        <TransferModal initialFromId={transferFrom} balances={balanceNow} onClose={() => setTransferFrom(null)} />
+        <TransferModal initialFromId={transferFrom} balances={{ ...balanceNow, ...ghostBalances }} onClose={() => setTransferFrom(null)} />
       )}
       {selfOpen && (
         <SelfTransferDialog pairs={selfPairs} accounts={accounts} balances={balanceNow} onClose={() => setSelfOpen(false)} />
       )}
       {payOffCard && (
         <PayOffDialog
-          card={payOffCard} allAccounts={accounts}
-          charges={expenses.filter((x) => x.accountId === payOffCard.id)}
+          card={payOffCard} allAccounts={allAccounts}
+          charges={allExpenses.filter((x) => x.accountId === payOffCard.id)}
           today={today ?? undefined}
           onClose={() => setPayOffCard(null)}
         />

@@ -8,7 +8,7 @@
   "scripts": {
     "predev": "npm run deps:check",
     "dev": "next dev",
-    "prebuild": "npm run deps:check",
+    "prebuild": "npm run deps:check && node scripts/migrate-ghost-accounts.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/lint.mjs",

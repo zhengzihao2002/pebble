@@ -1,4 +1,5 @@
 'use client';
+import { Ghost } from 'lucide-react';
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,6 +23,8 @@ import type { RecurringRule, UpcomingOccurrence } from '@/types';
 
 interface ScheduledClientProps {
   rules: RecurringRule[];
+  ghostRules?: RecurringRule[];
+  ghostAccountNames?: Record<string, string>;
   upcoming: UpcomingOccurrence[];
   previewDays: number;
   catchUp: { expensesCreated: number; incomeCreated: number; truncated: boolean; failed?: boolean };
@@ -39,10 +42,11 @@ interface ScheduledClientProps {
  * on a wide main column the summary and calendar span the width and Coming
  * up and the schedules sit side by side (scheduled.css).
  */
-export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: ScheduledClientProps) {
+export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upcoming, previewDays, catchUp }: ScheduledClientProps) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.scheduled;
   const today = useScheduledToday();
+  const [showGhostAccounts, setShowGhostAccounts] = useState(false);
   const [editing, setEditing] = useState<RecurringRule | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +172,21 @@ export function ScheduledClient({ rules, upcoming, previewDays, catchUp }: Sched
           onCharge={openCharge} chargedNote={chargedNote}
         />
       </div>
+
+      {ghostRules.length > 0 && <div className="pb-sched-ghost-section">
+        <label className="pb-sched-ghost-toggle">
+          <input type="checkbox" checked={showGhostAccounts} onChange={event => setShowGhostAccounts(event.target.checked)} />
+          <Ghost size={16} aria-hidden="true" />
+          <span>{locale === 'zh' ? '显示幽灵账户' : 'Show ghost accounts'}</span>
+        </label>
+        {showGhostAccounts && <div className="pb-sched-ghost-content">
+          <p className="pb-sched-ghost-note">{locale === 'zh'
+            ? '这些计划仍会正常处理，但不会计入日历、预测或任何应用总额。'
+            : 'These schedules continue processing normally. They stay outside the calendar, forecasts and all app totals.'}</p>
+          <ScheduleRules ghost accountNames={ghostAccountNames} rules={ghostRules} today={today} busyId={busyId} onToggle={rule => void toggleStatus(rule)}
+            onEdit={setEditing} onCharge={openCharge} chargedNote={chargedNote} />
+        </div>}
+      </div>}
 
       {editing && <RecurringRuleModal rule={editing} onClose={() => setEditing(null)} />}
       {charging && (

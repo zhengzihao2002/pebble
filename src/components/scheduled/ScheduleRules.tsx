@@ -2,7 +2,7 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, Ghost, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
@@ -19,6 +19,8 @@ import { daysBetween, describeSchedule, isDone, monthlyEquivalent, nextDate, rul
 type Filter = 'all' | 'active' | 'paused' | 'finished';
 
 interface ScheduleRulesProps {
+  ghost?: boolean;
+  accountNames?: Record<string, string>;
   rules: RecurringRule[];
   today: string | null;
   busyId: string | null;
@@ -44,8 +46,9 @@ interface ScheduleRulesProps {
  * them (single-flight busy guard, retry, no optimistic update). Active
  * schedules with a payment still to come also offer a quiet "Charge now".
  */
-export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge, chargedNote }: ScheduleRulesProps) {
-  const { d, t } = useTranslation();
+export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge, chargedNote, ghost = false, accountNames }: ScheduleRulesProps) {
+  const { d, t, locale } = useTranslation();
+  const headingId = ghost ? 'pb-sched-ghost-rules-title' : 'pb-sched-rules-title';
   const x = d.ux.scheduled;
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -73,9 +76,9 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
     // its <strong> styling.
     const parts = d.scheduled.emptyHint.split('{action}');
     return (
-      <section className="card pb-sched-card pb-sched-rules" aria-labelledby="pb-sched-rules-title">
-        <SectionHeader id="pb-sched-rules-title" title={d.scheduled.title} icon={Repeat} />
-        {intro}
+      <section className="card pb-sched-card pb-sched-rules" aria-labelledby={headingId}>
+        <SectionHeader id={headingId} title={ghost ? locale === 'zh' ? '幽灵计划' : 'Ghost schedules' : d.scheduled.title} icon={Repeat} />
+        {!ghost && intro}
         <EmptyState
           icon={CalendarClock}
           title={x.emptyTitle}
@@ -102,14 +105,14 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
     .reduce((s, r) => s + (monthlyEquivalent(r) ?? 0), 0);
 
   return (
-    <section className="card pb-sched-card pb-sched-rules" aria-labelledby="pb-sched-rules-title">
+    <section className="card pb-sched-card pb-sched-rules" aria-labelledby={headingId}>
       <SectionHeader
-        id="pb-sched-rules-title"
-        icon={Repeat}
-        title={d.scheduled.title}
+        id={headingId}
+        icon={ghost ? Ghost : Repeat}
+        title={ghost ? locale === 'zh' ? '幽灵计划' : 'Ghost schedules' : d.scheduled.title}
         subtitle={<span className="pb-tnum">{rules.length === 1 ? x.countSubOne : t(x.countSub, { count: rules.length, active: counts.active })}</span>}
       />
-      {intro}
+      {!ghost && intro}
       <SegmentedControl<Filter>
         options={filterOptions} value={filter} onChange={setFilter}
         ariaLabel={x.filterLabel} size="sm" fullWidth className="pb-sched-filter"
@@ -118,7 +121,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
       {sections.length === 0 ? (
         <p className="pb-sched-quiet">{x.filterEmpty}</p>
       ) : sections.map((s) => {
-        const monthly = sectionMonthly(s.key);
+        const monthly = ghost ? 0 : sectionMonthly(s.key);
         return (
           <div key={s.key} className="pb-sched-section">
             <div className="pb-sched-section-head">
@@ -135,7 +138,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
             <ul className="pb-sched-rule-grid">
               {s.rules.map((rule) => (
                 <RuleTile
-                  key={rule.id} rule={rule} today={today} busy={busyId === rule.id} locked={busyId !== null}
+                  key={rule.id} isolated={ghost} accountName={accountNames?.[rule.accountId]} rule={rule} today={today} busy={busyId === rule.id} locked={busyId !== null}
                   onToggle={onToggle} onEdit={onEdit} onCharge={onCharge}
                   chargedText={chargedNote?.ruleId === rule.id ? chargedNote.text : ''}
                 />
@@ -148,8 +151,10 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
   );
 }
 
-function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, chargedText }: {
+function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, chargedText, isolated, accountName }: {
   rule: RecurringRule;
+  isolated?: boolean;
+  accountName?: string;
   today: string | null;
   busy: boolean;
   /** Some schedule action is in flight: single-flight, like Pause / Resume. */
@@ -168,7 +173,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
   const isIncome = rule.kind === 'income';
   const KindIcon = isIncome ? ArrowUpRight : ArrowDownRight;
   const title = descriptionTitle(rule.description);
-  const monthly = monthlyEquivalent(rule);
+  const monthly = isolated ? null : monthlyEquivalent(rule);
   const progress = ruleProgress(rule);
   const next = today ? nextDate(rule, today) : null;
   // Offered only while there is a payment to charge: active, not finished, a
@@ -202,6 +207,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
               ? <span className="pb-sched-pill is-finished"><Check size={11} strokeWidth={2.6} aria-hidden="true" />{d.scheduled.finished}</span>
               : paused && <span className="pb-sched-pill"><Pause size={10} strokeWidth={2.6} aria-hidden="true" />{d.scheduled.paused}</span>}
           </div>
+          {isolated && <span className="pb-sched-ghost-account"><Ghost size={12} aria-hidden="true" />{accountName ?? rule.paymentMethod}</span>}
           <span className="pb-sched-row-sub">
             {/* rule.category is either a real category name (user data) or
                 one of the two income literals - one call handles both,

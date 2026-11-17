@@ -429,3 +429,14 @@
 .pebble-root .pb-sched-shortcut-options strong { grid-column:2; grid-row:1; min-width:0; font-size:.8rem; line-height:1.2rem; font-weight:600; }
 .pebble-root .pb-sched-shortcut-text { grid-column:2; display:block; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.85rem; color:var(--ink-soft); line-height:1.5; }
 .pebble-root .pb-sched-shortcut-options > p { font-size:.75rem; color:var(--ink-soft); line-height:1.5; }
+
+/* Ghost schedules remain manageable without entering cash-flow projections. */
+.pebble-root .pb-sched-ghost-section { margin-top:.25rem; }
+.pebble-root .pb-sched-ghost-toggle { display:flex; align-items:center; gap:.6rem; width:fit-content; min-height:2.75rem; font-size:.85rem; color:var(--ink-soft); cursor:pointer; }
+.pebble-root .pb-sched-ghost-toggle input { width:1rem; height:1rem; margin:0; accent-color:var(--pine); }
+.pebble-root .pb-sched-ghost-toggle:has(input:checked) { color:var(--pine); }
+.pebble-root .pb-sched-ghost-content { margin-top:.5rem; }
+.pebble-root .pb-sched-ghost-note { margin:0 0 .8rem; color:var(--ink-soft); font-size:.82rem; line-height:1.5; }
+.pebble-root .pb-sched-ghost-content .pb-sched-rules { border:1px dashed color-mix(in srgb,var(--pine) 38%,var(--line)); background:linear-gradient(135deg,color-mix(in srgb,var(--pine) 5%,var(--mist)),var(--mist)); }
+.pebble-root .pb-sched-ghost-content .pb-sched-rule { border-style:dashed; }
+.pebble-root .pb-sched-ghost-account { display:flex; align-items:center; gap:.35rem; color:var(--pine); font-size:.77rem; margin-top:.2rem; overflow-wrap:anywhere; }

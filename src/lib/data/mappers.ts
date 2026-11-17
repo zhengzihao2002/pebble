@@ -128,6 +128,8 @@ export interface Account {
   kind: AccountKind;
   last4: string | null;
   status: 'active' | 'hibernated';
+  /** Excluded from shared finances. Optional only for older cached payloads. */
+  isGhost?: boolean;
   isDefault: boolean;
   /** Preselected in transaction forms. At most one per user. */
   isPreferred: boolean;
@@ -150,6 +152,7 @@ export function mapAccountRow(row: AccountRow): Account {
     kind: row.kind as AccountKind,
     last4: row.last4,
     status: row.status as 'active' | 'hibernated',
+    isGhost: row.isGhost === true,
     isDefault: row.isDefault,
     isPreferred: row.isPreferred,
     sortOrder: row.sortOrder,

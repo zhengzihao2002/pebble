@@ -25,6 +25,8 @@ const PREFIX = 'pebble-quickpicks:';
 const memo = new Map<string, QuickPicks>();
 /** One refresh per user per page session, shared by every caller (success or not). */
 const refreshes = new Map<string, Promise<QuickPicks | null>>();
+// In-flight requests from an older account scope may never repopulate the cache.
+let scopeRevision = 0;
 
 const isNames = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
 
@@ -60,8 +62,9 @@ export function isQuickPicksStale(picks: QuickPicks | null, now = Date.now()): b
 export function refreshQuickPicks(userId: string, fetchPicks: () => Promise<{ expense: string[] } | null>): Promise<QuickPicks | null> {
   let run = refreshes.get(userId);
   if (!run) {
+    const revision = scopeRevision;
     run = fetchPicks().then((r) => {
-      if (!r || !isNames(r.expense)) return null;
+      if (revision !== scopeRevision || !r || !isNames(r.expense)) return null;
       const picks = { computedAt: Date.now(), expense: r.expense };
       writeQuickPicks(userId, picks);
       return picks;
@@ -73,6 +76,7 @@ export function refreshQuickPicks(userId: string, fetchPicks: () => Promise<{ ex
 
 /** Sign-out: every user's picks go with the other per-user caches. */
 export function clearAllQuickPicks(): void {
+  scopeRevision++;
   memo.clear();
   refreshes.clear();
   try {

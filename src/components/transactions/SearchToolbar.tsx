@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Ghost } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
@@ -16,6 +16,9 @@ interface SearchToolbarProps {
   accountFilter: string;
   onAccountFilter: (id: string) => void;
   accountOptions: SelectFieldOption[];
+  hasGhostAccounts?: boolean;
+  showGhostAccounts?: boolean;
+  onShowGhostAccounts?: (checked: boolean) => void;
 }
 
 /**
@@ -36,9 +39,9 @@ interface SearchToolbarProps {
  * the statement card below keeps the account in its title.
  */
 export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(function SearchToolbar({
-  query, onQuery, typeFilter, onTypeFilter, accountFilter, onAccountFilter, accountOptions,
+  query, onQuery, typeFilter, onTypeFilter, accountFilter, onAccountFilter, accountOptions, hasGhostAccounts, showGhostAccounts, onShowGhostAccounts,
 }, ref) {
-  const { d } = useTranslation();
+  const { d, locale } = useTranslation();
 
   // The X clears the typed text only, and shows only when there is text to
   // clear. Type and Account each have their own All option. Focus returns
@@ -104,6 +107,11 @@ export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(func
           />
         </div>
       </div>
+      {hasGhostAccounts && <label className="pb-txn-ghost-toggle">
+        <input type="checkbox" checked={showGhostAccounts ?? false} onChange={event => onShowGhostAccounts?.(event.target.checked)} />
+        <Ghost size={15} aria-hidden="true" />
+        <span>{locale === 'zh' ? '显示幽灵账户' : 'Show ghost accounts'}</span>
+      </label>}
     </div>
   );
 });

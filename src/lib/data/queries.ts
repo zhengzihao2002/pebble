@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, isNull, ne, or, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, ne, or, lt, notExists, type AnyColumn } from 'drizzle-orm';
 import { db } from '@/db';
 import { getEffectiveAnnualBudgets } from '@/lib/budgets/annualData';
 import {
@@ -58,21 +58,30 @@ import {
  * from anywhere new.
  */
 
-export async function getExpenses(userId: string): Promise<ExpenseTransaction[]> {
+/** Ghost rows require an explicit management/history scope. Calculations default
+ * to ordinary accounts, at the read boundary rather than per-chart filters. */
+export interface AccountReadScope { includeGhost?: boolean }
+function withoutGhost(userId: string, accountId: AnyColumn) {
+  return notExists(db.select({ id: account.id }).from(account).where(and(
+    eq(account.userId, userId), eq(account.id, accountId), eq(account.isGhost, true),
+  )));
+}
+
+export async function getExpenses(userId: string, scope: AccountReadScope = {}): Promise<ExpenseTransaction[]> {
   const rows = await db
     .select()
     .from(expense)
-    .where(eq(expense.userId, userId))
+    .where(and(eq(expense.userId, userId), scope.includeGhost ? undefined : withoutGhost(userId, expense.accountId)))
     .orderBy(desc(expense.transactionDate), desc(expense.id));
 
   return rows.map(mapExpenseRow);
 }
 
-export async function getIncome(userId: string): Promise<IncomeTransaction[]> {
+export async function getIncome(userId: string, scope: AccountReadScope = {}): Promise<IncomeTransaction[]> {
   const rows = await db
     .select()
     .from(income)
-    .where(eq(income.userId, userId))
+    .where(and(eq(income.userId, userId), scope.includeGhost ? undefined : withoutGhost(userId, income.accountId)))
     .orderBy(desc(income.transactionDate), desc(income.id));
 
   return rows.map(mapIncomeRow);
@@ -110,11 +119,11 @@ export async function getGoals(userId: string): Promise<Goal[]> {
  * dropdowns want active only, but transaction DISPLAY needs closed accounts
  * too, since historical rows still reference them.
  */
-export async function getAccounts(userId: string): Promise<Account[]> {
+export async function getAccounts(userId: string, scope: AccountReadScope = {}): Promise<Account[]> {
   const rows = await db
     .select()
     .from(account)
-    .where(eq(account.userId, userId))
+    .where(and(eq(account.userId, userId), scope.includeGhost ? undefined : eq(account.isGhost, false)))
     .orderBy(account.sortOrder);
 
   return rows.map(mapAccountRow);
@@ -233,11 +242,11 @@ function sortCategoriesByName(items: CategoryItem[]): CategoryItem[] {
  * Manual balance corrections. Fetched only by the pages that render the
  * statement ledger or a balance total - never by Reports.
  */
-export async function getBalanceAdjustments(userId: string): Promise<BalanceAdjustment[]> {
+export async function getBalanceAdjustments(userId: string, scope: AccountReadScope = {}): Promise<BalanceAdjustment[]> {
   const rows = await db
     .select()
     .from(balanceAdjustment)
-    .where(eq(balanceAdjustment.userId, userId))
+    .where(and(eq(balanceAdjustment.userId, userId), scope.includeGhost ? undefined : withoutGhost(userId, balanceAdjustment.accountId)))
     .orderBy(desc(balanceAdjustment.transactionDate), desc(balanceAdjustment.id));
 
   return rows.map(mapBalanceAdjustmentRow);
@@ -246,8 +255,8 @@ export async function getBalanceAdjustments(userId: string): Promise<BalanceAdju
 /** Whether the account has any recorded transaction at all. */
 export async function hasAnyTransactions(userId: string): Promise<boolean> {
   const [expenseRows, incomeRows] = await Promise.all([
-    db.select({ id: expense.id }).from(expense).where(eq(expense.userId, userId)).limit(1),
-    db.select({ id: income.id }).from(income).where(eq(income.userId, userId)).limit(1),
+    db.select({ id: expense.id }).from(expense).where(and(eq(expense.userId, userId), withoutGhost(userId, expense.accountId))).limit(1),
+    db.select({ id: income.id }).from(income).where(and(eq(income.userId, userId), withoutGhost(userId, income.accountId))).limit(1),
   ]);
   return expenseRows.length > 0 || incomeRows.length > 0;
 }
@@ -258,11 +267,11 @@ export async function hasAnyTransactions(userId: string): Promise<boolean> {
  * Ordered active-first (status ascending puts 'active' before 'paused'), then
  * by start date, so the management list leads with what is actually running.
  */
-export async function getRecurringRules(userId: string): Promise<RecurringRule[]> {
+export async function getRecurringRules(userId: string, scope: AccountReadScope = {}): Promise<RecurringRule[]> {
   const rows = await db
     .select()
     .from(recurringRule)
-    .where(and(eq(recurringRule.userId, userId), ne(recurringRule.status, 'deleted')))
+    .where(and(eq(recurringRule.userId, userId), ne(recurringRule.status, 'deleted'), scope.includeGhost ? undefined : withoutGhost(userId, recurringRule.accountId)))
     .orderBy(asc(recurringRule.status), asc(recurringRule.startDate), asc(recurringRule.id));
 
   return rows.map(mapRecurringRuleRow);

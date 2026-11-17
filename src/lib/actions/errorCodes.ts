@@ -114,6 +114,7 @@ export type ServerErrorCode =
   | 'validation.moveSameAccount'
   | 'validation.moveDestinationInactive'
   | 'validation.preferredMustBeActive'
+  | 'validation.ghostCannotBePreferred'
   | 'validation.transferSameAccount'
   | 'validation.transferAmountPositive'
   | 'validation.transferInactiveAccount'

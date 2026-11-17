@@ -15,12 +15,12 @@ export default async function SettingsPage() {
   await runRecurringCatchUp(userId);
 
   const [expenses, income, adjustments, timeZoneOverride, accounts, rules] = await Promise.all([
-    getExpenses(userId),
-    getIncome(userId),
-    getBalanceAdjustments(userId),
+    getExpenses(userId, { includeGhost: true }),
+    getIncome(userId, { includeGhost: true }),
+    getBalanceAdjustments(userId, { includeGhost: true }),
     getUserTimeZoneOverride(userId),
-    getAccounts(userId),
-    getRecurringRules(userId),
+    getAccounts(userId, { includeGhost: true }),
+    getRecurringRules(userId, { includeGhost: true }),
   ]);
 
   const transactions = mergeTransactions(expenses, income);

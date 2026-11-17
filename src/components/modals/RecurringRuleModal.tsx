@@ -32,6 +32,7 @@ import { describeSchedule, monthlyEquivalent } from '@/components/scheduled/sche
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
+import { GhostAccountChoice, ghostAccountLabel } from '@/components/shared/GhostAccountChoice';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
@@ -117,6 +118,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   const [accountId, setAccountId] = useState(rule?.accountId ?? prefill?.accountId ?? '');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [showGhost, setShowGhost] = useState(false);
   // Distinguishes 'none yet loaded' from 'the user has no accounts'.
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   // Stored negative for expenses; the form works in positive magnitude and
@@ -160,8 +162,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
       // ⚠️ CREATE ONLY. An existing rule keeps the account it was saved with,
       // always.
       if (!isEdit) {
-        const preferred = result.accounts.find((a) => a.isPreferred);
-        setAccountId((current) => current || preferred?.id || result.accounts[0]?.id || '');
+        const regular = result.accounts.filter(a => !a.isGhost);
+        const preferred = regular.find((a) => a.isPreferred);
+        setAccountId((current) => regular.some(a => a.id === current) ? current : preferred?.id || regular[0]?.id || '');
       }
     });
     return () => { cancelled = true; };
@@ -191,9 +194,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
   ];
   // Account names are USER DATA and are never translated.
   // Credit cards take charges only: offered for expense schedules alone.
-  const accountOptions: SelectFieldOption[] = accounts.filter((a) => kind === 'expense' || a.kind !== 'credit').map((a) => ({
+  const accountOptions: SelectFieldOption[] = accounts.filter((a) => (!a.isGhost || showGhost || (isEdit && a.id === rule.accountId)) && (kind === 'expense' || a.kind !== 'credit')).map((a) => ({
     value: a.id,
-    label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+    label: ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale),
   }));
   const frequencyOptions: SelectFieldOption[] = FREQUENCY_VALUES.map((v) => ({ value: v, label: d.recurring.frequencies[v] }));
 
@@ -240,7 +243,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     setKind(next);
     // A card cannot hold income: move the choice to an allowed account.
     if (next === 'income' && accounts.find((a) => a.id === accountId)?.kind === 'credit') {
-      const usable = accounts.filter((a) => a.kind !== 'credit');
+      const usable = accounts.filter((a) => (!a.isGhost || showGhost) && a.kind !== 'credit');
       setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
     }
     setCategory(next === 'income' ? 'Standard Income' : categories[0]?.name ?? '');
@@ -528,6 +531,10 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                       disabled={accountOptions.length === 0}
                       ariaLabel={isIncome ? d.recurring.paidInto : d.recurring.paidFrom}
                     />
+                    {accounts.some(a => a.isGhost) && <GhostAccountChoice checked={showGhost} ghostSelected={accounts.find(a => a.id === accountId)?.isGhost} onChange={value => {
+                      setShowGhost(value);
+                      if (!value && accounts.find(a => a.id === accountId)?.isGhost && accountId !== rule?.accountId) setAccountId(accounts.find(a => !a.isGhost && (kind === 'expense' || a.kind !== 'credit'))?.id ?? '');
+                    }} />}
                     {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={onClose} />}
                   </div>
 

@@ -117,6 +117,8 @@ export const account = pgTable(
     last4: text(),
     /** 'active' | 'hibernated' */
     status: text().default('active').notNull(),
+    /** Independent of hibernation: records remain editable but do not enter shared finances. */
+    isGhost: boolean('is_ghost').default(false).notNull(),
     /** Seeded Checking and Cash. Cannot be hibernated or deleted. */
     isDefault: boolean('is_default').default(false).notNull(),
     /**
@@ -150,6 +152,7 @@ export const account = pgTable(
     }).onDelete('cascade'),
     check('account_kind_check', sql`kind = ANY (ARRAY['bank'::text, 'cash'::text, 'credit'::text])`),
     check('account_status_check', sql`status = ANY (ARRAY['active'::text, 'hibernated'::text])`),
+    check('account_ghost_not_preferred_check', sql`NOT is_ghost OR NOT is_preferred`),
     check(
       'account_last4_check',
       sql`(kind = ANY (ARRAY['bank'::text, 'credit'::text]) AND (last4 IS NULL OR last4 ~ '^[0-9]{4}$'::text)) OR (kind = 'cash'::text AND last4 IS NULL)`,

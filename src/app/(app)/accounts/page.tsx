@@ -15,10 +15,10 @@ export default async function AccountsPage() {
   await runRecurringCatchUp(userId);
 
   const [expenses, income, adjustments, accounts] = await Promise.all([
-    getExpenses(userId),
-    getIncome(userId),
-    getBalanceAdjustments(userId),
-    getAccounts(userId),
+    getExpenses(userId, { includeGhost: true }),
+    getIncome(userId, { includeGhost: true }),
+    getBalanceAdjustments(userId, { includeGhost: true }),
+    getAccounts(userId, { includeGhost: true }),
   ]);
 
   return <AccountsClient expenses={expenses} income={income} adjustments={adjustments} accounts={accounts} />;

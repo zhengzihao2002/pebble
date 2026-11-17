@@ -39,7 +39,8 @@ export function nextDue(dueDay: number): string {
  * or cash account, keeping their dates, amounts and categories. Underneath it
  * is the Settings record move (moveAccountRecords with transaction ids), which
  * already refuses inactive destinations and never lands on a card - so paying
- * off adds no server code. Total balance is unchanged; the card owes less.
+ * off adds no server code. Within one scope the total balance is unchanged;
+ * crossing a ghost boundary changes which balances and expenses are included.
  *
  * The charges come from the page's own data: no extra request.
  */
@@ -62,11 +63,12 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
   });
   const status = useMemo(() => cardStatus(card, charges, today), [card, charges, today]);
 
-  const sources = allAccounts.filter((a) => a.status === 'active' && a.kind !== 'credit');
+  const [showGhost, setShowGhost] = useState(false);
+  const sources = allAccounts.filter((a) => a.status === 'active' && a.kind !== 'credit' && (showGhost || !a.isGhost));
   const options = useMemo<SelectFieldOption[]>(
-    () => sources.map((a) => ({ value: a.id, label: a.last4 ? `${a.name} ····${a.last4}` : a.name })),
+    () => sources.map((a) => ({ value: a.id, label: `${a.last4 ? `${a.name} ····${a.last4}` : a.name}${a.isGhost ? (locale === 'zh' ? ' · 幽灵账户' : ' · Ghost') : ''}` })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allAccounts],
+    [allAccounts, showGhost, locale],
   );
   const list = useMemo(
     () => [...charges].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
@@ -98,6 +100,8 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
   }, [card, charges, today, list, t, x, locale]);
   const byId = useMemo(() => new Map(list.map((c) => [c.id, c])), [list]);
   const [from, setFrom] = useState(() => (sources.find((a) => a.isPreferred) ?? sources[0])?.id ?? '');
+  const sourceAccount = sources.find(account => account.id === from);
+  const crossesGhostBoundary = !!sourceAccount && !!sourceAccount.isGhost !== !!card.isGhost;
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorKind, setErrorKind] = useState<FailureKind | undefined>(undefined);
@@ -109,7 +113,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
   const picked = list.filter((c) => selected.has(c.id));
   const total = picked.reduce((s, c) => s + Math.abs(c.amount), 0);
   const allPicked = list.length > 0 && picked.length === list.length;
-  const canPay = !!from && picked.length > 0 && !paying;
+  const canPay = !!sourceAccount && picked.length > 0 && !paying;
 
   const toggle = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
@@ -166,6 +170,13 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
         </div>
 
         <div className="pb-modal-body themed-scroll">
+          {!success && allAccounts.some(account => account.isGhost && account.kind !== 'credit' && account.status === 'active') && <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.8rem', marginBottom: '1rem', color: 'var(--ink-soft)' }}><input type="checkbox" checked={showGhost} onChange={event => {
+            setShowGhost(event.target.checked);
+            if (!event.target.checked && sourceAccount?.isGhost) setFrom(allAccounts.find(account => !account.isGhost && account.status === 'active' && account.kind !== 'credit')?.id ?? '');
+          }} />{locale === 'zh' ? '显示幽灵账户' : 'Show ghost accounts'}</label>}
+          {!success && crossesGhostBoundary && <p className="pb-ghost-detail-note">{card.isGhost
+            ? (locale === 'zh' ? '此操作会将所选交易移至普通账户，并按原交易日期重新计入支出与余额计算。' : 'This moves the selected charges into an included account. They will join spending and balance calculations at their original transaction dates.')
+            : (locale === 'zh' ? '此操作会将所选交易移至幽灵账户，并将其从支出与余额计算中移除。' : 'This moves the selected charges into a ghost account and removes them from spending and balance calculations.')}</p>}
           {success ? (
             <SaveSuccess title={success.title} body={success.body} onDone={close} />
           ) : list.length === 0 ? (

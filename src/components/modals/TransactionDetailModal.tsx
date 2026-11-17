@@ -6,7 +6,7 @@ import { TransactionIcon } from '@/components/shared/TransactionIcon';
 import { useUndoDelete } from '@/components/shared/UndoDelete';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, Briefcase, CalendarDays, Coins, CreditCard, Hash, Landmark, Pencil, SlidersHorizontal, Trash2, Wallet } from 'lucide-react';
+import { Banknote, Briefcase, CalendarDays, Coins, Ghost, CreditCard, Hash, Landmark, Pencil, SlidersHorizontal, Trash2, Wallet } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -25,6 +25,8 @@ import { ActionError } from '@/components/shared/ActionError';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
 import { isDescriptionEdited, parseDescription, resolveEditedDescription } from '@/lib/transactionDescription';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
+import { ACCOUNT_SCOPE_CHANGED_EVENT } from '@/lib/accounts/ghostEvents';
+import { GhostAccountChoice, ghostAccountLabel } from '@/components/shared/GhostAccountChoice';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useSafetyLock } from '@/lib/useSafetyLock';
 import { translateActionError } from '@/lib/i18n/actionErrors';
@@ -78,6 +80,7 @@ type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
 // for its own fresh answer (see accounts below), so a stale list can never
 // unlock or lock a field.
 let detailAccountsMemo: Account[] | null = null;
+let detailAccountGeneration = 0;
 let detailAccountsInFlight: Promise<void> | null = null;
 
 function fetchDetailAccounts(): Promise<void> {
@@ -87,8 +90,9 @@ function fetchDetailAccounts(): Promise<void> {
   // connection) would put an error on every page load for something the
   // person never did. A signed-out session answers { ok: false } and is
   // ignored the same way.
+  const generation = detailAccountGeneration;
   detailAccountsInFlight ??= getAccountsAction().then((result) => {
-    if (result.ok) detailAccountsMemo = result.accounts;
+    if (result.ok && generation === detailAccountGeneration) detailAccountsMemo = result.accounts;
   }).catch(() => { /* a cache fill: nothing to report */ }).finally(() => { detailAccountsInFlight = null; });
   return detailAccountsInFlight;
 }
@@ -98,6 +102,7 @@ function fetchDetailAccounts(): Promise<void> {
 // to pass in) is complete on its first frame too. Idle time, after load; the
 // result is only a cache, so a failure is simply ignored.
 if (typeof window !== 'undefined') {
+  window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, () => { detailAccountGeneration++; detailAccountsMemo = null; });
   // Not offline: the request cannot succeed, and the first dialog will ask
   // again by itself once it is open.
   const warm = () => { if (!readOffline()) void fetchDetailAccounts(); };
@@ -168,6 +173,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // picker and the closed-account lock read THIS, never the memo.
   const [accounts, setAccounts] = useState<Account[]>(() => (accountsProp ?? []).filter((a) => a.status === 'active'));
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [showGhost, setShowGhost] = useState(false);
   // True once the receipt knows its account's kind and last4: from the page's
   // list or the last lookup (both synchronous, so the first frame is final),
   // else when the lookup answers. Only the Balance strip waits for it when it
@@ -213,11 +219,11 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   }, []);
 
   const accountOptions = useMemo<SelectFieldOption[]>(
-    () => accounts.map((a) => ({
+    () => accounts.filter(a => !a.isGhost || showGhost || a.id === txn.accountId).map((a) => ({
       value: a.id,
-      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+      label: ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale),
     })),
-    [accounts],
+    [accounts, showGhost, txn.accountId, locale],
   );
 
   // Adjustments are view-and-delete only: there is nothing meaningful to
@@ -371,7 +377,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     // both come out negative. Unlike the add path this cannot skip income,
     // since cutting a recorded payment reduces the balance too.
     const nextSigned = txn.type === 'expense' ? -Math.abs(Number(amount)) : Number(netPay);
-    const delta = nextSigned - txn.amount;
+    const nextGhost = accounts.find(a => a.id === accountId)?.isGhost;
+    const previousGhost = shownAccounts.find(a => a.id === txn.accountId)?.isGhost;
+    const delta = (nextGhost ? 0 : nextSigned) - (previousGhost ? 0 : txn.amount);
 
     if (delta < 0) {
       setBusy(true);
@@ -491,8 +499,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // the cents can sit smaller without the amount ever being reformatted.
   const amountParts = splitCents(amountText);
   const ownAccount = shownAccounts.find((a) => a.id === txn.accountId);
-  const AccountIcon = !ownAccount ? Wallet : ownAccount.kind === 'credit' ? CreditCard : ownAccount.kind === 'bank' ? Landmark : Coins;
-  const accountChip = accountName ? (ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName) : '';
+  const AccountIcon = ownAccount?.isGhost ? Ghost : !ownAccount ? Wallet : ownAccount.kind === 'credit' ? CreditCard : ownAccount.kind === 'bank' ? Landmark : Coins;
+  const accountChip = accountName ? ghostAccountLabel(ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName, ownAccount?.isGhost, locale) : '';
 
   // Standard income only: how much of the pay arrived. Side Cash stores
   // gross = net, so it has nothing to show.
@@ -735,7 +743,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                     <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
                   </label>
 
-                  <label style={labelStyle}>
+                  <div style={labelStyle}>
                     {accountLabelText}
                     {/* A closed account freezes this field: the transaction
                         cannot move off it, and the server rejects a change
@@ -756,10 +764,14 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                         ariaLabel={accountLabelText}
                       />
                     )}
+                    {!onHibernatedAccount && accounts.some(a => a.isGhost) && <GhostAccountChoice checked={showGhost} ghostSelected={accounts.find(a => a.id === accountId)?.isGhost} onChange={value => {
+                      setShowGhost(value);
+                      if (!value && accounts.find(a => a.id === accountId)?.isGhost && accountId !== txn.accountId) setAccountId(txn.accountId);
+                    }} />}
                     {accountError && (
                       <span style={{ fontSize: '0.75rem', color: 'var(--wine)' }}>{accountError}</span>
                     )}
-                  </label>
+                  </div>
                 </form>
               )}
 

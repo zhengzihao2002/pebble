@@ -11,7 +11,9 @@ import {
   clearOtherSnapshots, clearQueue, clearSnapshot, dequeue, enqueue, listQueue, loadSnapshot, saveSnapshot, subscribeQueueChanges,
   queueKey, type QueuedPayload, type QueuedTransaction, type ReferenceSnapshot,
 } from '@/lib/offline/queueStore';
-import { registerServiceWorker, serviceWorkerWanted, tellWorkerWho, warmServiceWorker } from '@/lib/offline/serviceWorker';
+import { registerServiceWorker, serviceWorkerWanted, tellWorkerWho, warmServiceWorker, clearOfflineCaches } from '@/lib/offline/serviceWorker';
+import { ACCOUNT_SCOPE_CHANGED_EVENT, type AccountScopeChangedDetail } from '@/lib/accounts/ghostEvents';
+import { clearLayoutCache } from '@/components/loading/layoutCache';
 import { BUILD_ID } from '@/lib/offline/buildId';
 import { PendingUploadsDialog } from './PendingUploadsDialog';
 
@@ -234,6 +236,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   }, [reload]);
 
   // ---- reference data (so Add transaction works offline) ------------------
+  const referenceGeneration = useRef(0);
   const readReference = useCallback(async () => {
     try { return await loadSnapshot(userRef.current); } catch { return null; }
   }, []);
@@ -247,15 +250,36 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   useEffect(() => {
     if (!userId || readOffline()) return;
     let cancelled = false;
+    const generation = referenceGeneration.current;
     void (async () => {
       const existing = await readReference();
       if (existing && Date.now() - existing.savedAt < SNAPSHOT_FRESH_MS) return;
       const [accounts, categories] = await Promise.all([callAction(getAccountsAction), callAction(getCategoriesAction)]);
-      if (cancelled || !accounts.ok || !categories.ok) return;
+      if (cancelled || generation !== referenceGeneration.current || !accounts.ok || !categories.ok) return;
       rememberReference(accounts.accounts, categories.categories);
     })();
     return () => { cancelled = true; };
   }, [userId, readReference, rememberReference, offline]);
+
+  // Scope changes invalidate saved pages and account metadata, never queued entries.
+  useEffect(() => {
+    const invalidate = (event: Event) => {
+      const detail = (event as CustomEvent<AccountScopeChangedDetail>).detail;
+      const owner = userRef.current;
+      const generation = ++referenceGeneration.current;
+      clearLayoutCache();
+      void clearOfflineCaches();
+      void (async () => {
+        const saved = await readReference();
+        if (saved && owner === userRef.current) await saveSnapshot({ ...saved, savedAt: 0, accounts: saved.accounts.map(account => account.id === detail.accountId ? { ...account, isGhost: detail.isGhost, isPreferred: detail.isGhost ? false : account.isPreferred } : account) });
+        if (readOffline()) return;
+        const [accounts, categories] = await Promise.all([callAction(getAccountsAction), callAction(getCategoriesAction)]);
+        if (owner === userRef.current && generation === referenceGeneration.current && accounts.ok && categories.ok) rememberReference(accounts.accounts, categories.categories);
+      })().catch(() => { /* The patched stale snapshot remains safe to use offline. */ });
+    };
+    window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
+    return () => window.removeEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
+  }, [readReference, rememberReference]);
 
   // ---- safe refresh ------------------------------------------------------
   const refresh = useCallback((): boolean => {

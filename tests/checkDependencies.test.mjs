@@ -48,7 +48,7 @@ test('failed or incomplete installs stop the build instead of silently continuin
 test('deploy and lifecycle commands keep existing locked versions', async () => {
   const pkg = JSON.parse(await readFile('package.json', 'utf8'));
   const vercel = JSON.parse(await readFile('vercel.json', 'utf8'));
-  assert.equal(pkg.scripts.prebuild, 'npm run deps:check');
+  assert.equal(pkg.scripts.prebuild, 'npm run deps:check && node scripts/migrate-ghost-accounts.mjs');
   assert.equal(pkg.scripts.predev, 'npm run deps:check');
   assert.equal(pkg.scripts['deps:update'], undefined);
   assert.equal(vercel.installCommand, 'node scripts/check-dependencies.mjs');

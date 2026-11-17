@@ -24,6 +24,7 @@ import { playEventSound } from '@/lib/sound/useSound';
 import { formatCurrency, todayDateString } from '@/lib/format';
 import { addDays } from '@/lib/recurring/occurrences';
 import { deductionPct } from '@/lib/stats';
+import { GhostAccountChoice, ghostAccountLabel } from '@/components/shared/GhostAccountChoice';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
@@ -80,6 +81,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [showGhost, setShowGhost] = useState(false);
   // Distinguishes 'none yet loaded' from 'the user has no accounts'.
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   // Declared before the effects below that set them (and read by the form).
@@ -183,8 +185,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       setAccountsLoaded(true);
       // Preferred account first, else whatever sorts first - the behaviour
       // before preferences existed.
-      const preferred = list.find((a) => a.isPreferred);
-      setAccountId((current) => current || preferred?.id || list[0]?.id || '');
+      const regular = list.filter(a => !a.isGhost);
+      const preferred = regular.find((a) => a.isPreferred);
+      setAccountId((current) => current || preferred?.id || regular[0]?.id || '');
     };
     const fromSnapshot = async () => {
       const snap = await offlineQueue.readReference();
@@ -228,19 +231,19 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
 
   // Credit cards take charges only, so they are offered for expenses alone.
   const accountOptions = useMemo<SelectFieldOption[]>(
-    () => accounts.filter((a) => type === 'expense' || a.kind !== 'credit').map((a) => ({
+    () => accounts.filter((a) => (!a.isGhost || showGhost) && (type === 'expense' || a.kind !== 'credit')).map((a) => ({
       value: a.id,
-      label: a.last4 ? `${a.name} ····${a.last4}` : a.name,
+      label: ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale),
     })),
-    [accounts, type],
+    [accounts, type, showGhost, locale],
   );
   // Switching to Income with a card selected moves the choice to an allowed account.
   useEffect(() => {
     if (type !== 'income') return;
     if (accounts.find((a) => a.id === accountId)?.kind !== 'credit') return;
-    const usable = accounts.filter((a) => a.kind !== 'credit');
+    const usable = accounts.filter((a) => (!a.isGhost || showGhost) && a.kind !== 'credit');
     setAccountId(usable.find((a) => a.isPreferred)?.id ?? usable[0]?.id ?? '');
-  }, [type, accounts, accountId]);
+  }, [type, accounts, accountId, showGhost]);
 
   const categoryOptions = useMemo<SelectFieldOption[]>(
     // label === value deliberately: category names are USER DATA and are
@@ -402,7 +405,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     //
     // Skipped offline: it needs the server, and it is advisory anyway (the
     // entry is queued and uploaded later with no shortfall prompt).
-    if (type === 'expense' && !readOffline()) {
+    if (type === 'expense' && !accounts.find(a => a.id === accountId)?.isGhost && !readOffline()) {
       setSaving(true);
       setSaveError(null);
       const summary = await callAction(getAllocationSummaryAction);
@@ -720,7 +723,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
             </span>
           </label>
 
-          <label style={labelStyle}>
+          <div style={labelStyle}>
             {d.addTxn.paymentMethod}
             {/* A combobox, not pills: the account list is user-defined and
                 unbounded, so a fixed row of buttons would wrap badly. The
@@ -732,9 +735,13 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
               options={accountOptions}
               ariaLabel={d.addTxn.paymentMethod}
             />
+            {accounts.some(a => a.isGhost) && <GhostAccountChoice checked={showGhost} ghostSelected={accounts.find(a => a.id === accountId)?.isGhost} onChange={value => {
+              setShowGhost(value);
+              if (!value && accounts.find(a => a.id === accountId)?.isGhost) setAccountId(accounts.find(a => !a.isGhost && (type === 'expense' || a.kind !== 'credit'))?.id ?? '');
+            }} />}
             {accountError && <ActionError message={accountError} />}
             {accountsLoaded && accounts.length === 0 && <NoAccountsNotice onNavigate={close} />}
-          </label>
+          </div>
         </form>
         )}
         </div>

@@ -15,30 +15,39 @@ export default async function TransactionsPage() {
   await runRecurringCatchUp(userId);
 
   const [expenses, income, budgets, categories, adjustments, accounts] = await Promise.all([
-    getExpenses(userId),
-    getIncome(userId),
+    getExpenses(userId, { includeGhost: true }),
+    getIncome(userId, { includeGhost: true }),
     getBudgets(userId),
     getCategories(userId),
-    getBalanceAdjustments(userId),
-    getAccounts(userId),
+    getBalanceAdjustments(userId, { includeGhost: true }),
+    getAccounts(userId, { includeGhost: true }),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
+  const ordinaryAccounts = accounts.filter(account => !account.isGhost);
+  const ghostIds = new Set(accounts.filter(account => account.isGhost).map(account => account.id));
+  const visibleExpenses = expenses.filter(record => !ghostIds.has(record.accountId));
+  const visibleIncome = income.filter(record => !ghostIds.has(record.accountId));
+  const visibleAdjustments = adjustments.filter(record => !ghostIds.has(record.accountId));
 
   // The ledger is pure and fully serializable, so it is computed here rather
   // than on the client. This is the single place the opening-balance walk
   // runs: it starts from the stored OPENING balances and adds forward.
-  const ledger = computeRecentTransactions(
+  const rawLedger = computeRecentTransactions(
     expenses,
     income,
     accounts,
     adjustments,
   );
 
+  // Ghost history is available only behind the explicit client checkbox.
+  // Rebuild the ordinary ledger independently so a ghost posting can never
+  // change an ordinary running balance, opening figure or chart point.
+  const ordinaryLedger = computeRecentTransactions(visibleExpenses, visibleIncome, ordinaryAccounts, visibleAdjustments);
+  const ordinaryById = new Map(ordinaryLedger.map(entry => [entry.transId, entry]));
+  const ledger = rawLedger.map(entry => ordinaryById.get(entry.transId) ?? entry);
   const balances = computeCurrentBalances(
-    transactions,
-    accounts,
-    adjustments,
+    mergeTransactions(visibleExpenses, visibleIncome), ordinaryAccounts, visibleAdjustments,
   );
 
   return (

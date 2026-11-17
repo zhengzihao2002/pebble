@@ -8,6 +8,7 @@ import type {
 } from '@/types';
 import { atMidnight, getToday, parseLocalDate } from './format';
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale';
+import { ghostAccountIds } from '@/lib/accounts/ghost';
 
 // Same-day tiebreak for records sorted ascending by date.
 //
@@ -376,6 +377,7 @@ export function computeRecentTransactions(
   // two accounts existed.
   const running: Record<string, number> = {};
   accounts.forEach((a) => { running[a.id] = 0; });
+  const ghostIds = ghostAccountIds(accounts);
 
   const ledger: LedgerEntry[] = all.map((t) => {
     // Skip rather than default: a foreign key makes an unknown account
@@ -387,7 +389,7 @@ export function computeRecentTransactions(
       // Copied, not referenced: `running` is mutated on every iteration, so a
       // shared reference would leave every row showing the FINAL balances.
       balancesAfter: { ...running },
-      totalBalanceAfter: Object.values(running).reduce((sum, v) => sum + v, 0),
+      totalBalanceAfter: Object.entries(running).reduce((sum, [id, value]) => sum + (ghostIds.has(id) ? 0 : value), 0),
     };
   });
 
@@ -403,6 +405,8 @@ export interface CurrentBalances {
 /** The minimum an account must expose to be balanced. */
 export interface BalanceAccount {
   id: string;
+  /** Kept in per-account balances, excluded from every combined total. */
+  isGhost?: boolean;
 }
 
 // Current balance is DERIVED, never stored: the sum of every record against
@@ -439,7 +443,8 @@ export function computeCurrentBalances(
     byAccount[t.accountId] += t.amount;
   });
 
-  const total = Object.values(byAccount).reduce((sum, v) => sum + v, 0);
+  const ghostIds = ghostAccountIds(accounts);
+  const total = Object.entries(byAccount).reduce((sum, [id, value]) => sum + (ghostIds.has(id) ? 0 : value), 0);
   return { byAccount, total };
 }
 

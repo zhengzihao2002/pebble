@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Upload } from 'lucide-react';
+import { GhostAccountChoice } from '@/components/shared/GhostAccountChoice';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
@@ -468,8 +469,12 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
 
   const [parsed, setParsed] = useState<string[][]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [showGhostAccounts, setShowGhostAccounts] = useState(false);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [existing, setExisting] = useState<Transaction[]>([]);
+  const [ghostHistory, setGhostHistory] = useState<Transaction[]>([]);
+  const [ghostHistoryLoading, setGhostHistoryLoading] = useState(false);
+  const ghostHistoryRequest = useRef(0);
 
   const [skip, setSkip] = useState(0);
   // What the box shows, as typed. skip is the number derived from it, so
@@ -637,8 +642,13 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
       exact.add(`${x.accountId}|${x.date}|${c}`);
       any.add(`${x.date}|${c}`);
     });
+    // Ghost history can identify an exact assigned-account duplicate, but must
+    // not suppress ordinary rows whose account has not yet been chosen.
+    if (showGhostAccounts) ghostHistory.forEach((x) => {
+      exact.add(`${x.accountId}|${x.date}|${Math.round(x.amount * 100)}`);
+    });
     return { exactKeys: exact, anyKeys: any };
-  }, [existing]);
+  }, [existing, ghostHistory, showGhostAccounts]);
 
   const rows: PreviewRow[] = useMemo(() => {
     const cell = (r: string[], col: string) => (col === '' ? '' : (r[Number(col)] ?? ''));
@@ -687,11 +697,40 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
   const selected = rows.filter(isIncluded);
   const incomplete = selected.filter((r) => !accOverride[r.idx] || !catOverride[r.idx]);
   const mappingOk = dateCol !== '' && (amountMode === 'single' ? amountCol !== '' : debitCol !== '' || creditCol !== '');
-  const canImport = selected.length > 0 && incomplete.length === 0;
-  // Money in minus spending, for the ticked rows only. Integer cents.
-  const netCents = selected.reduce((s, r) => s + (r.cents as number), 0);
+  const canImport = selected.length > 0 && incomplete.length === 0 && !ghostHistoryLoading;
+  // The normal-balance preview must never absorb ghost imports. Their own
+  // ledger still receives every explicitly assigned row in the import payload.
+  const ghostIds = new Set(accounts.filter((a) => a.isGhost).map((a) => a.id));
+  const ghostSelected = selected.some((r) => ghostIds.has(accOverride[r.idx]));
+  const netCents = selected.reduce((s, r) => s + (ghostIds.has(accOverride[r.idx]) ? 0 : (r.cents as number)), 0);
+  const changeGhostVisibility = (show: boolean) => {
+    const request = ++ghostHistoryRequest.current;
+    setShowGhostAccounts(show);
+    if (!show) {
+      setGhostHistoryLoading(false);
+      setGhostHistory([]);
+      setAccOverride((current) => Object.fromEntries(Object.entries(current).filter(([, id]) => !ghostIds.has(id))));
+      return;
+    }
+    setGhostHistoryLoading(true);
+    void callAction(() => getSearchTransactionsAction({ includeGhost: true }), d.palette.searchFailed).then((result) => {
+      if (ghostHistoryRequest.current !== request) return;
+      setGhostHistoryLoading(false);
+      if (!result.ok) {
+        setError(translateActionError(d, locale, result));
+        setErrorKind(result.kind);
+        setShowGhostAccounts(false);
+        setAccOverride((current) => Object.fromEntries(Object.entries(current).filter(([, id]) => !ghostIds.has(id))));
+        return;
+      }
+      setGhostHistory(result.transactions.filter((transaction) => ghostIds.has(transaction.accountId)));
+    });
+  };
 
-  const accountOptions = accounts.map((a) => ({ value: a.id, label: a.last4 ? `${a.name} ····${a.last4}` : a.name }));
+  const accountOptions = accounts.filter((a) => showGhostAccounts || !a.isGhost).map((a) => ({
+    value: a.id,
+    label: `${a.last4 ? `${a.name} ····${a.last4}` : a.name}${a.isGhost ? (locale === 'zh' ? ' · 幽灵账户' : ' · Ghost') : ''}`,
+  }));
   // Credit cards take charges only: not offered for income rows, nor in Set all
   // (which applies to income rows too).
   const nonCardOptions = accountOptions.filter((o) => accounts.find((a) => a.id === o.value)?.kind !== 'credit');
@@ -829,6 +868,12 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
   // PC: the If imported pane appears only at the Preview step, and goes away
   // once the import has finished.
   const showPreview = split && step === 'preview' && done === null;
+  // Include fresh ghost metadata when modeling pending rows. Otherwise a ghost
+  // id absent from the ordinary page data would look like an ordinary account.
+  const scopedPreview = useMemo(() => preview ? {
+    ...preview,
+    accounts: [...new Map([...preview.accounts, ...accounts].map((account) => [account.id, account])).values()],
+  } : undefined, [preview, accounts]);
   const importPaneRef = useRef<HTMLDivElement>(null);
   const reviewReady = useImportLayoutMotion(importPaneRef, showPreview, split);
   const reviewBodyRef = useRef<HTMLDivElement>(null);
@@ -872,7 +917,7 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
     >
       {(close) => (
         <ImportLayout split={split} paneRef={importPaneRef} ready={reviewReady} side={showPreview && preview ? (
-          <ImportPreviewPane preview={preview} pending={previewPending} ready={reviewReady} />
+          <ImportPreviewPane preview={scopedPreview ?? preview} pending={previewPending} ready={reviewReady} />
         ) : null}>
           {saving && <LoadingOverlay label={d.importCsv.importing} />}
           <div className="pb-modal-head">
@@ -973,6 +1018,10 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                   <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{d.importCsv.noRows}</p>
                 ) : (
                   <>
+                    {accounts.some((a) => a.isGhost) && <GhostAccountChoice
+                      checked={showGhostAccounts} onChange={changeGhostVisibility} ghostSelected={ghostSelected}
+                    />}
+                    {ghostHistoryLoading && <p className="pb-tdlg-hint" role="status">{d.common.loading}</p>}
                     <div style={{ ...twoCol, marginBottom: '0.8rem' }}>
                       <select value="" onChange={(e) => setAll('account', e.target.value)} aria-label={d.importCsv.setAllAccounts} style={smallField}>
                         <option value="">{d.importCsv.setAllAccounts}</option>

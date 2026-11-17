@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX, ChevronDown } from 'lucide-react';
+import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX, ChevronDown, Ghost } from 'lucide-react';
 import type { BalanceAdjustment, LedgerRecord, Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
 import type { LedgerEntry } from '@/lib/stats';
@@ -19,6 +19,7 @@ import { InfoTooltip } from '@/components/shared/InfoTooltip';
 import type { SelectFieldOption } from '@/components/shared/SelectField';
 import { MonthNavigator, type MonthChip } from '@/components/transactions/MonthNavigator';
 import { StatementList, DayGroups, LedgerHead, type StatementEntry } from '@/components/transactions/StatementList';
+import { GhostActivity } from '@/components/transactions/GhostActivity';
 import { TodayLedger } from '@/components/transactions/TodayLedger';
 import { BalanceBridge } from '@/components/transactions/BalanceBridge';
 import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
@@ -73,7 +74,14 @@ export function TransactionsClient({
   // page, so nothing is fetched.
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [accountFilter, setAccountFilter] = useState(ALL_ACCOUNTS);
+  const [accountFilterState, setAccountFilter] = useState(ALL_ACCOUNTS);
+  // Deliberately not persisted: ghost history always starts concealed.
+  const [showGhostAccounts, setShowGhostAccounts] = useState(false);
+  const ghostIds = useMemo(() => new Set(accounts.filter(account => account.isGhost).map(account => account.id)), [accounts]);
+  const accountFilter = !showGhostAccounts && ghostIds.has(accountFilterState) ? ALL_ACCOUNTS : accountFilterState;
+  const ordinaryAccounts = useMemo(() => accounts.filter(account => !account.isGhost), [accounts]);
+  const ghostLabel = locale === 'zh' ? '幽灵账户' : 'Ghost account';
+  const ghostLens = showGhostAccounts && ghostIds.has(accountFilter);
 
   // Zone-aware today. The server cannot know the viewer's zone, so the
   // server snapshot is null and the client reads it after hydration (a clock
@@ -108,30 +116,33 @@ export function TransactionsClient({
   }, [transactions, adjustments]);
 
   // ledger entries are lightweight - resolve each back to its full record here.
-  const entriesWithRecords = useMemo(() => {
+  const allEntriesWithRecords = useMemo(() => {
     return ledger.reduce<StatementEntry[]>((acc, e) => {
       const record = recordsById.get(e.transId);
       if (record) acc.push({ ...e, record });
       return acc;
     }, []);
   }, [ledger, recordsById]);
-  const entriesById = useMemo(() => new Map(entriesWithRecords.map((e) => [e.record.id, e])), [entriesWithRecords]);
+  const entriesWithRecords = useMemo(() => allEntriesWithRecords.filter(entry => !ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
+  const ghostEntries = useMemo(() => allEntriesWithRecords.filter(entry => ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
+  const entriesById = useMemo(() => new Map(allEntriesWithRecords.map((e) => [e.record.id, e])), [allEntriesWithRecords]);
   const openDetail = useCallback((txn: LedgerRecord) => {
     setSelectedEntry(entriesById.get(txn.id) ?? { transId: txn.id, record: txn, balancesAfter: {}, totalBalanceAfter: 0 });
   }, [entriesById]);
 
   // ---- Accounts ------------------------------------------------------------
   // Keep the Today ledger and account filter in the order saved in Settings.
-  const sortedAccounts = useOrderedAccounts(accounts, balancesByAccount);
+  const sortedAccounts = useOrderedAccounts(ordinaryAccounts, balancesByAccount);
+  const ghostAccounts = useMemo(() => accounts.filter(account => account.isGhost), [accounts]);
 
   const accountOptions: SelectFieldOption[] = useMemo(() => [
     { value: ALL_ACCOUNTS, label: d.txnSearch.allAccounts },
-    ...sortedAccounts.map((a) => ({
+    ...[...sortedAccounts, ...(showGhostAccounts ? ghostAccounts : [])].map((a) => ({
       value: a.id,
-      label: `${a.name}${a.last4 ? ` ····${a.last4}` : ''}${a.isPreferred ? ' ★' : ''}`,
-      icon: a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins,
+      label: `${a.name}${a.last4 ? ` ····${a.last4}` : ''}${a.isGhost ? ` · ${ghostLabel}` : a.isPreferred ? ' ★' : ''}`,
+      icon: a.isGhost ? Ghost : a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins,
     })),
-  ], [sortedAccounts, d]);
+  ], [sortedAccounts, ghostAccounts, showGhostAccounts, ghostLabel, d]);
 
   // ---- Search --------------------------------------------------------------
   // Runs over the month shown in the navigator, so every result keeps a
@@ -152,7 +163,7 @@ export function TransactionsClient({
   // its running balance) instead of a results list. The rows are the same
   // ones the account-only filter used to list under a results line; any text
   // or type filter goes back to results mode, filtered by the account.
-  const lensId = accountFilter !== ALL_ACCOUNTS && q === '' && typeFilter === 'all' && accounts.some((a) => a.id === accountFilter)
+  const lensId = accountFilter !== ALL_ACCOUNTS && q === '' && typeFilter === 'all' && ordinaryAccounts.some((a) => a.id === accountFilter)
     ? accountFilter
     : null;
   const lensAccount = useMemo(() => (lensId ? accounts.find((a) => a.id === lensId) ?? null : null), [accounts, lensId]);
@@ -320,7 +331,7 @@ export function TransactionsClient({
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
   const statementCount = fig.entries.length;
 
-  const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions, adjustments, accounts, categoryMeta }} />;
+  const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;
   const scrollSummaryDown = () => {
     const pane = pageRef.current?.querySelector<HTMLElement>('.pb-txn-pane-left');
     if (!pane) return;
@@ -414,12 +425,18 @@ export function TransactionsClient({
           accountFilter={accountFilter}
           onAccountFilter={setAccountFilter}
           accountOptions={accountOptions}
+          hasGhostAccounts={ghostIds.size > 0}
+          showGhostAccounts={showGhostAccounts}
+          onShowGhostAccounts={checked => {
+            setShowGhostAccounts(checked);
+            if (!checked && ghostIds.has(accountFilter)) setAccountFilter(ALL_ACCOUNTS);
+          }}
         />
 
         {/* Keep the statement mounted as months change. Recreating it replayed
             a fade and sideways slide on the entire card and its glow. */}
         <div>
-          {searching ? (
+          {ghostLens ? null : searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
                 <p role="status" className="pb-txn-results-line">
@@ -485,6 +502,11 @@ export function TransactionsClient({
               )}
             />
           )}
+          {showGhostAccounts && (accountFilter === ALL_ACCOUNTS || ghostLens) && (
+            <GhostActivity entries={ghostEntries} accounts={ghostAccounts} monthPrefix={monthPrefix}
+              accountId={ghostLens ? accountFilter : null} query={query} typeFilter={typeFilter}
+              onOpen={openDetail} />
+          )}
         </div>
       </div>
       </div>
@@ -494,7 +516,7 @@ export function TransactionsClient({
           txn={selectedEntry.record}
           onClose={() => setSelectedEntry(null)}
           categoryMeta={categoryMeta}
-          ledgerEntry={selectedEntry}
+          ledgerEntry={ghostIds.has(selectedEntry.record.accountId) ? undefined : selectedEntry}
           accounts={accounts}
         />
       )}

@@ -931,7 +931,7 @@ async function loadCategories(userId: string): Promise<CategoriesResult> {
  * user's own category table, so a name the dropdown would not offer (deleted or
  * renamed since the old rows were written) is dropped BEFORE the limit and can
  * never crowd real categories out of the top six. Both sides are scoped by
- * user_id. Rows are filtered exactly as getExpenses does (user_id only: the
+ * user_id. Rows are filtered exactly as getExpenses does (user_id and non-ghost accounts: the
  * expense table has no soft-delete column, and transfers / balance adjustments
  * live in their own tables, never here).
  *
@@ -954,6 +954,7 @@ async function loadFrequentCategories(userId: string): Promise<FrequentCategorie
     const rows = await db
       .select({ name: expense.category })
       .from(expense)
+      .innerJoin(account, and(eq(account.id, expense.accountId), eq(account.userId, expense.userId), eq(account.isGhost, false)))
       .innerJoin(category, and(eq(category.userId, expense.userId), eq(category.name, expense.category)))
       .where(and(eq(expense.userId, userId), gte(expense.transactionDate, since)))
       .groupBy(expense.category, category.sortOrder)
@@ -2788,7 +2789,7 @@ export type AccountsResult =
  */
 async function loadAccounts(userId: string): Promise<AccountsResult> {
   try {
-    const accounts = await getAccounts(userId);
+    const accounts = await getAccounts(userId, { includeGhost: true });
     return { ok: true, accounts: accounts.filter((a) => a.status === 'active') };
   } catch (error) {
     console.error('[pebble action] getAccountsAction', error);
@@ -2821,11 +2822,11 @@ export type SearchTransactionsResult =
  * result in memory only. Recurring catch-up is not run here: the next page
  * load does that.
  */
-async function loadSearchTransactions(userId: string): Promise<SearchTransactionsResult> {
+async function loadSearchTransactions(userId: string, scope?: { includeGhost?: boolean }): Promise<SearchTransactionsResult> {
   try {
     const [expenseRows, incomeRows, categoryRows, budgetMap] = await Promise.all([
-      getExpenses(userId),
-      getIncome(userId),
+      getExpenses(userId, { includeGhost: scope?.includeGhost === true }),
+      getIncome(userId, { includeGhost: scope?.includeGhost === true }),
       getCategories(userId),
       getBudgets(userId),
     ]);
@@ -3030,7 +3031,7 @@ export type AccountDeletionPreviewResult =
 async function loadAccountDeletionPreview(userId: string, accountId: string): Promise<AccountDeletionPreviewResult> {
   try {
     const [accts, exp, inc, adj, rules, goals] = await Promise.all([
-      db.select({ id: account.id, name: account.name }).from(account).where(eq(account.userId, userId)),
+      db.select({ id: account.id, name: account.name, isGhost: account.isGhost }).from(account).where(eq(account.userId, userId)),
       db.select({ accountId: expense.accountId, amount: expense.amount }).from(expense).where(eq(expense.userId, userId)),
       db.select({ accountId: income.accountId, amount: income.netAmount }).from(income).where(eq(income.userId, userId)),
       db.select({ accountId: balanceAdjustment.accountId, amount: balanceAdjustment.amount, group: balanceAdjustment.transferGroupId })
@@ -3073,7 +3074,8 @@ async function loadAccountDeletionPreview(userId: string, accountId: string): Pr
     };
     const recordTotal = counts.expenses + counts.income + onAccount(adj).length + counts.rules;
     const nameOf = (id: string) => accts.find((a) => a.id === id)?.name ?? '';
-    const total = (m: Map<string, number>) => [...m.values()].reduce((s, v) => s + v, 0) / 100;
+    const regularAccountIds = new Set(accts.filter((a) => !a.isGhost).map((a) => a.id));
+    const total = (m: Map<string, number>) => [...m].reduce((s, [id, value]) => s + (regularAccountIds.has(id) ? value : 0), 0) / 100;
 
     const balances: AccountDeletionBalanceRow[] = [
       { accountId, name: target.name, before: (before.get(accountId) ?? 0) / 100, after: null },
@@ -3324,51 +3326,73 @@ async function deletePebbleAccount(userId: string, input: { confirmEmail: string
 }
 
 export const deletePebbleAccountAction = withSessionUser(deletePebbleAccount);
+/** Ghost mode is reversible visibility/calculation isolation, not account freezing. */
+async function setAccountGhost(userId: string, accountId: string, enabled: boolean): Promise<ActionResult> {
+  if (typeof enabled !== 'boolean') return fail('Choose whether ghost mode is on or off.');
+  try {
+    const results = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      neonSql`UPDATE account
+        SET is_ghost = ${enabled},
+            is_preferred = CASE WHEN ${enabled} THEN false ELSE is_preferred END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ${userId}::uuid AND id = ${accountId}
+        RETURNING id`,
+    ], { isolationLevel: 'ReadCommitted' });
+    const updated = results[1] as unknown;
+    if (!Array.isArray(updated) || updated.length !== 1) {
+      return fail('That account no longer exists.', 'validation', 'notFound.account');
+    }
+    revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('setAccountGhostAction', error);
+  }
+}
+
 /**
  * Sets the account that transaction forms preselect.
  *
- * The clear and the set run in ONE batch(): a partial failure would either
+ * The clear and the set run in one locked transaction: a partial failure would either
  * leave two preferred accounts (which the unique index refuses outright, so
  * the whole thing would fail) or none at all.
  *
- * Hibernated accounts cannot be preferred - preselecting an account that
- * rejects new transactions would be broken by construction.
+ * Hibernated and ghost accounts cannot be preferred. The preference picker
+ * must not silently select a frozen or excluded account.
  *
  * Passing the currently-preferred account clears the preference, so the star
  * is a toggle rather than a one-way switch.
  */
 async function setPreferredAccount(userId: string, accountId: string): Promise<ActionResult> {
   try {
-    const rows = await db
-      .select({ id: account.id, status: account.status, isPreferred: account.isPreferred })
-      .from(account)
-      .where(and(eq(account.userId, userId), eq(account.id, accountId)))
-      .limit(1);
-
+    // Lock first, then use fresh snapshots for both eligibility and writes.
+    // Clear only OTHER accounts, preserving the target's state for its toggle.
+    // The eligibility condition is repeated in SQL so a ghost can never be
+    // preselected, including when mode changes in another tab.
+    const results = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      neonSql`SELECT id, status, is_ghost FROM account
+        WHERE user_id = ${userId}::uuid AND id = ${accountId}`,
+      neonSql`UPDATE account SET is_preferred = false, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ${userId}::uuid AND id <> ${accountId} AND is_preferred
+          AND EXISTS (SELECT 1 FROM account target WHERE target.user_id = ${userId}::uuid
+            AND target.id = ${accountId} AND target.status = 'active' AND NOT target.is_ghost)`,
+      neonSql`UPDATE account SET is_preferred = NOT is_preferred, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ${userId}::uuid AND id = ${accountId}
+          AND status = 'active' AND NOT is_ghost
+        RETURNING id`,
+    ], { isolationLevel: 'ReadCommitted' });
+    const rows = results[1] as unknown as { id: string; status: string; is_ghost: boolean }[];
     const target = rows[0];
     if (!target) return fail('That account no longer exists.', 'validation', 'notFound.account');
+    if (target.is_ghost) {
+      return fail('Ghost accounts cannot be preferred. Turn off ghost mode first.', 'validation', 'validation.ghostCannotBePreferred');
+    }
     if (target.status !== 'active') {
       return fail('A hibernated account cannot be the preferred one.', 'validation', 'validation.preferredMustBeActive');
     }
-
-    const clear = db
-      .update(account)
-      .set({ isPreferred: false, updatedAt: new Date().toISOString() })
-      .where(and(eq(account.userId, userId), eq(account.isPreferred, true)));
-
-    if (target.isPreferred) {
-      // Toggling the current preference off leaves none, and forms fall back
-      // to the first account as they did before any preference existed.
-      await clear;
-    } else {
-      await db.batch([
-        clear,
-        db.update(account)
-          .set({ isPreferred: true, updatedAt: new Date().toISOString() })
-          .where(and(eq(account.userId, userId), eq(account.id, accountId))),
-      ]);
-    }
-
+    const updated = results[3] as unknown;
+    if (!Array.isArray(updated) || updated.length !== 1) return fail('That account no longer exists.', 'validation', 'notFound.account');
     revalidateAll();
     return { ok: true };
   } catch (error) {
@@ -3378,4 +3402,5 @@ async function setPreferredAccount(userId: string, accountId: string): Promise<A
 
 export const wakeAccountAction = withSessionUser(wakeAccount);
 export const setPreferredAccountAction = withSessionUser(setPreferredAccount);
+export const setAccountGhostAction = withSessionUser(setAccountGhost);
 export const deleteAccountAction = withSessionUser(deleteAccount);

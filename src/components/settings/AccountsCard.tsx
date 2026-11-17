@@ -2,6 +2,7 @@
 
 import { SETTING_TARGETS } from './settingsTargets';
 
+import { GhostAccountMode, GhostBadge } from '@/components/accounts/GhostAccountMode';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useRef, useState } from 'react';
 import { AlarmClock, BedDouble, CalendarClock, Landmark, Coins, CreditCard, Pencil, Plus, Trash2, ArrowRightLeft, Star, Wallet } from 'lucide-react';
@@ -253,8 +254,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(a.id);
   };
 
-  const sleepingCount = visible.filter((a) => (sleepOverride[a.id] ?? a.status) === 'hibernated').length;
-  const listTotal = visible.reduce((sum, a) => sum + (balancesByAccount[a.id] ?? 0), 0);
+  const sleepingCount = visible.filter((a) => !a.isGhost && (sleepOverride[a.id] ?? a.status) === 'hibernated').length;
+  const listTotal = visible.filter(a => !a.isGhost).reduce((sum, a) => sum + (balancesByAccount[a.id] ?? 0), 0);
 
   return (
     <div id={SETTING_TARGETS.accounts} className="card pb-settings-target pb-settings-card" style={{ position: 'relative' }}>
@@ -270,7 +271,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
       {visible.length > 0 && (
         <div className="pb-settings-acct-sum">
           <span>
-            {visible.length === 1 ? d.ux.settings.acrossOne : t(d.ux.settings.acrossAccounts, { count: visible.length })}
+            {visible.filter(a => !a.isGhost).length === 1 ? d.ux.settings.acrossOne : t(d.ux.settings.acrossAccounts, { count: visible.filter(a => !a.isGhost).length })}
             {sleepingCount > 0 && (
               <span className="pb-tnum pb-settings-acct-sum-sleep">{` · ${t(d.ux.settings.sleepingCount, { count: sleepingCount })}`}</span>
             )}
@@ -307,7 +308,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
           // every tile already has the same padding, so only the background
           // and border ease (settings.css) and the contents never move.
           return ordering.wrap(a, (
-            <div key={a.id} className={`pb-settings-acct${st === 'hibernated' ? ' is-sleeping' : ''}`}>
+            <div key={a.id} className={`pb-settings-acct${a.isGhost ? ' is-ghost' : ''}${st === 'hibernated' ? ' is-sleeping' : ''}`}>
               {/* A confirmed save: a soft cloud of the theme colour spreads from the
                   middle of the row to both ends, then fades. Decorative; the
                   status line above announces the save to screen readers. */}
@@ -343,12 +344,13 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   </p>
                 </div>
 
+                {a.isGhost && <GhostBadge />}
                 {st === 'hibernated' && <SleepingBadge />}
 
                 {/* Only active accounts can be preferred - preselecting one
                     that rejects new transactions would be broken. Independent
                     of isDefault: Checking and Cash CAN be preferred. */}
-                {st === 'active' && (
+                {st === 'active' && !a.isGhost && (
                   <button
                     type="button"
                     onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id), a.isPreferred ? 'quiet' : 'star')}
@@ -416,6 +418,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                   />
                 </p>
               )}
+
+              <div className="pb-ghost-settings-control"><small>{a.isGhost ? (locale === 'zh' ? '此账户不计入任何总额' : 'Excluded from every total') : (locale === 'zh' ? '计入日常财务' : 'Included in your finances')}</small><GhostAccountMode account={a} disabled={saving} /></div>
 
               {/* Second line, left-aligned. Absent entirely for the defaults,
                   which are neither hibernatable nor deletable - so they stay a

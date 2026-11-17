@@ -1,5 +1,6 @@
 'use client';
 
+import { GhostBadge } from './GhostAccountMode';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -183,6 +184,7 @@ export function AccountDetailSheet({
                 </h2>
                 <p>
                   {kindLabel}
+                  {account.isGhost && <> <GhostBadge /></>}
                   {account.status === 'hibernated' && <> <SleepingBadge /></>}
                 </p>
               </div>
@@ -191,6 +193,7 @@ export function AccountDetailSheet({
           </div>
 
           <div className="pb-modal-body themed-scroll">
+            {account.isGhost && <p className="pb-ghost-detail-note">{locale === 'zh' ? '仅限此账户的记录与余额；全部不计入概览、预算、报表或其他全局计算。' : 'This account’s own records and balance only. Everything here is excluded from dashboard, budgets, reports, and other app-wide calculations.'}</p>}
             <div className="pb-accounts-detail-grid">
               <div className="pb-accounts-detail-main">
                 <div>

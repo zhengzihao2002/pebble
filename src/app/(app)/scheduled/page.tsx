@@ -1,6 +1,6 @@
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getRecurringRules } from '@/lib/data/queries';
+import { getAccounts, getRecurringRules } from '@/lib/data/queries';
 import { addDays, generateOccurrences, todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
@@ -25,7 +25,12 @@ export default async function ScheduledPage() {
   // showing up later as a payment that silently never appeared.
   const catchUp = await runRecurringCatchUp(userId);
 
-  const rules = await getRecurringRules(userId);
+  const [allRules, accounts] = await Promise.all([
+    getRecurringRules(userId, { includeGhost: true }), getAccounts(userId, { includeGhost: true }),
+  ]);
+  const ghostIds = new Set(accounts.filter(account => account.isGhost).map(account => account.id));
+  const rules = allRules.filter(rule => !ghostIds.has(rule.accountId));
+  const ghostRules = allRules.filter(rule => ghostIds.has(rule.accountId));
 
   // Snapshotted once, mirroring getWindowPredicate in stats.ts, so a single
   // pass cannot straddle midnight.
@@ -62,6 +67,8 @@ export default async function ScheduledPage() {
   return (
     <ScheduledClient
       rules={rules}
+      ghostRules={ghostRules}
+      ghostAccountNames={Object.fromEntries(accounts.filter(account => account.isGhost).map(account => [account.id, account.name]))}
       upcoming={upcoming}
       previewDays={PREVIEW_DAYS}
       catchUp={{

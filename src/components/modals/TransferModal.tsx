@@ -18,6 +18,7 @@ import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFiel
 import { composeDescription } from '@/lib/transactionDescription';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, todayDateString } from '@/lib/format';
+import { GhostAccountChoice, ghostAccountLabel } from '@/components/shared/GhostAccountChoice';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 
@@ -72,6 +73,7 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [showGhost, setShowGhost] = useState(false);
   // Distinguishes 'none yet loaded' from 'the user has no accounts'.
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [fromId, setFromId] = useState('');
@@ -99,8 +101,9 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
       // account the user treats as primary.
       // Cards never take part in a transfer, and the server refuses
       // hibernated accounts, so the first picks skip both.
-      const usable = result.accounts.filter((a) => a.kind !== 'credit' && a.status === 'active');
-      const asked = initialFromId ? usable.find((a) => a.id === initialFromId) : undefined;
+      const usable = result.accounts.filter((a) => !a.isGhost && a.kind !== 'credit' && a.status === 'active');
+      if (result.accounts.some(a => a.id === initialFromId && a.isGhost)) setShowGhost(true);
+      const asked = initialFromId ? result.accounts.find((a) => a.id === initialFromId && a.status === 'active' && a.kind !== 'credit') : undefined;
       const preferred = asked ?? usable.find((a) => a.isPreferred);
       setFromId((c) => c || preferred?.id || usable[0]?.id || '');
       setToId((c) => c || usable.find((a) => a.id !== (preferred?.id ?? usable[0]?.id))?.id || '');
@@ -115,9 +118,9 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
     // labelled, and choosing one says why before Transfer is pressed rather
     // than failing after it.
     () => {
-      const usable = accounts.filter((a) => a.kind !== 'credit');
+      const usable = accounts.filter((a) => (!a.isGhost || showGhost) && a.kind !== 'credit');
       return [...usable.filter((a) => a.status === 'active'), ...usable.filter((a) => a.status !== 'active')].map((a) => {
-        const name = a.last4 ? `${a.name} ····${a.last4}` : a.name;
+        const name = ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale);
         return {
           value: a.id,
           label: a.status === 'active' ? name : t(d.ux.accounts.optionHibernated, { name }),
@@ -125,9 +128,9 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
         };
       });
     },
-    [accounts, d, t],
+    [accounts, d, t, showGhost, locale],
   );
-  const activeIds = useMemo(() => new Set(accounts.filter((a) => a.kind !== 'credit' && a.status === 'active').map((a) => a.id)), [accounts]);
+  const activeIds = useMemo(() => new Set(accounts.filter((a) => (!a.isGhost || showGhost) && a.kind !== 'credit' && a.status === 'active').map((a) => a.id)), [accounts, showGhost]);
   const sleepingPicked = [fromId, toId].some((id) => id !== '' && !activeIds.has(id));
   const swap = () => { setFromId(toId); setToId(fromId); };
   const amountNum = amountValidNumber(amount);
@@ -199,7 +202,7 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
           ) : (
             <form id={FORM_ID} onSubmit={handleSubmit} className="pb-form-grid">
               <p className="pb-span-2" style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.5, margin: 0 }}>
-                {d.transfer.blurb}
+                {[fromId, toId].some(id => accounts.find(a => a.id === id)?.isGhost) ? (locale === 'zh' ? '在账户之间转移资金。幽灵账户的余额单独保留，只有普通账户计入总余额。' : 'Move money between account ledgers. Ghost balances stay separate; only regular accounts count toward your total.') : d.transfer.blurb}
               </p>
 
               {/* Two identical blocks, each with its own label inside, so the
@@ -239,6 +242,13 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
               {sleepingPicked && !sameAccount && (
                 <p className="pb-span-2" style={{ fontSize: '0.75rem', color: 'var(--wine)', margin: 0 }}>{d.serverErrors['validation.transferInactiveAccount']}</p>
               )}
+              {accounts.some(a => a.isGhost) && <div className="pb-span-2"><GhostAccountChoice checked={showGhost} onChange={value => {
+                setShowGhost(value);
+                if (!value) {
+                  if (accounts.find(a => a.id === fromId)?.isGhost) setFromId('');
+                  if (accounts.find(a => a.id === toId)?.isGhost) setToId('');
+                }
+              }} />{[fromId, toId].some(id => accounts.find(a => a.id === id)?.isGhost) && <p style={{ margin: '.35rem 0 0', color: 'var(--ink-soft)', fontSize: '.78rem', lineHeight: 1.45 }}>{Boolean(accounts.find(a => a.id === fromId)?.isGhost) === Boolean(accounts.find(a => a.id === toId)?.isGhost) ? (locale === 'zh' ? '此转账只在幽灵账户之间移动资金，不改变普通账户总余额。' : 'This moves money between ghost accounts and leaves your regular total unchanged.') : (locale === 'zh' ? '此转账会改变计入总额的普通账户余额，但不会计为收入或支出。' : 'This changes your included balance, without counting as income or spending.')}</p>}</div>}
               {accountError && <div className="pb-span-2"><ActionError message={accountError} /></div>}
               {accountsLoaded && accounts.length === 0 && (
                 <div className="pb-span-2"><NoAccountsNotice onNavigate={close} /></div>
