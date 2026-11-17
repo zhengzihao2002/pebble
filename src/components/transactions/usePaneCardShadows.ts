@@ -60,7 +60,10 @@ export function usePaneCardShadows(pageRef: RefObject<HTMLDivElement | null>) {
       for (const [card, { shadow, pane: host }] of records) {
         const rect = card.getBoundingClientRect();
         const viewport = host.getBoundingClientRect();
-        shadow.hidden = rect.bottom < viewport.top - 40 || rect.top > viewport.bottom + 40;
+        shadow.hidden = rect.bottom <= viewport.top || rect.top >= viewport.bottom;
+        // Keep the horizontal halo around the pane, but stop the shadow
+        // where the card itself is clipped vertically by the scrollport.
+        shadow.style.clipPath = `inset(${viewport.top - rect.top}px -100vmax ${rect.bottom - viewport.bottom}px -100vmax)`;
         Object.assign(shadow.style, {
           left: rect.left + 'px', top: rect.top + 'px',
           width: rect.width + 'px', height: rect.height + 'px',

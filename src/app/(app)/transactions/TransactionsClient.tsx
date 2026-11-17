@@ -319,6 +319,9 @@ export function TransactionsClient({
   useLayoutEffect(() => {
     if (pendingAccountScroll.current !== accountFilter) return;
     pendingAccountScroll.current = null;
+    // In the split layout the statement already has its own scrollport.
+    // scrollIntoView can also move the outer shell and shift the summary.
+    if (pageRef.current?.hasAttribute('data-txn-panes')) return;
 
     const statement = mainRef.current;
     const target = ghostLens

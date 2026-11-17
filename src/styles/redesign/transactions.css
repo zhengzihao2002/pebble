@@ -78,13 +78,18 @@
   .pebble-root .pb-txn-more-button:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
   .pebble-root .pb-txn-pane-right {
     --pb-txn-bar-bleed: 1rem;
+    scrollbar-gutter: stable;
     margin-left: calc(-1 * var(--pb-txn-bar-bleed)); padding-left: var(--pb-txn-bar-bleed);
     margin-right: calc(-1 * var(--pb-txn-right-reach, 0px)); padding-right: var(--pb-txn-right-reach, 0px);
   }
   .pebble-root .pb-txn-rail, .pebble-root .pb-txn-main {
     margin-top: var(--pb-main-pad-top); margin-bottom: var(--pb-main-pad-bottom);
   }
-  .pebble-root .pb-txn-rail { gap: 1.25rem; }
+  .pebble-root .pb-txn-rail {
+    gap: 1.25rem;
+    margin-bottom: 0;
+    padding-bottom: var(--pb-main-pad-bottom);
+  }
   .pebble-root .pb-txn-pane .pb-txn-bar {
     position: sticky; top: 0; z-index: 6; margin-inline: 0;
     transition: margin-inline-start .32s var(--pb-ease-out), margin-inline-end .32s var(--pb-ease-out),
