@@ -30,7 +30,7 @@ interface SparklineProps {
  * give the balance-history hero a readable scale.
  *
  * Wears pb-chart-fade, so privacy mode blurs it like every other chart and a
- * tap reveals it (AppShell), and it fades in rather than drawing from zero.
+ * tap reveals it (AppShell), and the series draws in on page entry.
  */
 export function Sparkline({ values, height = 32, color = 'var(--pine)', area = true, endDot = true, baseline, label, className, yTicks = false }: SparklineProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -91,9 +91,11 @@ export function Sparkline({ values, height = 32, color = 'var(--pine)', area = t
             <text className="pb-spark-tick" x={left - 8} y={tick.y} textAnchor="end" dominantBaseline="middle">{formatCompactCurrency(tick.value)}</text>
           </g>)}
           {baseY !== null && <line className="pb-spark-base" x1={pad} x2={width - pad} y1={baseY} y2={baseY} />}
-          {area && <path className="pb-spark-area" d={fill} />}
-          <path className="pb-spark-line" d={path} />
-          {endDot && end && <circle className="pb-spark-dot" cx={end.x} cy={end.y} r={3.5} />}
+          <g data-pb-chart-draw="">
+            {area && <path className="pb-spark-area" d={fill} />}
+            <path className="pb-spark-line" d={path} />
+            {endDot && end && <circle className="pb-spark-dot" cx={end.x} cy={end.y} r={3.5} />}
+          </g>
         </svg>
       )}
     </div>

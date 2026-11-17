@@ -221,18 +221,20 @@ export function MonthPace({ transactions, rules, categoryMeta, today }: MonthPac
             {xTicks.map((day, i) => (
               <text key={`${day}-${i}`} className="pb-ins-axis" x={x(day)} y={H - 4} textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}>{day}</text>
             ))}
-            <path className="pb-ins-pace-usual" d={usualPath} />
-            {areaPath && <path className="pb-ins-pace-area" d={areaPath} />}
-            {curPath && <path className="pb-ins-pace-cur" d={curPath} />}
-            {projPath && <path className="pb-ins-pace-proj" d={projPath} />}
+            <g data-pb-chart-draw="">
+              <path className="pb-ins-pace-usual" d={usualPath} />
+              {areaPath && <path className="pb-ins-pace-area" d={areaPath} />}
+              {curPath && <path className="pb-ins-pace-cur" d={curPath} />}
+              {projPath && <path className="pb-ins-pace-proj" d={projPath} />}
+              {curCum.length > 0 && <circle className="pb-ins-pace-dot" cx={x(td)} cy={y(spent)} r={3.5} />}
+              {td < len && <circle className="pb-ins-pace-end" cx={x(len)} cy={y(forecast)} r={3} />}
+            </g>
             {td < len && (
               <>
                 <line className="pb-ins-pace-today" x1={x(td)} x2={x(td)} y1={T} y2={H - B} />
                 <text className="pb-ins-axis is-strong" x={x(td) + 4} y={T + 8}>{ux.today}</text>
               </>
             )}
-            {curCum.length > 0 && <circle className="pb-ins-pace-dot" cx={x(td)} cy={y(spent)} r={3.5} />}
-            {td < len && <circle className="pb-ins-pace-end" cx={x(len)} cy={y(forecast)} r={3} />}
             {hv !== null && (
               <g className="pb-ins-pace-hover">
                 <line x1={x(hv)} x2={x(hv)} y1={T} y2={H - B} />

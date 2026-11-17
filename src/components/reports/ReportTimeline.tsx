@@ -81,22 +81,30 @@ function ReportPlot({ data, avg, todayKey, mode, granularity, today }: {
       }}>
       {ticks.map(value => <i key={value} className="pb-rep-native-grid" style={{ top: `${y(value)}%`, opacity: value === 0 ? 1 : .65 }} />)}
       {avg > 0 && <i className="pb-rep-native-average" style={{ top: `${y(mode === 'mixed' ? -avg : avg)}%` }} />}
+      {hovered !== null && <i className="pb-rep-native-cursor" style={{ left: `${hovered / count * 100}%`, width: `${100 / count}%` }} />}
+      <div className="pb-rep-native-marks" data-pb-chart-draw="" aria-hidden="true">
+        {data.map((p, index) => {
+          const bar = (value: number, color: string, ghost = false) => <i className={`pb-rep-native-bar${ghost ? ' is-future' : ''}`}
+            style={{ top: `${Math.min(y(0), y(value))}%`, height: `${Math.abs(y(value) - y(0))}%`, background: ghost ? 'transparent' : color,
+              borderRadius: value < 0 ? '0 0 4px 4px' : '4px 4px 0 0' }} />;
+          return <div key={p.key} className="pb-rep-native-bucket" style={{ left: `${index / count * 100}%`, width: `${100 / count}%` }}>
+            {mode !== 'expense' && bar(p.income, 'var(--income)')}
+            {mode !== 'income' && bar(p.spending, 'var(--expense)')}
+            {mode !== 'mixed' && p.future && bar(p.ghost, 'transparent', true)}
+          </div>;
+        })}
+        {mode === 'mixed' && granularity !== 'day' && <svg className="pb-rep-native-net" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <path d={net} fill="none" stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>}
+      </div>
       {data.map((p, index) => {
-        const bar = (value: number, color: string, ghost = false) => <i className={`pb-rep-native-bar${ghost ? ' is-future' : ''}`}
-          style={{ top: `${Math.min(y(0), y(value))}%`, height: `${Math.abs(y(value) - y(0))}%`, background: ghost ? 'transparent' : color,
-            borderRadius: value < 0 ? '0 0 4px 4px' : '4px 4px 0 0' }} />;
+        const isToday = p.key === todayKey && count > 1;
+        if (!labels.has(index) && !isToday) return null;
         return <div key={p.key} className="pb-rep-native-bucket" style={{ left: `${index / count * 100}%`, width: `${100 / count}%` }}>
-          {hovered === index && <i className="pb-rep-native-cursor" />}
-          {mode !== 'expense' && bar(p.income, 'var(--income)')}
-          {mode !== 'income' && bar(p.spending, 'var(--expense)')}
-          {mode !== 'mixed' && p.future && bar(p.ghost, 'transparent', true)}
           {labels.has(index) && <span className="pb-rep-native-x">{p.label}</span>}
-          {p.key === todayKey && count > 1 && <i className="pb-rep-native-today"><span>{today}</span></i>}
+          {isToday && <i className="pb-rep-native-today"><span>{today}</span></i>}
         </div>;
       })}
-      {mode === 'mixed' && granularity !== 'day' && <svg className="pb-rep-native-net" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-        <path d={net} fill="none" stroke="color-mix(in srgb, var(--ink) 72%, transparent)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      </svg>}
       {point?.net !== null && point?.net !== undefined && hovered !== null && <i className="pb-rep-native-dot" style={{ left: `${(hovered + .5) / count * 100}%`, top: `${y(point.net)}%` }} />}
       {point && hovered !== null && <div className="pb-rep-native-tooltip" style={hovered >= count / 2 ? { right: 0 } : { left: 0 }}>
         <Tip active payload={[{ payload: point }]} mode={mode} />
@@ -121,7 +129,7 @@ interface ReportTimelineProps {
  * still to come are hollow outlines at the average height, never zero bars,
  * so a month in progress reads as unfinished.
  *
- * Fades in (pb-chart-fade) rather than growing from zero, and blurs as a unit
+ * Draws its series on page entry and blurs as a unit
  * in privacy mode, axis text included.
  *
  * Read-only on purpose: bars used to drill into the month (or scroll to the

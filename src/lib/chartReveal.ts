@@ -1,6 +1,17 @@
 const CHARTS = '.pb-chart-fade, .pb-chart-fill, [data-pb-chart-load], .pb-goals-tl-plot, .pb-ins-year-inner, .pb-ins-cal-grid, .pb-sched-month-grid, .pb-plan-barwrap, .pb-ana-meter, .pb-ana-split, .pb-txn-mix-strip';
 const EXCLUDED = '[role="dialog"], .pb-modal-overlay, .pb-layout-skeleton-host, .pb-navigation-preview, .pb-cached-layout, [data-slot="skeleton"], [aria-busy="true"]';
-interface Entry { hold: Animation | null; animation: Animation | null; opacity: number }
+const PLOT = [
+  '[data-pb-chart-draw]',
+  'g.recharts-line', 'g.recharts-area', 'g.recharts-bar',
+  'g.recharts-line-dots', 'g.recharts-area-dots',
+  '.pb-bar-track', '.pb-txn-flow', '.pb-txn-mix-strip', '.pb-ins-spark-bars', '.pb-dash-alloc-bar',
+].join(', ');
+const SWEEP = [
+  { clipPath: 'inset(-16px 100% -16px -16px)' },
+  { clipPath: 'inset(-16px -16px -16px -16px)' },
+];
+
+interface Entry { hold: Animation | null; animation: Animation | null; draw: Animation[]; opacity: number }
 
 /** One chart entry per actual page visit, including charts mounted by later
  * client data or first shown in a section. Resize and hover never replay it. */
@@ -9,6 +20,7 @@ export function createPageChartReveal(content: HTMLElement) {
   const scroll = content.closest<HTMLElement>('.pebble-root');
   const main = content.closest<HTMLElement>('.pebble-main');
   const seen = new WeakSet<Element>();
+  const drawn = new WeakMap<Element, Set<string>>();
   const pending = new Set<HTMLElement>();
   const entries = new Map<HTMLElement, Entry>();
   const intersecting = new Set<Element>();
@@ -16,7 +28,7 @@ export function createPageChartReveal(content: HTMLElement) {
   const finishEntry = (element: HTMLElement) => {
     const entry = entries.get(element);
     if (!entry) return;
-    for (const animation of [entry.hold, entry.animation]) {
+    for (const animation of [entry.hold, entry.animation, ...entry.draw]) {
       if (animation) { animation.onfinish = null; animation.cancel(); }
     }
     entries.delete(element);
@@ -31,13 +43,41 @@ export function createPageChartReveal(content: HTMLElement) {
     if (!entry || seen.has(element)) return;
     seen.add(element); pending.delete(element); intersections?.unobserve(element); intersecting.delete(element);
     entry.hold?.cancel(); entry.hold = null;
-    // Individual translate preserves a ring/plot's existing transform. Avoid
-    // introducing a containing block around HTML tooltips or sticky controls.
-    const settle = element.namespaceURI === 'http://www.w3.org/2000/svg' && getComputedStyle(element).translate === 'none';
+    // A keyed plot can remount when switching periods. Its chart slot has
+    // already entered, so keep period changes on the existing fade.
+    const slot = element.parentElement;
+    const key = element.getAttribute('class') ?? '';
+    const previous = slot ? drawn.get(slot) : undefined;
+    const marks = previous?.has(key) ? [] : [
+      ...(element.matches(PLOT) ? [element] : []),
+      ...element.querySelectorAll<HTMLElement>(PLOT),
+    ].filter(mark => {
+      const ancestor = mark.parentElement?.closest(PLOT);
+      return (!ancestor || !element.contains(ancestor)) && getComputedStyle(mark).display !== 'none';
+    });
+    if (marks.length && slot) {
+      const keys = previous ?? new Set<string>();
+      keys.add(key);
+      drawn.set(slot, keys);
+    }
+
+    const delay = Math.min(order++, 4) * 35;
+    const duration = marks.length ? 820 : 460;
+    const easing = 'cubic-bezier(.22,.78,.22,1)';
+    entry.draw = marks.map(mark => {
+      const animation = mark.animate(SWEEP, { duration, delay, easing, fill: 'both' });
+      animation.id = 'pb-chart-draw-entry';
+      return animation;
+    });
+
+    // Reveal axes and labels early while the series is still drawing. Use
+    // individual translate only for the existing fallback on static charts.
+    const settle = !marks.length && element.namespaceURI === 'http://www.w3.org/2000/svg' && getComputedStyle(element).translate === 'none';
     const animation = element.animate([
       { opacity: 0, ...(settle ? { translate: '0 4px' } : {}) },
-      { opacity: entry.opacity, ...(settle ? { translate: '0 0' } : {}) },
-    ], { duration: 460, delay: Math.min(order++, 4) * 35, easing: 'cubic-bezier(.22,.78,.22,1)', fill: 'both' });
+      { opacity: entry.opacity, ...(marks.length ? { offset: .25 } : {}), ...(settle ? { translate: '0 0' } : {}) },
+      ...(marks.length ? [{ opacity: entry.opacity }] : []),
+    ], { duration, delay, easing: marks.length ? 'linear' : easing, fill: 'both' });
     animation.id = 'pb-chart-page-entry'; entry.animation = animation;
     animation.onfinish = () => finishEntry(element);
   }
@@ -47,6 +87,9 @@ export function createPageChartReveal(content: HTMLElement) {
     for (const element of pending) {
       if (!element.isConnected) { finishEntry(element); pending.delete(element); intersections?.unobserve(element); continue; }
       if (element.closest(EXCLUDED) || element.closest('[hidden]') || !visible(element)) continue;
+      // ResponsiveContainer mounts its SVG only after it has measured its
+      // size. Its child insertion queues another inspection.
+      if (element.querySelectorAll('.recharts-responsive-container:empty').length) continue;
       if (!intersections || intersecting.has(element)) start(element);
     }
   }
@@ -71,7 +114,7 @@ export function createPageChartReveal(content: HTMLElement) {
     const opacity = Number(getComputedStyle(element).opacity);
     const hold = element.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1, fill: 'both' });
     hold.id = 'pb-chart-page-hold'; hold.pause();
-    entries.set(element, { hold, animation: null, opacity }); pending.add(element); intersections?.observe(element);
+    entries.set(element, { hold, animation: null, draw: [], opacity }); pending.add(element); intersections?.observe(element);
   }
   function discover(node: Node) {
     if (!(node instanceof Element)) return;

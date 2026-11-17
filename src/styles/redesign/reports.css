@@ -782,6 +782,7 @@
 .pebble-root .pb-rep-native-plot { position: absolute; inset: 0; }
 .pebble-root .pb-rep-native-grid, .pebble-root .pb-rep-native-average { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); pointer-events: none; }
 .pebble-root .pb-rep-native-average { border-top: 1px dashed var(--ink-soft); opacity: .7; }
+.pebble-root .pb-rep-native-marks { position: absolute; inset: 0; pointer-events: none; }
 .pebble-root .pb-rep-native-bucket { position: absolute; top: 0; bottom: 0; }
 .pebble-root .pb-rep-native-bar { position: absolute; left: 50%; transform: translateX(-50%); width: 74%; max-width: 24px; }
 .pebble-root .pb-rep-native-bar.is-future { border: 1px dashed var(--ink-faint); opacity: .6; }

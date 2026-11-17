@@ -10,12 +10,13 @@ function fixture({ reduced = false } = {}) {
   class Element {
     constructor(className = '') { this.className = className; this.children = []; this.parentElement = null; this.attributes = new Set(); this.hidden = false; this.isConnected = true; this.namespaceURI = 'http://www.w3.org/1999/xhtml'; this.animations = []; this.visibility = 'visible'; }
     matches(selector) {
-      return selector.split(',').some(s => { s = s.trim(); if (s.startsWith('.')) return this.className.split(' ').includes(s.slice(1)); if (s === '[data-pb-chart-load]') return this.attributes.has('data-pb-chart-load'); if (s === '[hidden]') return this.hidden; if (s === '[aria-busy="true"]') return this.busy; return false; });
+      return selector.split(',').some(s => { s = s.trim(); if (s.startsWith('.')) return this.className.split(' ').includes(s.slice(1)); if (s === '[data-pb-chart-load]' || s === '[data-pb-chart-draw]') return this.attributes.has(s.slice(1, -1)); if (s === '[hidden]') return this.hidden; if (s === '[aria-busy="true"]') return this.busy; return false; });
     }
     closest(selector) { for (let el = this; el; el = el.parentElement) if (el.matches(selector)) return el; return null; }
     querySelectorAll(selector) { return this.children.flatMap(el => [...(el.matches(selector) ? [el] : []), ...el.querySelectorAll(selector)]); }
     append(el) { el.parentElement = this; this.children.push(el); }
     contains(el) { for (; el; el = el.parentElement) if (el === this) return true; return false; }
+    getAttribute(key) { return key === 'class' ? this.className : null; }
     hasAttribute(key) { return this.attributes.has(key); }
     getBoundingClientRect() { return { width: 320, height: 200 }; }
     getAnimations() { return this.animations; }
@@ -115,5 +116,25 @@ test('dialog charts never receive page visibility holds', () => {
   const chart = new f.Element('pb-chart-fade');
   overlay.append(chart); f.content.append(overlay); f.mutate(f.content, [overlay]);
   assert.equal(chart.animations.length, 0, 'A sheet chart must remain visible independently of the page scroll observer');
+  f.controller.dispose();
+});
+
+test('plot marks draw separately and a period remount only fades', () => {
+  const f = fixture();
+  const marks = new f.Element();
+  marks.attributes.add('data-pb-chart-draw');
+  f.chart.append(marks);
+  f.controller.reveal(); f.see(f.chart);
+  assert.equal(marks.animations[0].id, 'pb-chart-draw-entry');
+  assert.equal(f.entries(f.chart)[0].keyframes[1].offset, .25);
+  f.entries(f.chart)[0].finish();
+  assert.equal(marks.animations.length, 0);
+
+  const next = new f.Element('pb-chart-fade');
+  const nextMarks = new f.Element();
+  nextMarks.attributes.add('data-pb-chart-draw');
+  next.append(nextMarks); f.content.append(next);
+  f.mutate(f.content, [next]); f.see(next);
+  assert.equal(nextMarks.animations.length, 0);
   f.controller.dispose();
 });
