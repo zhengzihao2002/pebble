@@ -98,7 +98,7 @@
     padding-inline: calc(1rem + var(--pb-txn-bar-bleed, 0px));
   }
   .pebble-root .pb-txn-pane .pb-txn-day-head { top: var(--pb-txn-bar-h, 0px); }
-  .pebble-root .pb-txn-pane .pb-txn-day { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
+  .pebble-root .pb-txn-pane :is(.pb-txn-day, .pb-txn-ghost-history) { scroll-margin-top: calc(var(--pb-txn-bar-h, 0px) + 0.5rem); }
 }
 @media (prefers-reduced-motion: reduce) {
   .pebble-root .pb-txn-pane .pb-txn-bar { transition: none; }
@@ -374,6 +374,7 @@
    scrolling under a translucent one showed through beside the date. A token,
    so it still fades between themes. z-index stays under the header's 10 and
    the search bar's 6. */
+.pebble-root .pb-txn-ghost-history { scroll-margin-top: calc(var(--pb-header-h) + 0.5rem); }
 .pebble-root .pb-txn-day { position: relative; scroll-margin-top: calc(var(--pb-header-h) + 0.5rem); }
 .pebble-root .pb-txn-day-head {
   position: sticky; top: var(--pb-header-h); z-index: 4;
@@ -384,7 +385,7 @@
 }
 @container pb-txn-col (min-width: 640px) {
   .pebble-root .pb-txn-day-head { top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px)); }
-  .pebble-root .pb-txn-day { scroll-margin-top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px) + 0.5rem); }
+  .pebble-root :is(.pb-txn-day, .pb-txn-ghost-history) { scroll-margin-top: calc(var(--pb-header-h) + var(--pb-txn-bar-h, 0px) + 0.5rem); }
 }
 .pebble-root .pb-txn-day-label { display: inline-flex; align-items: baseline; gap: 0.45rem; min-width: 0; white-space: nowrap; }
 .pebble-root .pb-txn-day-long,

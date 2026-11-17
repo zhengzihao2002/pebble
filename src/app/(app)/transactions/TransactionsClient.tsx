@@ -289,24 +289,22 @@ export function TransactionsClient({
     setAccountFilter(ALL_ACCOUNTS);
   };
 
-  // A ledger row in the Today card opens that account's statement; pressing
-  // the open one again returns to all accounts. On a phone the statement is
-  // far below, so it is brought into view.
+  const barRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const pendingAccountScroll = useRef<string | null>(null);
+
+  // Wait for the selected account's rows to commit before measuring the
+  // destination. A ghost selection can replace a long statement with a
+  // short list, changing the scroll range as well as the target.
   const pickAccount = (id: string) => {
     const next = accountFilter === id ? ALL_ACCOUNTS : id;
+    pendingAccountScroll.current = next === ALL_ACCOUNTS ? null : next;
+    if (ghostIds.has(next)) setShowGhostAccounts(true);
     setAccountFilter(next);
-    if (next === ALL_ACCOUNTS) return;
-    const stmt = document.getElementById('pb-txn-statement-col');
-    if (stmt && stmt.getBoundingClientRect().top > window.innerHeight * 0.6) {
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      stmt.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    }
   };
 
   // The search bar sticks under the header from 640px; the day headers stick
   // under both, so its live height is published for them.
-  const barRef = useRef<HTMLDivElement>(null);
-  const mainRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const bar = barRef.current;
     const main = mainRef.current;
@@ -317,6 +315,20 @@ export function TransactionsClient({
     ro.observe(bar);
     return () => ro.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    if (pendingAccountScroll.current !== accountFilter) return;
+    pendingAccountScroll.current = null;
+
+    const statement = mainRef.current;
+    const target = ghostLens
+      ? statement?.querySelector<HTMLElement>('.pb-txn-ghost-history')
+      : statement;
+    if (!target || (!ghostLens && target.getBoundingClientRect().top <= window.innerHeight * 0.6)) return;
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reduce ? 'instant' : 'smooth', block: 'start' });
+  }, [accountFilter, ghostLens]);
 
   // Formatted HERE rather than read from selectedMonthInfo.label: that label
   // is built in stats.ts, which is shared with server code and cannot know
@@ -351,7 +363,7 @@ export function TransactionsClient({
           accounts={[...sortedAccounts, ...ghostAccounts]}
           balancesByAccount={balancesByAccount}
           selectedAccountId={ghostLens ? accountFilter : lensId}
-          onPickAccount={id => { if (ghostIds.has(id)) setShowGhostAccounts(true); pickAccount(id); }}
+          onPickAccount={pickAccount}
         />
 
         <section className="card pb-txn-month" aria-label={monthLabel}>
