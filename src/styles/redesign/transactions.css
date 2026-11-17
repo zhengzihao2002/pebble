@@ -630,14 +630,16 @@
 .pebble-root .pb-txn-acc.is-ghost {
   position: relative;
   isolation: isolate;
+  color: var(--ink-soft);
 }
+.pebble-root .pb-txn-acc.is-ghost .pb-txn-acc-fig { font-weight: 400; }
 .pebble-root .pb-txn-acc.is-ghost::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(100deg, color-mix(in srgb, var(--pb-ghost-accent) 33%, transparent), color-mix(in srgb, var(--pb-ghost-accent) 19%, transparent));
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--ink-soft) 9%, transparent), color-mix(in srgb, var(--ink-soft) 3%, transparent));
 }
 /* A single account column spans the mobile card. Keep its text aligned while
    carrying the band through the card gutters. Wider ledgers use columns. */
@@ -648,9 +650,9 @@
 }
 .pebble-root .pb-txn-acc.is-ghost:hover,
 .pebble-root .pb-txn-acc.is-ghost.pb-txn-acc-on { background-color: transparent; box-shadow: none; }
-.pebble-root .pb-txn-acc.is-ghost:hover::before { background-color: color-mix(in srgb, var(--pb-ghost-accent) 7%, transparent); }
+.pebble-root .pb-txn-acc.is-ghost:hover::before { background-color: color-mix(in srgb, var(--pb-ghost-accent) 5%, transparent); }
 .pebble-root .pb-txn-acc.is-ghost.pb-txn-acc-on::before {
-  background-color: color-mix(in srgb, var(--pb-ghost-accent) 12%, transparent);
-  box-shadow: inset 3px 0 0 var(--pb-ghost-accent);
+  background-color: color-mix(in srgb, var(--pb-ghost-accent) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--pb-ghost-accent);
 }
 .pebble-root .pb-txn-acc.is-ghost:focus-visible { outline-color: var(--pb-ghost-accent); }

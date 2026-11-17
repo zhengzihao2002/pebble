@@ -139,9 +139,11 @@
 :where(.pebble-root :is(.card, [data-slot="card"], .pb-hero, .pb-modal-card, .pb-settings-tile, .pb-accounts-tile, .add-goal-tile, .pb-rep-rail, .stat-tab:not(.card .stat-tab))) { position: relative; }
 
 /* Compact ghost identity fits the same line box as ordinary account icons. */
-.pebble-root .pb-ghost-account-visual { --pb-ghost-accent: color-mix(in oklch, var(--pine) 25%, #9b82bd); }
+.pebble-root .pb-ghost-account-visual { --pb-ghost-accent: color-mix(in oklch, var(--ink-soft) 80%, #9b82bd); }
 .pebble-root .pb-ghost-account-mark {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 1.25em; height: 1.25em; color: color-mix(in srgb, currentColor 15%, var(--pb-ghost-accent));
 }
-.pebble-root .pb-ghost-account-mark svg { width: 100%; height: 100%; fill: color-mix(in srgb, var(--pb-ghost-accent) 32%, transparent); stroke-width: 2.3; }
+.pebble-root .pb-ghost-account-mark svg { width: 100%; height: 100%; fill: none; stroke-width: 1.9;
+  mask-image: linear-gradient(to bottom, black 55%, rgb(0 0 0 / 44%));
+}
