@@ -1,3 +1,4 @@
+import snapshot from './releaseSnapshot.json';
 import { execFileSync } from 'node:child_process';
 import { FEATURE_RELEASES, MAJOR_MILESTONES } from './releaseHistory';
 
@@ -31,7 +32,8 @@ export function resolveBuildVersion() {
     });
     return { version: versionFromHistory(commits), count: git('rev-list', '--count', 'HEAD'), revision: git('rev-parse', '--short=7', 'HEAD') };
   } catch {
-    // Source archives can have no Git history; show unavailable rather than a false number.
-    return { version: '', count: '', revision: (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || '').slice(0, 7) };
+    // Hosting providers can strip .git after checkout. Use the reviewed
+    // release snapshot, generated immediately before the source commit.
+    return { version: snapshot.version, count: snapshot.count, revision: (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || '').slice(0, 7) };
   }
 }

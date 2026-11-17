@@ -27,12 +27,13 @@ test('the actual full repository count and revision are available at build time'
  console.log('Current release:',result);
 });
 
-test('shallow checkouts expand history before counting; missing history never invents a version',()=>{
+test('shallow checkouts expand history before counting; source archives use the prepared release snapshot',()=>{
  const calls=[];
  const fakeGit=(_cmd,args)=>{calls.push(args.join(' '));const key=args.join(' ');if(key==='rev-parse --is-shallow-repository')return 'true';if(key.startsWith('fetch'))return '';if(key.startsWith('log'))return '1905497\x1fInitial commit\x1f\x1e8215d03\x1fApp\x1f\x1efix0000\x1fFix\x1f\x1e';if(key==='rev-list --count HEAD')return '3';return 'fix0000';};
  const shallow={exports:{}};vm.runInNewContext(code,{module:shallow,exports:shallow.exports,process:{env:{}},require:name=>name==='node:child_process'?{execFileSync:fakeGit}:require(name)});
  const found=shallow.exports.resolveBuildVersion();
  assert.equal(found.count,'3');assert.equal(found.version,'1.0.1');assert(calls.indexOf('fetch --unshallow origin')<calls.indexOf('rev-list --count HEAD'));
  const missing={exports:{}};vm.runInNewContext(code,{module:missing,exports:missing.exports,process:{env:{}},require:name=>name==='node:child_process'?{execFileSync(){throw new Error('no Git')}}:require(name)});
- assert.equal(missing.exports.resolveBuildVersion().count,'');
+ assert.match(missing.exports.resolveBuildVersion().version,/^\d+\.\d+\.\d+$/);
+ assert(+missing.exports.resolveBuildVersion().count>=360);
 });

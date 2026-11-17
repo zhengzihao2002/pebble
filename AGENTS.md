@@ -14,6 +14,9 @@ Every new commit must include a `Release-Type: major|minor|patch|none` footer.
 Use major for a broad app/architecture milestone, minor for an additive feature,
 patch for a fix/refinement, and none for documentation/tests/merge-only work.
 Minor resets patch; major resets minor and patch. Keep detailed commit bodies.
-Settings derives its version and build count from full Git history at build time.
+Before committing, run `node scripts/prepare-release.mjs TYPE` using the same
+release type and stage `src/lib/releaseSnapshot.json`. This provides accurate
+metadata when Vercel strips .git. The build uses full history when available,
+otherwise the prepared snapshot; the displayed revision comes from the host.
 Historical classifications live in `src/lib/releaseHistory.ts`; do not rewrite
 those decisions casually or change dependency versions for release numbering.

@@ -5,8 +5,9 @@ The build count is retained for internal verification and is not shown in Settin
 The build number counts every commit reachable from the deployed revision,
 from the repository's start. The revision identifies the actual source build.
 Both are calculated at build time, identically for server and browser output.
-Shallow checkouts fetch missing Git history before calculating; source archives
-without history display unavailable information instead of a false number.
+Shallow checkouts fetch missing Git history before calculating. Vercel strips
+Git metadata from build inputs, so a reviewed, commit-time release snapshot
+provides the same version there; Vercel supplies the actual commit revision.
 
 The repository had no release tags. These retrospective major milestones were
 chosen to represent broad changes to the application or its financial model:
@@ -42,3 +43,10 @@ Conventional `feat:` and breaking-change markers are also recognized when the
 footer is absent; unclassified substantive commits default to patch. Explicit
 footers take priority. Each build reflects its exact commit, so rebuilding the
 same revision does not create a different version or build number.
+
+Before each new commit, run `node scripts/prepare-release.mjs TYPE` with the
+same major/minor/patch/none classification used in its Release-Type footer.
+Stage the generated `src/lib/releaseSnapshot.json` with the change. The script
+computes the planned release from full history, counts the pending commit,
+and records its parent revision. This keeps source-only deployment builds
+accurate without requiring Git credentials or an external API at build time.
