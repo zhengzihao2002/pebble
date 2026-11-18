@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 interface ProgressRingProps {
   /** 0 to 1 for the main ring. With overflowColor, the next lap shows the excess. */
@@ -47,13 +47,14 @@ export function ProgressRing({ value, size = 64, stroke = 6, color = 'var(--pine
             pathLength={100} strokeDasharray={`${pct * 100} 100`}
           />
         )}
-        {overflowColor && overflow > 0 && (
-          <circle
-            className="pb-ring-arc pb-ring-overflow" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke}
-            pathLength={100} strokeDasharray={`${overflow * 100} 100`} style={{ stroke: overflowColor }}
-          />
-        )}
       </svg>
+      {overflowColor && (
+        <span className="pb-ring-overflow" aria-hidden="true" style={{
+          '--pb-ring-overflow-color': overflowColor,
+          '--pb-ring-overflow-progress': `${overflow * 100}%`,
+          '--pb-ring-overflow-inner': `${100 - (2 * stroke / size) * 100}%`,
+        } as CSSProperties} />
+      )}
       {children !== undefined && <span className="pb-ring-center">{children}</span>}
     </span>
   );

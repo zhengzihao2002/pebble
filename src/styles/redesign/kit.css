@@ -48,6 +48,30 @@
   animation: pb-ring-sweep 900ms var(--pb-ease-out) both;
 }
 @keyframes pb-ring-sweep { from { stroke-dasharray: 0 100; } }
+@property --pb-ring-overflow-progress {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.pebble-root .pb-ring-overflow {
+  position: absolute; inset: 0; pointer-events: none;
+  --pb-ring-overflow-ramp: min(12%, calc(var(--pb-ring-overflow-progress) / 2));
+  --pb-ring-overflow-tip: min(4%, calc(var(--pb-ring-overflow-progress) / 2));
+  --pb-ring-overflow-mask: radial-gradient(circle closest-side,
+    transparent calc(var(--pb-ring-overflow-inner) - 0.4px),
+    #000 calc(var(--pb-ring-overflow-inner) + 0.4px),
+    #000 calc(100% - 0.4px), transparent 100%);
+  -webkit-mask-image: var(--pb-ring-overflow-mask);
+  mask-image: var(--pb-ring-overflow-mask);
+  /* Feather both ends of the lap, including where it meets itself at 200%. */
+  background: conic-gradient(transparent 0%,
+    var(--pb-ring-overflow-color) var(--pb-ring-overflow-ramp),
+    var(--pb-ring-overflow-color) calc(var(--pb-ring-overflow-progress) - var(--pb-ring-overflow-tip)),
+    transparent var(--pb-ring-overflow-progress));
+  animation: pb-ring-overflow-sweep 900ms var(--pb-ease-out) 180ms backwards;
+  transition: --pb-ring-overflow-progress 450ms var(--pb-ease-out);
+}
+@keyframes pb-ring-overflow-sweep { from { --pb-ring-overflow-progress: 0%; } }
 .pebble-root .pb-ring-center { position: relative; display: grid; place-items: center; text-align: center; line-height: 1.1; }
 
 /* Sparkline. */

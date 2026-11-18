@@ -57,17 +57,16 @@
 .pebble-root .pb-bud-ring .pb-ring > svg { width: 100%; height: 100%; }
 .pebble-root .pb-bud-ring .pb-ring-arc {
   animation-fill-mode: backwards;
-  transition: stroke-dasharray 450ms var(--pb-ease-out), stroke 260ms ease;
+  transition: stroke-dasharray 450ms var(--pb-ease-out), stroke 600ms ease;
 }
-.pebble-root .pb-bud-ring .pb-ring-overflow { animation-delay: 180ms; }
 .pebble-root .pb-bud-ring[data-over-budget] .pb-bud-ring-pct { color: var(--expense); }
 @media (prefers-reduced-motion: no-preference) {
-  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) .pb-bud-ring .pb-ring-arc {
+  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) .pb-bud-ring :is(.pb-ring-arc, .pb-ring-overflow) {
     animation-play-state: paused;
   }
 }
 .pebble-root .pb-bud-ring .pb-ring-center { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
-.pebble-root .pb-bud-ring-pct { font-size: 1.3rem; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
+.pebble-root .pb-bud-ring-pct { font-size: 1.3rem; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); transition: color 600ms ease; }
 .pebble-root .pb-bud-ring-sub { font-size: 0.7rem; color: var(--ink-soft); }
 @container content (min-width: 640px) { .pebble-root .pb-bud-ring-pct { font-size: 1.65rem; } }
 /* Even pace today: an ink tick across the ring, rotated into place inline.
