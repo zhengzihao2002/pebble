@@ -28,13 +28,17 @@ interface ProgressRingProps {
  * on the server.
  */
 export function ProgressRing({ value, size = 64, stroke = 6, color = 'var(--pine)', overflowColor, label, children, className }: ProgressRingProps) {
-  const pct = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
-  const overflow = Number.isFinite(value) ? Math.max(0, Math.min(1, value - 1)) : 0;
+  const progress = Number.isFinite(value) ? Math.max(0, Math.min(2, value)) : 0;
+  const pct = Math.min(1, progress);
   const r = (size - stroke) / 2;
   return (
     <span
-      className={`pb-ring${className ? ` ${className}` : ''}`}
-      style={{ width: size, height: size, ['--pb-ring-color' as string]: color }}
+      className={`pb-ring${overflowColor ? ' pb-ring-with-overflow' : ''}${className ? ` ${className}` : ''}`}
+      style={{
+        width: size, height: size,
+        ['--pb-ring-color' as string]: color,
+        ['--pb-ring-progress' as string]: overflowColor ? progress : undefined,
+      }}
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
@@ -51,7 +55,6 @@ export function ProgressRing({ value, size = 64, stroke = 6, color = 'var(--pine
       {overflowColor && (
         <span className="pb-ring-overflow" aria-hidden="true" style={{
           '--pb-ring-overflow-color': overflowColor,
-          '--pb-ring-overflow-progress': `${overflow * 100}%`,
           '--pb-ring-overflow-inner': `${100 - (2 * stroke / size) * 100}%`,
         } as CSSProperties} />
       )}

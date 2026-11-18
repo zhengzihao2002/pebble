@@ -48,13 +48,26 @@
   animation: pb-ring-sweep 900ms var(--pb-ease-out) both;
 }
 @keyframes pb-ring-sweep { from { stroke-dasharray: 0 100; } }
-@property --pb-ring-overflow-progress {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 0%;
+@property --pb-ring-progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+/* Both laps read the same animated progress. The second lap stays at zero
+   until the main arc has actually completed its first revolution. */
+.pebble-root .pb-ring-with-overflow {
+  --pb-ring-progress-ease: cubic-bezier(.3, .05, .25, 1);
+  animation: pb-ring-progress-sweep 1200ms var(--pb-ring-progress-ease) backwards;
+  transition: --pb-ring-progress 450ms var(--pb-ring-progress-ease);
+}
+@keyframes pb-ring-progress-sweep { from { --pb-ring-progress: 0; } }
+.pebble-root .pb-ring-with-overflow .pb-ring-arc {
+  animation: none;
+  stroke-dasharray: calc(min(1, var(--pb-ring-progress)) * 100) 100;
 }
 .pebble-root .pb-ring-overflow {
   position: absolute; inset: 0; pointer-events: none;
+  --pb-ring-overflow-progress: clamp(0%, calc((var(--pb-ring-progress) - 1) * 100%), 100%);
   --pb-ring-overflow-ramp: min(12%, calc(var(--pb-ring-overflow-progress) / 2));
   --pb-ring-overflow-tip: min(4%, calc(var(--pb-ring-overflow-progress) / 2));
   --pb-ring-overflow-mask: radial-gradient(circle closest-side,
@@ -68,10 +81,7 @@
     var(--pb-ring-overflow-color) var(--pb-ring-overflow-ramp),
     var(--pb-ring-overflow-color) calc(var(--pb-ring-overflow-progress) - var(--pb-ring-overflow-tip)),
     transparent var(--pb-ring-overflow-progress));
-  animation: pb-ring-overflow-sweep 900ms var(--pb-ease-out) 180ms backwards;
-  transition: --pb-ring-overflow-progress 450ms var(--pb-ease-out);
 }
-@keyframes pb-ring-overflow-sweep { from { --pb-ring-overflow-progress: 0%; } }
 .pebble-root .pb-ring-center { position: relative; display: grid; place-items: center; text-align: center; line-height: 1.1; }
 
 /* Sparkline. */
