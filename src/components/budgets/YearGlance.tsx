@@ -15,10 +15,8 @@ const MIN_FORECAST_FRACTION = 14 / 365;
 
 /**
  * NEW: the year at a glance. A ring for how much of the year's budgets is
- * used (pine, wine only once spending passes them - wine means over budget
- * and nothing else) with an ink tick where an even pace would be today, so
- * "am I on track" reads before any figure. The plan card's four figures sit
- * beside it.
+ * used, with a deeper expense arc for spending beyond the budget and an
+ * ink tick for today's expected pace. The four headline figures sit beside it.
  *
  * Its partner, YearForecast, says where spending lands on Dec 31 if it keeps
  * its year-to-date rate: totalSpent / yearFraction(today). Both use exactly
@@ -43,14 +41,19 @@ export function YearRing({ totalBudget, totalSpent, fraction }: {
     );
   }
   const used = totalBudget > 0 ? totalSpent / totalBudget : null;
+  const overBudget = used !== null && used > 1;
   const usedPct = used === null ? null : Math.round(used * 100);
   const yearPct = Math.round(fraction * 100);
   return (
     <div
-      className="pb-bud-ring pb-chart-fade" role="img"
+      className="pb-bud-ring pb-chart-fade" data-over-budget={overBudget || undefined} role="img"
       aria-label={usedPct === null ? t(ux.yearGone, { pct: String(yearPct) }) : t(ux.ringLabel, { used: String(usedPct), year: String(yearPct) })}
     >
-      <ProgressRing value={used ?? 0} size={148} stroke={12} color={used !== null && used > 1 ? 'var(--expense)' : 'var(--pine)'}>
+      <ProgressRing
+        value={used ?? 0} size={148} stroke={12}
+        color={overBudget ? 'var(--expense)' : 'var(--pine)'}
+        overflowColor="var(--pb-bud-ring-over)"
+      >
         <span className="pb-bud-ring-pct pb-tnum"><RollingAmount value={usedPct === null ? '—' : `${usedPct}%`} /></span>
         {usedPct !== null && <span className="pb-bud-ring-sub">{ux.used}</span>}
       </ProgressRing>

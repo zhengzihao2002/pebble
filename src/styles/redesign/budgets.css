@@ -47,11 +47,25 @@
 }
 
 /* The ring: drawn at 148px and scaled by its box. */
-.pebble-root .pb-bud-ring { grid-area: ring; position: relative; width: 100px; aspect-ratio: 1; justify-self: center; }
+.pebble-root .pb-bud-ring {
+  --pb-bud-ring-over: color-mix(in srgb, var(--expense) 66%, #430919);
+  grid-area: ring; position: relative; width: 100px; aspect-ratio: 1; justify-self: center;
+}
 @container content (min-width: 640px) { .pebble-root .pb-bud-ring { width: 148px; } }
 .pebble-root .pb-bud-ring > .pb-skel { position: absolute; inset: 0; }
 .pebble-root .pb-bud-ring .pb-ring { width: 100% !important; height: 100% !important; }
 .pebble-root .pb-bud-ring .pb-ring > svg { width: 100%; height: 100%; }
+.pebble-root .pb-bud-ring .pb-ring-arc {
+  animation-fill-mode: backwards;
+  transition: stroke-dasharray 450ms var(--pb-ease-out), stroke 260ms ease;
+}
+.pebble-root .pb-bud-ring .pb-ring-overflow { animation-delay: 180ms; }
+.pebble-root .pb-bud-ring[data-over-budget] .pb-bud-ring-pct { color: var(--expense); }
+@media (prefers-reduced-motion: no-preference) {
+  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) .pb-bud-ring .pb-ring-arc {
+    animation-play-state: paused;
+  }
+}
 .pebble-root .pb-bud-ring .pb-ring-center { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
 .pebble-root .pb-bud-ring-pct { font-size: 1.3rem; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
 .pebble-root .pb-bud-ring-sub { font-size: 0.7rem; color: var(--ink-soft); }
