@@ -7,6 +7,8 @@ import { usePageReveal } from './usePageReveal';
 import { PageSkeleton } from './PageSkeleton';
 import { TraditionalPageLoader } from './TraditionalPageLoader';
 
+const empty = { __html: '' };
+
 export function NavigationContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -18,6 +20,7 @@ export function NavigationContent({ children }: { children: ReactNode }) {
   return <div ref={stageRef} className="pb-navigation-stage" suppressHydrationWarning>
     {/* One ring survives previews, streamed fallbacks and the final reveal. */}
     <div className="pb-page-spinner"><TraditionalPageLoader /></div>
+    <div className="pb-cached-handoff-surface" aria-hidden="true" inert suppressHydrationWarning dangerouslySetInnerHTML={empty}/>
     {pending && <div className="pb-navigation-preview"><PageSkeleton pathname={pending.pathname}/></div>}
     <div ref={contentRef} className="pb-navigation-content" hidden={pending !== null}>{children}</div>
   </div>;

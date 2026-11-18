@@ -140,6 +140,55 @@ test('streamed hosts wait for attachment and a measurable main before choosing a
  assert.equal(host['data-layout-restored'],'true');assert.equal(host['data-layout-ready'],'true');
  assert.equal(surface.children[0].style.height,'640px');assert(stopped>=2,'temporary observers disconnect after restoration');
 });
+test('the streamed bootstrap fades in real content when the server replaces a cached fallback before hydration',()=>{
+ setup('stream-handoff');seed(entry());
+ const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
+ const animations=[];
+ const rect={left:20,top:20,width:560,height:640};
+ const node=()=>({
+   style:{},dataset:{},children:[],isConnected:false,
+   get firstElementChild(){return this.children[0]??null;},
+   setAttribute(){},getBoundingClientRect:()=>rect,
+   append(child){child.isConnected=true;this.children.push(child);},
+   replaceChildren(...children){this.children=children;},
+   cloneNode:()=>node(),remove(){this.isConnected=false;},
+   animate(frames,options){const animation={target:this,frames,options,cancel(){}};animations.push(animation);return animation;},
+ });
+ const stage=node(),surface=node(),hold=node(),content=node(),host=node();
+ let fallback=true,busy=true,inspect,disconnected=false;
+ stage.isConnected=true;
+ stage.querySelector=selector=>selector.includes('surface')?hold:content;
+ stage.querySelectorAll=()=>fallback?[host]:[];
+ content.append(node());
+ content.querySelectorAll=selector=>busy&&selector.includes('aria-busy')?[{closest:()=>null}]:[];
+ host.dataset.layoutPath='/accounts';
+ host.querySelector=()=>surface;
+ host.closest=selector=>selector==='.pebble-main'?main:selector==='.pb-navigation-stage'?stage:null;
+ const doc={...document,currentScript:{parentElement:host},createElement:node};
+ require('node:vm').runInNewContext(layoutBootstrap,{
+   document:doc,window:{...window,matchMedia:()=>({matches:false})},localStorage,getComputedStyle,Date,
+   MutationObserver:class{constructor(fn){inspect=fn;}observe(){}disconnect(){disconnected=true;}},
+ });
+ assert.equal(hold.children.length,0,'the original visible fallback owns the screen');
+ fallback=false;inspect();
+ assert.equal(hold.firstElementChild.dataset.pbHandoff,'cached');
+ assert.equal(animations.length,0,'wait for the visible data');
+ busy=false;inspect();
+ assert.equal(animations.length,2);
+ assert.equal(animations[0].target,content);
+ assert.equal(animations[0].frames[0].opacity,0);
+ assert.equal(animations[0].frames.at(-1).opacity,1);
+ assert.equal(animations[1].target,hold.firstElementChild);
+ assert.equal(animations[1].frames.length,2,'the cached preview begins fading as soon as the loaded content does');
+ assert.equal(animations[1].frames[0].opacity,1);
+ assert.equal(animations[1].frames[1].opacity,0);
+ assert.equal(animations[0].options.duration,800);
+ assert.equal(animations[0].options.duration,animations[1].options.duration);
+ assert.equal(animations[0].options.easing,animations[1].options.easing);
+ animations[0].onfinish();
+ assert.equal(hold.firstElementChild.isConnected,false);
+ assert(disconnected);
+});
 test('captures the four standalone Analysis income tiles without duplicating tiles inside cards',()=>{
  setup('income-tiles');window.location.pathname='/analysis';
  const shape=(left,top,width,height,parentElement)=>({parentElement,getBoundingClientRect:()=>({left,top,width,height}),closest:()=>null,matches:()=>false});

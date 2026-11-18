@@ -50,9 +50,11 @@ export function usePageReveal(stageRef: RefObject<HTMLDivElement|null>, contentR
           return;
         }
         hideSpinner();
-        const source = host.hasAttribute('data-layout-restored')
-          ? host.querySelector<HTMLElement>('.pb-cached-layout')
-          : host.querySelector<HTMLElement>('.pb-layout-estimate');
+        // The cache bootstrap owns cached previews, including ones removed
+        // by the server stream before this effect can run.
+        snapshot = null;
+        if (host.hasAttribute('data-layout-restored')) return;
+        const source = host.querySelector<HTMLElement>('.pb-layout-estimate');
         if (source) {
           const rect = source.getBoundingClientRect(), origin = stage.getBoundingClientRect();
           snapshot = document.createElement('div');

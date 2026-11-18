@@ -7,6 +7,10 @@ export interface LayoutBox {
 export interface PageLayout {
   key: string; savedAt: number; width: number; height: number; boxes: LayoutBox[];
 }
+type HandoffStage = HTMLElement & {
+  pebbleCachedHandoff?: { canvas: HTMLElement; dispose: () => void };
+};
+
 export function snapshotTools() {
   const prefix = 'pebble-layout-sizes:v2:';
   const ttl = 30 * 86400000;
@@ -63,6 +67,90 @@ export function snapshotTools() {
     const user = owner(), key = profile(pathname,main);
     return user && key ? entries(user).filter(e=>sameProfile(e.key,key)).sort((a,b)=>b.savedAt-a.savedAt)[0] ?? null : null;
   }
+  // Install this from the streamed fallback itself. The server can swap in
+  // real markup before React has downloaded and mounted the reveal hook.
+  function rememberHandoff(host: HTMLElement, canvas: HTMLElement) {
+    const stage = host.closest<HandoffStage>('.pb-navigation-stage');
+    const surface = stage?.querySelector<HTMLElement>(':scope > .pb-cached-handoff-surface');
+    const path = host.dataset.layoutPath?.replace(/\/$/, '');
+    if (!stage || !surface || !path || host.closest('[hidden]') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const previous = stage.pebbleCachedHandoff;
+    if (previous?.canvas === canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    previous?.dispose();
+
+    const origin = stage.getBoundingClientRect();
+    const layer = document.createElement('div');
+    layer.className = 'pb-page-handoff';
+    layer.dataset.pbHandoff = 'cached';
+    layer.setAttribute('aria-hidden', 'true');
+    layer.inert = true;
+    Object.assign(layer.style, {
+      left: `${rect.left - origin.left}px`, top: `${rect.top - origin.top}px`,
+      width: `${rect.width}px`, height: `${rect.height}px`,
+    });
+    layer.append(canvas.cloneNode(true));
+    let incoming: Animation | undefined;
+    let outgoing: Animation | undefined;
+    let waitingForFonts = false;
+
+    function dispose() {
+      observer.disconnect();
+      if (incoming) { incoming.onfinish = null; incoming.cancel(); }
+      outgoing?.cancel();
+      layer.remove();
+      if (stage?.pebbleCachedHandoff?.canvas === canvas) delete stage.pebbleCachedHandoff;
+    }
+    function inspect() {
+      if (!stage?.isConnected || document.documentElement.getAttribute('data-pb-loading-style') === 'spinner'
+        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { dispose(); return; }
+      const fallback = [...stage.querySelectorAll<HTMLElement>('.pb-layout-skeleton-host')]
+        .find(candidate => !candidate.closest('[hidden]') && candidate.getBoundingClientRect().height > 0);
+      if (fallback) {
+        // A later fallback takes over from any handoff already in progress.
+        if (layer.isConnected) dispose();
+        return;
+      }
+      const content = stage.querySelector<HTMLElement>(':scope > .pb-navigation-content');
+      if (!content || content.hidden || !content.firstElementChild) return;
+      if (path !== window.location.pathname.replace(/\/$/, '')) { dispose(); return; }
+      if (incoming) return;
+
+      if (!layer.isConnected) surface?.append(layer);
+      const busy = [...content.querySelectorAll('[aria-busy="true"],[data-slot="skeleton"]')]
+        .some(element => !element.closest('[hidden]'));
+      if (busy) return;
+      if (document.fonts?.status === 'loading') {
+        if (!waitingForFonts) {
+          waitingForFonts = true;
+          void document.fonts.ready.then(() => {
+            waitingForFonts = false;
+            if (stage.pebbleCachedHandoff?.canvas === canvas) inspect();
+          });
+        }
+        return;
+      }
+
+      // Complementary opacities and the isolated blend in CSS keep matching
+      // surfaces opaque while the two sets of content and colors dissolve.
+      layer.dataset.pbHandoffReady = 'true';
+      content.querySelectorAll('.pb-rise').forEach(card => {
+        card.getAnimations().forEach(animation => {
+          if ('animationName' in animation && animation.animationName === 'pb-rise') animation.cancel();
+        });
+      });
+      const timing = { duration: 800, easing: 'cubic-bezier(.37,0,.63,1)' };
+      incoming = content.animate([{ opacity: 0 }, { opacity: 1 }], { ...timing, fill: 'backwards' });
+      incoming.id = 'pb-cached-handoff';
+      outgoing = layer.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, fill: 'forwards' });
+      incoming.onfinish = dispose;
+    }
+    const observer = new MutationObserver(inspect);
+    observer.observe(stage, { childList: true, subtree: true, attributes: true,
+      attributeFilter: ['hidden', 'aria-busy', 'data-slot', 'data-layout-ready'] });
+    stage.pebbleCachedHandoff = { canvas, dispose };
+  }
   function restore(host: HTMLElement, layout?: PageLayout | null) {
     const main = host.closest<HTMLElement>('.pebble-main');
     const surface = host.querySelector<HTMLElement>('.pb-layout-restored');
@@ -87,6 +175,8 @@ export function snapshotTools() {
     }
     const saved = spinner ? null : layout === undefined ? read(host.dataset.layoutPath ?? '',main) : layout;
     if (!saved) {
+      const pending = host.closest<HandoffStage>('.pb-navigation-stage')?.pebbleCachedHandoff;
+      if (pending && pending.canvas === surface.firstElementChild) pending.dispose();
       host.removeAttribute('data-layout-restored'); surface.replaceChildren(); delete surface.dataset.geometry;
       host.setAttribute('data-layout-ready','true');
       return true;
@@ -117,6 +207,8 @@ export function snapshotTools() {
     }
     host.setAttribute('data-layout-restored','true');
     host.setAttribute('data-layout-ready','true');
+    const canvas = surface.firstElementChild as HTMLElement | null;
+    if (canvas) rememberHandoff(host, canvas);
     return true;
   }
   function prepare(host: HTMLElement): () => void {

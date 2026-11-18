@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';
 import vm from 'node:vm';
 const source=buildSync({entryPoints:['src/components/loading/usePageReveal.ts'],bundle:true,write:false,external:['react','@/lib/chartReveal'],platform:'node',format:'cjs'}).outputFiles[0].text;
-function fixture(hidden, spinner = false, direct = false) {
+function fixture(hidden, spinner = false, direct = false, cached = false) {
  let effect,mutation,dependencies,hasHost=!direct,sequence=0,busy=direct?[]:[{closest:()=>hidden?{}:null}];
  const visibleEvents=[],chartCalls={reveal:0,pause:0,dispose:0};
  const timers=new Map(),compiled={exports:{}},animations=[];
@@ -12,7 +12,7 @@ function fixture(hidden, spinner = false, direct = false) {
  const content={...node(),hidden:false,inert:false,querySelectorAll:s=>s.includes('aria-busy')?busy:[]};
  const rect={left:0,top:0,width:600,height:480};
  let clones=0;
- const host={closest:()=>null,hasAttribute:()=>true,getBoundingClientRect:()=>({...rect,height:spinner?0:rect.height}),querySelector:()=>({getBoundingClientRect:()=>rect,cloneNode:()=>{clones++;return node();}})};
+ const host={closest:()=>null,hasAttribute:name=>name==='data-layout-ready'||cached,getBoundingClientRect:()=>({...rect,height:spinner?0:rect.height}),querySelector:()=>({getBoundingClientRect:()=>rect,cloneNode:()=>{clones++;return node();}})};
  const persistentSpinner=node();
  const stage={...node(),querySelector:()=>spinner?persistentSpinner:null,querySelectorAll:()=>hasHost?[host]:[],getBoundingClientRect:()=>rect};
  const cancel=id=>timers.delete(id);
@@ -33,7 +33,7 @@ test('background account-panel loaders do not delay revealing the visible panel'
  const f=fixture(true);assert.equal(f.timers.size,1);f.flush();assert.equal(f.content.inert,false);f.cleanup();
 });
 
-test('a visible panel loader still keeps the cached handoff until its data is ready',()=>{
+test('a visible panel loader keeps the estimated skeleton until its data is ready',()=>{
  const f=fixture(false);assert.equal(f.timers.size,0);assert.equal(f.content.inert,true);
  f.loaded();assert.equal(f.timers.size,1);f.flush();assert.equal(f.content.inert,false);f.cleanup();
 });
@@ -59,10 +59,20 @@ test('complete warm pages announce entry once without requiring a loading fallba
  f.cleanup();assert.equal(f.chartCalls.dispose,1);assert.equal(f.content.dataset.pbPageVisible,undefined);
 });
 
-test('page-visible waits behind a busy cached handoff and starts with the data fade',()=>{
+test('page-visible waits behind a busy estimated skeleton and starts with the data fade',()=>{
  const f=fixture(false);
  assert.equal(f.visibleEvents.length,0);assert.equal(f.content.dataset.pbPageVisible,undefined);
  f.loaded();assert.equal(f.visibleEvents.length,0);
  f.flush();assert.equal(f.visibleEvents.length,1);assert.equal(f.chartCalls.reveal,1);
  assert.equal(f.content.dataset.pbPageVisible,'true');f.cleanup();
+});
+
+test('cached cards have a single handoff owned by the stream bootstrap',()=>{
+ const f=fixture(false,false,false,true);
+ assert.equal(f.clones,0);
+ assert.equal(f.visibleEvents.length,0);
+ f.loaded();
+ assert.equal(f.timers.size,0);
+ assert.equal(f.visibleEvents.length,1);
+ f.cleanup();
 });
