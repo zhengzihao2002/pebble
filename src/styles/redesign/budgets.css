@@ -60,7 +60,7 @@
 }
 .pebble-root .pb-bud-ring[data-over-budget] .pb-bud-ring-pct { color: var(--expense); }
 @media (prefers-reduced-motion: no-preference) {
-  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) .pb-bud-ring .pb-ring-with-overflow {
+  .pebble-root .pb-navigation-content:not([data-pb-page-visible]) .pb-bud-ring :is(.pb-ring-with-overflow, .pb-bud-ring-tick) {
     animation-play-state: paused;
   }
 }
@@ -68,9 +68,12 @@
 .pebble-root .pb-bud-ring-pct { font-size: 1.3rem; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); transition: color 600ms ease; }
 .pebble-root .pb-bud-ring-sub { font-size: 0.7rem; color: var(--ink-soft); }
 @container content (min-width: 640px) { .pebble-root .pb-bud-ring-pct { font-size: 1.65rem; } }
-/* Even pace today: an ink tick across the ring, rotated into place inline.
-   It fades in after the arc has swept. */
-.pebble-root .pb-bud-ring-tick { position: absolute; inset: 0; pointer-events: none; animation: pb-chart-in var(--pb-dur-emph) var(--pb-ease-out) 600ms both; }
+/* The year-elapsed mark fades as the ring settles. Its rotation is set by
+   the date and remains fixed throughout the fade. */
+.pebble-root .pb-bud-ring-tick {
+  position: absolute; inset: 0; pointer-events: none;
+  animation: pb-chart-in 560ms ease-in-out 560ms both;
+}
 .pebble-root .pb-bud-ring-tick > span {
   position: absolute; left: 50%; top: -3px; width: 3px; height: calc(8.1% + 6px); margin-left: -1.5px;
   border-radius: 2px; background-color: var(--ink); box-shadow: 0 0 0 2px var(--mist);
