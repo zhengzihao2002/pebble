@@ -588,7 +588,18 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     </div>
   );
 
-  const balanceStrip = showBalance && (
+  const balanceStrip = creditCardPayoff ? (
+    <div className="pb-tdlg-balance">
+      <p className="pb-tdlg-label">{x.balance}</p>
+      <div className="pb-tdlg-balance-row">
+        <span className="pb-tdlg-balance-acc"><CreditCard size={14} aria-hidden="true" /><span>{chargedCardName}</span></span>
+        <span className="pb-tdlg-balance-fig">
+          <span className="pb-tdlg-balance-cap">{t(x.owedAfterPayoff, { date: formatLongDate(creditCardPayoff.date, locale) })}</span>
+          <span className="pb-tdlg-balance-val"><BalanceFigure value={creditCardPayoff.remainingBalance} className="pb-tdlg-strong" /></span>
+        </span>
+      </div>
+    </div>
+  ) : showBalance && (
     <div className={`pb-tdlg-balance${waitClass}`}>
       <p className="pb-tdlg-label">{x.balance}</p>
       <div className="pb-tdlg-balance-row">

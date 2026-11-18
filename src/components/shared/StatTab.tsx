@@ -1,5 +1,6 @@
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { LucideIcon } from 'lucide-react';
+import { ListFilter } from 'lucide-react';
 
 interface StatTabProps {
   icon: LucideIcon;
@@ -30,7 +31,7 @@ export function StatTab({ icon: Icon, label, value, sublabel, color, info, value
         {valueAction ? (
           <button type="button" className="pb-txn-adjustment-link" onClick={valueAction.onClick}
             aria-label={valueAction.label} aria-pressed={valueAction.pressed} aria-controls={valueAction.controls}>
-            {figure}
+            {figure}<ListFilter size={14} aria-hidden="true" />
           </button>
         ) : figure}
       </div>

@@ -8,6 +8,8 @@ const source = buildSync({
     contents: `
       export * from './src/components/transactions/statementMath';
       export { transactionDisplayAccountId } from './src/lib/creditCards';
+      export { computeCategorySpent, computeCurrentBalances, computeStatsForPeriod, mergeTransactions } from './src/lib/stats';
+      export { detectRecurring } from './src/lib/recurring/detect';
     `,
     resolveDir: process.cwd(),
   },
@@ -16,6 +18,7 @@ const source = buildSync({
 const compiled = { exports: {} };
 vm.runInNewContext(source, { module: compiled, exports: compiled.exports });
 const { transactionDisplayAccountId, statementPayoffs, groupByDay, monthFigures, statementFlows, summarizeMonths, daySeries } = compiled.exports;
+const { computeCategorySpent, computeCurrentBalances, computeStatsForPeriod, mergeTransactions, detectRecurring } = compiled.exports;
 
 const payoff = {
   id: '20261115160712345-p', cardId: 'credit', cardName: 'Credit',
@@ -104,4 +107,36 @@ test('balance corrections and transfers affect running balances without adding i
   assert.equal(points[7].balance, 100);
   assert.equal(points[7].inflow, 0);
   assert.equal(points[7].count, 0);
+});
+
+test('paying a card changes account balances but preserves spending and budget usage', () => {
+  const card = { ...expense('purchase', '2026-11-06', 'credit', -40).record, category: 'Food' };
+  const debit = { ...expense('debit', '2026-11-07', 'checking', -15).record, category: 'Food' };
+  const settled = { ...card, accountId: 'checking', creditCardPayoff: payoff };
+  const income = { id: 'pay', type: 'income', category: 'Standard Income', date: '2026-11-02', accountId: 'checking', amount: 200 };
+  const adjustment = { type: 'adjustment', accountId: 'checking', amount: 10 };
+  const accounts = [{ id: 'checking' }, { id: 'credit' }];
+  const before = mergeTransactions([card, debit], [income]);
+  const after = mergeTransactions([settled, debit], [income]);
+  const today = new Date(2026, 10, 17);
+
+  for (const records of [before, after]) {
+    assert.equal(records.length, 3);
+    assert.equal(computeStatsForPeriod(records, 'all', null, today).spending, 55);
+    assert.equal(computeCategorySpent(records, 2026).Food, 55);
+    assert.equal(computeCurrentBalances(records, accounts, [adjustment]).total, 155);
+  }
+  assert.equal(computeCurrentBalances(before, accounts, [adjustment]).byAccount.credit, -40);
+  assert.equal(computeCurrentBalances(after, accounts, [adjustment]).byAccount.credit, 0);
+  assert.equal(computeCurrentBalances(after, accounts, [adjustment]).byAccount.checking, 155);
+});
+
+test('a paid recurring purchase still suggests the original credit card for future charges', () => {
+  const purchases = [8, 9, 10, 11].map(month => ({
+    ...expense(`stream-${month}`, `2026-${String(month).padStart(2, '0')}-06`, 'checking', -20, payoff).record,
+    description: 'Streaming subscription', category: 'Entertainment',
+  }));
+  const [candidate] = detectRecurring(purchases, [], '2026-11-17');
+  assert.equal(candidate?.accountId, 'credit');
+  assert.equal(candidate.amount, -20);
 });

@@ -341,11 +341,12 @@
 .pebble-root .pb-txn-type { flex: none; }
 .pebble-root .pb-txn-account-select { flex: 1 1 11rem; min-width: 0; max-width: 17rem; }
 .pebble-root .pb-txn-adjustment-link {
-  border: 0; background: transparent; color: inherit; font: inherit; padding: 0.18rem 0.38rem;
-  margin: -0.18rem -0.38rem; border-radius: 0.38rem; cursor: pointer;
-  text-decoration: underline dotted; text-underline-offset: 0.22em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+  border: 0; background: transparent; color: inherit; font: inherit; padding: 0.23rem 0.5rem;
+  margin: -0.23rem -0.5rem; border-radius: 999px; cursor: pointer;
   transition: background-color var(--pb-dur-fast, 150ms) ease, color var(--pb-dur-fast, 150ms) ease;
 }
+.pebble-root .pb-txn-adjustment-link > svg { flex: none; color: var(--ink-soft); }
 .pebble-root .pb-txn-adjustment-link:hover,
 .pebble-root .pb-txn-adjustment-link[aria-pressed="true"] {
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);

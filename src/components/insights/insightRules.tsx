@@ -1,7 +1,7 @@
 import { AlertTriangle, CalendarCheck, CalendarClock, Coins, Copy, CreditCard, Moon, Repeat, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { cardStatuses, reminderLevel } from '@/lib/creditCards';
+import { cardStatuses, reminderLevel, transactionDisplayAccountId } from '@/lib/creditCards';
 import type { Goal, RecurringRule, Transaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -132,7 +132,7 @@ export function buildInsights({
         body: renderTemplate(d.insights.subBody, { name: chip(nameOf(last)), amount: formatCurrency(amt(last)) }),
         action: {
           label: d.insights.subAction,
-          onClick: () => onCreateSchedule({ description: descriptionTitle(last.description), category: last.category, accountId: last.accountId, amount: amt(last), startDate: next }),
+          onClick: () => onCreateSchedule({ description: descriptionTitle(last.description), category: last.category, accountId: transactionDisplayAccountId(last), amount: amt(last), startDate: next }),
         },
       });
     }
@@ -185,7 +185,7 @@ export function buildInsights({
     if (todayN - dayNum(x.date) > 30) continue;
     const k = placeKey(descriptionTitle(x.description));
     if (!k) continue;
-    const key = `${x.date}|${Math.round(amt(x) * 100)}|${k}|${x.accountId}`;
+    const key = `${x.date}|${Math.round(amt(x) * 100)}|${k}|${transactionDisplayAccountId(x)}`;
     if (!dups.has(key)) dups.set(key, []);
     dups.get(key)!.push(x);
   }
@@ -232,8 +232,9 @@ export function buildInsights({
   // Quiet accounts: active, no transactions for 8+ months.
   const lastByAccount = new Map<string, string>();
   for (const x of transactions) {
-    const prev = lastByAccount.get(x.accountId);
-    if (!prev || x.date > prev) lastByAccount.set(x.accountId, x.date);
+    const accountId = transactionDisplayAccountId(x);
+    const prev = lastByAccount.get(accountId);
+    if (!prev || x.date > prev) lastByAccount.set(accountId, x.date);
   }
   for (const a of accounts) {
     if (a.status !== 'active') continue;

@@ -28,6 +28,7 @@
  */
 import type { RecurringFrequency, RecurringKind, RecurringRule, Transaction } from '@/types';
 import { descriptionTitle } from '@/lib/transactionDescription';
+import { transactionDisplayAccountId } from '@/lib/creditCards';
 import { daysInMonth } from './occurrences';
 import { placeKey } from './placeKey';
 
@@ -206,15 +207,16 @@ export function detectRecurring(
     const occ: Occurrence[] = [];
     for (const x of rows) {
       const gross = x.type === 'income' ? x.grossAmount : Math.abs(x.amount);
+      const accountId = transactionDisplayAccountId(x);
       const prev = occ[occ.length - 1];
       if (prev && prev.date === x.date) {
         prev.amount += Math.abs(x.amount);
         prev.gross += gross;
         prev.category = x.category;
-        prev.accountId = x.accountId;
+        prev.accountId = accountId;
         prev.title = descriptionTitle(x.description);
       } else {
-        occ.push({ date: x.date, amount: Math.abs(x.amount), gross, category: x.category, accountId: x.accountId, title: descriptionTitle(x.description) });
+        occ.push({ date: x.date, amount: Math.abs(x.amount), gross, category: x.category, accountId, title: descriptionTitle(x.description) });
       }
     }
     if (occ.length < 2) return;
