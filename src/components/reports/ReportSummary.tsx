@@ -140,7 +140,7 @@ export function ReportSummary(p: ReportSummaryProps) {
               </div>
             </div>
             {flowMax > 0 && (
-              <div className="pb-rep-split pb-chart-fill" role="img" aria-label={x.inOutSplit}>
+              <div className="pb-rep-split pb-chart-fill" data-pb-chart-draw="" role="img" aria-label={x.inOutSplit}>
                 {p.inSum > 0 && <span className="is-in" style={{ flexGrow: p.inSum }} />}
                 {p.outSum > 0 && <span className="is-out" style={{ flexGrow: p.outSum }} />}
               </div>
@@ -185,7 +185,7 @@ export function ReportSummary(p: ReportSummaryProps) {
         {p.shares.length > 0 && (
           <div className="pb-rep-share">
             <p className="pb-rep-mini-title">{x.categoryShare} · {p.shareSide === 'in' ? x.moneyIn : x.moneyOut}</p>
-            <div className="pb-rep-sharebar pb-chart-fill" aria-hidden="true">
+            <div className="pb-rep-sharebar pb-chart-fill" data-pb-chart-draw="" aria-hidden="true">
               {p.shares.map((s) => (
                 <span
                   key={s.key}

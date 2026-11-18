@@ -80,7 +80,7 @@ export function MoneyMixCard({ items, total }: {
   })();
 
   const bar = (list: Seg[], sum: number, owedBar: boolean) => (
-    <div className={`pb-accounts-mix-bar${owedBar ? ' is-owed' : ''}`} style={{ width: `${(sum / scale) * 100}%` }}>
+    <div data-pb-chart-draw="" className={`pb-accounts-mix-bar${owedBar ? ' is-owed' : ''}`} style={{ width: `${(sum / scale) * 100}%` }}>
       {list.map((s) => (
         <span
           key={s.id}

@@ -133,7 +133,7 @@ export function SavingsHeadline({ transactions, today }: { transactions: Transac
       </div>
       <p className="pb-money pb-ins-hero-sentence"><RollingMoneyText value={sentence} /></p>
       <div className="pb-ins-hero-split">
-        <div className="pb-ins-split-bar pb-chart-fade" role="img" aria-label={ux.splitLabel}>
+        <div className="pb-ins-split-bar pb-chart-fade" data-pb-chart-draw="" role="img" aria-label={ux.splitLabel}>
           <span className="pb-ins-split-spent" style={{ width: `${spentPct}%` }} />
           <span className={`pb-ins-split-rest${good ? '' : ' is-over'}`} style={{ width: `${restPct}%` }} />
           {!good && <span className="pb-ins-split-mark" style={{ left: `${incomePct}%` }} />}

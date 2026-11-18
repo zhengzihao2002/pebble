@@ -46,11 +46,7 @@
       backdrop-filter: saturate(1.15) blur(16px);
     }
   }
-  /* View-transition snapshots omit backdrop blur, just as for the header. */
-  html.pb-theme-vt .pebble-root .pebble-sidebar {
-    background-color: var(--pb-sidebar-glass);
-    -webkit-backdrop-filter: none; backdrop-filter: none;
-  }
+
 }
 
 /* ------------------------------------------------------------

@@ -83,7 +83,7 @@ export function BudgetAlertsNotice({ transactions, categoryMeta, today }: Budget
               <p className="pb-dash-notice-text">{sentence(a)}</p>
               {/* The sentence carries the level in words; the bar is the glance. */}
               <div className="pb-dash-alert-meter" aria-hidden="true">
-                <span className="pb-dash-alert-track"><span style={{ width: `${Math.min(100, a.pct)}%`, backgroundColor: barColor(a.pct) }} /></span>
+                <span className="pb-dash-alert-track" data-pb-chart-load=""><span data-pb-chart-draw="" style={{ width: `${Math.min(100, a.pct)}%`, backgroundColor: barColor(a.pct) }} /></span>
                 <span className="pb-dash-alert-pct pb-tnum">{a.pct}%</span>
               </div>
             </div>

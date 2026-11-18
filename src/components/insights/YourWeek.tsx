@@ -131,7 +131,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
             <div className="pb-ins-week-amts" aria-hidden="true">
               {avg.map((v, i) => <span key={order[i]} className={`font-mono-tab${i === topIdx ? ' is-top' : ''}`}><RollingAmount value={wholeDollars(v)} /></span>)}
             </div>
-            <div className="pb-ins-week-plot" aria-hidden="true">
+            <div className="pb-ins-week-plot" data-pb-chart-draw="" aria-hidden="true">
               <div className="pb-ins-week-area">
               {avg.map((v, i) => (
                 <div key={order[i]} className={`pb-ins-week-col${i === topIdx ? ' is-top' : ''}`}>
@@ -166,7 +166,7 @@ export function YourWeek({ transactions, today }: { transactions: Transaction[];
               <div key={r.key} className="pb-ins-week-split-row">
                 <dt>{r.label}</dt>
                 <dd className="pb-ins-week-split-track pb-chart-fade" aria-hidden="true">
-                  <span style={{ width: `${splitMax > 0 ? Math.max(2, (r.v / splitMax) * 100) : 0}%` }} className={r.v === splitMax && splitMax > 0 ? 'is-top' : undefined} />
+                  <span data-pb-chart-draw="" style={{ width: `${splitMax > 0 ? Math.max(2, (r.v / splitMax) * 100) : 0}%` }} className={r.v === splitMax && splitMax > 0 ? 'is-top' : undefined} />
                 </dd>
                 <dd className="font-mono-tab pb-ins-week-split-amt"><RollingMoneyText value={t(d.insights.yourWeekPerDay, { amount: wholeDollars(r.v) })} /></dd>
               </div>
