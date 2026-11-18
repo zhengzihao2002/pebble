@@ -57,6 +57,7 @@
 .pebble-root .pb-layout-skeleton-host[data-layout-restored] > .pb-layout-restored { display:block; }
 .pebble-root .pb-page-handoff { position:absolute; z-index:6; pointer-events:none; }
 .pebble-root .pb-cached-handoff-surface { position:absolute; inset:0; z-index:-1; pointer-events:none; }
+.pebble-root .pb-cached-handoff-surface > [data-pb-handoff-ready] .pb-skel { display:none; }
 .pebble-root .pb-navigation-stage:has(> .pb-cached-handoff-surface > .pb-page-handoff) { isolation:isolate; }
 .pebble-root .pb-navigation-stage:has(> .pb-cached-handoff-surface > [data-pb-handoff-ready]) > .pb-navigation-content { mix-blend-mode:plus-lighter; }
 .pebble-root .pb-navigation-stage:has(> .pb-cached-handoff-surface > .pb-page-handoff:not([data-pb-handoff-ready])) > .pb-navigation-content { visibility:hidden; }
