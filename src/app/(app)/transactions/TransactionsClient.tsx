@@ -27,8 +27,8 @@ import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
 import { SearchToolbar, type TypeFilter } from '@/components/transactions/SearchToolbar';
 import { ResultsSummary, FlowFigures } from '@/components/transactions/ResultsSummary';
 import {
-  balanceReader, cents, daySeries, daysInMonth, groupByDay, isCardShadow,
-  monthBounds, monthFigures, statementPayoffs, summarizeMonths,
+  balanceReader, cents, daySeries, daysInMonth, groupByDay,
+  monthBounds, monthFigures, statementFlows, statementPayoffs, summarizeMonths,
 } from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
 import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
@@ -168,7 +168,7 @@ export function TransactionsClient({
   // ones the account-only filter used to list under a results line; any text
   // or type filter goes back to results mode, filtered by the account.
   const filterAccount = ordinaryAccounts.find((a) => a.id === accountFilter) ?? null;
-  const lensAccount = q === '' && typeFilter === 'all' ? filterAccount : null;
+  const lensAccount = (q === '' && typeFilter === 'all') || typeFilter === 'adjustment' ? filterAccount : null;
   const lensId = lensAccount ? accountFilter : null;
   const searching = q !== '' || typeFilter !== 'all' || (accountFilter !== ALL_ACCOUNTS && !lensAccount);
   const { prefix: monthPrefix } = monthBounds(selectedMonthInfo.year, selectedMonthInfo.month);
@@ -184,6 +184,16 @@ export function TransactionsClient({
   const payoffs = useMemo(() => lensId
     ? statementPayoffs(visibleRecords, lensId, monthPrefix)
     : undefined, [visibleRecords, lensId, monthPrefix]);
+  const statementEntries = useMemo(
+    () => accountHistory.filter((entry) => entry.record.date.startsWith(monthPrefix)),
+    [accountHistory, monthPrefix],
+  );
+  const statementCount = statementEntries.length;
+  const statementTransactions = useMemo(
+    () => statementEntries.filter(({ record }) => !ghostIds.has(record.accountId)),
+    [statementEntries, ghostIds],
+  );
+  const statementTotals = useMemo(() => statementFlows(statementTransactions), [statementTransactions]);
 
   const fig = useMemo(
     () => monthFigures(entriesWithRecords, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
@@ -248,9 +258,9 @@ export function TransactionsClient({
     // and matches the red '+' change above it.
     const read = balanceReader(lensId);
     return lensIsCard
-      ? daySeries(fig.entries, allInMonth, year, month, lastDay, -fig.opening, (e) => -read(e))
-      : daySeries(fig.entries, allInMonth, year, month, lastDay, fig.opening, read);
-  }, [today, selectedMonthInfo, entriesWithRecords, fig, lensId, lensIsCard]);
+      ? daySeries(statementTransactions, allInMonth, year, month, lastDay, -fig.opening, (e) => -read(e))
+      : daySeries(statementTransactions, allInMonth, year, month, lastDay, fig.opening, read);
+  }, [today, selectedMonthInfo, entriesWithRecords, statementTransactions, fig.opening, lensId, lensIsCard]);
 
   // Picking a day on the chart scrolls the statement to that day's group
   // (scroll-margin keeps it clear of the sticky header and search bar) and
@@ -297,10 +307,8 @@ export function TransactionsClient({
   // An account filter alongside text or a type keeps the account's own
   // balance line on each row.
   const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;
-  const resultGroups = useMemo(() => groupByDay(results, (e) => e.totalBalanceAfter, resultsLensId), [results, resultsLensId]);
-  const resultPostings = useMemo(() => cardId
-    ? results.filter((entry) => !isCardShadow(entry.record, cardId))
-    : results, [results, cardId]);
+  const resultGroups = useMemo(() => groupByDay(results, (e) => e.totalBalanceAfter, resultsLensId, [], ghostIds), [results, resultsLensId, ghostIds]);
+  const resultTransactions = useMemo(() => results.filter(({ record }) => !ghostIds.has(record.accountId)), [results, ghostIds]);
 
   const clearFilters = () => {
     setQuery('');
@@ -363,18 +371,24 @@ export function TransactionsClient({
   const balanceDelta = cents(closingBalance - openingBalance) / 100;
   const delta = lensIsCard ? -balanceDelta : balanceDelta;
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
-  const statementEntries = useMemo(
-    () => accountHistory.filter((entry) => entry.record.date.startsWith(monthPrefix)),
-    [accountHistory, monthPrefix],
-  );
-  const statementCount = statementEntries.length;
-
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;
   const scrollSummaryDown = () => {
     const pane = pageRef.current?.querySelector<HTMLElement>('.pb-txn-pane-left');
     if (!pane) return;
     pane.scrollTo({ top: pane.scrollHeight,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
+  const toggleAdjustmentFilter = () => {
+    const active = typeFilter === 'adjustment';
+    setTypeFilter(active ? 'all' : 'adjustment');
+    if (active) return;
+    setQuery('');
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
+    if (pageRef.current?.hasAttribute('data-txn-panes')) {
+      mainRef.current?.closest('.pb-txn-pane-right')?.scrollTo({ top: 0, behavior });
+    } else {
+      mainRef.current?.scrollIntoView({ block: 'start', behavior });
+    }
   };
 
   return (
@@ -431,6 +445,7 @@ export function TransactionsClient({
             <StatTab
               icon={SlidersHorizontal} label={d.transactions.adjustments} value={adjustmentText} color={adjustmentColor} valueColor={adjustmentColor}
               info={lensAccount ? <InfoTooltip label={x.lensAdjInfoLabel}>{x.lensAdjInfo}</InfoTooltip> : undefined}
+              valueAction={{ label: x.showAdjustmentRows, onClick: toggleAdjustmentFilter, pressed: typeFilter === 'adjustment', controls: 'pb-txn-statement-col' }}
             />
           </div>
         </section>
@@ -439,7 +454,7 @@ export function TransactionsClient({
           points={chartPoints}
           opening={lensIsCard ? -openingBalance : openingBalance}
           owed={lensIsCard}
-          hasActivity={fig.entries.length > 0}
+          hasActivity={statementCount > 0 || fig.entries.length > 0}
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
         />
@@ -492,7 +507,9 @@ export function TransactionsClient({
                 />
               ) : (
                 <>
-                  {resultPostings.length > 0 && <ResultsSummary results={resultPostings} categoryMeta={categoryMeta} type={typeFilter} />}
+                  {typeFilter !== 'adjustment' && resultTransactions.length > 0 && (
+                    <ResultsSummary results={resultTransactions} categoryMeta={categoryMeta} type={typeFilter} />
+                  )}
                   <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
                   <DayGroups
                     groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
@@ -526,15 +543,9 @@ export function TransactionsClient({
                     </div>
                     {importButton}
                   </div>
-                  {/* The month's money in, out and net - the All view, where
-                      both sides are real (it used to show only under the
-                      Expense and Income filters, where one side was always
-                      zero). The same figures as Deposits and Withdrawals:
-                      every income record, Side Cash included; transfers and
-                      corrections left out. Under the lens, that account's. */}
-                  {fig.entries.length > 0 && (
+                  {statementTotals.count > 0 && (
                     <div className="pb-txn-sum pb-txn-sum-stmt">
-                      <FlowFigures inn={totalDeposits} out={totalWithdrawals} />
+                      <FlowFigures inn={statementTotals.deposits} out={statementTotals.withdrawals} />
                     </div>
                   )}
                 </>

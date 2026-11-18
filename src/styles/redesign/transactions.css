@@ -340,9 +340,20 @@
 .pebble-root .pb-txn-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
 .pebble-root .pb-txn-type { flex: none; }
 .pebble-root .pb-txn-account-select { flex: 1 1 11rem; min-width: 0; max-width: 17rem; }
+.pebble-root .pb-txn-adjustment-link {
+  border: 0; background: transparent; color: inherit; font: inherit; padding: 0.18rem 0.38rem;
+  margin: -0.18rem -0.38rem; border-radius: 0.38rem; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 0.22em;
+  transition: background-color var(--pb-dur-fast, 150ms) ease, color var(--pb-dur-fast, 150ms) ease;
+}
+.pebble-root .pb-txn-adjustment-link:hover,
+.pebble-root .pb-txn-adjustment-link[aria-pressed="true"] {
+  color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);
+}
+.pebble-root .pb-txn-adjustment-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
 @container pb-txn-col (max-width: 479.98px) {
   .pebble-root .pb-txn-type { width: 100%; }
-  .pebble-root .pb-txn-type .pb-seg-btn { flex: 1 1 0; }
+  .pebble-root .pb-txn-type .pb-seg-btn { flex: 1 1 auto; padding-inline: 0.45rem; }
   .pebble-root .pb-txn-account-select { max-width: none; }
 }
 @media (pointer: coarse) { .pebble-root .pb-txn-type .pb-seg-btn { min-height: 44px; } }

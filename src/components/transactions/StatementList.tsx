@@ -201,7 +201,10 @@ export function StatementList({
   closingBalance, monthInfo, today, lensAccountId, head, id,
 }: StatementListProps) {
   const { d, t, locale } = useTranslation();
-  const groups = useMemo(() => groupByDay(entries, balanceReader(lensAccountId ?? null), lensAccountId, payoffs), [entries, lensAccountId, payoffs]);
+  const groups = useMemo(() => {
+    const ghostIds = new Set(accounts.filter(account => account.isGhost).map(account => account.id));
+    return groupByDay(entries, balanceReader(lensAccountId ?? null), lensAccountId, payoffs, ghostIds);
+  }, [entries, lensAccountId, payoffs, accounts]);
   const lensAccount = lensAccountId ? accounts.find((a) => a.id === lensAccountId) ?? null : null;
   const owed = lensAccount?.kind === 'credit';
 

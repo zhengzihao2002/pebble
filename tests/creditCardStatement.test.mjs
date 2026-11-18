@@ -15,7 +15,7 @@ const source = buildSync({
 }).outputFiles[0].text;
 const compiled = { exports: {} };
 vm.runInNewContext(source, { module: compiled, exports: compiled.exports });
-const { transactionDisplayAccountId, statementPayoffs, groupByDay, monthFigures } = compiled.exports;
+const { transactionDisplayAccountId, statementPayoffs, groupByDay, monthFigures, statementFlows, summarizeMonths, daySeries } = compiled.exports;
 
 const payoff = {
   id: '20261115160712345-p', cardId: 'credit', cardName: 'Credit',
@@ -48,6 +48,11 @@ test('a paid purchase stays in the credit view while the funding balance is char
   assert.equal(payerView.withdrawals, 45);
   assert.equal(monthFigures(ordinaryEntries, 2026, 10, 0, 'credit').withdrawals, 25);
   assert.equal(monthFigures(ordinaryEntries, 2026, 10, 0).withdrawals, 70);
+  assert.equal(statementFlows(cardView).withdrawals, 70);
+  const [chip] = summarizeMonths(ordinaryEntries, [{ year: 2026, month: 10 }], 0, 'credit');
+  assert.equal(chip.withdrawals, 70);
+  assert.equal(chip.count, 2);
+  assert.equal(chip.closing, -25);
   assert.deepEqual(Array.from(forAccount(entries, 'credit')), entries);
 });
 
@@ -73,9 +78,30 @@ test('one display marker per payoff follows the date and amount for each side', 
   assert.equal(groups[0].items[0].kind, 'payoff');
   assert.equal(groups[0].items[0].payoff.remainingBalance, 25);
   assert.equal(groups[1].items[0].entry, alsoPaid);
-  assert(groups.every(group => group.net === 0 && group.endBalance === null && !group.hasFlows));
+  assert.equal(groups[0].hasFlows, false);
+  assert.equal(groups[1].hasFlows, true);
+  assert.equal(groups[1].net, -25.35);
+  assert(groups.every(group => group.endBalance === null));
   const payerDays = groupByDay([], () => 0, 'checking', fundingMarkers);
   assert.equal(payerDays[0].items[0].kind, 'payoff');
   assert.equal(payerDays[0].items[0].payoff.amount, 70.61);
   assert.equal(payerDays[0].hasFlows, false);
+});
+
+test('balance corrections and transfers affect running balances without adding income or spending', () => {
+  const purchase = expense('purchase', '2026-11-06', 'checking', -40, payoff);
+  const adjustment = {
+    transId: 'transfer', record: { type: 'adjustment', date: '2026-11-07', accountId: 'credit', amount: 80 },
+    balancesAfter: { credit: 25 }, totalBalanceAfter: 100,
+  };
+  const entries = [adjustment, purchase];
+  const [chip] = summarizeMonths(entries, [{ year: 2026, month: 10 }], 0, 'credit');
+  assert.equal(chip.deposits, 0);
+  assert.equal(chip.withdrawals, 40);
+  assert.equal(chip.count, 1);
+  const points = daySeries(entries, entries, 2026, 10, 8, 0, e => e.totalBalanceAfter);
+  assert.equal(points[6].outflow, 40);
+  assert.equal(points[7].balance, 100);
+  assert.equal(points[7].inflow, 0);
+  assert.equal(points[7].count, 0);
 });

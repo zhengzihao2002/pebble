@@ -61,6 +61,8 @@ export const transactionsEn = {
   total: 'Total',
   lensAdjInfo: 'Includes transfers in and out of this account. Within one account the two halves of a transfer no longer cancel.',
   lensAdjInfoLabel: 'About balance adjustments',
+  adjustmentsFilter: 'Adjustments',
+  showAdjustmentRows: 'Filter to balance adjustments',
 };
 
 export const transactionsZh: typeof transactionsEn = {
@@ -110,4 +112,6 @@ export const transactionsZh: typeof transactionsEn = {
   total: '合计',
   lensAdjInfo: '包含转入和转出此账户的转账。只看一个账户时，同一笔转账的转出和转入不再相互抵消。',
   lensAdjInfoLabel: '关于余额调整',
+  adjustmentsFilter: '调整',
+  showAdjustmentRows: '筛选余额调整',
 };

@@ -524,7 +524,10 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // own account in it; a stand-in entry (balances {}) shows nothing rather
   // than a wrong figure. before = after - amount: the record's amount is
   // signed, so one subtraction serves money in and out.
-  const balanceAfterOwn = ledgerEntry && ledgerEntry.transId === txn.id ? ledgerEntry.balancesAfter[txn.accountId] : undefined;
+  // A settled purchase receipt belongs to the card. The ledger entry now
+  // carries the funding account's posting, so it cannot describe the card
+  // balance before or after the purchase.
+  const balanceAfterOwn = !hasPayoff && ledgerEntry?.transId === txn.id ? ledgerEntry.balancesAfter[txn.accountId] : undefined;
   const showBalance = typeof balanceAfterOwn === 'number' && Number.isFinite(balanceAfterOwn);
   const balanceBeforeOwn = showBalance ? Math.round(((balanceAfterOwn as number) - txn.amount) * 100) / 100 : 0;
   const owed = ownAccount?.kind === 'credit';

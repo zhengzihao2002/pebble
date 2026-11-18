@@ -8,6 +8,7 @@
  * Every list in here is NEWEST FIRST, like the ledger itself.
  */
 import { compareSameDayIds } from '@/lib/stats';
+import { transactionDisplayAccountId } from '@/lib/creditCards';
 import type { CreditCardPayoff, LedgerRecord } from '@/types';
 import type { StatementEntry } from './StatementList';
 
@@ -60,13 +61,27 @@ export function balanceReader(accountId: string | null): (e: StatementEntry) => 
 }
 
 export interface MonthFigures {
-  /** The rows shown for the month (only the lensed account's under a lens). */
+  /** Postings that reconcile the month's account balance. */
   entries: StatementEntry[];
   opening: number;
   closing: number;
   deposits: number;
   withdrawals: number;
   adjustments: number;
+}
+
+/** Income and spending from real transactions, independent of balance postings. */
+export function statementFlows(entries: StatementEntry[]) {
+  let deposits = 0;
+  let withdrawals = 0;
+  let count = 0;
+  for (const { record } of entries) {
+    if (record.type === 'adjustment') continue;
+    if (record.type === 'income') deposits += cents(record.amount);
+    else withdrawals -= cents(record.amount);
+    count++;
+  }
+  return { deposits: deposits / 100, withdrawals: withdrawals / 100, count };
 }
 
 /**
@@ -103,9 +118,7 @@ export function monthFigures(
   const opening = priorEntry ? read(priorEntry) : (accountId ? 0 : openingTotal);
   const closing = inMonth.length > 0 ? read(inMonth[0]) : opening;
   const entries = accountId ? inMonth.filter((e) => e.record.accountId === accountId) : inMonth;
-  const flows = entries.filter((e) => e.record.type !== 'adjustment');
-  const deposits = flows.reduce((s, e) => (e.record.amount > 0 ? s + e.record.amount : s), 0);
-  const withdrawals = flows.reduce((s, e) => (e.record.amount < 0 ? s + Math.abs(e.record.amount) : s), 0);
+  const { deposits, withdrawals } = statementFlows(entries);
   const adjustments = entries.reduce((s, e) => (e.record.type === 'adjustment' ? s + e.record.amount : s), 0);
   return { entries, opening, closing, deposits, withdrawals, adjustments };
 }
@@ -115,22 +128,24 @@ export interface MonthSummary {
   month: number;
   deposits: number;
   withdrawals: number;
-  /** Records in the month (adjustments included: they are activity too). */
+  /** Income and expense records in the month. */
   count: number;
   closing: number;
 }
 
 /**
- * One summary per month for the timeline strip, in the order the months are
- * given. Same rules as monthFigures, so a chip and the statement it opens
- * always agree.
+ * Timeline bars describe the statement's income and spending. The closing
+ * figure follows the account balance, including its balance-only postings.
  */
 export function summarizeMonths(
   all: StatementEntry[], months: { year: number; month: number }[], openingTotal: number, accountId: string | null = null,
 ): MonthSummary[] {
   return months.map(({ year, month }) => {
     const f = monthFigures(all, year, month, openingTotal, accountId);
-    return { year, month, deposits: f.deposits, withdrawals: f.withdrawals, count: f.entries.length, closing: f.closing };
+    const { prefix } = monthBounds(year, month);
+    const activity = accountId ? all.filter(({ record }) => record.date.startsWith(prefix)
+      && transactionDisplayAccountId(record) === accountId) : f.entries;
+    return { year, month, ...statementFlows(activity), closing: f.closing };
   });
 }
 
@@ -141,7 +156,7 @@ type StatementItem =
 export interface DayGroup {
   date: string;
   items: StatementItem[];
-  /** Money in minus money out, using only records posted to this view. */
+  /** Money in minus money out, from the purchases and income shown here. */
   net: number;
   hasFlows: boolean;
   /** Balance after the day's newest posting, when the day has one. */
@@ -154,6 +169,7 @@ export function groupByDay(
   read: (e: StatementEntry) => number,
   lensAccountId: string | null = null,
   payoffs: StatementPayoff[] = [],
+  ghostIds?: ReadonlySet<string>,
 ): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   const groupFor = (date: string) => {
@@ -168,8 +184,8 @@ export function groupByDay(
     const { record } = entry;
     const group = groupFor(record.date);
     group.items.push({ kind: 'record', id: entry.transId, entry });
-    if (isCardShadow(record, lensAccountId)) continue;
-    group.endBalance ??= read(entry);
+    if (ghostIds?.has(record.accountId)) continue;
+    if (!isCardShadow(record, lensAccountId)) group.endBalance ??= read(entry);
     if (record.type !== 'adjustment') {
       group.net += record.amount;
       group.hasFlows = true;
@@ -214,12 +230,11 @@ export function daySeries(
   for (const e of allInMonth) if (!endByDate.has(e.record.date)) endByDate.set(e.record.date, read(e));
   const flowByDate = new Map<string, { inflow: number; outflow: number; count: number }>();
   for (const e of monthEntries) {
+    if (e.record.type === 'adjustment') continue;
     const f = flowByDate.get(e.record.date) ?? { inflow: 0, outflow: 0, count: 0 };
     f.count += 1;
-    if (e.record.type !== 'adjustment') {
-      if (e.record.amount > 0) f.inflow += e.record.amount;
-      else f.outflow += Math.abs(e.record.amount);
-    }
+    if (e.record.type === 'income') f.inflow += e.record.amount;
+    else f.outflow -= e.record.amount;
     flowByDate.set(e.record.date, f);
   }
   const points: DayPoint[] = [{ day: 0, date: null, balance: opening, inflow: 0, outflow: 0, count: 0 }];

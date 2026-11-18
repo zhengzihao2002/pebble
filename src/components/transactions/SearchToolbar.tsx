@@ -6,7 +6,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 
-export type TypeFilter = 'all' | 'expense' | 'income';
+export type TypeFilter = 'all' | 'expense' | 'income' | 'adjustment';
 
 interface SearchToolbarProps {
   query: string;
@@ -82,14 +82,12 @@ export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(func
       </div>
 
       <div className="pb-txn-filters">
-        {/* Kit segmented control: the same three options, now one radiogroup
-            with a sliding thumb and arrow keys, instead of hand-styled pills.
-            Expense and Income still exclude adjustments. */}
         <SegmentedControl<TypeFilter>
           options={[
             { value: 'all', label: d.txnSearch.typeAll },
             { value: 'expense', label: d.enums.kind.expense },
             { value: 'income', label: d.enums.kind.income },
+            { value: 'adjustment', label: d.ux.transactions.adjustmentsFilter },
           ]}
           value={typeFilter}
           onChange={onTypeFilter}

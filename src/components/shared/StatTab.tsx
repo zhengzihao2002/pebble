@@ -14,9 +14,11 @@ interface StatTabProps {
   info?: React.ReactNode;
   /** Colour of the figure itself. Optional - defaults to ink, as before. */
   valueColor?: string;
+  valueAction?: { label: string; onClick: () => void; pressed: boolean; controls: string };
 }
 
-export function StatTab({ icon: Icon, label, value, sublabel, color, info, valueColor = 'var(--ink)' }: StatTabProps) {
+export function StatTab({ icon: Icon, label, value, sublabel, color, info, valueColor = 'var(--ink)', valueAction }: StatTabProps) {
+  const figure = /\d/.test(value) ? <RollingAmount value={value} /> : value;
   return (
     <div className="stat-tab">
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -24,7 +26,14 @@ export function StatTab({ icon: Icon, label, value, sublabel, color, info, value
         <span style={{ fontSize: '0.68rem', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
         {info}
       </div>
-      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>{/\d/.test(value) ? <RollingAmount value={value} /> : value}</div>
+      <div className="font-mono-tab" style={{ fontSize: '1.05rem', fontWeight: 600, color: valueColor }}>
+        {valueAction ? (
+          <button type="button" className="pb-txn-adjustment-link" onClick={valueAction.onClick}
+            aria-label={valueAction.label} aria-pressed={valueAction.pressed} aria-controls={valueAction.controls}>
+            {figure}
+          </button>
+        ) : figure}
+      </div>
       {sublabel && <div style={{ fontSize: '0.7rem', color: 'var(--ink-soft)', marginTop: 2 }}>{sublabel}</div>}
     </div>
   );

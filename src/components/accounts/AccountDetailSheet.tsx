@@ -39,27 +39,24 @@ function BalTip({ active, payload, locale }: { active?: boolean; payload?: Reado
 
 function MonthTip({ active, payload, labels }: {
   active?: boolean; payload?: ReadonlyArray<TipPayload>;
-  labels: { moneyIn?: string; transfersIn: string; moneyOut: string; transfersOut: string; correction: string; nothing: string };
+  labels: { moneyIn?: string; moneyOut: string; nothing: string };
 }) {
   const p = payload?.[0]?.payload;
   if (!active || !p) return null;
-  const row = (label: string, v: number, signed = false) => (v ? (
-    <div className="pb-accounts-tip-row"><span>{label}</span><span className="font-mono-tab">{signed ? (v > 0 ? '+' : '−') : ''}<RollingAmount value={formatCurrency(Math.abs(v))} /></span></div>
+  const row = (label: string, v: number) => (v ? (
+    <div className="pb-accounts-tip-row"><span>{label}</span><span className="font-mono-tab"><RollingAmount value={formatCurrency(Math.abs(v))} /></span></div>
   ) : null);
-  const vals = [labels.moneyIn ? Number(p.in) : 0, Number(p.tin), Number(p.out), Number(p.tout), Number(p.corr)];
+  const income = labels.moneyIn ? Number(p.in) : 0;
+  const spending = Number(p.out);
   return (
     <div className="pb-accounts-tip">
       <div className="pb-accounts-tip-date">{String(p.label)}</div>
-      {vals.every((v) => !v) ? (
+      {!income && !spending ? (
         <div className="pb-accounts-tip-row"><span>{labels.nothing}</span></div>
       ) : (
         <>
-          {labels.moneyIn && row(labels.moneyIn, Number(p.in))}
-          {row(labels.transfersIn, Number(p.tin))}
-          {row(labels.moneyOut, Math.abs(Number(p.out)))}
-          {row(labels.transfersOut, Math.abs(Number(p.tout)))}
-          {/* Corrections are neither transfers nor earning: their own net line. */}
-          {row(labels.correction, Number(p.corr), true)}
+          {labels.moneyIn && row(labels.moneyIn, income)}
+          {row(labels.moneyOut, spending)}
         </>
       )}
     </div>
@@ -109,57 +106,43 @@ export function AccountDetailSheet({
     : series.length > 1 && series[series.length - 1].v < series[0].v - 0.004 ? 'var(--expense)' : 'var(--ink-soft)';
 
   const records = useMemo(() => recordsFor(account, expenses, income, adjustments), [account, expenses, income, adjustments]);
-  // Paid purchases remain in the card's activity. The funding account owns their totals.
-  const countedRecords = useMemo(
-    () => credit ? records.filter((r) => r.kind !== 'expense' || !r.paidOnCard) : records,
-    [credit, records],
-  );
+  // Spending follows the original purchase. The funding posting applies to
+  // balance history while its receipt and spending remain on the card.
   const activityRecords = useMemo(
     () => records.filter((r) => r.kind !== 'expense' || !r.fundedPayoff),
     [records],
   );
   const latestActivity = credit ? records.find((r) => r.date <= today)?.date : lastActivity;
   const from = days[0]?.date ?? today;
-  const inRange = countedRecords.filter((r) => r.date >= from && r.date <= today);
-  // Same meaning as the bars' Money in / Money out beside them: income and
-  // spending only. Transfers and corrections get their own net line.
-  const moneyIn = round2(inRange.filter((r) => r.kind === 'income').reduce((s, r) => s + r.amount, 0));
-  const moneyOut = round2(Math.abs(inRange.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.amount, 0)));
+  const inRange = activityRecords.filter((r) => r.date >= from && r.date <= today);
+  const transactionsInRange = inRange.filter((r) => r.kind === 'income' || r.kind === 'expense');
+  // Transfers and corrections get their own net line.
+  const moneyIn = round2(transactionsInRange.filter((r) => r.kind === 'income').reduce((s, r) => s + r.amount, 0));
+  const moneyOut = round2(Math.abs(transactionsInRange.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.amount, 0)));
   const movesNet = round2(inRange.filter((r) => r.kind === 'transfer' || r.kind === 'correction').reduce((s, r) => s + r.amount, 0));
   const anyMoves = inRange.some((r) => r.kind === 'transfer' || r.kind === 'correction');
-  const largest = inRange.filter((r) => r.kind === 'expense' && !r.fundedPayoff).reduce<AccountRecord | null>((m, r) => (!m || r.amount < m.amount ? r : m), null);
+  const largest = transactionsInRange.filter((r) => r.kind === 'expense').reduce<AccountRecord | null>((m, r) => (!m || r.amount < m.amount ? r : m), null);
 
-  // Six calendar months ending with today's: income and money moved in above
-  // the axis, spending and money moved out below it. Transfers and balance
-  // corrections share the grey bar ("Transfers and corrections"); the
-  // tooltip names them apart.
+  // Six calendar months of actual income and spending.
   const months = useMemo(() => {
     const t0 = dateOf(today);
     const out = Array.from({ length: MONTHS_BACK }, (_, k) => {
       const m = new Date(t0.getFullYear(), t0.getMonth() - (MONTHS_BACK - 1 - k), 1);
       const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
-      // gin / gout: the grey bars (transfers plus corrections); tin / tout /
-      // corr: the tooltip's split of them.
-      return { key, label: m.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short' }), in: 0, out: 0, gin: 0, gout: 0, tin: 0, tout: 0, corr: 0 };
+      return { key, label: m.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short' }), in: 0, out: 0 };
     });
     const idx = new Map(out.map((m, k) => [m.key, k]));
-    for (const r of countedRecords) {
+    for (const r of activityRecords) {
       if (r.date > today) continue;
       const k = idx.get(r.date.slice(0, 7));
       if (k === undefined) continue;
       const m = out[k];
-      if (r.kind === 'income' || r.kind === 'expense') {
-        if (r.amount > 0) m.in = round2(m.in + r.amount); else m.out = round2(m.out + r.amount);
-        continue;
-      }
-      if (r.amount > 0) m.gin = round2(m.gin + r.amount); else m.gout = round2(m.gout + r.amount);
-      if (r.kind === 'correction') m.corr = round2(m.corr + r.amount);
-      else if (r.amount > 0) m.tin = round2(m.tin + r.amount); else m.tout = round2(m.tout + r.amount);
+      if (r.kind === 'income') m.in = round2(m.in + r.amount);
+      if (r.kind === 'expense') m.out = round2(m.out + r.amount);
     }
     return out;
-  }, [countedRecords, today, locale]);
-  const anyMonth = months.some((m) => (!credit && m.in) || m.out || m.gin || m.gout);
-  const showMovesLegend = !credit || months.some((m) => m.gin || m.gout);
+  }, [activityRecords, today, locale]);
+  const anyMonth = months.some((m) => (!credit && m.in) || m.out);
 
   const nameOf = (id: string | null) => {
     const a = id ? accounts.find((z) => z.id === id) : undefined;
@@ -251,22 +234,19 @@ export function AccountDetailSheet({
                           <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
                           <YAxis orientation="right" width={52} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                           <ReferenceLine y={0} stroke="var(--ink-faint)" />
-                          <Tooltip content={<MonthTip labels={{ moneyIn: credit ? undefined : x.moneyIn, transfersIn: x.transfersIn, moneyOut: x.moneyOut, transfersOut: x.transfersOut, correction: x.correction, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
+                          <Tooltip content={<MonthTip labels={{ moneyIn: credit ? undefined : x.moneyIn, moneyOut: x.moneyOut, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
                           {!credit && <Bar dataKey="in" stackId="m" fill="var(--income)" maxBarSize={22} isAnimationActive={false} />}
-                          <Bar dataKey="gin" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[4, 4, 0, 0]} />
                           <Bar dataKey="out" stackId="m" fill="var(--expense)" maxBarSize={22} isAnimationActive={false} />
-                          <Bar dataKey="gout" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[0, 0, 4, 4]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <p className="pb-accounts-detail-quiet">{credit && records.length > 0 ? x.noUnpaidCardSpending : x.noRecordsHere}</p>
+                    <p className="pb-accounts-detail-quiet">{x.noTransactionsInRange}</p>
                   )}
-                  {showMovesLegend && (
+                  {!credit && anyMonth && (
                     <div className="pb-accounts-detail-legend" aria-hidden="true">
-                      {!credit && <span><i style={{ background: 'var(--income)' }} />{x.moneyIn}</span>}
+                      <span><i style={{ background: 'var(--income)' }} />{x.moneyIn}</span>
                       <span><i style={{ background: 'var(--expense)' }} />{x.moneyOut}</span>
-                      <span><i style={{ background: 'color-mix(in srgb, var(--ink-soft) 45%, transparent)' }} />{x.moves}</span>
                     </div>
                   )}
                 </div>
@@ -284,7 +264,7 @@ export function AccountDetailSheet({
                     <dd className="font-mono-tab"><RollingAmount value={largest ? formatCurrency(Math.abs(largest.amount)) : '—'} /></dd>
                     {largest && <dd className="pb-accounts-detail-stat-note">{titleOf(largest)}</dd>}
                   </div>
-                  <div><dt>{x.records}</dt><dd className="pb-tnum">{inRange.length}</dd></div>
+                  <div><dt>{x.records}</dt><dd className="pb-tnum">{transactionsInRange.length}</dd></div>
                   {anyMoves && (
                     <div className="is-wide">
                       <dt><ArrowRightLeft size={13} aria-hidden="true" />{x.movesNet}</dt>

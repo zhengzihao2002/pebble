@@ -1,12 +1,13 @@
 import type { LedgerRecord } from '@/types';
 import { transactionDisplayAccountId } from '@/lib/creditCards';
+import type { TypeFilter } from './SearchToolbar';
 
 /** Ghost history is an explicitly scoped view, never an input to app totals. */
 export function filterGhostActivity<T extends { record: LedgerRecord }>(entries: T[], options: {
   monthPrefix: string;
   accountId: string | null;
   query: string;
-  type: 'all' | 'income' | 'expense';
+  type: TypeFilter;
   accountNames: ReadonlyMap<string, string>;
   categoryName: (category: string) => string;
 }): T[] {
