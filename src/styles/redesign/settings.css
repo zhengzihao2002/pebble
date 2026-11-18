@@ -754,3 +754,63 @@
 .pebble-root .pb-settings-version { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .45rem .7rem; padding: 1rem .5rem .5rem; color: var(--ink-soft); font-size: .75rem; line-height: 1.5; }
 .pebble-root .pb-settings-version-brand { font-weight: 600; color: var(--ink); }
 .pebble-root .pb-settings-version code { font-size: .7rem; opacity: .75; }
+
+/* Review old balance adjustments before permanently simplifying them. */
+.pebble-root .pb-set-cleanup-header,
+.pebble-root .pb-modal-head.pb-set-cleanup-dialog-head {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.pebble-root .pb-modal-head.pb-set-cleanup-dialog-head { flex-direction: row; }
+.pebble-root .pb-set-cleanup { padding: 1rem; }
+.pebble-root .pb-set-cleanup-header > div { flex: 1; min-width: 0; }
+.pebble-root .pb-set-cleanup-header h3,
+.pebble-root .pb-set-cleanup-dialog-head h2 { font-size: 1rem; font-weight: 600; margin: 0; }
+.pebble-root .pb-set-cleanup-dialog-head h2 { flex: 1; }
+.pebble-root .pb-set-cleanup-header p,
+.pebble-root .pb-set-cleanup-status {
+  margin: 0.25rem 0 0; color: var(--ink-soft); font-size: 0.8rem;
+}
+.pebble-root .pb-set-cleanup-icon {
+  display: grid; place-items: center; flex: none; width: 2.4rem; height: 2.4rem;
+  border-radius: 0.75rem; background: var(--mist); color: var(--pine);
+}
+.pebble-root .pb-set-cleanup-status { margin-top: 0.75rem; }
+.pebble-root .pb-set-cleanup-header .pill { display: inline-flex; align-items: center; gap: 0.25rem; }
+.pebble-root .pb-set-cleanup-body { display: grid; gap: 0.85rem; align-content: start; }
+.pebble-root .pb-set-cleanup-account { color: var(--ink-soft); font-size: 0.88rem; margin: 0; overflow-wrap: anywhere; }
+.pebble-root .pb-set-cleanup-preview { display: grid; gap: 0.85rem; align-items: start; }
+.pebble-root .pb-set-cleanup-preview > * { min-width: 0; }
+.pebble-root .pb-set-cleanup-preview h3 { font-size: 0.84rem; font-weight: 600; margin: 0 0 0.5rem; }
+.pebble-root .pb-set-cleanup-rows { list-style: none; padding: 0; margin: 0; }
+.pebble-root .pb-set-cleanup-rows li {
+  display: flex; justify-content: space-between; align-items: start; gap: 0.65rem;
+  padding: 0.45rem 0; font-size: 0.84rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-set-cleanup-rows li > span:first-child { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pebble-root .pb-set-cleanup-rows li > span:last-child { flex: none; }
+.pebble-root .pb-set-cleanup-preview small { display: block; color: var(--ink-soft); font-size: 0.74rem; }
+.pebble-root .pb-set-cleanup-result {
+  padding: 0.8rem; border-radius: 0.8rem; border: 1px solid var(--line); background: var(--mist);
+}
+.pebble-root .pb-set-cleanup-result strong { font-size: 1.25rem; font-weight: 600; }
+.pebble-root .pb-set-cleanup-result label { display: grid; gap: 0.35rem; margin-top: 0.65rem; font-size: 0.8rem; }
+.pebble-root .pb-set-cleanup-result input {
+  min-width: 0; width: 100%; border: 1px solid var(--line); border-radius: 0.55rem;
+  padding: 0.55rem 0.6rem; background: var(--paper); color: var(--ink); font: inherit;
+}
+.pebble-root .pb-set-cleanup-result p,
+.pebble-root .pb-set-cleanup-history { margin: 0; font-size: 0.8rem; color: var(--ink-soft); }
+.pebble-root .pb-set-cleanup-result p { margin-top: 0.55rem; }
+.pebble-root .pb-set-cleanup-agree {
+  display: flex; gap: 0.55rem; align-items: flex-start; padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line); border-radius: 0.65rem; font-size: 0.82rem;
+}
+.pebble-root .pb-set-cleanup-agree input { accent-color: var(--pine); margin-top: 0.2rem; flex: none; }
+.pebble-root .pb-set-cleanup-error { margin: 0; color: var(--expense); font-size: 0.82rem; }
+@container pb-modal (min-width: 520px) {
+  .pebble-root .pb-set-cleanup-preview { grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); }
+}
+.pebble-root .pb-set-cleanup-manual { margin-top: 0.65rem; }
+.pebble-root .pb-set-cleanup-pick { display: flex; align-items: flex-start; gap: 0.55rem; min-width: 0; }
+.pebble-root .pb-set-cleanup-pick > input { flex: none; margin-top: 0.15rem; accent-color: var(--pine); }
+.pebble-root .pb-set-cleanup-pick > span { min-width: 0; overflow-wrap: anywhere; }

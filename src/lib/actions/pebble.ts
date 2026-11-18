@@ -25,6 +25,8 @@ import { generateId, generateTransId } from '@/lib/ids';
 import { isClientId } from '@/lib/offline/clientId';
 import { addToGoalGuarded } from '@/lib/data/goalAllocation';
 import { userWriteLockStatement } from '@/lib/data/userWriteLock';
+import { applyAdjustmentCleanupStatement } from '@/lib/data/adjustmentCleanup';
+import { cleanupCutoff, MAX_CLEANUP_DESCRIPTION, MAX_CLEANUP_ROWS, type CleanupSource } from '@/lib/adjustmentCleanup';
 import { patchCurrentAnnualBudgets } from '@/lib/budgets/annualData';
 import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
 import type {
@@ -2469,6 +2471,46 @@ async function deleteSelfTransfers(userId: string, input: { groupIds: string[] }
 }
 
 export const createBalanceAdjustmentAction = withSessionUser(createBalanceAdjustment);
+
+async function applyAdjustmentCleanup(userId: string, input: {
+  accountId: string;
+  retainedId: string;
+  sources: CleanupSource[];
+  description: string;
+  confirmed: boolean;
+  manual: boolean;
+}): Promise<{ ok: true; removed: number } | ActionFailure> {
+  try {
+    if (!input || input.confirmed !== true || typeof input.manual !== 'boolean' || typeof input.accountId !== 'string'
+      || typeof input.retainedId !== 'string' || typeof input.description !== 'string'
+      || input.description.length > MAX_CLEANUP_DESCRIPTION || !Array.isArray(input.sources)
+      || input.sources.length < 2 || input.sources.length > MAX_CLEANUP_ROWS
+      || input.sources.some(row => !row || typeof row.id !== 'string' || typeof row.date !== 'string'
+        || !isYmd(row.date) || typeof row.description !== 'string' || !isFiniteNumber(row.amount))
+      || new Set(input.sources.map(row => row.id)).size !== input.sources.length
+      || !input.sources.some(row => row.id === input.retainedId)) {
+      return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+    const zone = (await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE;
+    const today = todayInZone(zone);
+    const results = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      applyAdjustmentCleanupStatement({
+        userId, cutoff: input.manual ? addDays(today, 1) : cleanupCutoff(today), accountId: input.accountId,
+        retainedId: input.retainedId, sources: input.sources, description: input.description.trim(),
+      }),
+    ], { isolationLevel: 'ReadCommitted' });
+    const removed = Number(results[1][0]?.removed ?? 0);
+    if (removed === 0) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    revalidateAll();
+    revalidatePath('/accounts', 'page');
+    return { ok: true, removed };
+  } catch (error) {
+    return handleUnexpected('applyAdjustmentCleanupAction', error);
+  }
+}
+
+export const applyAdjustmentCleanupAction = withSessionUser(applyAdjustmentCleanup);
 export const deleteSelfTransfersAction = withSessionUser(deleteSelfTransfers);
 export const createTransferAction = withSessionUser(createTransfer);
 export const deleteBalanceAdjustmentAction = withSessionUser(deleteBalanceAdjustment);

@@ -346,7 +346,7 @@
   margin: -0.23rem -0.5rem; border-radius: 999px; cursor: pointer;
   transition: background-color var(--pb-dur-fast, 150ms) ease, color var(--pb-dur-fast, 150ms) ease;
 }
-.pebble-root .pb-txn-adjustment-link > svg { flex: none; color: var(--ink-soft); }
+.pebble-root .pb-txn-adjustment-link > svg { display: block; flex: none; align-self: center; color: var(--ink-soft); translate: 0 -1px; }
 .pebble-root .pb-txn-adjustment-link:hover,
 .pebble-root .pb-txn-adjustment-link[aria-pressed="true"] {
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);

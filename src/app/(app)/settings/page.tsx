@@ -3,6 +3,10 @@ import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getIncome, getUserTimeZoneOverride, getAccounts, getRecurringRules } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { SettingsClient } from './SettingsClient';
+import { cleanupCutoff, findAdjustmentCleanupGroups } from '@/lib/adjustmentCleanup';
+import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
+import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
+import { todayInZone } from '@/lib/recurring/occurrences';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,13 +18,14 @@ export default async function SettingsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, adjustments, timeZoneOverride, accounts, rules] = await Promise.all([
+  const [expenses, income, adjustments, timeZoneOverride, accounts, rules, timeZone] = await Promise.all([
     getExpenses(userId, { includeGhost: true }),
     getIncome(userId, { includeGhost: true }),
     getBalanceAdjustments(userId, { includeGhost: true }),
     getUserTimeZoneOverride(userId),
     getAccounts(userId, { includeGhost: true }),
     getRecurringRules(userId, { includeGhost: true }),
+    resolveUserTimeZone(userId),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -37,6 +42,7 @@ export default async function SettingsPage() {
   for (const r of [...transactions, ...adjustments, ...rules]) {
     hasRecords[r.accountId] = true;
   }
+  const today = todayInZone(timeZone ?? FALLBACK_TIME_ZONE);
 
   return (
     <SettingsClient
@@ -44,6 +50,11 @@ export default async function SettingsPage() {
       accounts={accounts}
       balancesByAccount={balances.byAccount}
       hasRecords={hasRecords}
+      adjustmentCleanup={findAdjustmentCleanupGroups(
+        adjustments, cleanupCutoff(today), new Set(accounts.map(a => a.id)),
+      )}
+      cleanupSources={adjustments.filter(row => row.transferGroupId == null && row.date <= today)
+        .map(({ id, accountId, date, amount, description }) => ({ id, accountId, date, amount, description }))}
     />
   );
 }

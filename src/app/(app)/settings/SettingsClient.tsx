@@ -25,6 +25,8 @@ import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
 import { AccountsCard } from '@/components/settings/AccountsCard';
 import type { Account } from '@/lib/data/mappers';
 import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
+import { AdjustmentCleanupCard } from '@/components/settings/AdjustmentCleanupCard';
+import type { AdjustmentCleanupGroup, CleanupSource } from '@/lib/adjustmentCleanup';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
@@ -44,6 +46,8 @@ interface SettingsClientProps {
   balancesByAccount: Record<string, number>;
   /** accountId -> true when the account has records that could be moved. */
   hasRecords: Record<string, boolean>;
+  adjustmentCleanup: AdjustmentCleanupGroup[];
+  cleanupSources: (CleanupSource & { accountId: string })[];
 }
 
 interface SettingsSection {
@@ -74,7 +78,7 @@ const SECTION_IDS = {
 // data and come from Postgres. Every card is props-only; this component owns
 // all store reads.
 export function SettingsClient({
-  timeZoneOverride, accounts, balancesByAccount, hasRecords,
+  timeZoneOverride, accounts, balancesByAccount, hasRecords, adjustmentCleanup, cleanupSources,
 }: SettingsClientProps) {
   const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
@@ -128,6 +132,7 @@ export function SettingsClient({
               starts at zero and a starting figure is recorded here as a dated
               adjustment, so nothing moves a balance without a visible row. */}
           <ModifyBalanceCard accounts={accounts} balancesByAccount={balancesByAccount} />
+          <AdjustmentCleanupCard groups={adjustmentCleanup} sources={cleanupSources} accounts={accounts} />
           <AccountsCard accounts={accounts} balancesByAccount={balancesByAccount} hasRecords={hasRecords} />
           <CategoryManagerCard />
         </>

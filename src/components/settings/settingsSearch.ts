@@ -25,6 +25,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     ({ id, label, section, hint, target: SETTING_TARGETS[id], keywords });
   return [
     entry('balances', d.modifyBalance.title, money, d.modifyBalance.blurb, ['balance adjustment correction 余额 调整']),
+    entry('adjustmentCleanup', d.ux.settings.adjustmentCleanup.title, money, d.ux.settings.adjustmentCleanup.hint, ['combine remove merge cleanup old balance adjustments 合并 删除 清理 余额调整']),
     entry('accounts', d.accounts.title, money, d.accounts.blurb, ['bank cash credit card add account default hibernate 银行 现金 信用卡 账户 默认 休眠']),
     { ...entry('accounts', d.ux.accounts.sortAccounts, money, d.ux.accounts.orderHint,
       [...Object.values(d.ux.accounts.sortModes), 'account order sort manual drag reorder balance high low 排序 手动 拖动 余额 高 低']), id: 'accountOrder' },

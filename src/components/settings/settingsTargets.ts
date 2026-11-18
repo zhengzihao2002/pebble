@@ -5,6 +5,7 @@
  */
 export const SETTING_TARGETS = {
   balances: 'pb-set-balances',
+  adjustmentCleanup: 'pb-set-adjustment-cleanup',
   accounts: 'pb-set-accounts',
   categories: 'pb-set-categories',
   theme: 'pb-set-theme',
