@@ -114,6 +114,10 @@ export function AccountDetailSheet({
     () => credit ? records.filter((r) => r.kind !== 'expense' || !r.paidOnCard) : records,
     [credit, records],
   );
+  const activityRecords = useMemo(
+    () => records.filter((r) => r.kind !== 'expense' || !r.fundedPayoff),
+    [records],
+  );
   const latestActivity = credit ? records.find((r) => r.date <= today)?.date : lastActivity;
   const from = days[0]?.date ?? today;
   const inRange = countedRecords.filter((r) => r.date >= from && r.date <= today);
@@ -123,7 +127,7 @@ export function AccountDetailSheet({
   const moneyOut = round2(Math.abs(inRange.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.amount, 0)));
   const movesNet = round2(inRange.filter((r) => r.kind === 'transfer' || r.kind === 'correction').reduce((s, r) => s + r.amount, 0));
   const anyMoves = inRange.some((r) => r.kind === 'transfer' || r.kind === 'correction');
-  const largest = inRange.filter((r) => r.kind === 'expense').reduce<AccountRecord | null>((m, r) => (!m || r.amount < m.amount ? r : m), null);
+  const largest = inRange.filter((r) => r.kind === 'expense' && !r.fundedPayoff).reduce<AccountRecord | null>((m, r) => (!m || r.amount < m.amount ? r : m), null);
 
   // Six calendar months ending with today's: income and money moved in above
   // the axis, spending and money moved out below it. Transfers and balance
@@ -290,12 +294,12 @@ export function AccountDetailSheet({
                 </dl>
 
                 <p className="pb-accounts-detail-cap">{x.recentActivity}</p>
-                {records.length === 0 ? (
+                {activityRecords.length === 0 ? (
                   <EmptyState compact icon={Icon} title={x.noRecordsHere} />
                 ) : (
                   <>
                     <ul className="pb-accounts-detail-list">
-                      {records.slice(0, shownCount).map((r) => {
+                      {activityRecords.slice(0, shownCount).map((r) => {
                         const RowIcon = r.kind === 'transfer' ? ArrowRightLeft : r.kind === 'correction' ? SlidersHorizontal : r.amount > 0 ? ArrowDownLeft : ArrowUpRight;
                         return (
                           <li key={r.id}>
@@ -316,7 +320,7 @@ export function AccountDetailSheet({
                         );
                       })}
                     </ul>
-                    {records.length > shownCount && (
+                    {activityRecords.length > shownCount && (
                       <button type="button" className="pill pb-accounts-detail-more" onClick={() => setShownCount((c) => c + PAGE)}>{x.showMore}</button>
                     )}
                   </>

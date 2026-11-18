@@ -16,23 +16,24 @@ export function isCardShadow(record: LedgerRecord, accountId: string | null): bo
     && record.creditCardPayoff?.cardId === accountId;
 }
 
-/** Keep the original ledger order and the identity of each real record. */
-export function cardStatementEntries(
-  entries: StatementEntry[], accountId: string, ghostIds: ReadonlySet<string>, showGhostAccounts: boolean,
-): StatementEntry[] {
-  return entries.filter(({ record }) => (showGhostAccounts || !ghostIds.has(record.accountId))
-    && (record.accountId === accountId || isCardShadow(record, accountId)));
+export interface StatementPayoff extends CreditCardPayoff {
+  side: 'card' | 'funding';
+  amount: number;
 }
 
-/** One display marker per payoff, even when it settled multiple purchases. */
-export function cardPayoffMarkers(entries: StatementEntry[], cardId: string, monthPrefix: string): CreditCardPayoff[] {
-  const payoffs = new Map<string, CreditCardPayoff>();
+/** One display marker per payment, scoped to the side of the selected account. */
+export function statementPayoffs(entries: StatementEntry[], accountId: string, monthPrefix: string): StatementPayoff[] {
+  const payoffs = new Map<string, StatementPayoff>();
   for (const { record } of entries) {
     if (record.type !== 'expense') continue;
     const payoff = record.creditCardPayoff;
-    if (payoff?.cardId === cardId && payoff.date.startsWith(monthPrefix)) payoffs.set(payoff.id, payoff);
+    if (!payoff?.date.startsWith(monthPrefix)) continue;
+    const side = payoff.cardId === accountId ? 'card' : record.accountId === accountId ? 'funding' : null;
+    if (!side) continue;
+    const amount = (payoffs.get(payoff.id)?.amount ?? 0) + cents(Math.abs(record.amount));
+    payoffs.set(payoff.id, { ...payoff, side, amount });
   }
-  return [...payoffs.values()];
+  return [...payoffs.values()].map(payoff => ({ ...payoff, amount: payoff.amount / 100 }));
 }
 
 /** 'YYYY-MM-01' and the first day of the following month, for range checks. */
@@ -135,7 +136,7 @@ export function summarizeMonths(
 
 type StatementItem =
   | { kind: 'record'; id: string; entry: StatementEntry }
-  | { kind: 'payoff'; id: string; payoff: CreditCardPayoff };
+  | { kind: 'payoff'; id: string; payoff: StatementPayoff };
 
 export interface DayGroup {
   date: string;
@@ -152,7 +153,7 @@ export function groupByDay(
   entries: StatementEntry[],
   read: (e: StatementEntry) => number,
   lensAccountId: string | null = null,
-  payoffs: CreditCardPayoff[] = [],
+  payoffs: StatementPayoff[] = [],
 ): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   const groupFor = (date: string) => {

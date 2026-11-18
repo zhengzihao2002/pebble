@@ -429,11 +429,14 @@
   background-color: var(--mist);
   color: var(--pine);
 }
+.pebble-root .pb-txn-card-payoff-copy,
+.pebble-root .pb-txn-card-payoff-balance { display: flex; flex-direction: column; gap: 0.125rem; }
+.pebble-root .pb-txn-card-payoff-copy { min-width: 0; overflow-wrap: anywhere; }
 .pebble-root .pb-txn-card-payoff-balance {
-  display: flex; flex-direction: column; align-items: flex-end;
+  align-items: flex-end;
   text-align: end;
 }
-.pebble-root .pb-txn-card-payoff-balance > :first-child {
+.pebble-root .pb-txn-card-payoff-note {
   color: var(--ink-soft);
   font-size: 0.72rem;
   font-weight: 400;

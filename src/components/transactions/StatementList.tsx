@@ -2,8 +2,8 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, type ReactNode } from 'react';
-import { CalendarX2, CreditCard } from 'lucide-react';
-import type { CategoryMeta, CreditCardPayoff, LedgerRecord } from '@/types';
+import { ArrowRightLeft, CalendarX2 } from 'lucide-react';
+import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { LedgerEntry } from '@/lib/stats';
 import { formatCurrency, formatDate, parseLocalDate } from '@/lib/format';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
@@ -12,7 +12,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { BalanceFigure } from './BalanceFigure';
-import { balanceReader, cents, daysInMonth, groupByDay, monthBounds, type DayGroup } from './statementMath';
+import { balanceReader, cents, daysInMonth, groupByDay, monthBounds, type DayGroup, type StatementPayoff } from './statementMath';
 
 // A ledger entry with its full transaction record resolved — recentTransactions
 // entries are deliberately lightweight (just balances + an id), so the page
@@ -25,7 +25,7 @@ export interface StatementEntry extends LedgerEntry {
 
 interface StatementListProps {
   entries: StatementEntry[];
-  payoffs?: CreditCardPayoff[];
+  payoffs?: StatementPayoff[];
   openingBalance: number;
   /** Passed through to StatementRow for per-account balance names. */
   accounts: Account[];
@@ -76,6 +76,39 @@ export function SignedAmount({ value, className = '' }: { value: number; classNa
   );
 }
 
+export function PayoffRow({ payoff, cardName, showDate = false }: {
+  payoff: StatementPayoff;
+  cardName?: string;
+  showDate?: boolean;
+}) {
+  const { d, locale } = useTranslation();
+  const x = d.ux.transactions;
+  const onCard = payoff.side === 'card';
+  const date = showDate ? formatDate(payoff.date, locale) : '';
+  const note = onCard ? date : [cardName ?? payoff.cardName, date].filter(Boolean).join(' · ');
+  return (
+    <div className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
+      <div className="pb-txn-srow-lead">
+        <span className="pb-txn-card-payoff-icon"><ArrowRightLeft size={16} aria-hidden="true" /></span>
+        <span className="pb-txn-card-payoff-copy">
+          <span>{x.cardPayoff}</span>
+          {note && <span className="pb-txn-card-payoff-note">{note}</span>}
+        </span>
+      </div>
+      <div className="pb-txn-card-payoff-balance">
+        <span className="font-mono-tab"><RollingAmount value={formatCurrency(onCard ? payoff.amount : -payoff.amount)} /></span>
+        {onCard && (
+          <span className="pb-txn-card-payoff-note">
+            {renderTemplate(x.cardPayoffRemaining, {
+              amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(payoff.remainingBalance)} /></span>,
+            })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface DayGroupsProps {
   groups: DayGroup[];
   /** statement: headers carry the end-of-day balance; results: the net of the matches only. */
@@ -123,16 +156,9 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
               </span>
             </div>
             {g.items.map((item) => item.kind === 'payoff' ? (
-              <div key={`payoff-${item.id}`} className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
-                <div className="pb-txn-srow-lead">
-                  <span className="pb-txn-card-payoff-icon"><CreditCard size={16} aria-hidden="true" /></span>
-                  <span>{d.ux.transactions.cardPayoff}</span>
-                </div>
-                <span className="pb-txn-card-payoff-balance">
-                  <span>{d.ux.transactions.cardPayoffRemaining}</span>
-                  <span className="font-mono-tab"><RollingAmount value={formatCurrency(item.payoff.remainingBalance)} /></span>
-                </span>
-              </div>
+              <PayoffRow key={`payoff-${item.id}`} payoff={item.payoff}
+                cardName={accounts.find(account => account.id === item.payoff.cardId)?.name}
+              />
             ) : (
               <StatementRow
                 key={item.id} txn={item.entry.record}

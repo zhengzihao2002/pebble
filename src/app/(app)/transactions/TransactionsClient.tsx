@@ -8,6 +8,7 @@ import type { LedgerEntry } from '@/lib/stats';
 import { getLastNMonths } from '@/lib/stats';
 import { buildCategoryMeta } from '@/lib/data/categoryMeta';
 import { formatCurrency, formatMonthYear } from '@/lib/format';
+import { transactionDisplayAccountId } from '@/lib/creditCards';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { renderTemplate } from '@/lib/i18n/RichText';
@@ -26,8 +27,8 @@ import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
 import { SearchToolbar, type TypeFilter } from '@/components/transactions/SearchToolbar';
 import { ResultsSummary, FlowFigures } from '@/components/transactions/ResultsSummary';
 import {
-  balanceReader, cardPayoffMarkers, cardStatementEntries, cents, daySeries, daysInMonth, groupByDay,
-  isCardShadow, monthBounds, monthFigures, summarizeMonths,
+  balanceReader, cents, daySeries, daysInMonth, groupByDay, isCardShadow,
+  monthBounds, monthFigures, statementPayoffs, summarizeMonths,
 } from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
 import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
@@ -172,15 +173,17 @@ export function TransactionsClient({
   const searching = q !== '' || typeFilter !== 'all' || (accountFilter !== ALL_ACCOUNTS && !lensAccount);
   const { prefix: monthPrefix } = monthBounds(selectedMonthInfo.year, selectedMonthInfo.month);
 
-  // Card history shows the same purchase from its original card as well as
-  // the payer. Keep the shadows separate from the ledger's financial inputs.
+  // A settled purchase still belongs to the card's visible activity. The
+  // funding account sees the payoff instead, separate from balance math.
   const cardId = filterAccount?.kind === 'credit' ? accountFilter : null;
-  const cardHistory = useMemo(() => cardId
-    ? cardStatementEntries(allEntriesWithRecords, cardId, ghostIds, showGhostAccounts)
-    : null, [allEntriesWithRecords, cardId, ghostIds, showGhostAccounts]);
-  const payoffs = useMemo(() => !searching && cardId && cardHistory
-    ? cardPayoffMarkers(cardHistory, cardId, monthPrefix)
-    : undefined, [cardId, cardHistory, monthPrefix, searching]);
+  const visibleRecords = cardId && showGhostAccounts ? allEntriesWithRecords : entriesWithRecords;
+  const accountHistory = useMemo(() => accountFilter === ALL_ACCOUNTS
+    ? visibleRecords
+    : visibleRecords.filter(({ record }) => transactionDisplayAccountId(record) === accountFilter),
+  [visibleRecords, accountFilter]);
+  const payoffs = useMemo(() => lensId
+    ? statementPayoffs(visibleRecords, lensId, monthPrefix)
+    : undefined, [visibleRecords, lensId, monthPrefix]);
 
   const fig = useMemo(
     () => monthFigures(entriesWithRecords, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
@@ -271,28 +274,26 @@ export function TransactionsClient({
 
   const results = useMemo(() => {
     if (!searching) return [];
-    return (cardHistory ?? entriesWithRecords).filter((e) => {
+    return accountHistory.filter((e) => {
       const r = e.record;
       if (!r.date.startsWith(monthPrefix)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
-      if (!cardHistory && accountFilter !== ALL_ACCOUNTS && r.accountId !== accountFilter) return false;
       if (q === '') return true;
       const categoryText = r.type === 'adjustment'
         ? d.txn.balanceAdjustment.toLowerCase()
         : `${r.category} ${categoryLabel(d, r.category)}`.toLowerCase();
       const tag = r.type === 'expense' && r.tag ? r.tag.toLowerCase() : '';
       const payoff = r.type === 'expense' ? r.creditCardPayoff : undefined;
-      const cardName = payoff ? accountNames.get(payoff.cardId) ?? payoff.cardName.toLowerCase() : '';
+      const accountName = accountNames.get(transactionDisplayAccountId(r)) ?? payoff?.cardName.toLowerCase() ?? '';
       return (
         r.description.toLowerCase().includes(q)
         || categoryText.includes(q)
         || (tag !== '' && tag.includes(q))
-        || (accountNames.get(r.accountId) ?? '').includes(q)
-        || cardName.includes(q)
+        || accountName.includes(q)
         || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, cardHistory, entriesWithRecords, typeFilter, accountFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
+  }, [searching, accountHistory, typeFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
   // An account filter alongside text or a type keeps the account's own
   // balance line on each row.
   const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;
@@ -362,9 +363,10 @@ export function TransactionsClient({
   const balanceDelta = cents(closingBalance - openingBalance) / 100;
   const delta = lensIsCard ? -balanceDelta : balanceDelta;
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
-  const statementEntries = useMemo(() => cardHistory
-    ? cardHistory.filter((entry) => entry.record.date.startsWith(monthPrefix))
-    : fig.entries, [cardHistory, monthPrefix, fig.entries]);
+  const statementEntries = useMemo(
+    () => accountHistory.filter((entry) => entry.record.date.startsWith(monthPrefix)),
+    [accountHistory, monthPrefix],
+  );
   const statementCount = statementEntries.length;
 
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;

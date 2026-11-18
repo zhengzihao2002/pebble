@@ -49,10 +49,11 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
   const subtitleParts = [categoryLabel(d, txn.category)];
   if (txn.type === 'expense' && txn.tag) subtitleParts.push(txn.tag);
   if (!hideDate) subtitleParts.push(formatDate(txn.date, locale));
-  // txn.tag is USER DATA and stays exactly as stored. paymentMethod is a
-  // stored CHECK-constrained value, so only its LABEL is swapped here -
-  // txn.paymentMethod itself is never reassigned.
-  if (!compact && txn.paymentMethod) subtitleParts.push(paymentMethodLabel(d, txn.paymentMethod));
+  const cardName = txn.type === 'expense' ? txn.creditCardPayoff?.cardName : undefined;
+  if (!compact) {
+    if (cardName) subtitleParts.push(cardName);
+    else if (txn.paymentMethod) subtitleParts.push(paymentMethodLabel(d, txn.paymentMethod));
+  }
 
   const interactiveProps = onOpenDetail
     ? {

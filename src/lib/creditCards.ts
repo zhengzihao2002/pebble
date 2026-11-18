@@ -1,5 +1,10 @@
 import type { Account } from '@/lib/data/mappers';
-import type { ExpenseTransaction, Transaction } from '@/types';
+import type { ExpenseTransaction, LedgerRecord, Transaction } from '@/types';
+
+/** A settled purchase's history belongs to the card that was charged. */
+export function transactionDisplayAccountId(record: LedgerRecord): string {
+  return record.type === 'expense' ? record.creditCardPayoff?.cardId ?? record.accountId : record.accountId;
+}
 
 /**
  * Credit card statements and due dates - the one place these rules live.

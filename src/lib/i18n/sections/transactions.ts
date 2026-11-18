@@ -46,7 +46,7 @@ export const transactionsEn = {
   colBalance: 'Balance after',
   colTotal: 'Total after',
   cardPayoff: 'Payoff',
-  cardPayoffRemaining: 'Remaining balance',
+  cardPayoffRemaining: '{amount} still owed',
   cardPaidFrom: 'Paid from {account}',
   // Search.
   clearFilters: 'Clear filters',
@@ -97,7 +97,7 @@ export const transactionsZh: typeof transactionsEn = {
   colBalance: '交易后余额',
   colTotal: '交易后总额',
   cardPayoff: '还款',
-  cardPayoffRemaining: '剩余欠款',
+  cardPayoffRemaining: '剩余欠款 {amount}',
   cardPaidFrom: '已从 {account} 还款',
   clearFilters: '清除筛选',
   noMatchBody: '换个关键词试试，或清除筛选。',

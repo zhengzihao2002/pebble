@@ -11,6 +11,7 @@ import { categoryLabel, periodValueLabel } from '@/lib/i18n/enumLabels';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { MONTH_NAMES, QUARTER_NAMES } from '@/data/seed';
 import { compareSameDayIds } from '@/lib/stats';
+import { transactionDisplayAccountId } from '@/lib/creditCards';
 import { ReportFilters } from '@/components/reports/ReportFilters';
 import { useReportInspectorLayout } from '@/components/reports/useReportInspectorLayout';
 import { ReportResults, type ReportEmptyInfo } from '@/components/reports/ReportResults';
@@ -300,7 +301,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     if (!matchesType) return false;
     if (!selectedCategories.has(t.category)) return false;
     // Empty set means every account, so no filtering to do.
-    if (selectedAccounts.size > 0 && !selectedAccounts.has(t.accountId)) return false;
+    if (selectedAccounts.size > 0 && !selectedAccounts.has(transactionDisplayAccountId(t))) return false;
     if (!t.description.toLowerCase().includes(descQuery.toLowerCase())) return false;
     if (showTagFilter && selectedTags.size > 0) {
       if (!isExpense(t) || !t.tag || !selectedTags.has(t.tag)) return false;
@@ -426,7 +427,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     const rows = applyPeriod(typeRows);
     return {
       hasRows: rows.length > 0,
-      accountIds: new Set(rows.map((t) => t.accountId)),
+      accountIds: new Set(rows.map(transactionDisplayAccountId)),
       categories: new Set(rows.map((t) => t.category)),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

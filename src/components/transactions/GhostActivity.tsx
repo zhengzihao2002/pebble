@@ -7,9 +7,10 @@ import type { LedgerRecord } from '@/types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { StatementEntry } from './StatementList';
+import { PayoffRow, type StatementEntry } from './StatementList';
 import type { TypeFilter } from './SearchToolbar';
 import { filterGhostActivity } from './ghostActivity';
+import { groupByDay, statementPayoffs } from './statementMath';
 
 export function GhostActivity({ entries, accounts, monthPrefix, accountId, query, typeFilter, onOpen }: {
   entries: StatementEntry[];
@@ -27,6 +28,12 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
     monthPrefix, accountId, query, type: typeFilter, accountNames: names,
     categoryName: category => categoryLabel(d, category),
   }), [entries, monthPrefix, accountId, query, typeFilter, names, d]);
+  const items = useMemo(() => {
+    const payoffs = accountId && !query.trim() && typeFilter === 'all'
+      ? statementPayoffs(entries, accountId, monthPrefix)
+      : [];
+    return groupByDay(visible, () => 0, accountId, payoffs).flatMap(({ items }) => items);
+  }, [entries, visible, monthPrefix, accountId, query, typeFilter]);
   return <section className="card pb-txn-ghost-history" aria-labelledby="pb-txn-ghost-heading">
     <header className="pb-txn-ghost-head">
       <span className="pb-txn-ghost-mark"><Ghost size={22} aria-hidden="true" /></span>
@@ -34,8 +41,10 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
         <p>{zh ? '独立记录，不计入应用总额、预算、图表或洞察。' : 'A separate record, excluded from app totals, budgets, charts and insights.'}</p></div>
       <span className="pb-txn-ghost-count pb-tnum">{visible.length}</span>
     </header>
-    {visible.length === 0 ? <p className="pb-txn-ghost-empty">{zh ? '当前月份及筛选条件下没有幽灵流水。' : 'No ghost activity matches this month and these filters.'}</p> :
-      <div className="pb-txn-ghost-rows">{visible.map(({ record }) => {
+    {items.length === 0 ? <p className="pb-txn-ghost-empty">{zh ? '当前月份及筛选条件下没有幽灵流水。' : 'No ghost activity matches this month and these filters.'}</p> :
+      <div className="pb-txn-ghost-rows">{items.map(item => {
+        if (item.kind === 'payoff') return <PayoffRow key={`payoff-${item.id}`} payoff={item.payoff} cardName={names.get(item.payoff.cardId)} showDate />;
+        const { record } = item.entry;
         const Icon = record.type === 'adjustment' ? SlidersHorizontal : record.amount >= 0 ? ArrowUpRight : ArrowDownRight;
         const payoff = record.type === 'expense' ? record.creditCardPayoff : undefined;
         const accountName = payoff

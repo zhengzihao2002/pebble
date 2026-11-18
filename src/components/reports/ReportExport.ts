@@ -9,6 +9,7 @@
 import type { Transaction } from '@/types';
 import type { Account } from '@/lib/data/mappers';
 import { parseDescription } from '@/lib/transactionDescription';
+import { transactionDisplayAccountId } from '@/lib/creditCards';
 
 function cell(v: string | number): string {
   const s = String(v);
@@ -31,6 +32,7 @@ export function buildReportCsv(rows: Transaction[], accounts: Account[], labels:
   const lines = [labels.header];
   for (const t of rows) {
     const { title, description } = parseDescription(t.description);
+    const payoff = t.type === 'expense' ? t.creditCardPayoff : undefined;
     lines.push([
       t.date,
       title,
@@ -38,7 +40,7 @@ export function buildReportCsv(rows: Transaction[], accounts: Account[], labels:
       t.type === 'income' ? labels.income : labels.expense,
       labels.category(t.category),
       t.type === 'expense' ? t.tag ?? '' : '',
-      names.get(t.accountId) ?? t.paymentMethod ?? '',
+      names.get(transactionDisplayAccountId(t)) ?? payoff?.cardName ?? t.paymentMethod ?? '',
       t.amount.toFixed(2),
       t.type === 'income' ? t.grossAmount.toFixed(2) : '',
       t.type === 'income' ? t.netAmount.toFixed(2) : '',
