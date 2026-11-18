@@ -68,19 +68,31 @@
 .pebble-root .pb-ring-overflow {
   position: absolute; inset: 0; pointer-events: none;
   --pb-ring-overflow-progress: clamp(0%, calc((var(--pb-ring-progress) - 1) * 100%), 100%);
-  --pb-ring-overflow-ramp: min(12%, calc(var(--pb-ring-overflow-progress) / 2));
-  --pb-ring-overflow-tip: min(4%, calc(var(--pb-ring-overflow-progress) / 2));
+  --pb-ring-overflow-ramp: min(12%, var(--pb-ring-overflow-progress));
+  --pb-ring-overflow-inner: calc(100% - 2 * var(--pb-ring-stroke-share));
   --pb-ring-overflow-mask: radial-gradient(circle closest-side,
     transparent calc(var(--pb-ring-overflow-inner) - 0.4px),
     #000 calc(var(--pb-ring-overflow-inner) + 0.4px),
     #000 calc(100% - 0.4px), transparent 100%);
   -webkit-mask-image: var(--pb-ring-overflow-mask);
   mask-image: var(--pb-ring-overflow-mask);
-  /* Feather both ends of the lap, including where it meets itself at 200%. */
+  /* Blend into the preceding lap. The leading end is finished by the cap. */
   background: conic-gradient(transparent 0%,
     var(--pb-ring-overflow-color) var(--pb-ring-overflow-ramp),
-    var(--pb-ring-overflow-color) calc(var(--pb-ring-overflow-progress) - var(--pb-ring-overflow-tip)),
+    var(--pb-ring-overflow-color) var(--pb-ring-overflow-progress),
     transparent var(--pb-ring-overflow-progress));
+}
+/* A round cap joins the gradient at the same animated angle. */
+.pebble-root .pb-ring-overflow-head {
+  position: absolute; inset: 0;
+  transform: rotate(calc(var(--pb-ring-progress) * 1turn));
+  opacity: clamp(0, calc((var(--pb-ring-progress) - 1) * 60), 1);
+}
+.pebble-root .pb-ring-overflow-head::after {
+  content: ''; position: absolute; left: 50%; top: calc(var(--pb-ring-stroke-share) / 2);
+  width: var(--pb-ring-stroke-share); aspect-ratio: 1;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: var(--pb-ring-overflow-color);
 }
 .pebble-root .pb-ring-center { position: relative; display: grid; place-items: center; text-align: center; line-height: 1.1; }
 
