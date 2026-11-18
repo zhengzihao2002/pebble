@@ -138,3 +138,23 @@ test('plot marks draw separately and a period remount only fades', () => {
   assert.equal(nextMarks.animations.length, 0);
   f.controller.dispose();
 });
+
+test('allocation bars finish the CSS wipe before the page sweeps in', () => {
+  const f = fixture();
+  for (const name of ['pb-plan-barwrap', 'pb-goals-ribbon pb-chart-fade']) {
+    const wrapper = new f.Element(name);
+    const track = new f.Element('pb-bar-track');
+    const cssWipe = { animationName: 'pb-bar-wipe', finished: false, finish() { this.finished = true; } };
+    track.animations.push(cssWipe);
+    wrapper.append(track);
+    f.content.append(wrapper);
+    f.mutate(f.content, [wrapper]);
+    f.controller.reveal();
+    f.see(wrapper);
+    assert(cssWipe.finished, name);
+    assert.equal(track.animations.filter(a => a.id === 'pb-chart-draw-entry').length, 1);
+    f.entries(wrapper)[0].finish();
+    assert.deepEqual(track.animations, [cssWipe]);
+  }
+  f.controller.dispose();
+});

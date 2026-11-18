@@ -65,6 +65,13 @@ export function createPageChartReveal(content: HTMLElement) {
     const duration = marks.length ? 820 : 460;
     const easing = 'cubic-bezier(.22,.78,.22,1)';
     entry.draw = marks.map(mark => {
+      // The CSS wipe lasts longer than the page-entry sweep. Settle it first
+      // so it cannot clip the bar again when the sweep is removed.
+      for (const animation of mark.getAnimations()) {
+        if ('animationName' in animation && animation.animationName === 'pb-bar-wipe') {
+          animation.finish();
+        }
+      }
       const animation = mark.animate(SWEEP, { duration, delay, easing, fill: 'both' });
       animation.id = 'pb-chart-draw-entry';
       return animation;
