@@ -332,7 +332,7 @@ export const en = {
     proceed: 'Continue',
     category: 'Category',
     tag: 'Tag',
-    tagHint: '(sub-category, optional)',
+    tagHint: '(optional)',
     tagPlaceholder: 'e.g. Groceries',
     amount: 'Amount',
     sideCashNote: 'Side cash counts toward your balance and appears in Reports, but is left out of the Income and Savings rate figures on your dashboard — those track standard income only.',
@@ -412,7 +412,7 @@ export const en = {
     deletingOverlay: 'Deleting…',
     rowType: 'Type',
     rowCategory: 'Category',
-    rowTag: 'Tag / sub-category',
+    rowTag: 'Tag',
     rowDate: 'Date',
     rowAccount: 'Account',
     rowPaymentMethod: 'Payment method',
@@ -801,7 +801,9 @@ export const en = {
   // Settings page section headings and the section nav. Labels only; the
   // section ids used for scrolling are fixed strings in SettingsClient.
   settingsSections: {
-    money: 'Money',
+    money: 'Accounts & balances',
+    categoriesTags: 'Categories & tags',
+    chartsMotion: 'Charts & motion',
     appearance: 'Appearance',
     languageRegion: 'Language & region',
     behavior: 'Behavior',
@@ -1231,7 +1233,7 @@ export const en = {
     find: 'Find',
     transactionType: 'Transaction type',
     bothTypes: 'Expenses & Income',
-    subCategoryOf: '{category} sub-category',
+    tagsOf: '{category} tags',
     byMonth: 'By month', byQuarter: 'By quarter', byYear: 'By year',
     groupedByCategory: 'grouped by category',
     categoriesOne: '{count} category', categoriesOther: '{count} categories',
@@ -1552,6 +1554,7 @@ export const en = {
     // {category} is USER DATA - a category name - and is inserted exactly as
     // stored, never translated.
     'validation.budgetAmountNonNegative': 'Budget for {category} must be zero or greater.',
+    'validation.tagRename': 'Enter a different tag of up to {max} characters.',
     'validation.categoryNameRequired': 'A category needs a name.',
     'validation.categoryNameTooLong': 'Category names are limited to {max} characters.',
     // {name} is USER DATA and is inserted exactly as typed, never translated.

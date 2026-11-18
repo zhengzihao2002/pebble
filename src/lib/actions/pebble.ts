@@ -46,6 +46,7 @@ import type { CategoryItem, Account } from '@/lib/data/mappers';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
 import { isValidTimeZone } from '@/lib/time/timeZone';
+import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 /**
  * Mutation layer.
  *
@@ -2516,6 +2517,31 @@ export const createTransferAction = withSessionUser(createTransfer);
 export const deleteBalanceAdjustmentAction = withSessionUser(deleteBalanceAdjustment);
 export const modifyBudgetsAction = withSessionUser(modifyBudgets);
 export const getBudgetModalDataAction = withSessionUser(loadBudgetModalData);
+async function renameTransactionTag(userId: string, source: string, destination: string): Promise<ActionFailure | { ok: true; count: number }> {
+  const name = typeof destination === 'string' ? destination.trim() : '';
+  if (typeof source !== 'string' || !source.trim() || !name || source === name
+    || name.length > MAX_TAG_NAME_LENGTH || name.includes('\0')) {
+    return fail(`Enter a different tag of up to ${MAX_TAG_NAME_LENGTH} characters.`,
+      'validation', 'validation.tagRename', { max: String(MAX_TAG_NAME_LENGTH) });
+  }
+
+  let count: number;
+  try {
+    const [, rows] = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      neonSql`WITH renamed AS (
+        UPDATE expense SET tag = ${name} WHERE user_id = ${userId}::uuid AND tag = ${source} RETURNING 1
+      ) SELECT count(*)::int AS count FROM renamed`,
+    ], { isolationLevel: 'ReadCommitted' });
+    count = Number(rows[0].count);
+  } catch (error) {
+    return handleUnexpected('rename transaction tag', error);
+  }
+  revalidateAll();
+  return { ok: true, count };
+}
+
+export const renameTransactionTagAction = withSessionUser(renameTransactionTag);
 export const createCategoryAction = withSessionUser(createCategory);
 export const updateCategoryAction = withSessionUser(updateCategory);
 export const getCategoryUsageAction = withSessionUser(loadCategoryUsage);

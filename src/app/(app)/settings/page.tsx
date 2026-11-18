@@ -7,6 +7,7 @@ import { cleanupCutoff, findAdjustmentCleanupGroups } from '@/lib/adjustmentClea
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
+import { groupTransactionTags } from '@/lib/transactionTags';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,7 @@ export default async function SettingsPage() {
       accounts={accounts}
       balancesByAccount={balances.byAccount}
       hasRecords={hasRecords}
+      transactionTags={groupTransactionTags(expenses)}
       adjustmentCleanup={findAdjustmentCleanupGroups(
         adjustments, cleanupCutoff(today), new Set(accounts.map(a => a.id)),
       )}

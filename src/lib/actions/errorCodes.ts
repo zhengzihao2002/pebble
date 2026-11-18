@@ -52,6 +52,7 @@ export type ServerErrorCode =
   | 'validation.budgetAmountNonNegative'
   // --- categories (sub-step 4c) ---
   | 'validation.categoryNameRequired'
+  | 'validation.tagRename'
   | 'validation.categoryNameTooLong'
   | 'validation.categoryNameDuplicate'
   | 'notFound.category'

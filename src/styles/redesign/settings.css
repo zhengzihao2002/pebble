@@ -608,6 +608,41 @@
 .pebble-root .pb-settings-cat-pen { flex: none; color: var(--ink-faint); opacity: 0; transition: opacity var(--pb-dur-std, 220ms) var(--pb-ease-out); }
 .pebble-root .pb-settings-cat-main:hover .pb-settings-cat-pen,
 .pebble-root .pb-settings-cat-main:focus-visible .pb-settings-cat-pen { opacity: 1; }
+
+.pebble-root .pb-settings-tags { display: grid; gap: .9rem; padding: 1.15rem; min-width: 0; }
+.pebble-root .pb-settings-tag-search {
+  display: flex; align-items: center; gap: .55rem; padding-inline: .75rem;
+  border: 1px solid var(--line); border-radius: .7rem; background: var(--paper); color: var(--ink-soft);
+}
+.pebble-root .pb-settings-tag-search > svg { flex: none; }
+.pebble-root .pb-settings-tag-search > input {
+  width: 100%; min-width: 0; padding: .7rem 0; border: 0; background: transparent; color: var(--ink);
+}
+.pebble-root .pb-settings-tag-search:focus-within { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-settings-tag-search > input:focus { outline: none; }
+.pebble-root .pb-settings-tag-list {
+  display: grid; gap: .35rem; list-style: none; padding: 0; margin: 0; min-width: 0;
+}
+.pebble-root .pb-settings-tag-item {
+  min-width: 0; border: 1px solid var(--line); border-radius: .75rem;
+}
+.pebble-root .pb-settings-tag-row {
+  display: flex; align-items: center; justify-content: space-between; gap: .65rem; padding: .45rem .65rem;
+}
+.pebble-root .pb-settings-tag-label { display: grid; min-width: 0; gap: .12rem; overflow-wrap: anywhere; font-size: .9rem; }
+.pebble-root .pb-settings-tag-label > span,
+.pebble-root .pb-settings-tag-status { color: var(--ink-soft); font-size: .8rem; }
+.pebble-root .pb-settings-tag-status:empty { position: absolute; }
+.pebble-root .pb-settings-tag-editor {
+  display: grid; gap: .55rem; padding: .8rem; border-top: 1px solid var(--line);
+}
+.pebble-root .pb-settings-tag-editor > label { font-size: .84rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-tag-editor > input {
+  width: 100%; min-width: 0; padding: .65rem; border: 1px solid var(--line);
+  border-radius: .6rem; background: var(--paper); color: var(--ink);
+}
+.pebble-root .pb-settings-tag-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem; }
+.pebble-root .pb-settings-tag-more { justify-self: start; }
 @media (pointer: coarse) { .pebble-root .pb-settings-cat-pen { opacity: 0.7; } }
 .pebble-root .pb-settings-cat .pb-settings-iconbtn { border: 0; background: transparent; }
 .pebble-root .pb-settings-cat-span { grid-column: 1 / -1; min-width: 0; }

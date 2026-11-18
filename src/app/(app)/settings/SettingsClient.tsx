@@ -28,6 +28,8 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { AdjustmentCleanupCard } from '@/components/settings/AdjustmentCleanupCard';
 import type { AdjustmentCleanupGroup, CleanupSource } from '@/lib/adjustmentCleanup';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
+import { TransactionTagsCard } from '@/components/settings/TransactionTagsCard';
+import type { TransactionTagGroup } from '@/lib/transactionTags';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
@@ -46,6 +48,7 @@ interface SettingsClientProps {
   balancesByAccount: Record<string, number>;
   /** accountId -> true when the account has records that could be moved. */
   hasRecords: Record<string, boolean>;
+  transactionTags: TransactionTagGroup[];
   adjustmentCleanup: AdjustmentCleanupGroup[];
   cleanupSources: (CleanupSource & { accountId: string })[];
 }
@@ -67,7 +70,9 @@ interface SettingsSection {
 // settingsTargets.ts.
 const SECTION_IDS = {
   money: 'settings-money',
+  categories: 'settings-categories-tags',
   appearance: 'settings-appearance',
+  chartsMotion: 'settings-charts-motion',
   language: 'settings-language-region',
   behavior: 'settings-behavior',
   account: 'settings-pebble-account',
@@ -78,7 +83,7 @@ const SECTION_IDS = {
 // data and come from Postgres. Every card is props-only; this component owns
 // all store reads.
 export function SettingsClient({
-  timeZoneOverride, accounts, balancesByAccount, hasRecords, adjustmentCleanup, cleanupSources,
+  timeZoneOverride, accounts, balancesByAccount, hasRecords, transactionTags, adjustmentCleanup, cleanupSources,
 }: SettingsClientProps) {
   const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
@@ -134,7 +139,18 @@ export function SettingsClient({
           <ModifyBalanceCard accounts={accounts} balancesByAccount={balancesByAccount} />
           <AdjustmentCleanupCard groups={adjustmentCleanup} sources={cleanupSources} accounts={accounts} />
           <AccountsCard accounts={accounts} balancesByAccount={balancesByAccount} hasRecords={hasRecords} />
+        </>
+      ),
+    },
+    {
+      id: SECTION_IDS.categories,
+      title: d.settingsSections.categoriesTags,
+      short: u.jumpCategories,
+      hint: u.categoriesHint,
+      cards: (
+        <>
           <CategoryManagerCard />
+          <TransactionTagsCard tags={transactionTags} />
         </>
       ),
     },
@@ -157,15 +173,25 @@ export function SettingsClient({
             <AppearanceControl appearance={appearance} onChange={setAppearance} />
             <AmbientBackgroundControl />
             <CardGlowControl />
-            <NumberRollingControl />
             <SoftCursorControl />
             <BrandIconsControl />
-            <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
-            <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
-            <LoadingStyleControl />
-            <WelcomeAnimationControl />
           </div>
         </>
+      ),
+    },
+    {
+      id: SECTION_IDS.chartsMotion,
+      title: d.settingsSections.chartsMotion,
+      short: u.jumpChartsMotion,
+      hint: u.chartsMotionHint,
+      cards: (
+        <div className="card pb-settings-group">
+          <NumberRollingControl />
+          <HealthBarControl enabled={showHealthBar} onChange={setShowHealthBar} />
+          <ChartTypeControl value={breakdownChart} onChange={setBreakdownChart} />
+          <LoadingStyleControl />
+          <WelcomeAnimationControl />
+        </div>
       ),
     },
     {

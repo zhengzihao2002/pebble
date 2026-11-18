@@ -305,7 +305,7 @@ export function ReportFilters({
       window.removeEventListener('resize', queue);
     };
   }, []);
-  // Sub-category appears only while exactly one category is selected, so it
+  // The tag filter appears only while exactly one category is selected, so it
   // opens by default and is not persisted - there is nothing to restore.
   const [tagsExpanded, setTagsExpanded] = useState(true);
 
@@ -604,7 +604,7 @@ export function ReportFilters({
             {showTagFilter && availableTags.length > 0 && (
               <FilterSection
                 id={`${uid}-tags`}
-                name={tr(dict.reports.subCategoryOf, { category: categoryLabel(dict, singleSelectedCategory ?? '') })}
+                name={tr(dict.reports.tagsOf, { category: categoryLabel(dict, singleSelectedCategory ?? '') })}
                 summary={tagsSummary}
                 open={tagsExpanded} onToggle={() => setTagsExpanded((v) => !v)} active={selectedTags.size > 0}
               >

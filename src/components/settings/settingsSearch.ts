@@ -17,7 +17,9 @@ export interface SettingsSearchEntry {
  * find a setting even when they have changed the interface language. */
 function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
   const money = d.settingsSections.money;
+  const categories = d.settingsSections.categoriesTags;
   const appearance = d.settingsSections.appearance;
+  const chartsMotion = d.settingsSections.chartsMotion;
   const language = d.settingsSections.languageRegion;
   const behavior = d.settingsSections.behavior;
   const account = d.account.title;
@@ -29,14 +31,15 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     entry('accounts', d.accounts.title, money, d.accounts.blurb, ['bank cash credit card add account default hibernate 银行 现金 信用卡 账户 默认 休眠']),
     { ...entry('accounts', d.ux.accounts.sortAccounts, money, d.ux.accounts.orderHint,
       [...Object.values(d.ux.accounts.sortModes), 'account order sort manual drag reorder balance high low 排序 手动 拖动 余额 高 低']), id: 'accountOrder' },
-    entry('categories', d.categoryManager.title, money, d.categoryManager.blurb, ['category icon colour color rename budget 分类 图标 颜色 重命名']),
+    entry('categories', d.categoryManager.title, categories, d.categoryManager.blurb, ['category icon colour color rename budget 分类 图标 颜色 重命名']),
+    entry('transactionTags', d.ux.settings.tags.title, categories, d.ux.settings.tags.hint, ['tag rename merge bulk transaction 标签 重命名 批量 交易 一键更改']),
     entry('theme', d.theme.title, appearance, d.theme.blurb, ['theme palette colour color 主题 配色', ...Object.values(d.theme)]),
     entry('textSize', d.textSize.title, appearance, d.textSize.blurb, ['text size large zoom 字号 文字 大小 缩放']),
     entry('font', d.font.title, appearance, d.font.blurb,
       [d.font.latinTitle, d.font.cjkTitle, d.font.default, d.font.system, d.font.rounded, d.font.serif, d.font.legible, 'font typeface letters numbers Chinese 字体 英文 数字 中文 黑体 宋体 楷体']),
     entry('appearance', d.appearance.title, appearance, d.appearance.blurb, ['appearance light dark system mode 外观 浅色 深色 自动']),
     entry('softCursor', d.softCursor.title, appearance, d.softCursor.hint, ['mouse cursor pointer arrow normal system size resize larger smaller 鼠标 光标 箭头 系统 大小 尺寸']),
-    entry('numberRolling', d.numberRolling.title, appearance, d.numberRolling.hint, ['rolling numbers animation motion 数字 滚动 动画']),
+    entry('numberRolling', d.numberRolling.title, chartsMotion, d.numberRolling.hint, ['rolling numbers animation motion 数字 滚动 动画']),
     entry('cardGlow', d.cardGlow.title, appearance, d.cardGlow.hint, ['card glow halo shadow light bloom 卡片 柔光 光晕 阴影']),
     entry('ambientBackground', d.ambientBackground.title, appearance, d.ambientBackground.hint, ['living background ambient fluid motion balls breathing route orbit weave sweep frost blur softness speed colour color number count 灵动 背景 流动 呼吸 光球 动画 路线 环绕 交织 扫掠 雾化 磨砂 模糊 柔和 速度 颜色 数量']),
     entry('ambientRoute', `${d.ambientBackground.title} · ${d.ambientBackground.routesTitle}`, appearance, Object.values(d.ambientBackground.routes).join(' · '), ['background route orbit weave sweep 背景 路线 环绕 交织 扫掠']),
@@ -45,11 +48,11 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     entry('ambientCount', `${d.ambientBackground.title} · ${d.ambientBackground.countTitle}`, appearance, '1 – 6', ['background balls number count 背景 光球 数量']),
     entry('ambientColours', `${d.ambientBackground.title} · ${d.ambientBackground.coloursTitle}`, appearance, d.ambientBackground.coloursHint, ['background ball colours colors theme custom 背景 光球 颜色 主题 自定']),
     entry('brandIcons', d.brandIcons.title, appearance, d.brandIcons.hint, ['brand merchant logos icons 品牌 商家 标志 图标']),
-    entry('healthBar', d.healthBar.settingTitle, appearance, d.healthBar.settingHint, ['health status savings dashboard bar 健康 状态 储蓄 概览']),
-    entry('chartType', d.chartType.title, appearance, d.chartType.hint, [d.chartType.donut, d.chartType.bar, 'spending chart donut bar pie 支出 图表 环形 条形']),
-    entry('loadingStyle', d.ux.settings.loadingStyle, appearance, d.ux.settings.loadingStyleHint,
+    entry('healthBar', d.healthBar.settingTitle, chartsMotion, d.healthBar.settingHint, ['health status savings dashboard bar 健康 状态 储蓄 概览']),
+    entry('chartType', d.chartType.title, chartsMotion, d.chartType.hint, [d.chartType.donut, d.chartType.bar, 'spending chart donut bar pie 支出 图表 环形 条形']),
+    entry('loadingStyle', d.ux.settings.loadingStyle, chartsMotion, d.ux.settings.loadingStyleHint,
       [d.ux.settings.loadingSpinner, d.ux.settings.loadingCached, 'loading spinner cached cards 页面 加载 转圈 缓存 卡片']),
-    entry('welcome', d.welcome.settingTitle, appearance, d.welcome.settingHint, ['welcome animation sign in 欢迎 动画 登录']),
+    entry('welcome', d.welcome.settingTitle, chartsMotion, d.welcome.settingHint, ['welcome animation sign in 欢迎 动画 登录']),
     entry('language', d.settings.language.title, language, d.settings.language.hint, ['language English Chinese 语言 英文 中文']),
     entry('timeZone', d.settings.timeZone.title, language, d.settings.timeZone.hint, ['timezone time zone dates device travel 时区 日期 设备 旅行']),
     entry('dropdowns', d.selectMode.title, behavior, d.selectMode.hint, [d.selectMode.searchable, d.selectMode.plain, 'dropdown picker search simple 下拉 列表 搜索 简单']),
