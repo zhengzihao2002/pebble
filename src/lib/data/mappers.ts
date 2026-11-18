@@ -82,6 +82,7 @@ export function mapExpenseRow(row: ExpenseRow): ExpenseTransaction {
     paymentMethod: toPaymentMethod(row.paymentMethod, row.id),
     accountId: row.accountId,
     amount: row.amount,
+    creditCardPayoff: row.creditCardPayoff ?? undefined,
     recurringRuleId: row.recurringRuleId ?? undefined,
   };
 }

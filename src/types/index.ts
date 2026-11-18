@@ -12,6 +12,17 @@ import type { LucideIcon } from 'lucide-react';
  */
 export type PaymentMethod = string;
 
+/** A payoff recorded on its original expenses. All charges in one payment
+ * share this receipt data. It does not represent a ledger entry. */
+export interface CreditCardPayoff {
+  id: string;
+  cardId: string;
+  cardName: string;
+  date: string;
+  /** Amount still owed immediately after this payment, including partial payoffs. */
+  remainingBalance: number;
+}
+
 export interface ExpenseTransaction {
   id: string;
   type: 'expense';
@@ -23,6 +34,8 @@ export interface ExpenseTransaction {
   /** The account this transaction belongs to. Balance derivation keys on this. */
   accountId: string;
   amount: number; // always negative
+  /** Account and balance still use accountId, which is the funding account after payoff. */
+  creditCardPayoff?: CreditCardPayoff;
   /** Set when this row was materialized from a recurring rule. */
   recurringRuleId?: string;
 }

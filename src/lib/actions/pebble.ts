@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { and, asc, desc, eq, gte, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db, neonSql } from '@/db';
 import {
   account,
@@ -90,6 +90,7 @@ export type ActionResult =
        */
       params?: Record<string, string | string[]>;
     };
+type ActionFailure = Extract<ActionResult, { ok: false }>;
 
 const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
@@ -113,7 +114,7 @@ function fail(
   kind: FailureKind = 'validation',
   code?: ServerErrorCode,
   params?: Record<string, string | string[]>,
-): ActionResult {
+): ActionFailure {
   return { ok: false, error: message, kind, code, params };
 }
 
@@ -187,7 +188,7 @@ function classifyError(error: unknown): FailureKind {
  * reached this process and the write did not complete. The client-side
  * transport case in callAction.ts cannot claim as much, and does not.
  */
-function handleUnexpected(context: string, error: unknown): ActionResult {
+function handleUnexpected(context: string, error: unknown): ActionFailure {
   const kind = classifyError(error);
   console.error(`[pebble action] ${context} (${kind})`, error);
 
@@ -1419,8 +1420,18 @@ async function updateTransaction(
         }
       }
 
-      await db.update(expense).set(patch)
-        .where(and(eq(expense.userId, userId), eq(expense.id, input.id)));
+      const [updated] = await db.update(expense).set(patch)
+        .where(and(
+          eq(expense.userId, userId),
+          eq(expense.id, input.id),
+          // A stale edit cannot move a concurrently settled charge back onto its card.
+          eq(expense.accountId, current.accountId),
+          // The funding account on a settled purchase can be corrected to another
+          // funding account while preserving the original card and payoff.
+          editCard ? isNull(expense.creditCardPayoff) : undefined,
+        ))
+        .returning({ id: expense.id });
+      if (!updated) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
     } else {
       if (!INCOME_CATEGORIES.includes(input.category)) {
         return fail('Income category must be Standard Income or Side Cash.', 'validation', 'validation.incomeCategory');
@@ -1513,7 +1524,12 @@ async function deleteTransaction(
       );
     }
 
-    await db.delete(table).where(and(eq(table.userId, userId), eq(table.id, input.id)));
+    const [deleted] = await db.delete(table).where(and(
+      eq(table.userId, userId),
+      eq(table.id, input.id),
+      eq(table.accountId, target.accountId),
+    )).returning({ id: table.id });
+    if (!deleted) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
 
     revalidateAll();
     return { ok: true };
@@ -2843,6 +2859,91 @@ async function loadSearchTransactions(userId: string, scope?: { includeGhost?: b
 }
 
 export const getSearchTransactionsAction = withSessionUser(loadSearchTransactions);
+
+type CreditCardPayoffResult = { ok: true; amount: number; remainingBalance: number } | ActionFailure;
+
+/**
+ * The selected charges move to the funding account exactly once. A receipt
+ * shared by those same rows keeps their original card and the remaining debt
+ * at payoff, without adding a second expense or a balance adjustment.
+ */
+async function payCreditCard(
+  userId: string,
+  input: { fromAccountId: string; toAccountId: string; transactionIds: string[] },
+): Promise<CreditCardPayoffResult> {
+  try {
+    if (!input || typeof input.fromAccountId !== 'string' || typeof input.toAccountId !== 'string'
+      || !Array.isArray(input.transactionIds) || !input.transactionIds.length
+      || input.transactionIds.some(id => typeof id !== 'string' || !id)) {
+      return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+    const { fromAccountId, toAccountId } = input;
+    const ids = [...new Set(input.transactionIds)];
+    const date = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
+    const receiptId = generateTransId();
+    const results = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      // Lock both accounts before the payoff statement's snapshot. This also
+      // orders foreign-key-checked new purchases relative to the payment.
+      neonSql`
+        SELECT id FROM account
+        WHERE user_id = ${userId}::uuid AND id IN (${fromAccountId}, ${toAccountId})
+        ORDER BY id FOR UPDATE
+      `,
+      neonSql`
+        WITH accounts AS MATERIALIZED (
+          SELECT card.id AS card_id, card.name AS card_name, payer.id AS payer_id, payer.name AS payer_name
+          FROM account card
+          JOIN account payer ON payer.user_id = card.user_id
+          WHERE card.user_id = ${userId}::uuid
+            AND card.id = ${fromAccountId} AND card.kind = 'credit' AND card.status = 'active'
+            AND payer.id = ${toAccountId} AND payer.kind IN ('bank', 'cash') AND payer.status = 'active'
+        ), requested AS (
+          SELECT jsonb_array_elements_text(${JSON.stringify(ids)}::jsonb) AS id
+        ), picked AS MATERIALIZED (
+          SELECT e.id
+          FROM expense e
+          JOIN accounts a ON e.account_id = a.card_id
+          JOIN requested r ON e.id = r.id
+          WHERE e.user_id = ${userId}::uuid AND e.credit_card_payoff IS NULL
+          ORDER BY e.id FOR UPDATE OF e
+        ), ready AS MATERIALIZED (
+          SELECT a.*, (
+            SELECT coalesce(-sum(e.amount), 0)
+            FROM expense e
+            WHERE e.user_id = ${userId}::uuid AND e.account_id = a.card_id
+              AND NOT EXISTS (SELECT 1 FROM picked WHERE picked.id = e.id)
+          ) AS remaining_balance
+          FROM accounts a
+          WHERE (SELECT count(*) FROM picked) = ${ids.length}
+        ), paid AS (
+          UPDATE expense e
+          SET account_id = r.payer_id,
+              payment_method = r.payer_name,
+              credit_card_payoff = jsonb_build_object(
+                'id', ${receiptId}::text, 'cardId', r.card_id, 'cardName', r.card_name,
+                'date', ${date}::date, 'remainingBalance', r.remaining_balance
+              )
+          FROM ready r, picked p
+          WHERE e.user_id = ${userId}::uuid AND e.id = p.id
+          RETURNING e.amount
+        )
+        SELECT -sum(paid.amount) AS amount, (SELECT remaining_balance FROM ready) AS remaining_balance
+        FROM paid HAVING count(*) > 0
+      `,
+    ], { isolationLevel: 'ReadCommitted' });
+    const [paid] = results[2] as { amount: string; remaining_balance: string }[];
+    if (!paid) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    revalidateAll();
+    revalidatePath('/accounts', 'page');
+    return { ok: true, amount: Number(paid.amount), remainingBalance: Number(paid.remaining_balance) };
+  } catch (error) {
+    return handleUnexpected('payCreditCardAction', error);
+  }
+}
+
+export const payCreditCardAction = withSessionUser(payCreditCard);
+
 /**
  * Moves records from one account to another.
  *

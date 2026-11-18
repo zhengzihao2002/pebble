@@ -6,7 +6,7 @@ import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
-import { moveAccountRecordsAction } from '@/lib/actions/pebble';
+import { payCreditCardAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -35,14 +35,8 @@ export function nextDue(dueDay: number): string {
 }
 
 /**
- * Pays off a credit card: the selected charges move from the card to a bank
- * or cash account, keeping their dates, amounts and categories. Underneath it
- * is the Settings record move (moveAccountRecords with transaction ids), which
- * already refuses inactive destinations and never lands on a card - so paying
- * off adds no server code. Within one scope the total balance is unchanged;
- * crossing a ghost boundary changes which balances and expenses are included.
- *
- * The charges come from the page's own data: no extra request.
+ * Pays selected charges from a bank or cash account. Each settled expense
+ * keeps its card history on the same record that posts to the funding account.
  */
 export function PayOffDialog({ card, allAccounts, charges, onClose, today: todayProp }: {
   card: Account;
@@ -129,11 +123,10 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
 
   const handlePay = async () => {
     if (!canPay || success) return;
-    const amountText = formatCurrency(total);
     const accountText = options.find((o) => o.value === from)?.label ?? '';
     setPaying(true);
     setError(null);
-    const result = await callAction(() => moveAccountRecordsAction({
+    const result = await callAction(() => payCreditCardAction({
       fromAccountId: card.id,
       toAccountId: from,
       transactionIds: picked.map((c) => c.id),
@@ -141,7 +134,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
     setPaying(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the confirmation follows a confirmed move only.
-    setSuccess({ title: d.accounts.payOffDone, body: t(d.accounts.payOffDoneBody, { amount: amountText, account: accountText }) });
+    setSuccess({ title: d.accounts.payOffDone, body: t(d.accounts.payOffDoneBody, { amount: formatCurrency(result.amount), account: accountText }) });
   };
 
   const cardLabel = card.last4 ? `${card.name} ····${card.last4}` : card.name;

@@ -39,14 +39,14 @@ function BalTip({ active, payload, locale }: { active?: boolean; payload?: Reado
 
 function MonthTip({ active, payload, labels }: {
   active?: boolean; payload?: ReadonlyArray<TipPayload>;
-  labels: { moneyIn: string; transfersIn: string; moneyOut: string; transfersOut: string; correction: string; nothing: string };
+  labels: { moneyIn?: string; transfersIn: string; moneyOut: string; transfersOut: string; correction: string; nothing: string };
 }) {
   const p = payload?.[0]?.payload;
   if (!active || !p) return null;
   const row = (label: string, v: number, signed = false) => (v ? (
     <div className="pb-accounts-tip-row"><span>{label}</span><span className="font-mono-tab">{signed ? (v > 0 ? '+' : '−') : ''}<RollingAmount value={formatCurrency(Math.abs(v))} /></span></div>
   ) : null);
-  const vals = [Number(p.in), Number(p.tin), Number(p.out), Number(p.tout), Number(p.corr)];
+  const vals = [labels.moneyIn ? Number(p.in) : 0, Number(p.tin), Number(p.out), Number(p.tout), Number(p.corr)];
   return (
     <div className="pb-accounts-tip">
       <div className="pb-accounts-tip-date">{String(p.label)}</div>
@@ -54,7 +54,7 @@ function MonthTip({ active, payload, labels }: {
         <div className="pb-accounts-tip-row"><span>{labels.nothing}</span></div>
       ) : (
         <>
-          {row(labels.moneyIn, Number(p.in))}
+          {labels.moneyIn && row(labels.moneyIn, Number(p.in))}
           {row(labels.transfersIn, Number(p.tin))}
           {row(labels.moneyOut, Math.abs(Number(p.out)))}
           {row(labels.transfersOut, Math.abs(Number(p.tout)))}
@@ -69,8 +69,8 @@ function MonthTip({ active, payload, labels }: {
 /**
  * One account's story in a tap: its balance at hero size, its own balance
  * line over the page's range (bank and cash; cards keep their no-graph rule
- * and show the statement instead), six months of money in and out, four
- * facts for the range, and its recent records - with the way to act on it.
+ * and show the statement instead), six months of activity, summary figures
+ * for the range, and its recent records with the way to act on it.
  *
  * Everything is derived from what the page already loaded. A bottom sheet on
  * a phone (ModalFrame), a two-column card on a Mac. Global shortcuts are off
@@ -108,9 +108,15 @@ export function AccountDetailSheet({
   const tone = series.length > 1 && series[series.length - 1].v > series[0].v + 0.004 ? 'var(--income)'
     : series.length > 1 && series[series.length - 1].v < series[0].v - 0.004 ? 'var(--expense)' : 'var(--ink-soft)';
 
-  const records = useMemo(() => recordsFor(account.id, expenses, income, adjustments), [account.id, expenses, income, adjustments]);
+  const records = useMemo(() => recordsFor(account, expenses, income, adjustments), [account, expenses, income, adjustments]);
+  // Paid purchases remain in the card's activity. The funding account owns their totals.
+  const countedRecords = useMemo(
+    () => credit ? records.filter((r) => r.kind !== 'expense' || !r.paidOnCard) : records,
+    [credit, records],
+  );
+  const latestActivity = credit ? records.find((r) => r.date <= today)?.date : lastActivity;
   const from = days[0]?.date ?? today;
-  const inRange = records.filter((r) => r.date >= from && r.date <= today);
+  const inRange = countedRecords.filter((r) => r.date >= from && r.date <= today);
   // Same meaning as the bars' Money in / Money out beside them: income and
   // spending only. Transfers and corrections get their own net line.
   const moneyIn = round2(inRange.filter((r) => r.kind === 'income').reduce((s, r) => s + r.amount, 0));
@@ -133,7 +139,7 @@ export function AccountDetailSheet({
       return { key, label: m.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short' }), in: 0, out: 0, gin: 0, gout: 0, tin: 0, tout: 0, corr: 0 };
     });
     const idx = new Map(out.map((m, k) => [m.key, k]));
-    for (const r of records) {
+    for (const r of countedRecords) {
       if (r.date > today) continue;
       const k = idx.get(r.date.slice(0, 7));
       if (k === undefined) continue;
@@ -147,8 +153,9 @@ export function AccountDetailSheet({
       else if (r.amount > 0) m.tin = round2(m.tin + r.amount); else m.tout = round2(m.tout + r.amount);
     }
     return out;
-  }, [records, today, locale]);
-  const anyMonth = months.some((m) => m.in || m.out || m.gin || m.gout);
+  }, [countedRecords, today, locale]);
+  const anyMonth = months.some((m) => (!credit && m.in) || m.out || m.gin || m.gout);
+  const showMovesLegend = !credit || months.some((m) => m.gin || m.gout);
 
   const nameOf = (id: string | null) => {
     const a = id ? accounts.find((z) => z.id === id) : undefined;
@@ -202,12 +209,14 @@ export function AccountDetailSheet({
                   {credit && <p className="pb-accounts-detail-sub">{f?.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>}
                 </div>
 
-                {credit && f ? (
-                  <div className="pb-accounts-detail-credit">
-                    {f.limit > 0 && <LimitMeter owed={f.owed} limit={f.limit} over={f.over} />}
-                    {f.st && <StatementTrack card={account} charges={charges} today={today} st={f.st} />}
-                    {f.st && <DueLine st={f.st} owes={f.owes} isOverdue={f.isOverdue} dueSoon={f.dueSoon} />}
-                  </div>
+                {f ? (
+                  (f.limit > 0 || f.st) && (
+                    <div className="pb-accounts-detail-credit">
+                      {f.limit > 0 && <LimitMeter owed={f.owed} limit={f.limit} over={f.over} />}
+                      {f.st && <StatementTrack card={account} charges={charges} today={today} st={f.st} />}
+                      {f.st && <DueLine st={f.st} owes={f.owes} isOverdue={f.isOverdue} dueSoon={f.dueSoon} />}
+                    </div>
+                  )
                 ) : (
                   <div className="pb-chart-fade pb-chart-fill pb-accounts-detail-chart" role="img" aria-label={t(x.balanceChartLabel, { name: account.name })}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -229,17 +238,17 @@ export function AccountDetailSheet({
                 )}
 
                 <div>
-                  <p className="pb-accounts-detail-cap">{x.inOutTitle}</p>
+                  <p className="pb-accounts-detail-cap">{credit ? x.cardSpendTitle : x.inOutTitle}</p>
                   {anyMonth ? (
-                    <div className="pb-chart-fade pb-chart-fill pb-accounts-detail-bars" role="img" aria-label={t(x.inOutChart, { name: account.name })}>
+                    <div className="pb-chart-fade pb-chart-fill pb-accounts-detail-bars" role="img" aria-label={t(credit ? x.cardSpendChart : x.inOutChart, { name: account.name })}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={months} stackOffset="sign" margin={{ top: 4, right: 4, left: 4, bottom: 0 }} barCategoryGap="28%">
                           <CartesianGrid stroke="var(--line)" vertical={false} />
                           <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} />
                           <YAxis orientation="right" width={52} tick={{ fontSize: 11, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompactCurrency(Number(v))} />
                           <ReferenceLine y={0} stroke="var(--ink-faint)" />
-                          <Tooltip content={<MonthTip labels={{ moneyIn: x.moneyIn, transfersIn: x.transfersIn, moneyOut: x.moneyOut, transfersOut: x.transfersOut, correction: x.correction, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
-                          <Bar dataKey="in" stackId="m" fill="var(--income)" maxBarSize={22} isAnimationActive={false} />
+                          <Tooltip content={<MonthTip labels={{ moneyIn: credit ? undefined : x.moneyIn, transfersIn: x.transfersIn, moneyOut: x.moneyOut, transfersOut: x.transfersOut, correction: x.correction, nothing: x.nothingRecorded }} />} cursor={{ fill: 'color-mix(in srgb, var(--ink) 5%, transparent)' }} />
+                          {!credit && <Bar dataKey="in" stackId="m" fill="var(--income)" maxBarSize={22} isAnimationActive={false} />}
                           <Bar dataKey="gin" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[4, 4, 0, 0]} />
                           <Bar dataKey="out" stackId="m" fill="var(--expense)" maxBarSize={22} isAnimationActive={false} />
                           <Bar dataKey="gout" stackId="m" fill="color-mix(in srgb, var(--ink-soft) 45%, transparent)" maxBarSize={22} isAnimationActive={false} radius={[0, 0, 4, 4]} />
@@ -247,21 +256,25 @@ export function AccountDetailSheet({
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <p className="pb-accounts-detail-quiet">{x.noRecordsHere}</p>
+                    <p className="pb-accounts-detail-quiet">{credit && records.length > 0 ? x.noUnpaidCardSpending : x.noRecordsHere}</p>
                   )}
-                  <div className="pb-accounts-detail-legend" aria-hidden="true">
-                    <span><i style={{ background: 'var(--income)' }} />{x.moneyIn}</span>
-                    <span><i style={{ background: 'var(--expense)' }} />{x.moneyOut}</span>
-                    <span><i style={{ background: 'color-mix(in srgb, var(--ink-soft) 45%, transparent)' }} />{x.moves}</span>
-                  </div>
+                  {showMovesLegend && (
+                    <div className="pb-accounts-detail-legend" aria-hidden="true">
+                      {!credit && <span><i style={{ background: 'var(--income)' }} />{x.moneyIn}</span>}
+                      <span><i style={{ background: 'var(--expense)' }} />{x.moneyOut}</span>
+                      <span><i style={{ background: 'color-mix(in srgb, var(--ink-soft) 45%, transparent)' }} />{x.moves}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="pb-accounts-detail-side">
                 <p className="pb-accounts-detail-cap">{rangeLabel}</p>
                 <dl className="pb-accounts-detail-stats">
-                  <div><dt><ArrowDownLeft size={13} aria-hidden="true" className="is-in" />{x.moneyIn}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyIn)} /></dd></div>
-                  <div><dt><ArrowUpRight size={13} aria-hidden="true" className="is-out" />{x.moneyOut}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyOut)} /></dd></div>
+                  {!credit && (
+                    <div><dt><ArrowDownLeft size={13} aria-hidden="true" className="is-in" />{x.moneyIn}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyIn)} /></dd></div>
+                  )}
+                  <div className={credit ? 'is-wide' : undefined}><dt><ArrowUpRight size={13} aria-hidden="true" className="is-out" />{x.moneyOut}</dt><dd className="font-mono-tab"><RollingAmount value={formatCurrency(moneyOut)} /></dd></div>
                   <div>
                     <dt>{x.largestExpense}</dt>
                     <dd className="font-mono-tab"><RollingAmount value={largest ? formatCurrency(Math.abs(largest.amount)) : '—'} /></dd>
@@ -290,7 +303,11 @@ export function AccountDetailSheet({
                             <span className="pb-accounts-detail-text">
                               {/* Titles are USER DATA. */}
                               <span className="pb-accounts-detail-title">{titleOf(r)}</span>
-                              <span className="pb-accounts-detail-meta">{formatDate(r.date, locale)}{subOf(r) && ` · ${subOf(r)}`}</span>
+                              <span className="pb-accounts-detail-meta">
+                                {formatDate(r.date, locale)}
+                                {r.kind === 'expense' && r.paidOnCard && ` · ${x.cardChargePaid}`}
+                                {subOf(r) && ` · ${subOf(r)}`}
+                              </span>
                             </span>
                             <span className={`font-mono-tab pb-accounts-detail-amt${r.amount > 0 ? ' is-in' : ''}`}>
                               {r.amount > 0 ? '+' : '−'}<RollingAmount value={formatCurrency(Math.abs(r.amount))} />
@@ -304,7 +321,7 @@ export function AccountDetailSheet({
                     )}
                   </>
                 )}
-                {lastActivity && <p className="pb-accounts-detail-quiet">{t(d.accountsPage.lastActivity, { date: formatDate(lastActivity, locale) })}</p>}
+                {latestActivity && <p className="pb-accounts-detail-quiet">{t(d.accountsPage.lastActivity, { date: formatDate(latestActivity, locale) })}</p>}
               </div>
             </div>
           </div>

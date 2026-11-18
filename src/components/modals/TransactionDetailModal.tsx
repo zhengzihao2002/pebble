@@ -218,12 +218,16 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const creditCardPayoff = txn.type === 'expense' ? txn.creditCardPayoff : undefined;
+  const hasPayoff = !!creditCardPayoff;
   const accountOptions = useMemo<SelectFieldOption[]>(
-    () => accounts.filter(a => !a.isGhost || showGhost || a.id === txn.accountId).map((a) => ({
+    () => accounts.filter(a =>
+      (!hasPayoff || a.kind !== 'credit') && (!a.isGhost || showGhost || a.id === txn.accountId),
+    ).map((a) => ({
       value: a.id,
       label: ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale),
     })),
-    [accounts, showGhost, txn.accountId, locale],
+    [accounts, showGhost, txn.accountId, locale, hasPayoff],
   );
 
   // Adjustments are view-and-delete only: there is nothing meaningful to
@@ -330,6 +334,10 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // the server); an empty current list falls back to it.
   const shownAccounts = accounts.length > 0 ? accounts : (detailAccountsMemo ?? accounts);
   const accountName = shownAccounts.find((a) => a.id === txn.accountId)?.name ?? txn.paymentMethod ?? '';
+  const chargedCard = creditCardPayoff && (accountsProp ?? shownAccounts).find((a) => a.id === creditCardPayoff.cardId);
+  const chargedCardName = chargedCard
+    ? `${chargedCard.name}${chargedCard.last4 ? ` ····${chargedCard.last4}` : ''}`
+    : creditCardPayoff?.cardName || d.accounts.kindCredit;
 
   // Split from handleSave so the confirm step can call it directly. The edit
   // form stays mounted behind the confirm, so this re-derives its payload from
@@ -456,7 +464,12 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     // Income shows a different heading than expense: 'Payment method'
     // implies the user is spending, which is backwards for a deposit. Only
     // the label changes - the underlying value/comparison is untouched.
-    { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountName || '—' },
+    ...(hasPayoff ? [
+      { key: 'method', label: x.chargedTo, value: chargedCardName },
+      { key: 'funding', label: x.paidFrom, value: accountName || '—' },
+    ] : [
+      { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountName || '—' },
+    ]),
     // Side cash is untaxed, so the actions store gross = net. One "Amount"
     // row, matching the edit form's label.
     ...(txn.type === 'income' ? (isSideCash ? [
@@ -492,7 +505,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     </div>
   );
 
-  const accountLabelText = txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod;
+  const accountLabelText = hasPayoff ? x.paidFrom : txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod;
 
   // ---- Receipt (view mode) -----------------------------------------------
   // The figure is formatCurrency's own output split at the decimal point, so
@@ -546,7 +559,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
         {txn.type === 'expense' && txn.tag && (
           <li className="pb-tdlg-chip"><Hash size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{txn.tag}</span></li>
         )}
-        {accountChip && (
+        {hasPayoff ? (
+          <li className="pb-tdlg-chip"><CreditCard size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{chargedCardName}</span></li>
+        ) : accountChip && (
           <li className="pb-tdlg-chip"><AccountIcon size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{accountChip}</span></li>
         )}
         <li className="pb-tdlg-chip pb-tdlg-chip-date"><CalendarDays size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text pb-tnum">{formatLongDate(txn.date, locale)}</span></li>

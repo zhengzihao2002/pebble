@@ -37,10 +37,14 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
     {visible.length === 0 ? <p className="pb-txn-ghost-empty">{zh ? '当前月份及筛选条件下没有幽灵流水。' : 'No ghost activity matches this month and these filters.'}</p> :
       <div className="pb-txn-ghost-rows">{visible.map(({ record }) => {
         const Icon = record.type === 'adjustment' ? SlidersHorizontal : record.amount >= 0 ? ArrowUpRight : ArrowDownRight;
+        const payoff = record.type === 'expense' ? record.creditCardPayoff : undefined;
+        const accountName = payoff
+          ? names.get(payoff.cardId) ?? payoff.cardName
+          : names.get(record.accountId) ?? record.paymentMethod;
         return <button key={record.id} type="button" className="pb-txn-ghost-row" onClick={() => onOpen(record)}>
           <Icon size={17} aria-hidden="true" />
           <span className="pb-txn-ghost-copy"><strong>{record.description.split('\n')[0]}</strong>
-            <span>{names.get(record.accountId)} · {formatDate(record.date, locale)} · {record.type === 'adjustment' ? d.txn.balanceAdjustment : categoryLabel(d, record.category)}</span>
+            <span>{accountName} · {formatDate(record.date, locale)} · {record.type === 'adjustment' ? d.txn.balanceAdjustment : categoryLabel(d, record.category)}</span>
           </span>
           <span className="font-mono-tab pb-txn-ghost-amount" style={{ color: record.type === 'adjustment' ? 'var(--ink-soft)' : record.amount >= 0 ? 'var(--income)' : 'var(--expense)' }}>{record.amount > 0 ? '+' : ''}{formatCurrency(record.amount)}</span>
         </button>;

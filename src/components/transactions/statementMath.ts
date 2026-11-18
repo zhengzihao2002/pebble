@@ -7,7 +7,33 @@
  *
  * Every list in here is NEWEST FIRST, like the ledger itself.
  */
+import { compareSameDayIds } from '@/lib/stats';
+import type { CreditCardPayoff, LedgerRecord } from '@/types';
 import type { StatementEntry } from './StatementList';
+
+export function isCardShadow(record: LedgerRecord, accountId: string | null): boolean {
+  return accountId !== null && record.type === 'expense' && record.accountId !== accountId
+    && record.creditCardPayoff?.cardId === accountId;
+}
+
+/** Keep the original ledger order and the identity of each real record. */
+export function cardStatementEntries(
+  entries: StatementEntry[], accountId: string, ghostIds: ReadonlySet<string>, showGhostAccounts: boolean,
+): StatementEntry[] {
+  return entries.filter(({ record }) => (showGhostAccounts || !ghostIds.has(record.accountId))
+    && (record.accountId === accountId || isCardShadow(record, accountId)));
+}
+
+/** One display marker per payoff, even when it settled multiple purchases. */
+export function cardPayoffMarkers(entries: StatementEntry[], cardId: string, monthPrefix: string): CreditCardPayoff[] {
+  const payoffs = new Map<string, CreditCardPayoff>();
+  for (const { record } of entries) {
+    if (record.type !== 'expense') continue;
+    const payoff = record.creditCardPayoff;
+    if (payoff?.cardId === cardId && payoff.date.startsWith(monthPrefix)) payoffs.set(payoff.id, payoff);
+  }
+  return [...payoffs.values()];
+}
 
 /** 'YYYY-MM-01' and the first day of the following month, for range checks. */
 export function monthBounds(year: number, month: number): { start: string; next: string; prefix: string } {
@@ -107,33 +133,56 @@ export function summarizeMonths(
   });
 }
 
+type StatementItem =
+  | { kind: 'record'; id: string; entry: StatementEntry }
+  | { kind: 'payoff'; id: string; payoff: CreditCardPayoff };
+
 export interface DayGroup {
   date: string;
-  entries: StatementEntry[];
-  /** Money in minus money out for the day, adjustments left out as in the totals. */
+  items: StatementItem[];
+  /** Money in minus money out, using only records posted to this view. */
   net: number;
-  /** Whether the day had any non-adjustment record (a transfer-only day has no net to show). */
   hasFlows: boolean;
-  /** Balance after the day's newest record. */
-  endBalance: number;
+  /** Balance after the day's newest posting, when the day has one. */
+  endBalance: number | null;
 }
 
-/** Splits newest-first entries into newest-first days. */
-export function groupByDay(entries: StatementEntry[], read: (e: StatementEntry) => number): DayGroup[] {
-  const groups: DayGroup[] = [];
-  for (const e of entries) {
-    let g = groups[groups.length - 1];
-    if (!g || g.date !== e.record.date) {
-      g = { date: e.record.date, entries: [], net: 0, hasFlows: false, endBalance: read(e) };
-      groups.push(g);
+/** Prepare ledger rows and display-only payoff markers for a day heading. */
+export function groupByDay(
+  entries: StatementEntry[],
+  read: (e: StatementEntry) => number,
+  lensAccountId: string | null = null,
+  payoffs: CreditCardPayoff[] = [],
+): DayGroup[] {
+  const groups = new Map<string, DayGroup>();
+  const groupFor = (date: string) => {
+    let group = groups.get(date);
+    if (!group) {
+      group = { date, items: [], net: 0, hasFlows: false, endBalance: null };
+      groups.set(date, group);
     }
-    g.entries.push(e);
-    if (e.record.type !== 'adjustment') {
-      g.net += e.record.amount;
-      g.hasFlows = true;
+    return group;
+  };
+  for (const entry of entries) {
+    const { record } = entry;
+    const group = groupFor(record.date);
+    group.items.push({ kind: 'record', id: entry.transId, entry });
+    if (isCardShadow(record, lensAccountId)) continue;
+    group.endBalance ??= read(entry);
+    if (record.type !== 'adjustment') {
+      group.net += record.amount;
+      group.hasFlows = true;
     }
   }
-  return groups;
+  for (const payoff of payoffs) {
+    groupFor(payoff.date).items.push({ kind: 'payoff', id: payoff.id, payoff });
+  }
+  if (payoffs.length > 0) {
+    for (const { items } of groups.values()) {
+      if (items.some((item) => item.kind === 'payoff')) items.sort((a, b) => compareSameDayIds(b.id, a.id));
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export interface DayPoint {

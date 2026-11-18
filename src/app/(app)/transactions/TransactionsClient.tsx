@@ -25,7 +25,10 @@ import { BalanceBridge } from '@/components/transactions/BalanceBridge';
 import { MonthBalanceChart } from '@/components/transactions/MonthBalanceChart';
 import { SearchToolbar, type TypeFilter } from '@/components/transactions/SearchToolbar';
 import { ResultsSummary, FlowFigures } from '@/components/transactions/ResultsSummary';
-import { cents, daySeries, daysInMonth, groupByDay, monthBounds, monthFigures, summarizeMonths, balanceReader } from '@/components/transactions/statementMath';
+import {
+  balanceReader, cardPayoffMarkers, cardStatementEntries, cents, daySeries, daysInMonth, groupByDay,
+  isCardShadow, monthBounds, monthFigures, summarizeMonths,
+} from '@/components/transactions/statementMath';
 import type { Account } from '@/lib/data/mappers';
 import { useOrderedAccounts } from '@/lib/useOrderedAccounts';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
@@ -163,12 +166,21 @@ export function TransactionsClient({
   // its running balance) instead of a results list. The rows are the same
   // ones the account-only filter used to list under a results line; any text
   // or type filter goes back to results mode, filtered by the account.
-  const lensId = accountFilter !== ALL_ACCOUNTS && q === '' && typeFilter === 'all' && ordinaryAccounts.some((a) => a.id === accountFilter)
-    ? accountFilter
-    : null;
-  const lensAccount = useMemo(() => (lensId ? accounts.find((a) => a.id === lensId) ?? null : null), [accounts, lensId]);
+  const filterAccount = ordinaryAccounts.find((a) => a.id === accountFilter) ?? null;
+  const lensAccount = q === '' && typeFilter === 'all' ? filterAccount : null;
+  const lensId = lensAccount ? accountFilter : null;
   const searching = q !== '' || typeFilter !== 'all' || (accountFilter !== ALL_ACCOUNTS && !lensAccount);
   const { prefix: monthPrefix } = monthBounds(selectedMonthInfo.year, selectedMonthInfo.month);
+
+  // Card history shows the same purchase from its original card as well as
+  // the payer. Keep the shadows separate from the ledger's financial inputs.
+  const cardId = filterAccount?.kind === 'credit' ? accountFilter : null;
+  const cardHistory = useMemo(() => cardId
+    ? cardStatementEntries(allEntriesWithRecords, cardId, ghostIds, showGhostAccounts)
+    : null, [allEntriesWithRecords, cardId, ghostIds, showGhostAccounts]);
+  const payoffs = useMemo(() => !searching && cardId && cardHistory
+    ? cardPayoffMarkers(cardHistory, cardId, monthPrefix)
+    : undefined, [cardId, cardHistory, monthPrefix, searching]);
 
   const fig = useMemo(
     () => monthFigures(entriesWithRecords, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
@@ -259,29 +271,35 @@ export function TransactionsClient({
 
   const results = useMemo(() => {
     if (!searching) return [];
-    return entriesWithRecords.filter((e) => {
+    return (cardHistory ?? entriesWithRecords).filter((e) => {
       const r = e.record;
       if (!r.date.startsWith(monthPrefix)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
-      if (accountFilter !== ALL_ACCOUNTS && r.accountId !== accountFilter) return false;
+      if (!cardHistory && accountFilter !== ALL_ACCOUNTS && r.accountId !== accountFilter) return false;
       if (q === '') return true;
       const categoryText = r.type === 'adjustment'
         ? d.txn.balanceAdjustment.toLowerCase()
         : `${r.category} ${categoryLabel(d, r.category)}`.toLowerCase();
       const tag = r.type === 'expense' && r.tag ? r.tag.toLowerCase() : '';
+      const payoff = r.type === 'expense' ? r.creditCardPayoff : undefined;
+      const cardName = payoff ? accountNames.get(payoff.cardId) ?? payoff.cardName.toLowerCase() : '';
       return (
         r.description.toLowerCase().includes(q)
         || categoryText.includes(q)
         || (tag !== '' && tag.includes(q))
         || (accountNames.get(r.accountId) ?? '').includes(q)
+        || cardName.includes(q)
         || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, entriesWithRecords, typeFilter, accountFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
+  }, [searching, cardHistory, entriesWithRecords, typeFilter, accountFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
   // An account filter alongside text or a type keeps the account's own
   // balance line on each row.
   const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;
-  const resultGroups = useMemo(() => groupByDay(results, (e) => e.totalBalanceAfter), [results]);
+  const resultGroups = useMemo(() => groupByDay(results, (e) => e.totalBalanceAfter, resultsLensId), [results, resultsLensId]);
+  const resultPostings = useMemo(() => cardId
+    ? results.filter((entry) => !isCardShadow(entry.record, cardId))
+    : results, [results, cardId]);
 
   const clearFilters = () => {
     setQuery('');
@@ -344,7 +362,10 @@ export function TransactionsClient({
   const balanceDelta = cents(closingBalance - openingBalance) / 100;
   const delta = lensIsCard ? -balanceDelta : balanceDelta;
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
-  const statementCount = fig.entries.length;
+  const statementEntries = useMemo(() => cardHistory
+    ? cardHistory.filter((entry) => entry.record.date.startsWith(monthPrefix))
+    : fig.entries, [cardHistory, monthPrefix, fig.entries]);
+  const statementCount = statementEntries.length;
 
   const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;
   const scrollSummaryDown = () => {
@@ -416,7 +437,7 @@ export function TransactionsClient({
           points={chartPoints}
           opening={lensIsCard ? -openingBalance : openingBalance}
           owed={lensIsCard}
-          hasActivity={statementCount > 0}
+          hasActivity={fig.entries.length > 0}
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
         />
@@ -469,7 +490,7 @@ export function TransactionsClient({
                 />
               ) : (
                 <>
-                  <ResultsSummary results={results} categoryMeta={categoryMeta} type={typeFilter} />
+                  {resultPostings.length > 0 && <ResultsSummary results={resultPostings} categoryMeta={categoryMeta} type={typeFilter} />}
                   <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
                   <DayGroups
                     groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
@@ -480,7 +501,8 @@ export function TransactionsClient({
             </div>
           ) : (
             <StatementList
-              entries={fig.entries}
+              entries={statementEntries}
+              payoffs={payoffs}
               openingBalance={openingBalance}
               closingBalance={closingBalance}
               monthInfo={selectedMonthInfo}
@@ -508,7 +530,7 @@ export function TransactionsClient({
                       zero). The same figures as Deposits and Withdrawals:
                       every income record, Side Cash included; transfers and
                       corrections left out. Under the lens, that account's. */}
-                  {statementCount > 0 && (
+                  {fig.entries.length > 0 && (
                     <div className="pb-txn-sum pb-txn-sum-stmt">
                       <FlowFigures inn={totalDeposits} out={totalWithdrawals} />
                     </div>
@@ -518,7 +540,7 @@ export function TransactionsClient({
             />
           )}
           {showGhostAccounts && (accountFilter === ALL_ACCOUNTS || ghostLens) && (
-            <GhostActivity entries={ghostEntries} accounts={ghostAccounts} monthPrefix={monthPrefix}
+            <GhostActivity entries={ghostEntries} accounts={accounts} monthPrefix={monthPrefix}
               accountId={ghostLens ? accountFilter : null} query={query} typeFilter={typeFilter}
               onOpen={openDetail} />
           )}

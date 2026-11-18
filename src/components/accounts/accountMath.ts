@@ -153,16 +153,21 @@ export function flowByDay(expenses: ExpenseTransaction[], income: IncomeTransact
 
 /** One account's records, newest first, labelled for the detail sheet. */
 export type AccountRecord =
-  | { kind: 'expense'; id: string; date: string; amount: number; description: string; category: string }
+  | { kind: 'expense'; id: string; date: string; amount: number; description: string; category: string; paidOnCard: boolean }
   | { kind: 'income'; id: string; date: string; amount: number; description: string; category: string }
   | { kind: 'transfer'; id: string; date: string; amount: number; description: string; otherAccountId: string | null }
   | { kind: 'correction'; id: string; date: string; amount: number; description: string };
 
 export function recordsFor(
-  accountId: string, expenses: ExpenseTransaction[], income: IncomeTransaction[], adjustments: BalanceAdjustment[],
+  account: Pick<Account, 'id' | 'kind'>, expenses: ExpenseTransaction[], income: IncomeTransaction[], adjustments: BalanceAdjustment[],
 ): AccountRecord[] {
   const out: AccountRecord[] = [];
-  for (const e of expenses) if (e.accountId === accountId) out.push({ kind: 'expense', id: e.id, date: e.date, amount: e.amount, description: e.description, category: e.category });
+  const accountId = account.id;
+  for (const e of expenses) {
+    const paidOnCard = account.kind === 'credit' && e.accountId !== accountId && e.creditCardPayoff?.cardId === accountId;
+    if (e.accountId !== accountId && !paidOnCard) continue;
+    out.push({ kind: 'expense', id: e.id, date: e.date, amount: e.amount, description: e.description, category: e.category, paidOnCard });
+  }
   for (const i of income) if (i.accountId === accountId) out.push({ kind: 'income', id: i.id, date: i.date, amount: i.amount, description: i.description, category: i.category });
   const groups = new Map<string, BalanceAdjustment[]>();
   for (const r of adjustments) {

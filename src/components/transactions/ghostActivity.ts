@@ -18,7 +18,9 @@ export function filterGhostActivity<T extends { record: LedgerRecord }>(entries:
     if (!query) return true;
     const category = record.type === 'adjustment' ? '' : `${record.category} ${options.categoryName(record.category)}`;
     const tag = record.type === 'expense' ? record.tag ?? '' : '';
-    const text = [record.description, category, tag, options.accountNames.get(record.accountId) ?? ''].join(' ').toLowerCase();
+    const payoff = record.type === 'expense' ? record.creditCardPayoff : undefined;
+    const cardName = payoff ? options.accountNames.get(payoff.cardId) ?? payoff.cardName : '';
+    const text = [record.description, category, tag, options.accountNames.get(record.accountId) ?? '', cardName].join(' ').toLowerCase();
     return text.includes(query) || (/\d/.test(amountQuery) && Math.abs(record.amount).toFixed(2).includes(amountQuery));
   });
 }

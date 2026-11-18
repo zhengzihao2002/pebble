@@ -33,6 +33,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgSchema,
   pgTable,
@@ -44,6 +45,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { CreditCardPayoff } from '@/types';
 
 export const neonAuth = pgSchema('neon_auth');
 
@@ -261,6 +263,8 @@ export const expense = pgTable(
     transactionDate: date('transaction_date').notNull(),
     paymentMethod: text('payment_method').default('Checking').notNull(),
     accountId: text('account_id').notNull(),
+    /** Display-only origin and receipt retained when accountId moves to the payer. */
+    creditCardPayoff: jsonb('credit_card_payoff').$type<CreditCardPayoff>(),
     amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .defaultNow()

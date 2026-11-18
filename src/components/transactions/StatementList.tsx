@@ -2,8 +2,8 @@
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, type ReactNode } from 'react';
-import { CalendarX2 } from 'lucide-react';
-import type { CategoryMeta, LedgerRecord } from '@/types';
+import { CalendarX2, CreditCard } from 'lucide-react';
+import type { CategoryMeta, CreditCardPayoff, LedgerRecord } from '@/types';
 import type { LedgerEntry } from '@/lib/stats';
 import { formatCurrency, formatDate, parseLocalDate } from '@/lib/format';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
@@ -25,6 +25,7 @@ export interface StatementEntry extends LedgerEntry {
 
 interface StatementListProps {
   entries: StatementEntry[];
+  payoffs?: CreditCardPayoff[];
   openingBalance: number;
   /** Passed through to StatementRow for per-account balance names. */
   accounts: Account[];
@@ -112,7 +113,7 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
               </span>
               <span className="pb-txn-day-figs">
                 {g.hasFlows && <SignedAmount value={g.net} />}
-                {mode === 'statement' && (
+                {mode === 'statement' && g.endBalance !== null && (
                   <span className="pb-txn-day-eod">
                     {renderTemplate(d.ux.transactions.endOfDay, {
                       amount: <BalanceFigure value={g.endBalance} owed={owed} />,
@@ -121,10 +122,21 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
                 )}
               </span>
             </div>
-            {g.entries.map((e) => (
+            {g.items.map((item) => item.kind === 'payoff' ? (
+              <div key={`payoff-${item.id}`} className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
+                <div className="pb-txn-srow-lead">
+                  <span className="pb-txn-card-payoff-icon"><CreditCard size={16} aria-hidden="true" /></span>
+                  <span>{d.ux.transactions.cardPayoff}</span>
+                </div>
+                <span className="pb-txn-card-payoff-balance">
+                  <span>{d.ux.transactions.cardPayoffRemaining}</span>
+                  <span className="font-mono-tab"><RollingAmount value={formatCurrency(item.payoff.remainingBalance)} /></span>
+                </span>
+              </div>
+            ) : (
               <StatementRow
-                key={e.transId} txn={e.record}
-                balancesAfter={e.balancesAfter} accounts={accounts} totalBalanceAfter={e.totalBalanceAfter}
+                key={item.id} txn={item.entry.record}
+                balancesAfter={item.entry.balancesAfter} accounts={accounts} totalBalanceAfter={item.entry.totalBalanceAfter}
                 onOpenDetail={onOpenDetail} categoryMeta={categoryMeta}
                 showDate={false} keyboard ledger highlight={highlight}
                 lensAccountId={lensAccountId ?? undefined}
@@ -159,11 +171,11 @@ export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
 }
 
 export function StatementList({
-  entries, openingBalance, accounts, categoryMeta, onOpenDetail,
+  entries, payoffs, openingBalance, accounts, categoryMeta, onOpenDetail,
   closingBalance, monthInfo, today, lensAccountId, head, id,
 }: StatementListProps) {
   const { d, t, locale } = useTranslation();
-  const groups = useMemo(() => groupByDay(entries, balanceReader(lensAccountId ?? null)), [entries, lensAccountId]);
+  const groups = useMemo(() => groupByDay(entries, balanceReader(lensAccountId ?? null), lensAccountId, payoffs), [entries, lensAccountId, payoffs]);
   const lensAccount = lensAccountId ? accounts.find((a) => a.id === lensAccountId) ?? null : null;
   const owed = lensAccount?.kind === 'credit';
 
@@ -183,7 +195,7 @@ export function StatementList({
     // day headers inside it from sticking.
     <div id={id} className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
       {head}
-      {entries.length === 0 ? (
+      {groups.length === 0 ? (
         <EmptyState
           icon={CalendarX2}
           title={d.transactions.noActivity}

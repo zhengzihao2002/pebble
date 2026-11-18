@@ -71,9 +71,6 @@ export function StatementRow({
   // two income literals - categoryLabel() handles both, translating only
   // the latter.
   const categoryText = isAdjustment ? d.txn.balanceAdjustment : uncategorised ? '' : categoryLabel(d, txn.category);
-  const restParts: string[] = [];
-  if (txn.type === 'expense' && txn.tag) restParts.push(txn.tag);
-  if (showDate) restParts.push(formatDate(txn.date, locale));
 
   const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
@@ -122,8 +119,18 @@ export function StatementRow({
   );
 
   const lensAccount = lensAccountId ? accounts.find((a) => a.id === lensAccountId) : undefined;
-  const rowAccount = accounts.find((a) => a.id === txn.accountId);
-  const RowAccountIcon = rowAccount?.kind === 'credit' ? CreditCard : rowAccount?.kind === 'bank' ? Landmark : Coins;
+  const payoff = txn.type === 'expense' ? txn.creditCardPayoff : undefined;
+  const shadow = payoff !== undefined && lensAccountId === payoff.cardId;
+  const payer = accounts.find((a) => a.id === txn.accountId);
+  const account = payoff ? accounts.find((a) => a.id === payoff.cardId) : payer;
+  const accountName = account?.name ?? payoff?.cardName ?? txn.paymentMethod;
+  const RowAccountIcon = payoff || account?.kind === 'credit' ? CreditCard : account?.kind === 'bank' ? Landmark : Coins;
+  const restParts: string[] = [];
+  if (txn.type === 'expense' && txn.tag) restParts.push(txn.tag);
+  if (payoff) restParts.push(shadow
+    ? t(d.ux.transactions.cardPaidFrom, { account: payer?.name ?? txn.paymentMethod })
+    : accountName);
+  if (showDate) restParts.push(formatDate(txn.date, locale));
 
   // "Near the mouse," offset so the tooltip doesn't sit directly under the
   // cursor, with a clamp so it doesn't get cut off near a screen edge. The
@@ -232,7 +239,7 @@ export function StatementRow({
       {ledger && !lensAccount && (
         <div className="pb-txn-srow-acct">
           <RowAccountIcon size={13} aria-hidden="true" />
-          <span>{rowAccount?.name ?? txn.paymentMethod}</span>
+          <span>{accountName}</span>
         </div>
       )}
       {/* stopPropagation: the row opens the detail modal, so without it a tap
@@ -255,8 +262,12 @@ export function StatementRow({
             {/* The gap is the name's own margin: a space inside the clipped
                 inline-block was swallowed ("Ally Savings$15,675.72"). A card
                 reads as owed, like the rest of its statement. */}
-            <span className="pb-txn-srow-lensname">{lensAccount.name}</span>
-            <BalanceFigure value={balancesAfter[lensAccount.id] ?? 0} owed={lensAccount.kind === 'credit'} className="pb-txn-srow-lensfig" />
+            {!shadow && (
+              <>
+                <span className="pb-txn-srow-lensname">{lensAccount.name}</span>
+                <BalanceFigure value={balancesAfter[lensAccount.id] ?? 0} owed={lensAccount.kind === 'credit'} className="pb-txn-srow-lensfig" />
+              </>
+            )}
           </div>
         )}
         <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>

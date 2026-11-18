@@ -21,6 +21,8 @@ export const transactionDialogsEn = {
   sectionAmount: 'Amount',
   sectionDetails: 'Details',
   sectionWhereWhen: 'Where & when',
+  chargedTo: 'Charged to',
+  paidFrom: 'Paid from',
   // Undo bar, when the dialog names what is being deleted.
   undoNamed: '“{title}” will be deleted',
 
@@ -82,6 +84,8 @@ export const transactionDialogsZh: typeof transactionDialogsEn = {
   sectionAmount: '金额',
   sectionDetails: '详情',
   sectionWhereWhen: '账户与日期',
+  chargedTo: '消费信用卡',
+  paidFrom: '还款账户',
   undoNamed: '“{title}”将被删除',
 
   stepsLabel: '导入步骤',
