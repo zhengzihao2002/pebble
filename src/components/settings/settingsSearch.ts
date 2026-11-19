@@ -32,7 +32,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     { ...entry('accounts', d.ux.accounts.sortAccounts, money, d.ux.accounts.orderHint,
       [...Object.values(d.ux.accounts.sortModes), 'account order sort manual drag reorder balance high low 排序 手动 拖动 余额 高 低']), id: 'accountOrder' },
     entry('categories', d.categoryManager.title, categories, d.categoryManager.blurb, ['category icon colour color rename budget 分类 图标 颜色 重命名']),
-    entry('transactionTags', d.ux.settings.tags.title, categories, d.ux.settings.tags.hint, ['tag rename merge bulk transaction 标签 重命名 批量 交易 一键更改']),
+    entry('transactionTags', d.ux.settings.tags.title, categories, d.ux.settings.tags.hint, ['tag rename merge clear remove bulk transaction 标签 重命名 清除 移除 批量 交易 一键更改']),
     entry('theme', d.theme.title, appearance, d.theme.blurb, ['theme palette colour color 主题 配色', ...Object.values(d.theme)]),
     entry('textSize', d.textSize.title, appearance, d.textSize.blurb, ['text size large zoom 字号 文字 大小 缩放']),
     entry('font', d.font.title, appearance, d.font.blurb,

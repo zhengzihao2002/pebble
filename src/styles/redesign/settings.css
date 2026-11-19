@@ -627,8 +627,11 @@
   min-width: 0; border: 1px solid var(--line); border-radius: .75rem;
 }
 .pebble-root .pb-settings-tag-row {
-  display: flex; align-items: center; justify-content: space-between; gap: .65rem; padding: .45rem .65rem;
+  display: flex; align-items: center; justify-content: space-between; gap: .65rem; width: 100%;
+  padding: .6rem .75rem; border: 0; border-radius: inherit; background: transparent; color: var(--ink); text-align: start;
 }
+.pebble-root .pb-settings-tag-row:hover { background: color-mix(in srgb, var(--pine) 6%, transparent); }
+.pebble-root .pb-settings-tag-row > svg { flex: none; color: var(--ink-soft); }
 .pebble-root .pb-settings-tag-label { display: grid; min-width: 0; gap: .12rem; overflow-wrap: anywhere; font-size: .9rem; }
 .pebble-root .pb-settings-tag-label > span,
 .pebble-root .pb-settings-tag-status { color: var(--ink-soft); font-size: .8rem; }
@@ -643,6 +646,30 @@
 }
 .pebble-root .pb-settings-tag-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem; }
 .pebble-root .pb-settings-tag-more { justify-self: start; }
+.pebble-root .pb-modal-head.pb-tag-dialog-head {
+  flex-direction: row; justify-content: space-between; align-items: flex-start; gap: .75rem;
+}
+.pebble-root .pb-tag-dialog-head h2 { font-size: 1.2rem; margin: 0; overflow-wrap: anywhere; }
+.pebble-root .pb-tag-dialog-head .pb-settings-quiet { margin-top: .25rem; }
+.pebble-root .pb-tag-dialog-toolbar { flex: none; display: grid; gap: .65rem; padding-block: .7rem; border-top: 1px solid var(--line); }
+.pebble-root .pb-tag-dialog-select { justify-self: start; font-size: .83rem; }
+.pebble-root .pb-tag-dialog-transactions { display: grid; gap: .25rem; list-style: none; margin: 0; padding: 0; }
+.pebble-root .pb-tag-dialog-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .65rem;
+  padding: .55rem .55rem; min-height: 44px; border-radius: .65rem; cursor: pointer;
+}
+.pebble-root .pb-tag-dialog-row:has(:checked) { background: color-mix(in srgb, var(--pine) 10%, var(--mist)); }
+.pebble-root .pb-tag-dialog-row:focus-within { outline: 2px solid var(--pine); outline-offset: -2px; }
+.pebble-root .pb-tag-dialog-row > input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--pine); }
+.pebble-root .pb-tag-dialog-row-text { min-width: 0; display: grid; gap: .1rem; overflow-wrap: anywhere; }
+.pebble-root .pb-tag-dialog-row-text > strong { font-size: .89rem; font-weight: 600; }
+.pebble-root .pb-tag-dialog-row-text > span { font-size: .77rem; color: var(--ink-soft); }
+.pebble-root .pb-tag-dialog-amount { font-size: .84rem; white-space: nowrap; }
+.pebble-root .pb-tag-dialog-body > button { margin-top: .65rem; }
+.pebble-root .pb-tag-dialog-foot { display: grid; gap: .6rem; }
+.pebble-root .pb-tag-dialog-foot .pb-settings-tag-editor { padding: 0; border: none; }
+.pebble-root .pb-tag-dialog-review { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .65rem; }
+.pebble-root .pb-tag-dialog-selection { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; color: var(--ink-soft); font-size: .82rem; }
 @media (pointer: coarse) { .pebble-root .pb-settings-cat-pen { opacity: 0.7; } }
 .pebble-root .pb-settings-cat .pb-settings-iconbtn { border: 0; background: transparent; }
 .pebble-root .pb-settings-cat-span { grid-column: 1 / -1; min-width: 0; }

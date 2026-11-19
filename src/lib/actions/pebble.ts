@@ -46,7 +46,7 @@ import type { CategoryItem, Account } from '@/lib/data/mappers';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
 import { isValidTimeZone } from '@/lib/time/timeZone';
-import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
+import { MAX_TAG_NAME_LENGTH, type TaggedTransaction } from '@/lib/transactionTags';
 /**
  * Mutation layer.
  *
@@ -2541,6 +2541,52 @@ async function renameTransactionTag(userId: string, source: string, destination:
   return { ok: true, count };
 }
 
+async function loadTaggedTransactions(userId: string, tag: string): Promise<ActionFailure | { ok: true; rows: TaggedTransaction[] }> {
+  if (typeof tag !== 'string' || !tag.trim() || tag.includes('\0')) {
+    return fail('Choose a tag.', 'validation', 'validation.tagRequired');
+  }
+  try {
+    const rows = await db.select({
+      id: expense.id,
+      description: expense.description,
+      category: expense.category,
+      date: expense.transactionDate,
+      amount: expense.amount,
+      accountName: sql<string | null>`coalesce(${expense.creditCardPayoff}->>'cardName', ${account.name})`,
+    }).from(expense)
+      .leftJoin(account, and(eq(account.id, expense.accountId), eq(account.userId, userId)))
+      .where(and(eq(expense.userId, userId), eq(expense.tag, tag)))
+      .orderBy(desc(expense.transactionDate), desc(expense.id));
+    return { ok: true, rows };
+  } catch (error) {
+    return handleUnexpected('load tagged transactions', error);
+  }
+}
+
+async function clearTransactionTags(userId: string, tag: string, ids: string[]): Promise<ActionFailure | { ok: true; count: number }> {
+  if (typeof tag !== 'string' || !tag.trim() || tag.includes('\0')
+    || !Array.isArray(ids) || ids.length === 0 || ids.some(id => typeof id !== 'string' || !id || id.includes('\0'))) {
+    return fail('Select transactions to clear.', 'validation', 'validation.tagSelectRows');
+  }
+  let count: number;
+  try {
+    const [, rows] = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      neonSql`WITH cleared AS (
+        UPDATE expense SET tag = ''
+        WHERE user_id = ${userId}::uuid AND tag = ${tag} AND id = ANY(${ids}::text[]) RETURNING 1
+      ) SELECT count(*)::int AS count FROM cleared`,
+    ], { isolationLevel: 'ReadCommitted' });
+    count = Number(rows[0].count);
+  } catch (error) {
+    return handleUnexpected('clear transaction tags', error);
+  }
+  revalidateAll();
+  return { ok: true, count };
+}
+
+export const loadTaggedTransactionsAction = withSessionUser(loadTaggedTransactions);
+export const clearTransactionTagsAction = withSessionUser(clearTransactionTags);
 export const renameTransactionTagAction = withSessionUser(renameTransactionTag);
 export const createCategoryAction = withSessionUser(createCategory);
 export const updateCategoryAction = withSessionUser(updateCategory);

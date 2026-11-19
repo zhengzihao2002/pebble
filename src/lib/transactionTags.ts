@@ -5,6 +5,17 @@ export interface TransactionTagGroup {
   count: number;
 }
 
+export interface TaggedTransaction {
+  id: string;
+  description: string;
+  category: string;
+  date: string;
+  amount: number;
+  accountName: string | null;
+}
+
+export const normalizeTagSearch = (value: string) => value.trim().normalize('NFKC').toLowerCase();
+
 export function groupTransactionTags(expenses: readonly { tag?: string }[]): TransactionTagGroup[] {
   const counts = new Map<string, number>();
   for (const { tag } of expenses) {

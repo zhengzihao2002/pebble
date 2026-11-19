@@ -1449,6 +1449,8 @@ export const zh: typeof en = {
     'validation.budgetCategoryNameRequired': '预算分类名称不能为空。',
     'validation.budgetAmountNonNegative': '「{category}」的预算必须大于或等于零。',
     'validation.tagRename': '请输入不同的标签名称，最多 {max} 个字符。',
+    'validation.tagRequired': '请选择一个标签。',
+    'validation.tagSelectRows': '请选择要清除标签的交易。',
     'validation.categoryNameRequired': '分类需要一个名称。',
     'validation.categoryNameTooLong': '分类名称最多 {max} 个字符。',
     'validation.categoryNameDuplicate': '你已经有一个叫「{name}」的分类了。',

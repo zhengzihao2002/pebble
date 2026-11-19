@@ -53,6 +53,8 @@ export type ServerErrorCode =
   // --- categories (sub-step 4c) ---
   | 'validation.categoryNameRequired'
   | 'validation.tagRename'
+  | 'validation.tagRequired'
+  | 'validation.tagSelectRows'
   | 'validation.categoryNameTooLong'
   | 'validation.categoryNameDuplicate'
   | 'notFound.category'

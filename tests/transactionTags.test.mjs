@@ -47,3 +47,24 @@ test('bulk rename checks its session, validates the target, and changes only the
   assert.deepEqual(params, ['Café', 'owner', 'Coffee']);
   assert(revalidated);
 });
+
+test('clear requires a selection and scopes the update to its owner, current tag, and selected rows', async () => {
+  assert.match(actions, /export const clearTransactionTagsAction = withSessionUser\(clearTransactionTags\)/);
+  assert.match(actions, /export const loadTaggedTransactionsAction = withSessionUser\(loadTaggedTransactions\)/);
+  const clearHandler = program.find(node => node.type === 'FunctionDeclaration' && node.id?.name === 'clearTransactionTags');
+  const { code } = transformSync(actions.slice(clearHandler.start, clearHandler.end), { loader: 'ts' });
+  const writes = [];
+  const neonSql = (parts, ...params) => ({ sql: parts.join('?'), params });
+  neonSql.transaction = async statements => { writes.push(statements); return [[], [{ count: 1 }]]; };
+  const clear = new Function('neonSql', 'userWriteLockStatement', 'revalidateAll', 'fail', code + '\nreturn clearTransactionTags')(
+    neonSql, user => ({ lock: user }), () => {}, () => ({ ok: false }),
+  );
+  assert.equal((await clear('owner', 'Coffee', [])).ok, false);
+  assert.equal((await clear('owner', '', ['id'])).ok, false);
+  assert.equal(writes.length, 0);
+  assert.deepEqual(await clear('owner', 'Coffee', ['own', 'other']), { ok: true, count: 1 });
+  const [lock, update] = writes[0];
+  assert.deepEqual(lock, { lock: 'owner' });
+  assert.match(update.sql, /UPDATE expense SET tag = ''\s+WHERE user_id = \?::uuid AND tag = \? AND id = ANY\(\?::text\[\]\)/);
+  assert.deepEqual(update.params, ['owner', 'Coffee', ['own', 'other']]);
+});

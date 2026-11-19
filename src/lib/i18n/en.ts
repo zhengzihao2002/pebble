@@ -1555,6 +1555,8 @@ export const en = {
     // stored, never translated.
     'validation.budgetAmountNonNegative': 'Budget for {category} must be zero or greater.',
     'validation.tagRename': 'Enter a different tag of up to {max} characters.',
+    'validation.tagRequired': 'Choose a tag.',
+    'validation.tagSelectRows': 'Select transactions to clear.',
     'validation.categoryNameRequired': 'A category needs a name.',
     'validation.categoryNameTooLong': 'Category names are limited to {max} characters.',
     // {name} is USER DATA and is inserted exactly as typed, never translated.
