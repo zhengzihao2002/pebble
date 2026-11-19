@@ -122,6 +122,7 @@ export const partnerEn = {
   },
   errors: {
     unavailable: 'Partner Mode tables or columns are missing from the database Pebble is connected to.',
+    inboxUnavailable: 'The partner activity inbox needs its database setup before the inbox and partner edits can work.',
     databasePermission: 'Pebble’s database role is missing permissions for Partner Mode.',
     unexpected: 'Couldn’t complete that request. Please try again.',
     invalid: 'Check the details and try again.',
@@ -259,6 +260,7 @@ export const partnerZh: typeof partnerEn = {
   },
   errors: {
     unavailable: 'Pebble 连接的数据库缺少伙伴模式所需的表或字段。',
+    inboxUnavailable: '请先完成伙伴活动收件箱的数据库设置，才能使用收件箱和伙伴编辑功能。',
     databasePermission: 'Pebble 的数据库角色缺少伙伴模式所需的权限。',
     unexpected: '暂时无法完成请求，请重试。',
     invalid: '请检查输入后重试。',

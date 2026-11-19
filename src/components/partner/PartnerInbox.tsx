@@ -57,7 +57,12 @@ export function PartnerInbox() {
   return <section id={SETTING_TARGETS.partnerInbox} className="card pb-partner-card">
     <SectionHeader title={x.title} subtitle={x.hint} icon={Inbox}
       actions={items?.length ? <span className="pill">{items.length}</span> : undefined} />
-    {error && <p className="pb-partner-error" role="alert">{error}</p>}
+    {error && (
+      <div className="pb-partner-actions">
+        <p className="pb-partner-error" role="alert">{error}</p>
+        <button className="pill" type="button" disabled={busy !== null} onClick={() => void reload()}>{d.partner.refresh}</button>
+      </div>
+    )}
     {!error && items?.length === 0 && <p className="pb-partner-note">{x.empty}</p>}
     {!!items?.length && <ul className="pb-partner-list">
       {items.map(item => <li key={item.id} className="pb-partner-list-row">
