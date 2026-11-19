@@ -17,7 +17,7 @@ const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const digest = (code: string) => createHash('sha256').update(code).digest('hex');
 const lifecycleLock = () => neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.partner-mode.v1'))`;
 
-type FailureReason = 'unavailable' | 'unexpected' | 'invalid' | 'invite' | 'paired' | 'noPair' | 'denied' | 'ownOnly' | 'contribution' | 'pendingPermissions';
+type FailureReason = 'unavailable' | 'databasePermission' | 'unexpected' | 'invalid' | 'invite' | 'paired' | 'noPair' | 'denied' | 'ownOnly' | 'contribution' | 'pendingPermissions';
 const failure = (reason: FailureReason) => ({ ok: false as const, reason, error: 'Partner Mode action failed.' });
 const success = { ok: true as const };
 
@@ -25,8 +25,9 @@ async function run<T>(handler: () => Promise<T>) {
   try { return await handler(); }
   catch (error) {
     const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
-    if (code === '42P01' || code === '42501') return failure('unavailable');
     console.error('[pebble partner] request failed', code);
+    if (code === '42P01' || code === '42703') return failure('unavailable');
+    if (code === '42501') return failure('databasePermission');
     return failure('unexpected');
   }
 }

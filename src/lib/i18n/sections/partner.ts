@@ -97,7 +97,8 @@ export const partnerEn = {
     empty: 'You can start a new joint goal together.',
   },
   errors: {
-    unavailable: 'Partner Mode is waiting for its database setup.',
+    unavailable: 'Partner Mode tables or columns are missing from the database Pebble is connected to.',
+    databasePermission: 'Pebble’s database role is missing permissions for Partner Mode.',
     unexpected: 'Couldn’t complete that request. Please try again.',
     invalid: 'Check the details and try again.',
     invite: 'This code is invalid, expired, already used, or belongs to an account that can’t pair.',
@@ -209,7 +210,8 @@ export const partnerZh: typeof partnerEn = {
     empty: '你们可以一起创建一个共同目标。',
   },
   errors: {
-    unavailable: '伙伴模式正在等待数据库设置。',
+    unavailable: 'Pebble 连接的数据库缺少伙伴模式所需的表或字段。',
+    databasePermission: 'Pebble 的数据库角色缺少伙伴模式所需的权限。',
     unexpected: '暂时无法完成请求，请重试。',
     invalid: '请检查输入后重试。',
     invite: '验证码无效、已过期、已使用，或对应账户无法配对。',
