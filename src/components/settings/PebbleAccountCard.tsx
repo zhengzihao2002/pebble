@@ -5,10 +5,12 @@ import { SETTING_TARGETS } from './settingsTargets';
 import Link from '@/components/loading/PendingLink';
 import { useState } from 'react';
 import { useSafetyLock } from '@/lib/useSafetyLock';
-import { ChevronRight, Shield, Trash2, User } from 'lucide-react';
+import { Check, ChevronRight, Shield, Trash2, User } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { SignOutButton } from '@/components/layout/SignOutButton';
 import { DeletePebbleAccountDialog } from '@/components/settings/DeletePebbleAccountDialog';
+import { usePebbleStore } from '@/store/usePebbleStore';
+import { PROFILE_COLORS } from '@/lib/profileColor';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function PebbleAccountCard() {
@@ -17,6 +19,8 @@ export function PebbleAccountCard() {
   // translated, never transformed.
   const { d } = useTranslation();
   const [showDelete, setShowDelete] = useState(false);
+  const color = usePebbleStore(state => state.profileColor);
+  const setColor = usePebbleStore(state => state.setProfileColor);
   const deleteLocked = useSafetyLock('deletePebbleAccount');
 
   // Both destinations are Better Auth UI's own account views, rendered by
@@ -45,7 +49,7 @@ export function PebbleAccountCard() {
       <div className="pb-settings-me-body">
         <div className="pb-settings-me-grid">
           <div className="pb-settings-me-id">
-            <div className="pb-settings-avatar" aria-hidden="true">{initials}</div>
+            <div className="pb-settings-avatar pb-profile-avatar" aria-hidden="true">{initials}</div>
             <div style={{ minWidth: 0 }}>
               <p className="pb-settings-me-name">{name}</p>
               <p className="pb-settings-me-email">{email}</p>
@@ -55,6 +59,19 @@ export function PebbleAccountCard() {
           <div className="pb-settings-me-signout">
             <SignOutButton className="pill pb-settings-pill" iconSize={15} />
           </div>
+
+          <fieldset id={SETTING_TARGETS.profileColor} className="pb-settings-me-color pb-settings-target">
+            <legend>{d.account.profileColor}</legend>
+            <div className="pb-settings-profile-palette">
+              {PROFILE_COLORS.map(option => (
+                <label key={option} className="pb-profile-swatch" data-color={option} title={d.account.profileColors[option]}>
+                  <input type="radio" name="pebble-profile-color" aria-label={d.account.profileColors[option]}
+                    checked={color === option} onChange={() => setColor(option)} />
+                  <span className="pb-profile-swatch-sample" aria-hidden="true">{color === option && <Check size={15} strokeWidth={2.5} />}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="pb-settings-me-links">
             {links.map(({ href, icon: Icon, label, hint }) => (

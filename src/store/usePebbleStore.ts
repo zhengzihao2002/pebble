@@ -12,6 +12,7 @@ import { emptySoundPrefs, type SoundEvent } from '@/lib/sound/events';
 import { clearManualIncomeDraft } from '@/lib/budgets/manualIncomeDraft';
 import { normalizeAmbientSettings, type AmbientSettings } from '@/lib/ambientSettings';
 import { normalizeCursorSize } from '@/lib/cursorSize';
+import { normalizeProfileColor, type ProfileColor } from '@/lib/profileColor';
 import { normalizeTextSize } from '@/lib/textSize';
 
 /**
@@ -110,6 +111,7 @@ interface PebblePrefs {
   // Recognized merchant logos in transaction tiles. On unless disabled.
   showBrandIcons: boolean;
   themeChoice: ThemeChoice;
+  profileColor: ProfileColor;
   // Per-user switches disabling risky buttons. Read through isLocked(), so a
   // lock missing from older saved settings takes its default.
   safetyLocks: Partial<SafetyLocks>;
@@ -161,6 +163,7 @@ interface PebbleUIState extends PebblePrefs {
   setAmbientSettings: (patch: Partial<AmbientSettings>) => void;
   resetAmbientSettings: () => void;
   setShowBrandIcons: (value: boolean) => void;
+  setProfileColor: (value: ProfileColor) => void;
   setThemeChoice: (value: ThemeChoice) => void;
   setSafetyLock: (key: SafetyLockKey, value: boolean) => void;
   setShowWelcome: (value: boolean) => void;
@@ -197,6 +200,7 @@ const DEFAULT_PREFS: PebblePrefs = {
   ambientSettings: normalizeAmbientSettings(undefined),
   showBrandIcons: true,
   themeChoice: 'original',
+  profileColor: 'gold',
   safetyLocks: DEFAULT_SAFETY_LOCKS,
   showWelcome: true,
   loadingStyle: 'cached',
@@ -268,6 +272,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       setAmbientSettings: (patch) => set((state) => ({ ambientSettings: normalizeAmbientSettings({ ...state.ambientSettings, ...patch }) })),
       resetAmbientSettings: () => set({ ambientSettings: normalizeAmbientSettings(undefined) }),
       setShowBrandIcons: (value) => set({ showBrandIcons: value }),
+      setProfileColor: (value) => set({ profileColor: normalizeProfileColor(value) }),
       setThemeChoice: (value) => set({ themeChoice: value }),
       setSafetyLock: (key, value) => set((state) => ({ safetyLocks: { ...state.safetyLocks, [key]: value } })),
       setShowWelcome: (value) => set({ showWelcome: value }),
@@ -292,7 +297,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
-        return { ...merged, numberRolling: merged.numberRolling !== false, sidebarCollapsed: merged.sidebarCollapsed === true, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
+        return { ...merged, numberRolling: merged.numberRolling !== false, sidebarCollapsed: merged.sidebarCollapsed === true, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), profileColor: normalizeProfileColor(merged.profileColor), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
       // v1: the typed income AMOUNT stopped being stored. Keeps a valid
       // frequency, drops the rest; persist writes the migrated state back.
@@ -343,6 +348,7 @@ export const usePebbleStore = create<PebbleUIState>()(
         ambientSettings: state.ambientSettings,
         showBrandIcons: state.showBrandIcons,
         themeChoice: state.themeChoice,
+        profileColor: state.profileColor,
         safetyLocks: state.safetyLocks,
         // Also read by the pre-paint script (SHOW_WELCOME_FIELD).
         showWelcome: state.showWelcome,

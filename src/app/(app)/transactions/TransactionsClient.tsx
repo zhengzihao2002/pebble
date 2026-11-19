@@ -1,4 +1,5 @@
 'use client';
+import { allowsPartnerSearch } from '@/lib/partnerCensorship';
 import { canSeePartnerBalances } from '@/lib/partner';
 import { PartnerCensored, PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
@@ -321,6 +322,7 @@ export function TransactionsClient({
       if (!r.date.startsWith(monthPrefix)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
       if (q === '') return true;
+      if (partner && !allowsPartnerSearch(q)) return false;
       const categoryText = r.type === 'adjustment'
         ? d.txn.balanceAdjustment.toLowerCase()
         : `${r.category} ${categoryLabel(d, r.category)}`.toLowerCase();
@@ -335,7 +337,7 @@ export function TransactionsClient({
         || (showAmounts && amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, accountHistory, typeFilter, monthPrefix, q, qAmount, amountQuery, accountNames, showAmounts, d]);
+  }, [partner, searching, accountHistory, typeFilter, monthPrefix, q, qAmount, amountQuery, accountNames, showAmounts, d]);
   // An account filter alongside text or a type keeps the account's own
   // balance line on each row.
   const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;

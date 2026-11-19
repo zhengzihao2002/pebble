@@ -358,11 +358,11 @@
 .pebble-root .pb-settings-ov-id { display: flex; align-items: center; gap: 0.9rem; min-width: 0; }
 .pebble-root .pb-settings-avatar {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
-  font-size: 0.9rem; font-weight: 600; color: var(--gold); background-color: var(--gold-soft);
+  font-size: 0.9rem; font-weight: 600;
 }
 .pebble-root .pb-settings-avatar.is-large {
   width: 52px; height: 52px; font-size: 1.05rem;
-  box-shadow: 0 0 0 2px var(--mist), 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent);
+  box-shadow: 0 0 0 2px var(--mist), 0 0 0 3px color-mix(in srgb, var(--pb-avatar-accent, var(--gold)) 40%, transparent);
 }
 .pebble-root .pb-settings-ov-name { margin: 0; font-size: 1.08rem; font-weight: 600; color: var(--ink); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pebble-root .pb-settings-ov-email { margin: 0.1rem 0 0; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -702,6 +702,7 @@
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem 0.6rem;
   grid-template-areas:
     "id id"
+    "color color"
     "links links"
     "signout delete"
     "hint hint"
@@ -746,7 +747,7 @@
 @container pb-settings-me (max-width: 28rem) {
   .pebble-root .pb-settings-me-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "id" "links" "signout" "delete" "hint" "privacy";
+    grid-template-areas: "id" "color" "links" "signout" "delete" "hint" "privacy";
   }
 }
 @container pb-settings-me (min-width: 34rem) {
@@ -754,6 +755,7 @@
     grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 1.5rem;
     grid-template-areas:
       "id signout"
+      "color color"
       "links links"
       "foot foot";
   }
@@ -881,3 +883,23 @@
 .pebble-root .pb-set-cleanup-pick { display: flex; align-items: flex-start; gap: 0.55rem; min-width: 0; }
 .pebble-root .pb-set-cleanup-pick > input { flex: none; margin-top: 0.15rem; accent-color: var(--pine); }
 .pebble-root .pb-set-cleanup-pick > span { min-width: 0; overflow-wrap: anywhere; }
+
+.pebble-root .pb-settings-me-color {
+  grid-area: color; margin: 0; border: 0; padding: 0; min-width: 0;
+}
+.pebble-root .pb-settings-me-color legend { margin-bottom: .3rem; padding: 0; font-size: .82rem; color: var(--ink-soft); }
+.pebble-root .pb-settings-profile-palette { display: flex; flex-wrap: wrap; gap: .25rem; }
+.pebble-root .pb-profile-swatch {
+  position: relative; display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
+  border-radius: 50%; cursor: pointer; --pb-avatar-accent: var(--gold);
+}
+.pebble-root .pb-profile-swatch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.pebble-root .pb-profile-swatch-sample {
+  display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  background: color-mix(in srgb, var(--pb-avatar-accent) 24%, var(--mist));
+  border: 1px solid color-mix(in srgb, var(--pb-avatar-accent) 60%, var(--line)); color: var(--ink);
+}
+.pebble-root .pb-profile-swatch:has(input:checked) .pb-profile-swatch-sample,
+.pebble-root .pb-profile-swatch:has(input:focus-visible) .pb-profile-swatch-sample {
+  outline: 2px solid var(--pb-avatar-accent); outline-offset: 2px;
+}

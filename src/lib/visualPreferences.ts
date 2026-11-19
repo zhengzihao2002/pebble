@@ -1,12 +1,14 @@
 import { AMBIENT_MOTION, sampleAmbientMotion } from './ambientMotion';
 import { ambientColourMatrix, ambientEnvelope, AMBIENT_DIAMETERS } from './ambientRenderer';
 import { AMBIENT_ROUTES, DEFAULT_AMBIENT_SETTINGS } from './ambientSettings';
+import { PROFILE_COLORS } from './profileColor';
 import { CURSOR_SIZES } from './cursorSize';
 
 // Derive the startup picture from the live renderer's geometry and envelope.
 // Only this small, static description is serialized into the parser-time script.
 export const VISUAL_STARTUP_CONFIG = {
   cursorSizes: CURSOR_SIZES,
+  profileColors: PROFILE_COLORS,
   arrow: 'M6 5.5C6 3.4 8.4 2.5 10 4L28 22C29.4 23.4 28.5 25.8 26.5 25.8H18.8L12.1 31C9.5 32.9 6 31.1 6 28Z',
   defaults: DEFAULT_AMBIENT_SETTINGS,
   diameters: AMBIENT_DIAMETERS,
@@ -83,6 +85,11 @@ export function createVisualPreferenceTools(config: typeof VISUAL_STARTUP_CONFIG
     for (const [attribute, enabled] of [['data-pb-soft-cursor', enabledCursor], ['data-pb-ambient', enabledAmbient], ['data-pb-sidebar-collapsed', !onAuth && prefs.sidebarCollapsed === true]] as const) {
       if (enabled && root.getAttribute(attribute) === null) root.setAttribute(attribute, '');
       else if (!enabled && root.getAttribute(attribute) !== null) root.removeAttribute(attribute);
+    }
+    const avatarColor = onAuth ? null : config.profileColors.find(color => color === prefs.profileColor && color !== 'gold') ?? null;
+    if (root.getAttribute('data-pb-profile-color') !== avatarColor) {
+      if (avatarColor) root.setAttribute('data-pb-profile-color', avatarColor);
+      else root.removeAttribute('data-pb-profile-color');
     }
     if (enabledCursor) {
       if (!cursor || lastCursor !== prefs.cursorSize) { cursor = cursorProperties(prefs.cursorSize); lastCursor = prefs.cursorSize; }

@@ -1,4 +1,5 @@
 'use client';
+import { allowsPartnerSearch } from '@/lib/partnerCensorship';
 
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
@@ -224,7 +225,7 @@ export function CommandPalette({
     })),
   ];
   const scopedRows = partner ? (workspace ? partnerTransactions(workspace.data, d.partner.hiddenTransaction) : []) : txns;
-  const shownTxns = q && searchState === 'ready'
+  const shownTxns = q && searchState === 'ready' && (!partner || allowsPartnerSearch(q))
     ? scopedRows.filter((x) => {
         const tag = x.type === 'expense' && x.tag ? x.tag.toLowerCase() : '';
         return (

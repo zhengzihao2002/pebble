@@ -78,6 +78,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
         { deletePebbleAccount: 'Pebble 账户', deleteAccounts: '银行 现金 账户', deleteTransactions: '交易 转账 调整', deleteCategories: '分类' }[key],
       ],
     })),
+    entry('profileColor', d.account.profileColor, account, d.account.profileColorHint, ['avatar initials background color colour 头像 首字母 背景 颜色']),
     { ...entry('pebbleAccount', d.account.profileLink, account, d.account.profileHint,
       ['profile name email 个人资料 姓名 邮箱']), id: 'profile', href: '/account/settings' },
     { ...entry('pebbleAccount', d.account.securityLink, account, d.account.securityHint,

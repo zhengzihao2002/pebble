@@ -14,6 +14,7 @@ const entry = `
   export * from './src/lib/partnerPaths';
   export * from './src/lib/partnerCensorship';
   export * from './src/lib/partnerPreferences';
+  export * from './src/lib/topPlaces';
   export { getOwnWorkspaceUser } from './src/lib/partnerView.server';
   export { withSessionUser } from './src/lib/actions/withSessionUser';
   export { canSeePartnerBalances } from './src/lib/partner';
@@ -120,6 +121,9 @@ test('partner word filters support literal phrases and never expose private sett
   const redact = scope.redactPartnerText(words);
   assert.equal(redact('card NUMBER, 汉字 and X+Y?'), '***, *** and ***');
   assert.equal(redact('xxy'), 'xxy');
+  assert.equal(scope.allowsPartnerSearch('***'), false);
+  assert.equal(scope.allowsPartnerSearch('x*y'), false);
+  assert.equal(scope.allowsPartnerSearch('coffee'), true);
   assert.deepEqual(scope.publicPartnerPermissions({ expenses: true, censoredWords: words, censorshipRevision: 'private' }, ['expenses']), { expenses: true });
 });
 
@@ -142,4 +146,23 @@ test('partner preferences separate the main view, viewers, and pairings', () => 
   } finally {
     globalThis.window = previousWindow;
   }
+});
+
+test('shared Top Places preserves its rank and amounts without identifying censored or keyword-masked merchants', () => {
+  const charges = [
+    { id: 'a', date: '2026-11-19', amount: -10, title: 'Private Place #12', category: 'Private category' },
+    { id: 'b', date: '2026-11-18', amount: -20, title: 'Private Place 34', category: 'Other' },
+    { id: 'c', date: '2026-11-15', amount: -8, title: 'Different Private Place', category: 'Other' },
+  ];
+  const owner = scope.rankTopPlaces(charges, '2026-11-19', 'month');
+  const shared = scope.shareTopPlaces(owner, new Set(['a']), scope.redactPartnerText(['Different Private Place']));
+  assert.equal(owner.places.length, 2);
+  assert.equal(shared.total, owner.total);
+  assert.deepEqual(shared.places.map(row => row.total), [30, 8]);
+  assert.equal(shared.places[0].name, null);
+  assert.equal(shared.places[0].category, '');
+  assert.deepEqual(shared.places[0].itemIds, []);
+  assert.equal(shared.places[1].name, '***');
+  assert.deepEqual(shared.places[1].itemIds, ['c']);
+  assert(!JSON.stringify(shared).toLowerCase().includes('private place'));
 });

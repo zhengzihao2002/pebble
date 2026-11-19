@@ -1,3 +1,4 @@
+import type { TopPlacesRange, TopPlacesSummary } from '@/lib/topPlaces';
 import type { BalanceAdjustment, CreditCardPayoff, RecurringFrequency } from '@/types';
 
 export const PARTNER_VIEW_PERMISSIONS = ['expenses', 'income', 'amounts', 'notes', 'accounts', 'personalGoals', 'budgets', 'scheduled'] as const;
@@ -57,6 +58,7 @@ export interface PartnerWorkspaceAccess {
 export interface PartnerWorkspaceData extends PartnerWorkspaceAccess {
   pairId: string;
   transactions: SharedTransaction[];
+  topPlaces?: Record<TopPlacesRange, TopPlacesSummary>;
   adjustments: BalanceAdjustment[];
   /** Shared annual planning date, without exposing the owner's preferences. */
   budgetToday: string | null;

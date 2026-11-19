@@ -173,6 +173,16 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   }, []);
   const [partnerEditor, setPartnerEditor] = useState<PartnerEditor | null>(null);
   const [partnerTransaction, setPartnerTransaction] = useState<{ txn: LedgerRecord; entry?: StatementEntry } | null>(null);
+  const activePartnerVersion = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    const version = partnerData?.accessVersion ?? partnerAccess?.accessVersion;
+    if (activePartnerVersion.current === version) return;
+    if (activePartnerVersion.current !== undefined) {
+      setPartnerEditor(null);
+      setPartnerTransaction(null);
+    }
+    activePartnerVersion.current = version;
+  }, [partnerData?.accessVersion, partnerAccess?.accessVersion]);
   const openPartnerTransaction = useCallback((txn: LedgerRecord, entry?: StatementEntry) => setPartnerTransaction({ txn, entry }), []);
   const partnerControls = useMemo(() => ({
     viewerId, register: registerPartnerWorkspace, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction,
@@ -245,18 +255,6 @@ export function AppShell({ children, partnerAccess, viewerId }: {
     else setShowAddScheduleModal(true);
   };
   const openTransfer = () => { if (!partnerView) setShowTransferModal(true); };
-
-  // Recheck sharing when a tab becomes active again or stays open through a permission change.
-  useEffect(() => {
-    if (!partnerView) return;
-    const refresh = () => { if (document.visibilityState === 'visible') router.refresh(); };
-    document.addEventListener('visibilitychange', refresh);
-    const timer = window.setInterval(refresh, 15000);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', refresh);
-    };
-  }, [partnerView, router]);
 
   // Pages ask for the shell's dialogs through window events (shellEvents.ts):
   // an empty state's "Add transaction" opens the same dialog the header does.
@@ -354,6 +352,16 @@ export function AppShell({ children, partnerAccess, viewerId }: {
     // needs no refresh, so the common case costs nothing.
     refreshSoon();
   }, [refreshSoon]);
+
+  // Refresh when returning to a tab. An idle tab has no database heartbeat.
+  useEffect(() => {
+    if (!partnerView) return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshSoon();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [partnerView, refreshSoon]);
 
   // Client text already follows the locale store. Mirror the preference for
   // future server requests without refreshing the current route: Settings

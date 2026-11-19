@@ -52,7 +52,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
             no page without it. Not a secret: the same id is in the page data. */}
         {partnerPair
           ? <BudgetPlanNavigationProvider>
-              <AppShell key={access?.ok ? access.data.accessVersion : 'partner-unavailable'}
+              <AppShell key={partnerPair}
                 partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
             </BudgetPlanNavigationProvider>
           : <>

@@ -18,6 +18,9 @@ import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { partnerError } from './partnerError';
 
+const PERMISSION_TABS = ['view', 'add', 'edit'] as const;
+type PermissionTab = (typeof PERMISSION_TABS)[number];
+
 export function PartnerSettings() {
   const { d, t, locale } = useTranslation();
   const x = d.partner;
@@ -27,6 +30,7 @@ export function PartnerSettings() {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [disconnect, setDisconnect] = useState(false);
+  const [permissionTab, setPermissionTab] = useState<PermissionTab>('view');
   const [status, setStatus] = useState('');
   const [error, setError] = useState<{ error: string; reason?: string } | null>(null);
 
@@ -39,23 +43,24 @@ export function PartnerSettings() {
     void reload(true);
   }, [reload]);
 
+  const displayedInvite = invite?.expires ?? settings?.inviteExpires;
   useEffect(() => {
-    if (!invite || settings?.pairId) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void reload();
-    }, 5000);
-    const expires = window.setTimeout(() => { setInvite(null); void reload(); }, Math.max(0, Date.parse(invite.expires) - Date.now()));
-    return () => { window.clearInterval(timer); window.clearTimeout(expires); };
-  }, [invite, settings?.pairId, reload]);
+    if (!displayedInvite || settings?.pairId) return;
+    const expires = window.setTimeout(() => {
+      setInvite(null);
+      setSettings(previous => previous?.inviteExpires === displayedInvite ? { ...previous, inviteExpires: null } : previous);
+    }, Math.max(0, Date.parse(displayedInvite) - Date.now()));
+    return () => window.clearTimeout(expires);
+  }, [displayedInvite, settings?.pairId]);
 
   const waitingForPartner = !!settings?.pairId && !settings.partnerConfigured;
+  const awaitingInvite = !!displayedInvite && !settings?.pairId;
   useEffect(() => {
-    if (!waitingForPartner) return;
+    if (!waitingForPartner && !awaitingInvite) return;
     const check = () => { if (document.visibilityState === 'visible') void reload(); };
-    const timer = window.setInterval(check, 5000);
-    window.addEventListener('focus', check);
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', check); };
-  }, [waitingForPartner, reload]);
+    document.addEventListener('visibilitychange', check);
+    return () => document.removeEventListener('visibilitychange', check);
+  }, [waitingForPartner, awaitingInvite, reload]);
 
   const run = async <T extends { ok: true }>(action: () => Promise<T | { ok: false; error: string; reason?: string }>) => {
     setBusy(true);
@@ -97,7 +102,6 @@ export function PartnerSettings() {
     }
   };
 
-  const displayedInvite = invite?.expires ?? settings?.inviteExpires;
   const partnerName = settings?.pairId ? partnerDisplayName(settings.partnerName, x.partnerName) : null;
   const expiration = displayedInvite
     ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(new Date(displayedInvite))
@@ -125,9 +129,10 @@ export function PartnerSettings() {
               <ArrowLeftRight size={16} aria-hidden="true" />{settings.viewingPartner ? x.returnOwn : x.viewPartner}
             </button>
             <button type="button" className="pill" disabled={busy} onClick={() => setDisconnect(true)}>{x.unpair}</button>
+            {waitingForPartner && <button type="button" className="link-btn" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
           </div>
           <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories, settings.censoredWords])} settings={settings}
-            busy={busy} save={async (permissions, categoryIds, words) => {
+            section={permissionTab} onSection={setPermissionTab} busy={busy} save={async (permissions, categoryIds, words) => {
               if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds, words))) {
                 setStatus(x.saved);
                 await reload(true);
@@ -169,13 +174,15 @@ export function PartnerSettings() {
       {error && settings && !disconnect && <p className="pb-partner-error" role="alert">{partnerError(d, error)}</p>}
       <div className="pb-partner-note" role="status">{status}</div>
       {disconnect && partnerName && settings?.pairId && <PartnerDisconnectDialog name={partnerName} pairId={settings.pairId} onClose={() => setDisconnect(false)}
-        onUnpaired={() => { setInvite(null); void reload(true); }} />}
+        onUnpaired={() => { setInvite(null); setPermissionTab('view'); void reload(true); }} />}
     </section>
   );
 }
 
-function SharingPermissions({ settings, busy, save }: {
+function SharingPermissions({ settings, section, onSection, busy, save }: {
   settings: PartnerSettingsData;
+  section: PermissionTab;
+  onSection: (tab: PermissionTab) => void;
   busy: boolean;
   save: (permissions: PartnerPermissions, categoryIds: string[], words?: string[]) => Promise<void>;
 }) {
@@ -187,7 +194,6 @@ function SharingPermissions({ settings, busy, save }: {
   const [wordsDraft, setWordsDraft] = useState(() => savedWords.join('\n'));
   const words = normalizeCensoredWords(wordsDraft.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
   const wordsChanged = words !== null && JSON.stringify(words) !== JSON.stringify(savedWords);
-  const [section, setSection] = useState<'view' | 'add' | 'edit'>('view');
   const groups = {
     view: { label: x.see, keys: PARTNER_VIEW_PERMISSIONS },
     add: { label: x.add, keys: PARTNER_ADD_PERMISSIONS },
@@ -202,22 +208,30 @@ function SharingPermissions({ settings, busy, save }: {
       <SectionHeader title={x.privacy} subtitle={x.privacyHelp} icon={Shield} />
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
       <div className="pb-partner-permission-panel">
-        <div className="pb-partner-permission-switch" role="group" aria-label={x.privacy}>
-          {(['view', 'add', 'edit'] as const).map(group => {
+        <div className="pb-partner-permission-switch" data-active={section} role="group" aria-label={x.privacy}>
+          <span className="pb-partner-permission-thumb" aria-hidden="true" />
+          {PERMISSION_TABS.map(group => {
             const { label, keys } = groups[group];
             const enabled = keys.filter(key => permissions[key] === true).length;
-            return <button key={group} type="button" aria-pressed={section === group} onClick={() => setSection(group)}>
+            return <button key={group} type="button" aria-pressed={section === group} onClick={() => onSection(group)}>
               {label}{enabled > 0 && <span>{enabled}</span>}
             </button>;
           })}
         </div>
-        <fieldset className="pb-partner-permission-grid" aria-label={groups[section].label} disabled={locked}>
-          {groups[section].keys.map(key => <label className="pb-partner-toggle" key={key}>
-            <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
-            <input type="checkbox" checked={permissions[key] === true}
-              onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
-          </label>)}
-        </fieldset>
+        {PERMISSION_TABS.map(tab => (
+          <div key={tab} className="pb-partner-permission-content" data-open={section === tab}
+            aria-hidden={section !== tab} inert={section !== tab}>
+            <div className="pb-partner-permission-clip">
+              <fieldset className="pb-partner-permission-grid" aria-label={groups[tab].label} disabled={locked}>
+                {groups[tab].keys.map(key => <label className="pb-partner-toggle" key={key}>
+                  <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
+                  <input type="checkbox" checked={permissions[key] === true}
+                    onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
+                </label>)}
+              </fieldset>
+            </div>
+          </div>
+        ))}
       </div>
       <fieldset className="pb-partner-fieldset" disabled={locked}>
         <legend>{x.chooseCategories}</legend>

@@ -36,12 +36,12 @@ function Restricted({ title, body }: { title: string; body: string }) {
 export default async function PartnerSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
   if (!isPartnerSection(section)) notFound();
-  const [snapshot, locale] = await Promise.all([loadPartnerSnapshot(), resolveUserLocale()]);
+  const [snapshot, locale] = await Promise.all([loadPartnerSnapshot(section === 'insights'), resolveUserLocale()]);
   const d = getDictionary(locale);
   if (!snapshot.ok) return <Restricted title={d.partner.title} body={d.partner.viewUnavailable} />;
   if (section === 'settings') return <Restricted title={d.nav.settings} body={d.partner.settingsRestricted} />;
 
-  return <PartnerWorkspaceScope data={snapshot.data} pathname={`/partner/${section}`}>
+  return <PartnerWorkspaceScope key={snapshot.data.accessVersion} data={snapshot.data} pathname={`/partner/${section}`}>
     {await renderSection(section, snapshot.data, d)}
   </PartnerWorkspaceScope>;
 }

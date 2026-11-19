@@ -26,3 +26,9 @@ export function redactPartnerText(words: readonly string[]) {
   const pattern = new RegExp(terms.join('|'), 'giu');
   return (text: string) => text.replace(pattern, '***');
 }
+
+// A redaction marker is display-only. It must not become a way to locate
+// masked records through text, category, or amount searches.
+export function allowsPartnerSearch(query: string) {
+  return !query.includes('*');
+}

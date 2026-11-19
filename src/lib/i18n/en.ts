@@ -668,6 +668,9 @@ export const en = {
   account: {
     title: 'Pebble account',
     profileLink: 'Profile',
+    profileColor: 'Profile color',
+    profileColorHint: 'Choose a background for your initials.',
+    profileColors: { gold: 'Gold', theme: 'Theme accent', sky: 'Sky', sage: 'Sage', rose: 'Rose', violet: 'Violet' },
     profileHint: 'Name and email',
     securityLink: 'Security',
     securityHint: 'Password and active sessions',

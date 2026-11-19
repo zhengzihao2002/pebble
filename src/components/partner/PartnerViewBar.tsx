@@ -23,14 +23,18 @@ export function PartnerViewBar({ name, pathname }: { name: string | null; pathna
     else { setFailed(true); setLeaving(false); }
   };
 
-  return <div className="pb-partner-view-bar">
-    <div className="pb-partner-view-label">
-      <UsersRound size={16} aria-hidden="true" />
-      <span><strong>{x.partnerSpace}</strong>{displayName !== x.partnerName && <span className="pb-partner-view-name"> · {displayName}</span>}</span>
+  return <div className="pb-partner-view-bar" role="group" aria-label={`${x.partnerSpace} · ${displayName}`}>
+    <div className="pb-partner-view-label" title={`${x.partnerSpace} · ${displayName}`}>
+      <UsersRound size={15} aria-hidden="true" />
+      <span className="pb-partner-view-copy">
+        <strong>{x.partnerSpace}</strong>
+        {displayName !== x.partnerName && <span className="pb-partner-view-name"><span className="pb-partner-view-separator"> · </span>{displayName}</span>}
+      </span>
     </div>
-    <button className="pill" type="button" onClick={() => void leave()} disabled={leaving}>
-      <ArrowLeftRight size={14} aria-hidden="true" />{x.returnOwn}
+    <button className="pb-partner-view-back" type="button" onClick={() => void leave()} disabled={leaving}
+      aria-label={x.returnOwn} title={x.returnOwn}>
+      <ArrowLeftRight size={15} aria-hidden="true" /><span>{x.returnOwn}</span>
     </button>
-    {failed && <span role="alert">{x.errors.unexpected}</span>}
+    {failed && <span className="pb-partner-view-error" role="alert">{x.errors.unexpected}</span>}
   </div>;
 }

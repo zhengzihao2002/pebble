@@ -44,6 +44,6 @@ export function mountHtmlPreferences(onAuth: boolean) {
   const unsubscribe = usePebbleStore.subscribe(refresh);
   system.addEventListener('change', refresh);
   const repair = new MutationObserver(() => { if (!themeChangePending()) apply(); });
-  repair.observe(root, { attributes: true, attributeFilter: ['class', 'lang', 'style', THEME_ATTRIBUTE, 'data-pb-soft-cursor', 'data-pb-ambient', 'data-pb-sidebar-collapsed'] });
+  repair.observe(root, { attributes: true, attributeFilter: ['class', 'lang', 'style', THEME_ATTRIBUTE, 'data-pb-soft-cursor', 'data-pb-ambient', 'data-pb-sidebar-collapsed', 'data-pb-profile-color'] });
   return () => { disposed = true; unsubscribe(); system.removeEventListener('change', refresh); repair.disconnect(); };
 }

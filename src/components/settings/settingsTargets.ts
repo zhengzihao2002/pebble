@@ -38,6 +38,7 @@ export const SETTING_TARGETS = {
   sounds: 'pb-set-sounds',
   locks: 'pb-set-locks',
   pebbleAccount: 'pb-set-pebble-account',
+  profileColor: 'pb-set-profile-color',
 } as const;
 
 export const SOUND_SETTING_TARGETS = {

@@ -88,3 +88,11 @@ test('collapsed desktop navigation is restored before paint and disabled on auth
   }
   assert(!boot({ sidebarCollapsed: true }, { auth: true }).attributes.has('data-pb-sidebar-collapsed'));
 });
+
+test('initials use the saved profile color before hydration', () => {
+  assert.equal(boot({ profileColor: 'violet' }).attributes.get('data-pb-profile-color'), 'violet');
+  for (const value of ['gold', 'invalid', null, undefined]) {
+    assert(!boot({ profileColor: value }).attributes.has('data-pb-profile-color'));
+  }
+  assert(!boot({ profileColor: 'rose' }, { auth: true }).attributes.has('data-pb-profile-color'));
+});

@@ -570,3 +570,32 @@
   html[data-pb-sidebar-collapsed] .pebble-root .pebble-main { max-width: 107.25rem; }
   html[data-pb-sidebar-collapsed] .pebble-root .pebble-header > div { max-width: 102.25rem; }
 }
+
+.pebble-root .pb-profile-avatar {
+  color: var(--pb-avatar-ink, var(--gold));
+  background-color: var(--pb-avatar-fill, var(--gold-soft));
+}
+html[data-pb-profile-color] .pebble-root .pb-profile-avatar {
+  --pb-avatar-ink: color-mix(in srgb, var(--ink) 84%, var(--pb-avatar-accent, var(--gold)));
+  --pb-avatar-fill: color-mix(in srgb, var(--pb-avatar-accent, var(--gold)) 24%, var(--mist));
+}
+html[data-pb-profile-color="theme"] .pebble-root .pb-profile-avatar, .pebble-root .pb-profile-swatch[data-color="theme"] { --pb-avatar-accent: var(--pine); }
+html[data-pb-profile-color="sky"] .pebble-root .pb-profile-avatar, .pebble-root .pb-profile-swatch[data-color="sky"] { --pb-avatar-accent: #4b86b5; }
+html[data-pb-profile-color="sage"] .pebble-root .pb-profile-avatar, .pebble-root .pb-profile-swatch[data-color="sage"] { --pb-avatar-accent: #579478; }
+html[data-pb-profile-color="rose"] .pebble-root .pb-profile-avatar, .pebble-root .pb-profile-swatch[data-color="rose"] { --pb-avatar-accent: #c47787; }
+html[data-pb-profile-color="violet"] .pebble-root .pb-profile-avatar, .pebble-root .pb-profile-swatch[data-color="violet"] { --pb-avatar-accent: #8a79ba; }
+
+.pebble-root .pb-shell-head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.pebble-root .pb-shell-controls { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.pebble-root .pb-shell-head-row.is-partner {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+}
+.pebble-root .pb-shell-head-row.is-partner .pb-shell-controls { justify-content: flex-end; }
+@container content (max-width: 850px) {
+  .pebble-root .pb-shell-head-row.is-partner .pb-search-field { display: none; }
+  .pebble-root .pb-shell-head-row.is-partner .pb-search-icon { display: inline-flex; }
+}
+@container content (max-width: 610px) {
+  .pebble-root .pb-shell-head-row.is-partner { gap: .5rem; }
+  .pebble-root .pb-shell-head-row.is-partner .pb-shell-controls { gap: .35rem; }
+}

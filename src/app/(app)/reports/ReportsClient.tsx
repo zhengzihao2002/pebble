@@ -1,4 +1,5 @@
 'use client';
+import { allowsPartnerSearch } from '@/lib/partnerCensorship';
 import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
@@ -331,7 +332,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     if (!selectedCategories.has(t.category)) return false;
     // Empty set means every account, so no filtering to do.
     if (selectedAccounts.size > 0 && !selectedAccounts.has(transactionDisplayAccountId(t))) return false;
-    if (!t.description.toLowerCase().includes(descQuery.toLowerCase())) return false;
+    if ((partner && !allowsPartnerSearch(descQuery)) || !t.description.toLowerCase().includes(descQuery.toLowerCase())) return false;
     if (showTagFilter && selectedTags.size > 0) {
       if (!isExpense(t) || !t.tag || !selectedTags.has(t.tag)) return false;
     }

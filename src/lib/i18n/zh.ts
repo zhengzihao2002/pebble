@@ -598,6 +598,9 @@ export const zh: typeof en = {
   account: {
     title: 'Pebble 账户',
     profileLink: '个人资料',
+    profileColor: '头像颜色',
+    profileColorHint: '选择首字母头像的背景色。',
+    profileColors: { gold: '金色', theme: '主题色', sky: '天蓝', sage: '鼠尾草绿', rose: '玫瑰粉', violet: '紫色' },
     profileHint: '姓名与邮箱',
     securityLink: '安全',
     securityHint: '密码与登录设备',

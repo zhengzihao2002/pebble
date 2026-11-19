@@ -181,7 +181,7 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
     // Background and bottom rule are in globals.css (.pebble-header): a
     // frosted layer that lets the page scroll softly underneath.
     <header ref={headerRef} className="pebble-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+      <div className={`pb-shell-head-row${partner ? ' is-partner' : ''}`}>
         <div className="pb-shell-title" style={{ minWidth: 0 }}>
           {PageIcon && (
             <span className="pb-shell-title-chip" aria-hidden="true"><PageIcon size={16} strokeWidth={2.1} /></span>
@@ -191,7 +191,8 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
           <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.subtitle}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+        {partner && <PartnerViewBar name={partner.name} pathname={pathname} />}
+        <div className="pb-shell-controls">
           {!partner && pathname === '/budgets' && budgetPlanYear !== null && (
             <div className="header-actions">
               <Link href="/budgets/plan" prefetch={false} className="btn-primary pb-budget-plan-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
@@ -300,7 +301,6 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
       </div>
       {/* Only present while offline or while transactions wait to upload. */}
       <OfflineStatus />
-      {partner && <PartnerViewBar name={partner.name} pathname={pathname} />}
     </header>
   );
 }

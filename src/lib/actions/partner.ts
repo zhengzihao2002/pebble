@@ -1,6 +1,8 @@
 'use server';
 
-import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
+import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
+import { rankTopPlaces, shareTopPlaces } from '@/lib/topPlaces';
+import { FALLBACK_TIME_ZONE, isValidTimeZone } from '@/lib/time/timeZone';
 
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
@@ -12,7 +14,7 @@ import {
   type PartnerSettingsData, type PartnerWorkspaceData, type SharedTransaction, type SharedTransactionChange, type SharingCategory,
 } from '@/lib/partner';
 import { isClientId } from '@/lib/offline/clientId';
-import { isYmd } from '@/lib/recurring/occurrences';
+import { isYmd, todayInZone } from '@/lib/recurring/occurrences';
 import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 import { composeDescription, parseDescription } from '@/lib/transactionDescription';
 import { normalizeCensoredWords, publicPartnerPermissions, redactPartnerText } from '@/lib/partnerCensorship';
@@ -192,8 +194,11 @@ async function leavePartner() {
   return success;
 }
 
-function queryWorkspaceAccess(userId: string, pairId: string) {
-  return neonSql`SELECT profile.name, scope.permissions, scope.pair_id AS "pairId", scope.shared_categories AS categories
+function queryWorkspaceAccess(userId: string, pairId: string, includePlaces = false) {
+  return neonSql`SELECT profile.name, scope.permissions, scope.pair_id AS "pairId", scope.shared_categories AS categories,
+    CASE WHEN ${includePlaces}::boolean THEN (
+      SELECT time_zone FROM public.user_account WHERE user_id=scope.owner_id
+    ) END AS "placesTimeZone"
     FROM public.pebble_partner_scope scope JOIN neon_auth."user" profile ON profile.id=scope.owner_id
     WHERE scope.viewer_id=${userId}::uuid AND scope.pair_id=${pairId}::uuid`;
 }
@@ -213,20 +218,20 @@ async function readWorkspaceAccess(userId: string) {
   return rows[0] ? { ...success, data: workspaceAccess(rows[0]) } : failure('noPair');
 }
 
-async function readWorkspace(userId: string) {
+async function readWorkspace(userId: string, includePlaces: boolean) {
   const pairId = await partnerViewPair(userId);
   if (!pairId) return failure('denied');
   // One permission snapshot per response. Only authorized fields leave the database.
   const [people, transactions, accounts, goals, entryAccounts, entryCategories, budgetCategories, budgets, scheduled, categories, adjustments, budgetSummary] = await neonSql.transaction([
-    queryWorkspaceAccess(userId, pairId),
+    queryWorkspaceAccess(userId, pairId, includePlaces),
     neonSql`WITH ledger AS (
       SELECT e.id,e.user_id,e.account_id,'expense'::text AS kind,e.transaction_date,e.description,e.category,e.tag,
-        e.amount,NULL::numeric AS gross_amount,e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL AS editable,e.credit_card_payoff
+        e.amount,NULL::numeric AS gross_amount,e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL AS editable,e.credit_card_payoff,e.recurring_rule_id
       FROM public.expense e JOIN public.pebble_partner_scope s ON s.owner_id=e.user_id
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"expenses":true}'::jsonb
       UNION ALL
       SELECT i.id,i.user_id,i.account_id,'income',i.transaction_date,i.description,i.category,'',
-        i.net_amount,i.gross_amount,i.recurring_rule_id IS NULL,NULL::jsonb
+        i.net_amount,i.gross_amount,i.recurring_rule_id IS NULL,NULL::jsonb,i.recurring_rule_id
       FROM public.income i JOIN public.pebble_partner_scope s ON s.owner_id=i.user_id
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"income":true}'::jsonb
     )
@@ -247,7 +252,9 @@ async function readWorkspace(userId: string) {
         'date',l.credit_card_payoff->>'date', 'remainingBalance',l.credit_card_payoff->'remainingBalance'
       ) END AS "creditCardPayoff",
       CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN a.id END AS "accountId",
-      CASE WHEN v.visible AND s.permissions @> '{"amounts":true}'::jsonb THEN l.gross_amount::float8 END AS "grossAmount"
+      CASE WHEN v.visible AND s.permissions @> '{"amounts":true}'::jsonb THEN l.gross_amount::float8 END AS "grossAmount",
+      CASE WHEN place.eligible THEN split_part(l.description,chr(10),1) END AS "placeTitle",
+      CASE WHEN place.eligible THEN l.category END AS "placeCategory"
     FROM ledger l
     JOIN public.pebble_partner_scope s ON s.owner_id=l.user_id AND s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid
     JOIN public.account a ON a.id=l.account_id AND a.user_id=l.user_id AND NOT a.is_ghost
@@ -256,7 +263,12 @@ async function readWorkspace(userId: string) {
     CROSS JOIN LATERAL (
       SELECT CASE WHEN l.kind='income' THEN ('income:' || l.category)=ANY(s.shared_categories) ELSE
         EXISTS (SELECT 1 FROM public.category c WHERE c.user_id=s.owner_id AND c.name=l.category AND c.id=ANY(s.shared_categories)) END AS visible
-    ) v ORDER BY date DESC,l.id DESC`,
+    ) v
+    CROSS JOIN LATERAL (
+      SELECT ${includePlaces}::boolean AND l.kind='expense' AND nullif(l.recurring_rule_id,'') IS NULL
+        AND l.transaction_date >= current_date - interval '4 months'
+        AND s.permissions @> '{"amounts":true}'::jsonb AS eligible
+    ) place ORDER BY date DESC,l.id DESC`,
     neonSql`SELECT a.id,a.name,a.kind,a.status,(a.kind IN ('bank','cash') AND a.status='active' AND NOT a.is_default) AS editable
       FROM public.pebble_partner_scope s
       JOIN public.account a ON a.user_id = s.owner_id AND NOT a.is_ghost
@@ -369,8 +381,22 @@ async function readWorkspace(userId: string) {
   if (!people.length) return failure('noPair');
   const sharedBudget = budgetSummary[0];
   const redact = redactPartnerText(censorWords(people[0].permissions));
-  const data: PartnerWorkspaceData = { ...workspaceAccess(people[0]), pairId: people[0].pairId,
-    transactions: (transactions as SharedTransaction[]).map(row => {
+  const sharedTransactions = transactions as (SharedTransaction & { placeTitle: string | null; placeCategory: string | null })[];
+  const access = workspaceAccess(people[0]);
+  let topPlaces: PartnerWorkspaceData['topPlaces'];
+  if (includePlaces && access.permissions.expenses && access.permissions.amounts) {
+    const placeTimeZone = people[0].placesTimeZone;
+    const today = todayInZone(isValidTimeZone(placeTimeZone) ? placeTimeZone : await resolveUserTimeZone(userId) ?? FALLBACK_TIME_ZONE);
+    const charges = sharedTransactions.flatMap(row => row.placeTitle !== null && row.placeCategory !== null && row.amount !== null
+      ? [{ id: row.id, date: row.date, amount: row.amount, title: row.placeTitle, category: row.placeCategory }] : []);
+    const censored = new Set(sharedTransactions.filter(row => row.hidden).map(row => row.id));
+    topPlaces = {
+      month: shareTopPlaces(rankTopPlaces(charges, today, 'month'), censored, redact),
+      quarter: shareTopPlaces(rankTopPlaces(charges, today, 'quarter'), censored, redact),
+    };
+  }
+  const data: PartnerWorkspaceData = { ...access, pairId: people[0].pairId, topPlaces,
+    transactions: sharedTransactions.map(({ placeTitle: _title, placeCategory: _category, ...row }) => {
       const title = redact(row.title);
       const notes = row.notes === null ? null : redact(row.notes);
       const titleCensored = title !== row.title;
@@ -741,6 +767,6 @@ export const unpairPartnerAction = withSessionUser(unpair);
 export const enterPartnerViewAction = withSessionUser(enterPartner);
 export const leavePartnerViewAction = withSessionUser(leavePartner, { partnerView: true });
 export const readPartnerWorkspaceAccessAction = withSessionUser(userId => run(() => readWorkspaceAccess(userId)), { partnerView: true });
-export const readPartnerWorkspaceAction = withSessionUser(userId => run(() => readWorkspace(userId)), { partnerView: true });
+export const readPartnerWorkspaceAction = withSessionUser((userId, includePlaces?: boolean) => run(() => readWorkspace(userId, includePlaces === true)), { partnerView: true });
 export const createSharedRecordAction = withSessionUser(createSharedRecord, { partnerView: true });
 export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction, { partnerView: true });

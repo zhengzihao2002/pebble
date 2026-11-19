@@ -1,9 +1,11 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { rankTopPlaces, type TopPlacesRange } from '@/lib/topPlaces';
 import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import { useState } from 'react';
-import { ChevronDown, Store } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronDown, LockKeyhole, Store } from 'lucide-react';
 import type { CategoryMeta, Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
@@ -15,15 +17,13 @@ import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { AddTransactionAction } from './AddTransactionAction';
 import { ChargeRow } from './ChargeRow';
-import { pad, placeKey } from './shared';
-
-const TOP = 5;
+import { placeKey } from './shared';
 
 /** Same place, however the bank wrote it: case, spacing and a trailing store number ignored.
     Now lives in ./shared; re-exported so existing imports keep working. */
 export { placeKey };
 
-type Range = 'month' | 'quarter';
+type Range = TopPlacesRange;
 
 interface TopPlacesProps {
   transactions: Transaction[];
@@ -50,8 +50,17 @@ interface TopPlacesProps {
 export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: TopPlacesProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
+  const partner = usePartnerView();
   const [range, setRange] = useStoredChoice<Range>('pebble-insights-places-range', ['month', 'quarter'], 'month', false);
   const [open, setOpen] = useState<string | null>(null);
+  const summary = useMemo(() => {
+    if (partner) return partner.data.topPlaces?.[range];
+    if (!today) return;
+    const charges = transactions.flatMap(txn => txn.type === 'expense' && !txn.recurringRuleId
+      ? [{ id: txn.id, date: txn.date, amount: txn.amount, title: descriptionTitle(txn.description), category: txn.category }] : []);
+    return rankTopPlaces(charges, today, range);
+  }, [partner, range, today, transactions]);
+  const rowsById = useMemo(() => new Map(transactions.map(row => [row.id, row])), [transactions]);
 
   const control = (
     <SegmentedControl<Range>
@@ -88,38 +97,8 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
     );
   }
 
-  const ty = Number(today.slice(0, 4));
-  const tm = Number(today.slice(5, 7)) - 1;
-  const td = Number(today.slice(8, 10));
-  const startDate = range === 'month' ? new Date(ty, tm, 1) : new Date(ty, tm - 3, td);
-  const start = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
-
-  const groups = new Map<string, { key: string; total: number; count: number; names: Map<string, number>; cats: Map<string, number>; items: Transaction[] }>();
-  let dayToDayTotal = 0;
-  for (const x of transactions) {
-    if (x.type !== 'expense' || x.amount >= 0 || x.date < start || x.date > today) continue;
-    // Scheduled payments (rent, bills) would top the list every month.
-    if (x.recurringRuleId) continue;
-    const title = descriptionTitle(x.description).trim();
-    const key = placeKey(title);
-    if (!key) continue;
-    dayToDayTotal += Math.abs(x.amount);
-    const g = groups.get(key) ?? { key, total: 0, count: 0, names: new Map<string, number>(), cats: new Map<string, number>(), items: [] };
-    g.total += Math.abs(x.amount);
-    g.count += 1;
-    g.names.set(title, (g.names.get(title) ?? 0) + 1);
-    g.cats.set(x.category, (g.cats.get(x.category) ?? 0) + 1);
-    g.items.push(x);
-    groups.set(key, g);
-  }
-  const top = [...groups.values()]
-    .map((g) => ({
-      ...g,
-      name: [...g.names.entries()].sort((a, b) => b[1] - a[1])[0][0],
-      category: [...g.cats.entries()].sort((a, b) => b[1] - a[1])[0][0],
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, TOP);
+  const top = summary?.places ?? [];
+  const dayToDayTotal = summary?.total ?? 0;
   const max = top[0]?.total ?? 0;
 
   return (
@@ -139,15 +118,17 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
             const isOpen = open === p.key;
             const share = dayToDayTotal > 0 ? Math.round((p.total / dayToDayTotal) * 100) : 0;
             const panelId = `pb-place-${i}`;
-            const initial = Array.from(p.name.trim())[0]?.toUpperCase() ?? '?';
+            const placeName = p.name ?? d.partner.censored;
+            const initial = Array.from(placeName.trim())[0]?.toUpperCase() ?? '?';
+            const detailsAvailable = p.itemIds.length > 0;
             return (
               <li key={p.key} className={`pb-ins-place${i === 0 ? ' is-first' : ''}${isOpen ? ' is-open' : ''}`} style={{ ['--pb-ins-cat' as string]: color }}>
-                <button type="button" className="pb-ins-place-btn" aria-expanded={isOpen} aria-controls={isOpen ? panelId : undefined} onClick={() => setOpen(isOpen ? null : p.key)}>
+                <button type="button" className="pb-ins-place-btn" disabled={!detailsAvailable} aria-expanded={detailsAvailable ? isOpen : undefined} aria-controls={isOpen ? panelId : undefined} onClick={() => setOpen(isOpen ? null : p.key)}>
                   <span className="pb-ins-place-rank pb-tnum" aria-hidden="true">{i + 1}</span>
-                  <span className="pb-ins-avatar" aria-hidden="true">{initial}</span>
+                  <span className="pb-ins-avatar" aria-hidden="true">{p.name === null ? <LockKeyhole size={15} /> : initial}</span>
                   <span className="pb-ins-place-main">
                     {/* Titles are USER DATA and render as stored. */}
-                    <span className="pb-ins-place-name">{p.name}</span>
+                    <span className="pb-ins-place-name">{placeName}</span>
                     <span className="pb-ins-place-meta">
                       <span className="pb-ins-meta-bit">
                         <span className="pb-tnum"><RollingAmount value={p.count === 1 ? d.insights.once : t(d.insights.times, { count: p.count })} /></span>
@@ -162,13 +143,17 @@ export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: To
                     </span>
                   </span>
                   <span className="pb-ins-place-total font-mono-tab"><RollingAmount value={formatCurrency(p.total)} /></span>
-                  <ChevronDown size={16} aria-hidden="true" className="pb-ins-place-chev" />
+                  {detailsAvailable ? <ChevronDown size={16} aria-hidden="true" className="pb-ins-place-chev" />
+                    : <LockKeyhole size={16} aria-hidden="true" className="pb-ins-place-chev" />}
                 </button>
-                {isOpen && (
+                {isOpen && detailsAvailable && (
                   <div id={panelId} className="pb-ins-place-panel goal-step">
-                    <p className="pb-ins-mini-head">{t(ux.placesCharges, { name: p.name })}</p>
+                    <p className="pb-ins-mini-head">{t(ux.placesCharges, { name: placeName })}</p>
                     <ul className="pb-ins-charges">
-                      {[...p.items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).map((x) => (
+                      {p.itemIds.flatMap(id => {
+                        const row = rowsById.get(id);
+                        return row ? [row] : [];
+                      }).sort((a, b) => b.date.localeCompare(a.date)).map((x) => (
                         <li key={x.id}>
                           {onOpen ? (
                             <ChargeRow txn={x} categoryMeta={categoryMeta} sub={formatDate(x.date, locale)} onOpen={onOpen} />
