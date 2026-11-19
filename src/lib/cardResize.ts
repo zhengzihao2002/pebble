@@ -1,7 +1,6 @@
 const CARDS = '.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accounts-cc, .pb-settings-tile, .add-goal-tile, .stat-tab';
 const EXCLUDED = '[role="dialog"], .pb-modal-overlay, [aria-busy="true"], [data-pb-resize="off"], .pb-navigation-preview, .pb-page-skeleton, .pb-cached-layout';
 const ANIMATION_ID = 'pb-card-resize';
-const SIZE_KEY = 'data-pb-resize-key';
 const DURATION = 260;
 const LANGUAGE_DURATION = 420;
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];
@@ -119,7 +118,6 @@ export function observeCardResizes(root: HTMLElement) {
     // Locale subscribers can commit separately. Never consume the snapshot
     // on an incidental mutation before translated content has committed.
     if (languageHeights) return;
-    const resized = new Set(records.filter(record => record.attributeName === SIZE_KEY).map(record => record.target));
     for (const [card, state] of states) {
       if (!card.isConnected) {
         states.delete(card); resize.unobserve(card); state.animation?.cancel();
@@ -131,10 +129,6 @@ export function observeCardResizes(root: HTMLElement) {
         card.classList.remove('pb-card-resizing');
         update(state, currentHeight);
         if (!state.animation) observe(card);
-      } else if (!state.animation && resized.has(card)) {
-        // A selected period commits the new rows and this key together.
-        // Start before the next frame, even if ResizeObserver is delayed.
-        update(state);
       }
     }
     for (const record of records) {
@@ -157,7 +151,7 @@ export function observeCardResizes(root: HTMLElement) {
       for (const { state, from, width, height } of targets) update(state, from, true, { width, height });
     }
   };
-  mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy', SIZE_KEY] });
+  mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });
   const settle = () => { languageHeights = null; settleCardResizes(root); };
   window.addEventListener('pebble:before-language-change', beforeLanguage);
   window.addEventListener('pebble:after-language-change', afterLanguage);

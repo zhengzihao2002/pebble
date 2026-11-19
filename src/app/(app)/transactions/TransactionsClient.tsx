@@ -526,7 +526,7 @@ export function TransactionsClient({
             a fade and sideways slide on the entire card and its glow. */}
         <div>
           {ghostLens ? null : searching ? (
-            <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }} data-pb-resize-key={monthPrefix}>
+            <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
                 <p role="status" className="pb-txn-results-line">
                   {results.length === 1 ? d.txnSearch.resultsOne : t(d.txnSearch.results, { count: results.length })}
