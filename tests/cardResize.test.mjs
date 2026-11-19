@@ -21,6 +21,7 @@ function fixture() {
       this.classList = { add: value => this.classes.add(value), remove: value => this.classes.delete(value) };
     }
     get offsetHeight() { return this.active?.visibleHeight ?? this.naturalHeight; }
+    getBoundingClientRect() { return { top: 0, height: this.offsetHeight }; }
     closest() { return this.excluded ? this : null; }
     getClientRects() { return [1]; }
     contains(node) { return node === this; }
@@ -147,6 +148,7 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   statement.hasAttribute = () => true;
   const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
 
+  f.capturePeriodCardHeights(statement, 400);
   f.card.naturalHeight = 300;
   f.mutation.callback([monthChanged]);
   const first = f.card.active;
@@ -158,6 +160,7 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
   assert.equal(f.card.active, first);
 
+  f.capturePeriodCardHeights(statement, 400);
   f.card.naturalHeight = 120;
   f.mutation.callback([monthChanged]);
   assert.equal(f.card.active.frames[0].height, '180px');
@@ -165,11 +168,36 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   // A browser can drop the finished effect before delivering its callback.
   f.card.active.playState = 'finished';
   f.card.active.visibleHeight = undefined;
+  f.capturePeriodCardHeights(statement, 400);
   f.card.naturalHeight = 260;
   f.mutation.callback([monthChanged]);
   assert.equal(f.card.active.frames[0].height, '120px');
   f.card.active.finish();
   assert.equal(f.card.offsetHeight, 260);
+  f.stop();
+});
+
+test('a month switch fades without animating height when either edge is below the viewport', () => {
+  const f = fixture();
+  const statement = new f.Element();
+  const body = new f.Element();
+  statement.querySelectorAll = selector => selector.includes('period-body') ? [body] : [f.card];
+  statement.hasAttribute = () => true;
+  const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
+
+  f.capturePeriodCardHeights(statement, 200);
+  f.card.naturalHeight = 350;
+  f.mutation.callback([monthChanged]);
+  f.resize.emit(f.card);
+  assert.equal(f.card.animations.length, 0);
+  assert.equal(body.active.frames[1].opacity, 1);
+
+  f.capturePeriodCardHeights(statement, 200);
+  f.card.naturalHeight = 100;
+  f.mutation.callback([monthChanged]);
+  f.resize.emit(f.card);
+  assert.equal(f.card.animations.length, 0);
+  assert.equal(f.card.offsetHeight, 100);
   f.stop();
 });
 

@@ -11,6 +11,23 @@ const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gri
 
 type ResizeMode = 'content' | 'language' | 'period';
 
+const periodOrigins = new WeakMap<HTMLElement, Map<HTMLElement, { height: number; visibleHeight: number }>>();
+
+/** Read the painted edge before the new period can change layout or scroll. */
+export function capturePeriodCardHeights(section: HTMLElement, viewportBottom: number | null) {
+  if (viewportBottom === null) {
+    periodOrigins.delete(section);
+    return;
+  }
+  const origins = new Map<HTMLElement, { height: number; visibleHeight: number }>();
+  for (const card of section.querySelectorAll<HTMLElement>(CARDS)) {
+    const rect = card.getBoundingClientRect();
+    const visibleHeight = viewportBottom - rect.top;
+    if (rect.height <= visibleHeight + 1) origins.set(card, { height: rect.height, visibleHeight });
+  }
+  periodOrigins.set(section, origins);
+}
+
 interface CardState {
   element: HTMLElement;
   width: number;
@@ -145,23 +162,23 @@ export function observeCardResizes(root: HTMLElement) {
       if (record.attributeName !== RESET_ATTRIBUTE || !(record.target instanceof HTMLElement)) continue;
       const section = record.target;
       const animate = section.hasAttribute('data-pb-resize-transition') && !document.hidden && !reduced.matches;
+      const origins = periodOrigins.get(section);
+      periodOrigins.delete(section);
       const cards = Array.from(section.querySelectorAll<HTMLElement>(CARDS)).flatMap(card => {
         const state = states.get(card);
-        if (!state) return [];
-        const phase = state.animation?.playState;
-        // The effect can have finished painting while its finish callback
-        // is still queued. The natural height already belongs to the new month.
-        const inFlight = phase === 'running' || phase === 'paused';
-        return [{ card, state, from: inFlight ? card.offsetHeight : state.height }];
+        return state ? [{ card, state, origin: origins?.get(card) }] : [];
       });
       for (const { card, state } of cards) {
         cancelResize(state);
         languageHeights?.delete(card);
       }
       const targets = cards.map(item => ({ ...item, width: item.card.offsetWidth, height: item.card.offsetHeight }));
-      for (const { card, state, from, width, height } of targets) {
-        if (animate) update(state, from, 'period', { width, height });
-        else { state.width = width; state.height = height; }
+      for (const { card, state, origin, width, height } of targets) {
+        // Outside the viewport, accept the new height immediately so the
+        // scroll range does not expose empty card space during the fade.
+        if (animate && origin && height <= origin.visibleHeight + 1) {
+          update(state, origin.height, 'period', { width, height });
+        } else { state.width = width; state.height = height; }
         if (!state.animation) observe(card);
       }
       for (const body of section.querySelectorAll<HTMLElement>('[data-pb-period-body]')) {

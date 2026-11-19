@@ -42,6 +42,7 @@ import { ImportCsvButton } from '@/components/shared/ImportCsv';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { usePaneCardShadows } from '@/components/transactions/usePaneCardShadows';
+import { useStatementMonthMotion } from '@/components/transactions/useStatementMonthMotion';
 
 interface TransactionsClientProps {
   transactions: Transaction[];
@@ -80,6 +81,7 @@ export function TransactionsClient({
 
   const [monthSelection, setMonthSelection] = useState({ index: 0, animate: false }); // 0 = current month
   const selectedMonthIndex = monthSelection.index;
+  const { statementRef, prepare: prepareMonthMotion } = useStatementMonthMotion(selectedMonthIndex);
   // The whole ledger entry, not only the record, so the dialog can later show
   // where the record sits in the running balance. Today it reads the record.
   const [selectedEntry, setSelectedEntry] = useState<StatementEntry | null>(null);
@@ -252,8 +254,9 @@ export function TransactionsClient({
   const canGoNewer = selectedMonthIndex > 0;
   const goToMonth = useCallback((i: number) => {
     if (i === selectedMonthIndex || i < 0 || i >= monthOptions.length) return;
+    prepareMonthMotion(i);
     setMonthSelection({ index: i, animate: true });
-  }, [selectedMonthIndex, monthOptions.length]);
+  }, [selectedMonthIndex, monthOptions.length, prepareMonthMotion]);
 
   // Optional page shortcuts: [ older month, ] newer. Gated exactly like
   // AppShell's single-key shortcuts: no modifier, no key repeat, not during
@@ -525,7 +528,7 @@ export function TransactionsClient({
 
         {/* Keep the statement mounted as months change. Recreating it replayed
             a fade and sideways slide on the entire card and its glow. */}
-        <div data-pb-resize-reset={monthPrefix} data-pb-resize-transition={monthSelection.animate || undefined}>
+        <div ref={statementRef} data-pb-resize-reset={monthPrefix} data-pb-resize-transition={monthSelection.animate || undefined}>
           {ghostLens ? null : searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
