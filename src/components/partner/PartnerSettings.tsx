@@ -201,35 +201,33 @@ function SharingPermissions({ settings, busy, save }: {
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
       <div className="pb-partner-permission-grid">
         {permissionGroup(PARTNER_PERMISSIONS.slice(0, 6), x.see)}
-        <div className="pb-partner-permission-side">
-          {permissionGroup(PARTNER_PERMISSIONS.slice(6), x.act)}
-          <details className="pb-partner-fieldset pb-partner-protected">
-            <summary>{x.protectedTitle}</summary>
-            <dl>{Object.entries(x.protected).map(([key, [label, description]]) => (
-              <div key={key}><dt>{label}</dt><dd>{description}</dd></div>
-            ))}</dl>
-          </details>
-          <fieldset className="pb-partner-fieldset" disabled={locked}>
-            <legend>{x.chooseCategories}</legend>
-            <p className="pb-partner-note">{x.categoriesHelp}</p>
-            <div className="pb-partner-actions">
-              <button type="button" className="link-btn" onClick={() => setCategoryIds(new Set(categories.map(category => category.id)))}>{x.allCategories}</button>
-              <button type="button" className="link-btn" onClick={() => setCategoryIds(new Set())}>{x.noCategories}</button>
-            </div>
-            <div className="pb-partner-choices">
-              {categories.map(category => <label className="pb-partner-check" key={category.id}>
-                <input type="checkbox" checked={categoryIds.has(category.id)} onChange={event => {
-                  const next = new Set(categoryIds);
-                  if (event.target.checked) next.add(category.id);
-                  else next.delete(category.id);
-                  setCategoryIds(next);
-                }} />
-                <bdi>{category.name}</bdi>
-              </label>)}
-            </div>
-          </fieldset>
-        </div>
+        {permissionGroup(PARTNER_PERMISSIONS.slice(6), x.act)}
       </div>
+      <fieldset className="pb-partner-fieldset" disabled={locked}>
+        <legend>{x.chooseCategories}</legend>
+        <p className="pb-partner-note">{x.categoriesHelp}</p>
+        <div className="pb-partner-actions">
+          <button type="button" className="link-btn" onClick={() => setCategoryIds(new Set(categories.map(category => category.id)))}>{x.allCategories}</button>
+          <button type="button" className="link-btn" onClick={() => setCategoryIds(new Set())}>{x.noCategories}</button>
+        </div>
+        <div className="pb-partner-choices">
+          {categories.map(category => <label className="pb-partner-check" key={category.id}>
+            <input type="checkbox" checked={categoryIds.has(category.id)} onChange={event => {
+              const next = new Set(categoryIds);
+              if (event.target.checked) next.add(category.id);
+              else next.delete(category.id);
+              setCategoryIds(next);
+            }} />
+            <bdi>{category.name}</bdi>
+          </label>)}
+        </div>
+      </fieldset>
+      <details className="pb-partner-fieldset pb-partner-protected">
+        <summary>{x.protectedTitle}</summary>
+        <dl>{Object.entries(x.protected).map(([key, [label, description]]) => (
+          <div key={key}><dt>{label}</dt><dd>{description}</dd></div>
+        ))}</dl>
+      </details>
       <button type="submit" className="pill active pb-partner-save" disabled={(settings.configured && !dirty) || locked}>
         {settings.configured ? x.savePermissions : x.confirmPermissions}
       </button>

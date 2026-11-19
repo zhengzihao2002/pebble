@@ -1,4 +1,4 @@
-export const PARTNER_PERMISSIONS = ['expenses', 'income', 'amounts', 'notes', 'accounts', 'personalGoals', 'editTags', 'deleteExpenses'] as const;
+export const PARTNER_PERMISSIONS = ['expenses', 'income', 'amounts', 'notes', 'accounts', 'personalGoals', 'editTags', 'editTransactions', 'deleteTransactions'] as const;
 export type PartnerPermission = (typeof PARTNER_PERMISSIONS)[number];
 export type PartnerPermissions = Partial<Record<PartnerPermission, boolean>>;
 export const INCOME_SHARING_KEYS = ['income:Standard Income', 'income:Side Cash'] as const;
@@ -26,6 +26,8 @@ export interface SharedTransaction {
   notes: string | null;
   tag: string;
   canEditTag: boolean;
+  canEdit: boolean;
+  canEditNotes: boolean;
   canDelete: boolean;
 }
 export interface PartnerWorkspaceData {
@@ -44,3 +46,8 @@ export interface JointGoalSummary {
   myCents: number;
   partnerCents: number;
 }
+
+export type SharedTransactionChange =
+  | { kind: 'tag'; tag: string }
+  | { kind: 'edit'; title: string; date: string; notes?: string }
+  | { kind: 'delete' };

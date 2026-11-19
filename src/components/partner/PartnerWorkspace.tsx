@@ -5,11 +5,11 @@ import { ArrowLeft, Eye, Goal, ReceiptText, Wallet } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { LoadingBlock } from '@/components/shared/Spinner';
 import { callAction } from '@/lib/actions/callAction';
-import { changeSharedExpenseAction, leavePartnerViewAction, readPartnerWorkspaceAction } from '@/lib/actions/partner';
+import { changeSharedTransactionAction, leavePartnerViewAction, readPartnerWorkspaceAction } from '@/lib/actions/partner';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { PartnerWorkspaceData, SharedTransaction } from '@/lib/partner';
+import type { PartnerWorkspaceData, SharedTransaction, SharedTransactionChange } from '@/lib/partner';
 import { MAX_TAG_NAME_LENGTH, normalizeTagSearch } from '@/lib/transactionTags';
 import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
 import { partnerError } from './partnerError';
@@ -135,8 +135,9 @@ function SharedTransactions({ rows, onChange }: { rows: SharedTransaction[]; onC
   const x = d.partner;
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(LIST_SIZE);
-  const [editing, setEditing] = useState<{ id: string; kind: 'tag' | 'delete' } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; type: SharedTransaction['kind']; kind: SharedTransactionChange['kind'] } | null>(null);
   const [tag, setTag] = useState('');
+  const [draft, setDraft] = useState({ title: '', date: '', notes: '', originalNotes: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const matches = useMemo(() => {
@@ -146,10 +147,10 @@ function SharedTransactions({ rows, onChange }: { rows: SharedTransaction[]; onC
     ].join(' ')).includes(needle));
   }, [rows, query, d, locale]);
 
-  const apply = async (id: string, kind: 'tag' | 'delete') => {
+  const apply = async (row: SharedTransaction, change: SharedTransactionChange) => {
     setBusy(true);
     setError('');
-    const result = await callAction(() => changeSharedExpenseAction(id, kind === 'tag' ? { kind, tag } : { kind }));
+    const result = await callAction(() => changeSharedTransactionAction(row.id, row.kind, change));
     setBusy(false);
     if (!result.ok) { setError(partnerError(d, result)); return; }
     setEditing(null);
@@ -164,8 +165,16 @@ function SharedTransactions({ rows, onChange }: { rows: SharedTransaction[]; onC
       {matches.length === 0 && <p className="pb-partner-note">{x.noRows}</p>}
       <ul className="pb-partner-list">
         {matches.slice(0, limit).map(row => {
-          const editingRow = editing?.id === row.id && editing.kind === 'tag' && row.canEditTag;
-          const deletingRow = editing?.id === row.id && editing.kind === 'delete' && row.canDelete;
+          const operation = editing?.id === row.id && editing.type === row.kind ? editing.kind : null;
+          const editingRow = operation === 'tag' && row.canEditTag || operation === 'edit' && row.canEdit;
+          const deletingRow = operation === 'delete' && row.canDelete;
+          const open = (kind: SharedTransactionChange['kind']) => {
+            setTag(row.tag);
+            const notes = row.notes ?? '';
+            setDraft({ title: row.title, date: row.date, notes, originalNotes: notes });
+            setEditing({ id: row.id, type: row.kind, kind });
+            setError('');
+          };
           return <li className="pb-partner-transaction" key={row.kind + row.id}>
             <div className="pb-partner-list-row">
               <div>
@@ -175,16 +184,32 @@ function SharedTransactions({ rows, onChange }: { rows: SharedTransaction[]; onC
               {row.amount !== null && <span className="font-mono-tab">{formatCurrency(row.amount)}</span>}
             </div>
             {row.notes && <p className="pb-partner-note pb-partner-transaction-notes">{row.notes}</p>}
-            {(row.canEditTag || row.canDelete) && !editingRow && !deletingRow && (
+            {(row.canEdit || row.canEditTag || row.canDelete) && !editingRow && !deletingRow && (
               <div className="pb-partner-actions">
-                {row.canEditTag && <button type="button" className="link-btn" disabled={busy} onClick={() => { setTag(row.tag); setEditing({ id: row.id, kind: 'tag' }); setError(''); }}>{x.editTag}</button>}
-                {row.canDelete && <button type="button" className="link-btn pb-settings-danger" disabled={busy} onClick={() => { setEditing({ id: row.id, kind: 'delete' }); setError(''); }}>{x.remove}</button>}
+                {row.canEdit && <button type="button" className="link-btn" disabled={busy} onClick={() => open('edit')}>{x.editTransaction}</button>}
+                {row.canEditTag && <button type="button" className="link-btn" disabled={busy} onClick={() => open('tag')}>{x.editTag}</button>}
+                {row.canDelete && <button type="button" className="link-btn pb-settings-danger" disabled={busy} onClick={() => open('delete')}>{x.remove}</button>}
               </div>
             )}
-            {editingRow && <form className="pb-partner-inline-edit" onSubmit={event => { event.preventDefault(); void apply(row.id, 'tag'); }}>
-              <input type="text" className="pb-partner-input" aria-label={x.tag} placeholder={x.tag} maxLength={MAX_TAG_NAME_LENGTH}
-                value={tag} onChange={event => setTag(event.target.value)} disabled={busy} />
-              <p className="pb-partner-note">{x.tagHint}</p>
+            {editingRow && <form className="pb-partner-inline-edit" onSubmit={event => {
+              event.preventDefault();
+              void apply(row, operation === 'tag' ? { kind: 'tag', tag } : {
+                kind: 'edit', title: draft.title, date: draft.date,
+                notes: row.canEditNotes && draft.notes !== draft.originalNotes ? draft.notes : undefined,
+              });
+            }}>
+              {operation === 'tag' ? <>
+                <input type="text" className="pb-partner-input" aria-label={x.tag} placeholder={x.tag} maxLength={MAX_TAG_NAME_LENGTH}
+                  value={tag} onChange={event => setTag(event.target.value)} disabled={busy} />
+                <p className="pb-partner-note">{x.tagHint}</p>
+              </> : <>
+                <label>{x.transactionTitle}<input className="pb-partner-input" value={draft.title} required maxLength={300}
+                  disabled={busy} onChange={event => setDraft({ ...draft, title: event.target.value })} /></label>
+                <label>{x.transactionDate}<input className="pb-partner-input" type="date" value={draft.date} required
+                  disabled={busy} onChange={event => setDraft({ ...draft, date: event.target.value })} /></label>
+                {row.canEditNotes && <label>{x.transactionNotes}<textarea className="pb-partner-input" value={draft.notes} maxLength={4000}
+                  disabled={busy} onChange={event => setDraft({ ...draft, notes: event.target.value })} /></label>}
+              </>}
               <div className="pb-partner-actions">
                 <button type="button" className="pill" disabled={busy} onClick={() => setEditing(null)}>{x.cancel}</button>
                 <button type="submit" className="pill active" disabled={busy}>{x.apply}</button>
@@ -194,7 +219,7 @@ function SharedTransactions({ rows, onChange }: { rows: SharedTransaction[]; onC
               <p>{x.removeHelp}</p>
               <div className="pb-partner-actions">
                 <button type="button" className="pill" disabled={busy} onClick={() => setEditing(null)}>{x.cancel}</button>
-                <button type="button" className="pill pb-settings-danger" disabled={busy} onClick={() => void apply(row.id, 'delete')}>{x.remove}</button>
+                <button type="button" className="pill pb-settings-danger" disabled={busy} onClick={() => void apply(row, { kind: 'delete' })}>{x.remove}</button>
               </div>
             </div>}
             {(editingRow || deletingRow) && error && <p className="pb-partner-error" role="alert">{error}</p>}

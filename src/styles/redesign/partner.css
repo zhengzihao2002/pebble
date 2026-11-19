@@ -44,7 +44,6 @@
   display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   align-items: start; gap: 1rem;
 }
-.pebble-root .pb-partner-permission-side { min-width: 0; display: grid; gap: 1rem; }
 .pebble-root .pb-partner-fieldset {
   min-width: 0; margin: 0; padding: .8rem; display: grid; gap: .65rem;
   border: 1px solid var(--line); border-radius: .85rem;
@@ -148,3 +147,5 @@
 .pebble-root .pb-joint-form { display: flex; flex-direction: column; min-height: 0; }
 .pebble-root .pb-joint-fields { display: grid; gap: .85rem; }
 .pebble-root .pb-joint-fields > label { display: grid; gap: .35rem; font-size: .9rem; }
+
+.pebble-root .pb-partner-inline-edit > label { display: grid; gap: .3rem; font-size: .85rem; }

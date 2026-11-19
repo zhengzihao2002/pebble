@@ -7,8 +7,9 @@ import { neonSql } from '@/db';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
 import {
   INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, type JointGoalSummary, type PartnerPermissions,
-  type PartnerSettingsData, type PartnerWorkspaceData, type SharedTransaction, type SharingCategory,
+  type PartnerSettingsData, type PartnerWorkspaceData, type SharedTransaction, type SharedTransactionChange, type SharingCategory,
 } from '@/lib/partner';
+import { isYmd } from '@/lib/recurring/occurrences';
 import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 
 const WORKSPACE_COOKIE = 'pebble-partner-view';
@@ -192,7 +193,10 @@ async function readWorkspace(userId: string) {
         CASE WHEN s.permissions->'notes' = 'true'::jsonb AND strpos(e.description, chr(10)) > 0
           THEN substr(e.description, strpos(e.description, chr(10)) + 1) END AS notes,
         e.tag, (s.permissions->'editTags' = 'true'::jsonb) IS TRUE AS "canEditTag",
-        (s.permissions->'deleteExpenses' = 'true'::jsonb AND a.status = 'active'
+        (s.permissions->'editTransactions' = 'true'::jsonb AND a.status = 'active'
+          AND e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL) IS TRUE AS "canEdit",
+        (s.permissions->'notes' = 'true'::jsonb) IS TRUE AS "canEditNotes",
+        (s.permissions->'deleteTransactions' = 'true'::jsonb AND a.status = 'active'
           AND e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL) IS TRUE AS "canDelete"
       FROM public.pebble_partner_scope s
       JOIN public.expense e ON e.user_id = s.owner_id
@@ -205,7 +209,10 @@ async function readWorkspace(userId: string) {
         CASE WHEN s.permissions->'amounts' = 'true'::jsonb THEN i.net_amount::float8 END,
         CASE WHEN s.permissions->'notes' = 'true'::jsonb AND strpos(i.description, chr(10)) > 0
           THEN substr(i.description, strpos(i.description, chr(10)) + 1) END,
-        '', false, false
+        '', false,
+        (s.permissions->'editTransactions' = 'true'::jsonb AND a.status = 'active' AND i.recurring_rule_id IS NULL) IS TRUE,
+        (s.permissions->'notes' = 'true'::jsonb) IS TRUE,
+        (s.permissions->'deleteTransactions' = 'true'::jsonb AND a.status = 'active' AND i.recurring_rule_id IS NULL) IS TRUE
       FROM public.pebble_partner_scope s
       JOIN public.income i ON i.user_id = s.owner_id
       JOIN public.account a ON a.user_id = i.user_id AND a.id = i.account_id AND NOT a.is_ghost
@@ -228,28 +235,56 @@ async function readWorkspace(userId: string) {
   return { ...success, data };
 }
 
-async function changeSharedExpense(userId: string, id: string, change: { kind: 'tag'; tag: string } | { kind: 'delete' }) {
+async function changeSharedTransaction(userId: string, id: string, type: SharedTransaction['kind'], change: SharedTransactionChange) {
   const pairId = await partnerViewPair(userId);
   if (!pairId) return failure('denied');
-  if (typeof id !== 'string' || !id || id.includes('\0') || !change || (change.kind !== 'tag' && change.kind !== 'delete')) return failure('invalid');
+  if (typeof id !== 'string' || !id || id.includes('\0') || (type !== 'expense' && type !== 'income')
+    || !change || !['tag', 'edit', 'delete'].includes(change.kind)) return failure('invalid');
   const tag = change.kind === 'tag' && typeof change.tag === 'string' ? change.tag.trim() : '';
-  if (change.kind === 'tag' && (typeof change.tag !== 'string' || tag.length > MAX_TAG_NAME_LENGTH || tag.includes('\0'))) return failure('invalid');
+  const title = change.kind === 'edit' && typeof change.title === 'string' ? change.title.trim() : '';
+  const date = change.kind === 'edit' ? change.date : null;
+  const notes = change.kind === 'edit' ? change.notes : undefined;
+  if (change.kind === 'tag' && (type !== 'expense' || typeof change.tag !== 'string' || tag.length > MAX_TAG_NAME_LENGTH || tag.includes('\0'))) {
+    return failure('invalid');
+  }
+  if (change.kind === 'edit' && (!title || title.length > 300 || /[\0\r\n]/.test(title)
+    || typeof date !== 'string' || !isYmd(date)
+    || (notes !== undefined && (typeof notes !== 'string' || notes.length > 4000 || notes.includes('\0'))))) {
+    return failure('invalid');
+  }
+  const permission = change.kind === 'tag' ? 'editTags' : change.kind === 'edit' ? 'editTransactions' : 'deleteTransactions';
   return run(async () => {
-    const statement = change.kind === 'tag'
-      ? neonSql`UPDATE public.expense e SET tag = ${tag}
-        FROM public.pebble_partner_scope s
-        WHERE s.viewer_id = ${userId}::uuid AND s.pair_id = ${pairId}::uuid AND e.user_id = s.owner_id AND e.id = ${id}
-          AND s.permissions->'expenses' = 'true'::jsonb AND s.permissions->'editTags' = 'true'::jsonb
-          AND EXISTS (SELECT 1 FROM public.account a WHERE a.user_id = e.user_id AND a.id = e.account_id AND NOT a.is_ghost)
-          AND EXISTS (SELECT 1 FROM public.category c WHERE c.user_id = s.owner_id
-            AND c.name = e.category AND c.id = ANY(s.shared_categories)) RETURNING e.id`
-      : neonSql`DELETE FROM public.expense e USING public.pebble_partner_scope s
-        WHERE s.viewer_id = ${userId}::uuid AND s.pair_id = ${pairId}::uuid AND e.user_id = s.owner_id AND e.id = ${id}
-          AND s.permissions->'expenses' = 'true'::jsonb AND s.permissions->'deleteExpenses' = 'true'::jsonb
-          AND e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL
-          AND EXISTS (SELECT 1 FROM public.account a WHERE a.user_id = e.user_id AND a.id = e.account_id AND NOT a.is_ghost AND a.status = 'active')
-          AND EXISTS (SELECT 1 FROM public.category c WHERE c.user_id = s.owner_id
-            AND c.name = e.category AND c.id = ANY(s.shared_categories)) RETURNING e.id`;
+    // All SQL fragments come from fixed choices. Request data travels as parameters.
+    const table = type === 'expense' ? 'public.expense' : 'public.income';
+    const categoryScope = type === 'expense'
+      ? 'EXISTS (SELECT 1 FROM public.category c WHERE c.user_id = s.owner_id AND c.name = tx.category AND c.id = ANY(s.shared_categories))'
+      : "('income:' || tx.category) = ANY(s.shared_categories)";
+    const mutable = change.kind === 'tag' ? '' : `AND a.status = 'active' AND tx.recurring_rule_id IS NULL
+      ${type === 'expense' ? 'AND tx.credit_card_payoff IS NULL' : ''}`;
+    const source = 'public.pebble_partner_scope s, public.account a';
+    const values: (string | null)[] = [userId, pairId, id, type === 'expense' ? 'expenses' : 'income', permission];
+    let command: string;
+    if (change.kind === 'delete') {
+      command = `DELETE FROM ${table} tx USING ${source}`;
+    } else if (change.kind === 'tag') {
+      command = `UPDATE ${table} tx SET tag = $6 FROM ${source}`;
+      values.push(tag);
+    } else {
+      command = `UPDATE ${table} tx SET transaction_date = $6::date,
+        description = $7::text || CASE
+          WHEN $8::text IS NOT NULL THEN CASE WHEN $8 = '' THEN '' ELSE chr(10) || $8 END
+          WHEN strpos(tx.description, chr(10)) > 0 THEN substr(tx.description, strpos(tx.description, chr(10)))
+          ELSE '' END
+        FROM ${source}`;
+      values.push(date, title, notes ?? null);
+    }
+    const statement = neonSql.query(`${command}
+      WHERE s.viewer_id = $1::uuid AND s.pair_id = $2::uuid AND tx.user_id = s.owner_id AND tx.id = $3
+        AND s.permissions->($4::text) = 'true'::jsonb AND s.permissions->($5::text) = 'true'::jsonb
+        AND a.user_id = tx.user_id AND a.id = tx.account_id AND NOT a.is_ghost AND ${categoryScope}
+        ${mutable}
+        ${change.kind === 'edit' ? "AND ($8::text IS NULL OR s.permissions->'notes' = 'true'::jsonb)" : ''}
+      RETURNING tx.id`, values);
     const [, , rows] = await neonSql.transaction([
       lifecycleLock(),
       neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.user-write'), hashtext(owner_id::text))
@@ -333,7 +368,7 @@ export const unpairPartnerAction = withSessionUser(unpair);
 export const enterPartnerViewAction = withSessionUser(enterPartner);
 export const leavePartnerViewAction = withSessionUser(leavePartner);
 export const readPartnerWorkspaceAction = withSessionUser(userId => run(() => readWorkspace(userId)));
-export const changeSharedExpenseAction = withSessionUser(changeSharedExpense);
+export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction);
 export const readJointGoalsAction = withSessionUser(userId => run(() => readJointGoals(userId)));
 export const createJointGoalAction = withSessionUser(createJointGoal);
 export const contributeJointGoalAction = withSessionUser(contributeJointGoal);
