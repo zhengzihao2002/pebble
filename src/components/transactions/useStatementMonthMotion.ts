@@ -34,7 +34,8 @@ export function useStatementMonthMotion(month: number) {
     const insideStatement = top > 2 && statement.getBoundingClientRect().top < readingTop - 2;
     const preserveScroll = atEnd || insideStatement;
 
-    // Resize the card only when its moving edge can actually be seen.
+    // The edge may travel as far as the viewport. Inside the statement, the
+    // rows animate in place while the scrollport keeps its reading position.
     capturePeriodCardHeights(statement, preserveScroll ? null : area.top + port.clientHeight);
     scrollPosition.current = preserveScroll ? { month: nextMonth, port, top, atEnd } : null;
     if (!preserveScroll) return;

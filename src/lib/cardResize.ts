@@ -7,11 +7,12 @@ const LANGUAGE_DURATION = 420;
 const PERIOD_DURATION = 300;
 const PERIOD_EASING = 'cubic-bezier(.4,0,.2,1)';
 const PERIOD_FADE = 'pb-period-fade';
+const PERIOD_EDGE_BUFFER = 24;
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];
 
 type ResizeMode = 'content' | 'language' | 'period';
 
-const periodOrigins = new WeakMap<HTMLElement, Map<HTMLElement, { height: number; visibleHeight: number }>>();
+const periodOrigins = new WeakMap<HTMLElement, Map<HTMLElement, { height: number; limit: number }>>();
 
 /** Read the painted edge before the new period can change layout or scroll. */
 export function capturePeriodCardHeights(section: HTMLElement, viewportBottom: number | null) {
@@ -19,11 +20,12 @@ export function capturePeriodCardHeights(section: HTMLElement, viewportBottom: n
     periodOrigins.delete(section);
     return;
   }
-  const origins = new Map<HTMLElement, { height: number; visibleHeight: number }>();
+  const origins = new Map<HTMLElement, { height: number; limit: number }>();
   for (const card of section.querySelectorAll<HTMLElement>(CARDS)) {
     const rect = card.getBoundingClientRect();
-    const visibleHeight = viewportBottom - rect.top;
-    if (rect.height <= visibleHeight + 1) origins.set(card, { height: rect.height, visibleHeight });
+    if (rect.top >= viewportBottom) continue;
+    const limit = viewportBottom - rect.top + PERIOD_EDGE_BUFFER;
+    origins.set(card, { height: Math.min(rect.height, limit), limit });
   }
   periodOrigins.set(section, origins);
 }
@@ -82,14 +84,15 @@ export function observeCardResizes(root: HTMLElement) {
     }
   });
 
-  function update(state: CardState, from = state.height, mode: ResizeMode = 'content', measured?: { width: number; height: number }) {
+  function update(state: CardState, from = state.height, mode: ResizeMode = 'content', measured?: { width: number; height: number; limit?: number }) {
     const card = state.element;
     const width = measured?.width ?? card.offsetWidth, height = measured?.height ?? card.offsetHeight;
+    const end = Math.min(height, measured?.limit ?? height);
     const previousWidth = state.width;
     state.width = width; state.height = height;
     if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
       || !card.getClientRects().length || !width || !height || !from
-      || (mode !== 'language' && (card.parentElement?.closest(CARDS) || Math.abs(width - previousWidth) > 1)) || Math.abs(height - from) < 2) return;
+      || (mode !== 'language' && (card.parentElement?.closest(CARDS) || Math.abs(width - previousWidth) > 1)) || Math.abs(end - from) < 2) return;
     // Existing expanding sections already move the surrounding layout smoothly.
     // Let those transitions finish instead of adding another lagging animation.
     const alreadyResizing = card.getAnimations({ subtree: true }).some(animation =>
@@ -102,7 +105,7 @@ export function observeCardResizes(root: HTMLElement) {
     resize.unobserve(card);
     card.classList.add('pb-card-resizing');
     const animation = card.animate(
-      [{ height: `${from}px` }, { height: `${height}px` }],
+      [{ height: `${from}px` }, { height: `${end}px` }],
       {
         duration: mode === 'language' ? LANGUAGE_DURATION : mode === 'period' ? PERIOD_DURATION : DURATION,
         easing: mode === 'content' ? 'cubic-bezier(.22,.78,.22,1)' : PERIOD_EASING,
@@ -161,7 +164,8 @@ export function observeCardResizes(root: HTMLElement) {
     for (const record of records) {
       if (record.attributeName !== RESET_ATTRIBUTE || !(record.target instanceof HTMLElement)) continue;
       const section = record.target;
-      const animate = section.hasAttribute('data-pb-resize-transition') && !document.hidden && !reduced.matches;
+      const direction = Number(section.getAttribute('data-pb-resize-transition'));
+      const animate = (direction === 1 || direction === -1) && !document.hidden && !reduced.matches;
       const origins = periodOrigins.get(section);
       periodOrigins.delete(section);
       const cards = Array.from(section.querySelectorAll<HTMLElement>(CARDS)).flatMap(card => {
@@ -174,17 +178,19 @@ export function observeCardResizes(root: HTMLElement) {
       }
       const targets = cards.map(item => ({ ...item, width: item.card.offsetWidth, height: item.card.offsetHeight }));
       for (const { card, state, origin, width, height } of targets) {
-        // Outside the viewport, accept the new height immediately so the
-        // scroll range does not expose empty card space during the fade.
-        if (animate && origin && height <= origin.visibleHeight + 1) {
-          update(state, origin.height, 'period', { width, height });
-        } else { state.width = width; state.height = height; }
+        // Hand back to intrinsic height beyond the viewport, after the
+        // visible edge has already entered or left the screen.
+        if (animate && origin) update(state, origin.height, 'period', { width, height, limit: origin.limit });
+        else { state.width = width; state.height = height; }
         if (!state.animation) observe(card);
       }
       for (const body of section.querySelectorAll<HTMLElement>('[data-pb-period-body]')) {
         for (const fade of body.getAnimations()) if (fade.id === PERIOD_FADE) fade.cancel();
         if (!animate) continue;
-        const fade = body.animate([{ opacity: .45 }, { opacity: 1 }], { duration: 220, easing: 'ease-out', fill: 'backwards' });
+        const fade = body.animate([
+          { opacity: .22, translate: `0 ${direction * 12}px` },
+          { opacity: 1, translate: '0 0' },
+        ], { duration: 260, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'backwards' });
         fade.id = PERIOD_FADE;
       }
     }

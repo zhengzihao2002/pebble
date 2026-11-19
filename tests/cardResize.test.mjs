@@ -118,7 +118,7 @@ test('replacing a statement month cancels its resize and adopts the new height',
   const f = fixture();
   const statement = new f.Element();
   statement.querySelectorAll = selector => selector.includes('period-body') ? [] : [f.card];
-  statement.hasAttribute = () => false;
+  statement.getAttribute = () => null;
   const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
 
   f.card.naturalHeight = 300;
@@ -145,7 +145,7 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   const statement = new f.Element();
   const body = new f.Element();
   statement.querySelectorAll = selector => selector.includes('period-body') ? [body] : [f.card];
-  statement.hasAttribute = () => true;
+  statement.getAttribute = () => '1';
   const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
 
   f.capturePeriodCardHeights(statement, 400);
@@ -155,6 +155,7 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   assert.equal(first.frames[0].height, '100px');
   assert.equal(first.frames[1].height, '300px');
   assert.equal(body.active.frames[1].opacity, 1);
+  assert.equal(body.active.frames[0].translate, '0 12px');
 
   first.visibleHeight = 180;
   f.mutation.callback([{ target: f.card, addedNodes: [] }]);
@@ -177,26 +178,30 @@ test('a user-selected month owns its animation and a quick reversal starts at th
   f.stop();
 });
 
-test('a month switch fades without animating height when either edge is below the viewport', () => {
+test('a month switch animates the visible part of the edge across the viewport boundary', () => {
   const f = fixture();
   const statement = new f.Element();
   const body = new f.Element();
   statement.querySelectorAll = selector => selector.includes('period-body') ? [body] : [f.card];
-  statement.hasAttribute = () => true;
+  statement.getAttribute = () => '-1';
   const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
 
   f.capturePeriodCardHeights(statement, 200);
   f.card.naturalHeight = 350;
   f.mutation.callback([monthChanged]);
-  f.resize.emit(f.card);
-  assert.equal(f.card.animations.length, 0);
+  assert.equal(f.card.active.frames[0].height, '100px');
+  assert.equal(f.card.active.frames[1].height, '224px');
+  assert.equal(body.active.frames[0].translate, '0 -12px');
   assert.equal(body.active.frames[1].opacity, 1);
+  f.card.active.finish();
+  assert.equal(f.card.offsetHeight, 350);
 
   f.capturePeriodCardHeights(statement, 200);
   f.card.naturalHeight = 100;
   f.mutation.callback([monthChanged]);
-  f.resize.emit(f.card);
-  assert.equal(f.card.animations.length, 0);
+  assert.equal(f.card.active.frames[0].height, '224px');
+  assert.equal(f.card.active.frames[1].height, '100px');
+  f.card.active.finish();
   assert.equal(f.card.offsetHeight, 100);
   f.stop();
 });

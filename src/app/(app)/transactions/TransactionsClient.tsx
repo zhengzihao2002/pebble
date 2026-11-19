@@ -79,7 +79,7 @@ export function TransactionsClient({
   usePaneCardShadows(pageRef);
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
-  const [monthSelection, setMonthSelection] = useState({ index: 0, animate: false }); // 0 = current month
+  const [monthSelection, setMonthSelection] = useState({ index: 0, direction: 0 }); // 0 = current month
   const selectedMonthIndex = monthSelection.index;
   const { statementRef, prepare: prepareMonthMotion } = useStatementMonthMotion(selectedMonthIndex);
   // The whole ledger entry, not only the record, so the dialog can later show
@@ -129,7 +129,7 @@ export function TransactionsClient({
     const saved = readPartnerChoice('transactions', partner.preferenceScope) as { month?: string; type?: string; account?: string } | null;
     if (saved) {
       const index = monthOptions.findIndex(month => monthBounds(month.year, month.month).prefix === saved.month);
-      setMonthSelection({ index: Math.max(0, index), animate: false });
+      setMonthSelection({ index: Math.max(0, index), direction: 0 });
       if (saved.type === 'expense' && partner.data.permissions.expenses || saved.type === 'income' && partner.data.permissions.income
         || saved.type === 'adjustment' && showBalances) setTypeFilter(saved.type);
       if (saved.account && ordinaryAccounts.some(account => account.id === saved.account)) setAccountFilter(saved.account);
@@ -255,7 +255,7 @@ export function TransactionsClient({
   const goToMonth = useCallback((i: number) => {
     if (i === selectedMonthIndex || i < 0 || i >= monthOptions.length) return;
     prepareMonthMotion(i);
-    setMonthSelection({ index: i, animate: true });
+    setMonthSelection({ index: i, direction: Math.sign(i - selectedMonthIndex) });
   }, [selectedMonthIndex, monthOptions.length, prepareMonthMotion]);
 
   // Optional page shortcuts: [ older month, ] newer. Gated exactly like
@@ -528,7 +528,7 @@ export function TransactionsClient({
 
         {/* Keep the statement mounted as months change. Recreating it replayed
             a fade and sideways slide on the entire card and its glow. */}
-        <div ref={statementRef} data-pb-resize-reset={monthPrefix} data-pb-resize-transition={monthSelection.animate || undefined}>
+        <div ref={statementRef} data-pb-resize-reset={monthPrefix} data-pb-resize-transition={monthSelection.direction || undefined}>
           {ghostLens ? null : searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
