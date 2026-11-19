@@ -2,6 +2,7 @@
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import type { BalanceAdjustment, Goal, RecurringRule, Transaction } from '@/types';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
@@ -58,6 +59,8 @@ interface DashboardClientProps {
 export function DashboardClient({ transactions, categories, budgets, totalBalance, accounts, heroAccounts = accounts, balancesByAccount, allocated, catchUp, rules, adjustments = [], goals = [] }: DashboardClientProps) {
   const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
 
   // STATS_MODES lives in @/data/seed and carries an English label. Looked up
@@ -240,18 +243,18 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // cap here: the shell already caps .pebble-main.
   return (
     <>
-    <div className="pb-dash">
+    <div className={partner ? "pb-dash pb-dash-partner" : "pb-dash"}>
       {/* The notices sit inside the top area, so when they render nothing
           (the common case) they leave no empty grid row and no stray gap. */}
       <section className="pb-dash-area-top">
         {/* All of these render nothing in the common case. */}
         <CatchUpNotice {...catchUp} />
-        <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />
-        <BalanceHero totalBalance={totalBalance} accounts={heroAccounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
+        {!partner && <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />}
+        <BalanceHero totalBalance={totalBalance} accounts={heroAccounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={partner ? null : balanceTrend} />
         {/* Under the hero, not above it: on a phone up to six rows of notices would
             push the balance off the first screen. */}
-        <BudgetAlertsNotice transactions={transactions} categoryMeta={categoryMeta} today={today} />
-        <LooksRecurringNotice transactions={transactions} rules={rules} today={today} onSchedule={scheduleCandidate} />
+        {showAmounts && <BudgetAlertsNotice transactions={transactions} categoryMeta={categoryMeta} today={today} />}
+        {!partner && <LooksRecurringNotice transactions={transactions} rules={rules} today={today} onSchedule={scheduleCandidate} />}
         <DashboardStatsCard
           modes={STATS_MODES.map((m) => ({ value: m.value, label: modeLabel(m.value, m.label) }))}
           statsMode={statsMode}
@@ -271,43 +274,55 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
           compareLabel={compareLabel}
         />
         {/* The same income and rate as the card above - never recomputed. */}
-        {showHealthBar && (
+        {!partner && showHealthBar && (
           <HealthStatusBar income={periodStats.income} savingsRate={periodStats.savingsRate} />
         )}
       </section>
 
       {/* Every chart card follows the This period controls above. */}
+      {(showAmounts && (!partner || partner.data.permissions.expenses)) && (
       <div className="pb-dash-area-pace">
         <SpendingPaceCard timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
       </div>
+      )}
+      {(showAmounts && (!partner || partner.data.permissions.scheduled)) && (
       <div className="pb-dash-area-upcoming">
         <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
       </div>
+      )}
+      {(showAmounts && (!partner || partner.data.permissions.expenses)) && (
       <div className="pb-dash-area-where">
         <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
       </div>
+      )}
+      {(showAmounts && (!partner || partner.data.permissions.expenses && partner.data.permissions.income)) && (
       <div className="pb-dash-area-flow">
         <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
       </div>
+      )}
       {/* Only when a year back has data: no wrapper at all otherwise, and the
           grid drops its row (dashboard.css), so there is no hole. */}
-      {yearOverYear && today && (
+      {showAmounts && (!partner || partner.data.permissions.expenses && partner.data.permissions.income) && yearOverYear && today && (
         <div className="pb-dash-area-yoy">
           <YearOverYearCard data={yearOverYear} categoryMeta={categoryMeta} today={today} inProgress={statsWindow.inProgress} />
         </div>
       )}
+      {(!partner) && (
       <div className="pb-dash-area-attention">
         <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
       </div>
+      )}
+      {(!partner) && (
       <div className="pb-dash-area-goals">
         <GoalsGlance goals={goals} allocated={allocated} totalBalance={totalBalance} />
       </div>
+      )}
       <div className="pb-dash-area-recent">
         <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} accounts={accounts} />
       </div>
     </div>
     {/* Outside the grid: the dialog is a fixed overlay, not a grid item. */}
-    {schedulePrefill && <RecurringRuleModal prefill={schedulePrefill} onClose={() => setSchedulePrefill(null)} />}
+    {!partner && schedulePrefill && <RecurringRuleModal prefill={schedulePrefill} onClose={() => setSchedulePrefill(null)} />}
     </>
   );
 }

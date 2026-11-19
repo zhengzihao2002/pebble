@@ -1,8 +1,9 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
-import { Check, ChevronDown, CircleAlert, ListChecks, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
+import { Plus, Check, ChevronDown, CircleAlert, ListChecks, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
@@ -43,6 +44,14 @@ function thisYear(history: BudgetHistory, name: string): { values: (number | nul
 
 function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: number | null; history: BudgetHistory | null; today: string | null }) {
   const { d, t } = useTranslation();
+  const partner = usePartnerView();
+  const category = partner?.data.budgets.find(row => row.name === e.name);
+  const showSpent = !partner || partner.data.permissions.amounts === true && partner.data.permissions.expenses === true;
+  const canEdit = !partner || partner.data.permissions.editBudgets && category;
+  const edit = () => {
+    if (partner && category) partner.openEditor({ kind: 'budget', id: category.id, name: e.name, amount: e.budget });
+    else setEditing(String(e.budget));
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -76,7 +85,7 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         </span>
       </div>
       <div className="pb-bud-row-spark">
-        {spark && <MiniSpark values={spark.values} currentIndex={spark.current} color={e.color} monthlyBudget={e.budget / 12} />}
+        {showSpent && spark && <MiniSpark values={spark.values} currentIndex={spark.current} color={e.color} monthlyBudget={e.budget / 12} />}
       </div>
       {/* Right: what is left (or over) as the row's figure, the modify button beside it. */}
       <div className="pb-row-figs">
@@ -85,20 +94,20 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         ) : (
           <span className="pb-bud-row-figs">
             <span className={`font-mono-tab pb-bud-row-left${over ? ' is-over' : ''}`}>
-              {renderTemplate(over ? d.budgetEdit.over : d.budgetEdit.left, {
+              {!showSpent ? <span aria-label={d.partner.censored}>—</span> : renderTemplate(over ? d.budgetEdit.over : d.budgetEdit.left, {
                 amount: <span className="pb-bud-row-amt"><RollingAmount value={formatCurrency(Math.abs(e.budget - e.spent))} /></span>,
               })}
             </span>
-            <button
-              type="button" className="icon-btn pb-bud-edit" onClick={() => setEditing(String(e.budget))}
+            {canEdit && <button
+              type="button" className="icon-btn pb-bud-edit" onClick={edit}
               aria-label={`${d.budgetEdit.edit}: ${e.name}`} title={d.budgetEdit.edit}
             >
               <Pencil size={15} />
-            </button>
+            </button>}
           </span>
         )}
       </div>
-      <div className="pb-row-bar">
+      {showSpent && <><div className="pb-row-bar">
         <div className="pb-row-track">
           <div className="pb-row-fill" style={{ width: `${fill}%`, backgroundColor: over ? 'var(--expense)' : 'var(--pine)' }} />
         </div>
@@ -118,13 +127,14 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         </span>
         {pace && <span className="pb-bud-row-pace">{' · '}<span className="font-mono-tab"><RollingMoneyText value={pace} /></span></span>}
       </div>
-      <div className="pb-row-more">
+      </>}
+      {showSpent && !partner && <div className="pb-row-more">
         <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? d.budgetDetails.hide : d.budgetDetails.details}
           <ChevronDown size={14} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--pb-dur-std) var(--pb-ease-out)' }} />
         </button>
-      </div>
-      {open && (
+      </div>}
+      {showSpent && !partner && open && (
         <div className="pb-row-details goal-step">
           <BudgetDetails
             name={e.name} color={e.color} budget={e.budget} history={history} today={today}
@@ -152,11 +162,23 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
  */
 export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
   const { d, t } = useTranslation();
+  const partner = usePartnerView();
   const ux = d.ux.budgets;
   // Most of its budget used first, so bars shorten down the page and anything
   // near or over its limit is on top. Ties fall back to the larger budget.
   const rows = entries.filter((e) => e.budget > 0)
     .sort((a, b) => (b.spent / b.budget) - (a.spent / a.budget) || b.budget - a.budget);
+  if (partner) return <section className="card pb-rows pb-bud-rows">
+    <div className="pb-bud-rows-head">
+      <SectionHeader title={ux.rowsTitle} actions={partner.data.permissions.addBudgets && (
+        <button className="pill" type="button" disabled={!partner.data.budgetCategories.length} onClick={() => partner.openEditor({ kind: 'budget' })}>
+          <Plus size={15} aria-hidden="true" /> {d.partner.creation.budget}
+        </button>
+      )} />
+    </div>
+    {partner.data.budgets.length === 0 ? <p className="pb-partner-note pb-partner-card">{d.partner.noShared}</p>
+      : entries.map(e => <BudgetRow key={e.name} e={e} fraction={today ? yearFraction(today) : null} history={history} today={today} />)}
+  </section>;
   // No budgets yet: keep the card (a new account sees the same page as a full
   // one) and say what fills it, instead of the section vanishing.
   if (rows.length === 0) {

@@ -6,6 +6,8 @@ import { getUserTimeZoneOverride } from '@/lib/data/queries';
 import { TimeZoneOverrideProvider } from '@/lib/time/TimeZoneOverrideContext';
 import { OfflineProvider } from '@/components/offline/OfflineProvider';
 import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNavigation';
+import { loadPartnerSnapshot } from '@/lib/partnerSnapshot.server';
+import { partnerViewPair } from '@/lib/partnerView.server';
 import { BUILD_ID } from '@/lib/offline/buildId';
 
 /**
@@ -34,10 +36,13 @@ import { BUILD_ID } from '@/lib/offline/buildId';
  */
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const userId = await getSessionUserIdOrRedirect();
-  const [locale, timeZoneOverride] = await Promise.all([
+  const [locale, timeZoneOverride, partnerPair] = await Promise.all([
     resolveUserLocale(),
     getUserTimeZoneOverride(userId),
+    partnerViewPair(userId),
   ]);
+
+  const snapshot = partnerPair ? await loadPartnerSnapshot() : null;
 
   return (
     <LocaleProvider locale={locale}>
@@ -45,10 +50,14 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
         {/* Who and which build this page was rendered for. public/sw.js reads
             it to keep saved pages apart per person and per deploy, and stores
             no page without it. Not a secret: the same id is in the page data. */}
-        <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
-        <OfflineProvider userId={userId}>
-          <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>
-        </OfflineProvider>
+        {partnerPair
+          ? <BudgetPlanNavigationProvider><AppShell key={snapshot?.ok ? snapshot.data.accessVersion : 'partner-unavailable'} partnerData={snapshot?.ok ? snapshot.data : undefined}>{children}</AppShell></BudgetPlanNavigationProvider>
+          : <>
+            <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
+            <OfflineProvider userId={userId}>
+              <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>
+            </OfflineProvider>
+          </>}
       </TimeZoneOverrideProvider>
     </LocaleProvider>
   );

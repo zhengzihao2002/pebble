@@ -1,4 +1,6 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { partnerCanPost } from '@/lib/partnerDisplay';
 
 import { Plus } from 'lucide-react';
 import { requestShell } from '@/components/layout/shellEvents';
@@ -11,10 +13,12 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
  */
 export function AddTransactionAction({ primary = false }: { primary?: boolean }) {
   const { d } = useTranslation();
+  const partner = usePartnerView();
+  if (partner && !(partner.data.permissions.addTransactions && partnerCanPost(partner.data))) return null;
   // Several cards can ask at once on a new account: only the headline's is
   // the filled button, the rest are quiet pills so the page stays calm.
   return (
-    <button type="button" className={primary ? 'btn-primary pb-ins-cta' : 'pill pb-ins-cta pb-ins-cta-quiet'} onClick={() => requestShell('addTransaction')}>
+    <button type="button" className={primary ? 'btn-primary pb-ins-cta' : 'pill pb-ins-cta pb-ins-cta-quiet'} onClick={() => partner ? partner.openEditor({ kind: 'transaction' }) : requestShell('addTransaction')}>
       <Plus size={15} aria-hidden="true" />{d.ux.insights.addFirstTransaction}
     </button>
   );

@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getAccounts, getBalanceAdjustments, getExpenses, getIncome } from '@/lib/data/queries';
 import { AccountsClient } from './AccountsClient';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Existing reads only. The balance history is the same ledger walk the
 // Transactions page uses, so the two always agree.
 export default async function AccountsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/accounts');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Wallet, CalendarCheck, ArrowUpRight, ArrowDownRight, Landmark, Coins, SlidersHorizontal, CreditCard, SearchX, ChevronDown, Ghost } from 'lucide-react';
@@ -63,6 +64,8 @@ const noSubscribe = () => () => {};
 export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const x = d.ux.transactions;
   const pageRef = useRef<HTMLDivElement>(null);
@@ -131,8 +134,9 @@ export function TransactionsClient({
   const ghostEntries = useMemo(() => allEntriesWithRecords.filter(entry => ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
   const entriesById = useMemo(() => new Map(allEntriesWithRecords.map((e) => [e.record.id, e])), [allEntriesWithRecords]);
   const openDetail = useCallback((txn: LedgerRecord) => {
+    if (partner) { partner.openTransaction(txn); return; }
     setSelectedEntry(entriesById.get(txn.id) ?? { transId: txn.id, record: txn, balancesAfter: {}, totalBalanceAfter: 0 });
-  }, [entriesById]);
+  }, [entriesById, partner]);
 
   // ---- Accounts ------------------------------------------------------------
   // Keep the Today ledger and account filter in the order saved in Settings.
@@ -300,10 +304,10 @@ export function TransactionsClient({
         || categoryText.includes(q)
         || (tag !== '' && tag.includes(q))
         || accountName.includes(q)
-        || (amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
+        || (showAmounts && amountQuery && Math.abs(r.amount).toFixed(2).includes(qAmount))
       );
     });
-  }, [searching, accountHistory, typeFilter, monthPrefix, q, qAmount, amountQuery, accountNames, d]);
+  }, [searching, accountHistory, typeFilter, monthPrefix, q, qAmount, amountQuery, accountNames, showAmounts, d]);
   // An account filter alongside text or a type keeps the account's own
   // balance line on each row.
   const resultsLensId = accountFilter !== ALL_ACCOUNTS ? accountFilter : null;
@@ -371,7 +375,7 @@ export function TransactionsClient({
   const balanceDelta = cents(closingBalance - openingBalance) / 100;
   const delta = lensIsCard ? -balanceDelta : balanceDelta;
   const deltaText = `${delta > 0 ? '+' : ''}${formatCurrency(delta)}`;
-  const importButton = <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;
+  const importButton = partner ? null : <ImportCsvButton preview={{ entries: entriesWithRecords, transactions: transactions.filter(record => !ghostIds.has(record.accountId)), adjustments: adjustments.filter(record => !ghostIds.has(record.accountId)), accounts: ordinaryAccounts, categoryMeta }} />;
   const scrollSummaryDown = () => {
     const pane = pageRef.current?.querySelector<HTMLElement>('.pb-txn-pane-left');
     if (!pane) return;
@@ -418,16 +422,16 @@ export function TransactionsClient({
             onSelect={goToMonth}
             controls="pb-txn-statement-col"
             eyebrow={lensAccount ? t(x.lensEyebrow, { account: lensAccount.name }) : x.thisMonth}
-            aside={(
+            aside={!partner ? (
               <span className="pb-txn-delta">
                 {renderTemplate(x.deltaThisMonth, {
                   amount: <DeltaChip delta={delta} text={deltaText} good={lensIsCard ? 'down' : 'up'} money />,
                 })}
               </span>
-            )}
+            ) : undefined}
           />
 
-          <BalanceBridge
+          {!partner && <><BalanceBridge
             opening={openingBalance}
             deposits={totalDeposits}
             withdrawals={totalWithdrawals}
@@ -448,16 +452,17 @@ export function TransactionsClient({
               valueAction={{ label: x.showAdjustmentRows, onClick: toggleAdjustmentFilter, pressed: typeFilter === 'adjustment', controls: 'pb-txn-statement-col' }}
             />
           </div>
+          </>}
         </section>
 
-        <MonthBalanceChart
+        {!partner && <MonthBalanceChart
           points={chartPoints}
           opening={lensIsCard ? -openingBalance : openingBalance}
           owed={lensIsCard}
           hasActivity={statementCount > 0 || fig.entries.length > 0}
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
-        />
+        />}
       </div>
       <div className="pb-txn-scroll-hint">
         <button type="button" className="pb-txn-more-button" onClick={scrollSummaryDown}
@@ -507,7 +512,7 @@ export function TransactionsClient({
                 />
               ) : (
                 <>
-                  {typeFilter !== 'adjustment' && resultTransactions.length > 0 && (
+                  {showAmounts && typeFilter !== 'adjustment' && resultTransactions.length > 0 && (
                     <ResultsSummary results={resultTransactions} categoryMeta={categoryMeta} type={typeFilter} />
                   )}
                   <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
@@ -523,7 +528,7 @@ export function TransactionsClient({
               entries={statementEntries}
               payoffs={payoffs}
               openingBalance={openingBalance}
-              closingBalance={closingBalance}
+              closingBalance={partner ? undefined : closingBalance}
               monthInfo={selectedMonthInfo}
               today={today}
               lensAccountId={lensId}
@@ -543,7 +548,7 @@ export function TransactionsClient({
                     </div>
                     {importButton}
                   </div>
-                  {statementTotals.count > 0 && (
+                  {showAmounts && statementTotals.count > 0 && (
                     <div className="pb-txn-sum pb-txn-sum-stmt">
                       <FlowFigures inn={statementTotals.deposits} out={statementTotals.withdrawals} />
                     </div>

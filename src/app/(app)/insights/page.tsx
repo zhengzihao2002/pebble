@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getAccounts, getBudgets, getCategories, getExpenses, getGoals, getIncome, getRecurringRules } from '@/lib/data/queries';
 import { mergeTransactions } from '@/lib/stats';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // Existing reads only, the same ones other pages run. Everything on the page
 // is computed in the browser from these.
 export default async function InsightsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/insights');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

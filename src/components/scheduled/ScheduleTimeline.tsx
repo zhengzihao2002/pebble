@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { ArrowDownRight, ArrowUpRight, CalendarClock, Info } from 'lucide-react';
@@ -45,6 +46,8 @@ export function cappedCount(upcoming: readonly UpcomingOccurrence[]): number {
  * behind "Show all", so the schedules below stay in reach.
  */
 export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onToggle }: ScheduleTimelineProps) {
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const x = d.ux.scheduled;
   const limit = cappedCount(upcoming);
@@ -111,7 +114,7 @@ export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onTog
                       <div className="pb-sched-day-head">
                         <span className="pb-tnum">{heading(g.date)}</span>
                         <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>
-                          {net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} />
+                          {showAmounts ? <>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></> : <span aria-label={d.partner.censored}>—</span>}
                         </span>
                       </div>
                       <ul className="pb-sched-rows">
@@ -129,7 +132,7 @@ export function ScheduleTimeline({ upcoming, previewDays, today, expanded, onTog
                                 </span>
                               </span>
                               <span className="font-mono-tab pb-sched-row-amt" style={{ color: income ? 'var(--income)' : 'var(--expense)' }}>
-                                {income ? '+' : ''}<RollingAmount value={formatCurrency(item.amount)} />
+                                {showAmounts ? <>{income ? '+' : ''}<RollingAmount value={formatCurrency(item.amount)} /></> : <span aria-label={d.partner.censored}>—</span>}
                               </span>
                             </li>
                           );

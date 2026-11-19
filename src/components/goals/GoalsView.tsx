@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useState, useSyncExternalStore } from 'react';
 import { CalendarRange, Check, LayoutGrid } from 'lucide-react';
@@ -39,6 +40,7 @@ function noSubscribe(): () => void {
 export function GoalsView({ goals }: { goals: Goal[] }) {
   const { d, t } = useTranslation();
   const ux = d.ux.goals;
+  const partner = usePartnerView();
   const today = useGoalsToday();
   // Static first render (cards: the server snapshot), then the remembered
   // choice: no hydration mismatch, and storage that throws (private mode)
@@ -48,7 +50,7 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
   // empty grid with a remembered timeline while its success is still showing.
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<View | null>(null);
-  const view: View = picked ?? stored ?? 'cards';
+  const view: View = partner ? 'cards' : picked ?? stored ?? 'cards';
   const choose = (v: View) => {
     setPicked(v);
     try { window.localStorage.setItem(VIEW_KEY, v); } catch { /* not remembered */ }
@@ -67,8 +69,8 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
         <SectionHeader
           as="h2" id="pb-goals-list-title" className="pb-goals-list-head"
           title={ux.yourGoals}
-          subtitle={<span className="pb-tnum">{counts}</span>}
-          actions={(
+          subtitle={partner && !partner.data.permissions.amounts ? undefined : <span className="pb-tnum">{counts}</span>}
+          actions={!partner ? (
             <SegmentedControl<View>
               size="sm" ariaLabel={ux.viewLabel} value={view} onChange={choose}
               options={[
@@ -76,7 +78,7 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
                 { value: 'timeline', label: ux.viewTimeline, icon: CalendarRange },
               ]}
             />
-          )}
+          ) : undefined}
         />
       )}
 
@@ -86,7 +88,9 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
         <>
           <div className="goals-grid pb-goals-grid">
             {inProgress.map((g, i) => <GoalCard key={g.id} goal={g} today={today} index={i} />)}
-            <AddGoalTile empty={empty} onAdd={() => setAdding(true)} />
+            {(!partner || partner.data.permissions.addPersonalGoals) && <AddGoalTile empty={empty}
+              onAdd={() => partner ? partner.openEditor({ kind: 'goal' }) : setAdding(true)} />}
+            {empty && partner && !partner.data.permissions.addPersonalGoals && <p className="card pb-partner-card pb-partner-note">{d.partner.noShared}</p>}
           </div>
           {reached.length > 0 && (
             <>

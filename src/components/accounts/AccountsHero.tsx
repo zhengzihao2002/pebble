@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
@@ -48,6 +49,7 @@ export function AccountsHero({
   selfCount: number;
   onReviewSelf: () => void;
 }) {
+  const partner = usePartnerView();
   const { d, t, locale } = useTranslation();
   const x = d.ux.accounts;
   const [scrub, setScrub] = useState<number | null>(null);
@@ -79,6 +81,12 @@ export function AccountsHero({
   ], [d, x]);
 
   const onPick = useCallback((r: Range) => { setScrub(null); onRange(r); }, [onRange]);
+
+  if (partner) return <section className="card pb-accounts-hero">
+    <h2 className="pb-accounts-hero-label">{d.transactions.totalBalanceToday}</h2>
+    <p className="font-display pb-accounts-hero-figure pb-partner-censored" aria-label={d.partner.censored}>—</p>
+    <p className="pb-partner-note">{d.partner.balancesRestricted}</p>
+  </section>;
 
   return (
     <section className="card pb-accounts-hero pb-rise" aria-labelledby="pb-accounts-total" style={{ ['--pb-i' as string]: 0 }}>

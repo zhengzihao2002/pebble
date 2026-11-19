@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
@@ -48,6 +49,7 @@ interface ScheduleRulesProps {
  */
 export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge, chargedNote, ghost = false, accountNames }: ScheduleRulesProps) {
   const { d, t, locale } = useTranslation();
+  const partner = usePartnerView();
   const headingId = ghost ? 'pb-sched-ghost-rules-title' : 'pb-sched-rules-title';
   const x = d.ux.scheduled;
   const [filter, setFilter] = useState<Filter>('all');
@@ -82,12 +84,12 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
         <EmptyState
           icon={CalendarClock}
           title={x.emptyTitle}
-          body={<>{parts[0]}<strong style={{ color: 'var(--ink)' }}>{d.header.addSchedule}</strong>{parts[1]}</>}
-          action={(
-            <button type="button" className="btn-primary pb-sched-empty-btn" onClick={() => requestShell('addSchedule')}>
+          body={partner ? d.partner.noShared : <>{parts[0]}<strong style={{ color: 'var(--ink)' }}>{d.header.addSchedule}</strong>{parts[1]}</>}
+          action={!partner || (partner.data.permissions.addScheduled && partner.data.entryAccounts.length && (partner.data.entryCategories.length || partner.data.entryIncome.length)) ? (
+            <button type="button" className="btn-primary pb-sched-empty-btn" onClick={() => partner ? partner.openEditor({ kind: 'schedule' }) : requestShell('addSchedule')}>
               <Plus size={15} aria-hidden="true" />{d.header.addSchedule}
             </button>
-          )}
+          ) : undefined}
         />
       </section>
     );
@@ -165,6 +167,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
   chargedText: string;
 }) {
   const { d, t, locale } = useTranslation();
+  const partner = usePartnerView();
   const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
   const paused = rule.status === 'paused';
   // A rule that has made every payment it ever will - derived, never stored
@@ -173,7 +176,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
   const isIncome = rule.kind === 'income';
   const KindIcon = isIncome ? ArrowUpRight : ArrowDownRight;
   const title = descriptionTitle(rule.description);
-  const monthly = isolated ? null : monthlyEquivalent(rule);
+  const monthly = isolated || (partner && !partner.data.permissions.amounts) ? null : monthlyEquivalent(rule);
   const progress = ruleProgress(rule);
   const next = today ? nextDate(rule, today) : null;
   // Offered only while there is a payment to charge: active, not finished, a
@@ -217,7 +220,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
         </div>
         <div className="pb-sched-rule-money">
           <span className="font-mono-tab pb-sched-rule-amt" style={{ color: isIncome ? 'var(--income)' : 'var(--expense)' }}>
-            <RollingAmount value={formatCurrency(rule.amount)} />
+            {partner && !partner.data.permissions.amounts ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(rule.amount)} />}
           </span>
           {approx && <span className="pb-sched-rule-approx">{approx}</span>}
         </div>
@@ -242,7 +245,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
           )}
         </div>
         <div className="pb-sched-rule-actions">
-          {canCharge && (
+          {!partner && canCharge && (
             <button
               type="button" onClick={() => onCharge(rule)} disabled={locked}
               className="pb-sched-charge-now"
@@ -251,20 +254,20 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
               <CalendarCheck size={14} aria-hidden="true" />{x.chargeNow}
             </button>
           )}
-          <button
+          {!partner && <button
             type="button" onClick={() => onToggle(rule)} disabled={busy || finished}
             className="icon-btn pb-sched-act"
             aria-label={t(paused ? d.scheduled.resumeAria : d.scheduled.pauseAria, { description: title })}
           >
             {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
-          </button>
-          <button
-            type="button" onClick={() => onEdit(rule)}
+          </button>}
+          {(!partner || partner.data.permissions.editScheduled) && <button
+            type="button" onClick={() => partner ? partner.openEditor({ kind: 'scheduleEdit', id: rule.id, name: title }) : onEdit(rule)}
             className="icon-btn pb-sched-act"
             aria-label={t(d.scheduled.editAria, { description: title })}
           >
             <Pencil size={14} aria-hidden="true" />
-          </button>
+          </button>}
         </div>
       </div>
       {/* Always rendered so the live region exists before its text does and

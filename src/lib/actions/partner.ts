@@ -14,7 +14,8 @@ import { isYmd } from '@/lib/recurring/occurrences';
 import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 import { composeDescription } from '@/lib/transactionDescription';
 
-const WORKSPACE_COOKIE = 'pebble-partner-view';
+import { PARTNER_VIEW_COOKIE } from '@/lib/partnerPaths';
+import { partnerViewPair } from '@/lib/partnerView.server';
 const INVITE_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const digest = (code: string) => createHash('sha256').update(code).digest('hex');
@@ -35,13 +36,6 @@ async function run<T>(handler: () => Promise<T>) {
   }
 }
 
-async function partnerViewPair(userId: string) {
-  const value = (await cookies()).get(WORKSPACE_COOKIE)?.value;
-  const prefix = userId + ':';
-  const pairId = value?.startsWith(prefix) ? value.slice(prefix.length) : '';
-  return validId(pairId) ? pairId : null;
-}
-
 async function readSettings(userId: string) {
   const [viewing, rows] = await Promise.all([
     partnerViewPair(userId),
@@ -56,7 +50,7 @@ async function readSettings(userId: string) {
       LEFT JOIN neon_auth."user" profile ON profile.id = partner.user_id`,
   ]);
   const row = rows[0];
-  const categories = row.partnerName === null ? [] : await neonSql`
+  const categories = row.pairId === null ? [] : await neonSql`
     SELECT id, name FROM public.category WHERE user_id = ${userId}::uuid ORDER BY name, id`;
   const data: PartnerSettingsData = {
     pairId: row.pairId,
@@ -147,6 +141,7 @@ async function savePermissions(userId: string, pairId: string, permitted: Partne
 }
 
 async function unpair(userId: string, pairId: string) {
+  if (await partnerViewPair(userId)) return failure('settingsOwnOnly');
   if (!validId(pairId)) return failure('invalid');
   return run(async () => {
     const [, rows] = await neonSql.transaction([
@@ -160,7 +155,7 @@ async function unpair(userId: string, pairId: string) {
       DELETE FROM public.pebble_partner_member WHERE pair_id IN (SELECT id FROM ended) RETURNING user_id`,
     ]);
     if (!rows.length) return failure('noPair');
-    (await cookies()).delete(WORKSPACE_COOKIE);
+    (await cookies()).delete(PARTNER_VIEW_COOKIE);
     return success;
   });
 }
@@ -170,7 +165,7 @@ async function enterPartner(userId: string, pairId: string) {
   return run(async () => {
     const rows = await neonSql`SELECT 1 FROM public.pebble_partner_scope WHERE viewer_id = ${userId}::uuid AND pair_id = ${pairId}::uuid`;
     if (!rows.length) return failure('pendingPermissions');
-    (await cookies()).set(WORKSPACE_COOKIE, userId + ':' + pairId, {
+    (await cookies()).set(PARTNER_VIEW_COOKIE, userId + ':' + pairId, {
       httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 8 * 60 * 60,
     });
     return success;
@@ -178,7 +173,7 @@ async function enterPartner(userId: string, pairId: string) {
 }
 
 async function leavePartner() {
-  (await cookies()).delete(WORKSPACE_COOKIE);
+  (await cookies()).delete(PARTNER_VIEW_COOKIE);
   return success;
 }
 
@@ -186,17 +181,17 @@ async function readWorkspace(userId: string) {
   const pairId = await partnerViewPair(userId);
   if (!pairId) return failure('denied');
   // One permission snapshot per response. Only authorized fields leave the database.
-  const [people, transactions, accounts, goals, entryAccounts, entryCategories, budgetCategories, budgets, scheduled] = await neonSql.transaction([
+  const [people, transactions, accounts, goals, entryAccounts, entryCategories, budgetCategories, budgets, scheduled, categories] = await neonSql.transaction([
     neonSql`SELECT profile.name, scope.permissions, scope.pair_id AS "pairId", scope.shared_categories AS "categories" FROM public.pebble_partner_scope scope
       JOIN neon_auth."user" profile ON profile.id = scope.owner_id WHERE scope.viewer_id = ${userId}::uuid AND scope.pair_id = ${pairId}::uuid`,
     neonSql`WITH ledger AS (
       SELECT e.id,e.user_id,e.account_id,'expense'::text AS kind,e.transaction_date,e.description,e.category,e.tag,
-        e.amount,e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL AS editable
+        e.amount,NULL::numeric AS gross_amount,e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL AS editable
       FROM public.expense e JOIN public.pebble_partner_scope s ON s.owner_id=e.user_id
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"expenses":true}'::jsonb
       UNION ALL
       SELECT i.id,i.user_id,i.account_id,'income',i.transaction_date,i.description,i.category,'',
-        i.net_amount,i.recurring_rule_id IS NULL
+        i.net_amount,i.gross_amount,i.recurring_rule_id IS NULL
       FROM public.income i JOIN public.pebble_partner_scope s ON s.owner_id=i.user_id
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"income":true}'::jsonb
     )
@@ -211,7 +206,9 @@ async function readWorkspace(userId: string) {
       (v.visible AND a.status='active' AND l.editable AND s.permissions @> '{"editTransactions":true}'::jsonb) AS "canEdit",
       (s.permissions @> '{"notes":true}'::jsonb) AS "notesVisible",
       NOT v.visible AS hidden,
-      CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN a.name END AS "accountName"
+      CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN a.name END AS "accountName",
+      CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN a.id END AS "accountId",
+      CASE WHEN v.visible AND s.permissions @> '{"amounts":true}'::jsonb THEN l.gross_amount::float8 END AS "grossAmount"
     FROM ledger l
     JOIN public.pebble_partner_scope s ON s.owner_id=l.user_id AND s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid
     JOIN public.account a ON a.id=l.account_id AND a.user_id=l.user_id AND NOT a.is_ghost
@@ -219,11 +216,11 @@ async function readWorkspace(userId: string) {
       SELECT CASE WHEN l.kind='income' THEN ('income:' || l.category)=ANY(s.shared_categories) ELSE
         EXISTS (SELECT 1 FROM public.category c WHERE c.user_id=s.owner_id AND c.name=l.category AND c.id=ANY(s.shared_categories)) END AS visible
     ) v ORDER BY date DESC,l.id DESC`,
-    neonSql`SELECT a.id,a.name,a.kind,(a.kind IN ('bank','cash') AND a.status='active' AND NOT a.is_default) AS editable
+    neonSql`SELECT a.id,a.name,a.kind,a.status,(a.kind IN ('bank','cash') AND a.status='active' AND NOT a.is_default) AS editable
       FROM public.pebble_partner_scope s
       JOIN public.account a ON a.user_id = s.owner_id AND NOT a.is_ghost
       WHERE s.viewer_id = ${userId}::uuid AND s.pair_id = ${pairId}::uuid AND s.permissions->'accounts' = 'true'::jsonb ORDER BY a.name`,
-    neonSql`SELECT g.id, g.name, g.target_date AS date,
+    neonSql`SELECT g.id, g.name, g.target_date AS date, g.icon_key AS "iconKey", g.color,
         CASE WHEN s.permissions->'amounts' = 'true'::jsonb THEN g.target_amount::float8 END AS target,
         CASE WHEN s.permissions->'amounts' = 'true'::jsonb THEN g.current_amount::float8 END AS current
       FROM public.pebble_partner_scope s JOIN public.goal g ON g.user_id = s.owner_id
@@ -259,19 +256,30 @@ async function readWorkspace(userId: string) {
         AND (i.category_id IS NOT NULL OR b.category IS NOT NULL) ORDER BY c.name`,
     neonSql`SELECT r.id, r.kind, split_part(r.description, chr(10), 1) AS title, r.start_date::text AS date,
         CASE WHEN s.permissions->'amounts' = 'true'::jsonb THEN r.amount::float8 END AS amount,
-        r.frequency, r.status='paused' AS paused
+        r.frequency, r.status='paused' AS paused, r.category,
+        CASE WHEN s.permissions->'accounts' = 'true'::jsonb THEN a.id END AS "accountId",
+        CASE WHEN s.permissions->'accounts' = 'true'::jsonb THEN a.name END AS "accountName",
+        r.end_mode AS "endMode", r.end_count AS "endCount", r.end_date::text AS "endDate",
+        r.materialized_through::text AS "materializedThrough"
       FROM public.pebble_partner_scope s JOIN public.recurring_rule r ON r.user_id=s.owner_id AND r.status <> 'deleted'
       JOIN public.account a ON a.id=r.account_id AND a.user_id=r.user_id AND NOT a.is_ghost
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"scheduled":true}'::jsonb
         AND ((r.kind='expense' AND EXISTS (SELECT 1 FROM public.category c WHERE c.user_id=s.owner_id AND c.name=r.category
           AND c.id=ANY(s.shared_categories))) OR (r.kind='income' AND ('income:' || r.category)=ANY(s.shared_categories)))
       ORDER BY r.start_date, r.id`,
+    neonSql`SELECT c.id,c.name,c.icon_key AS "iconKey",c.color,c.is_system AS "isSystem",c.sort_order AS "sortOrder"
+      FROM public.pebble_partner_scope s JOIN public.category c ON c.user_id=s.owner_id AND c.id=ANY(s.shared_categories)
+      WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid
+        AND (s.permissions @> '{"expenses":true}'::jsonb OR s.permissions @> '{"budgets":true}'::jsonb)
+      ORDER BY c.sort_order,c.name`,
   ], { isolationLevel: 'RepeatableRead', readOnly: true });
   if (!people.length) return failure('noPair');
-  const data: PartnerWorkspaceData = { name: people[0].name, pairId: people[0].pairId, permissions: people[0].permissions,
+  const accessVersion = digest(JSON.stringify([people[0].pairId, people[0].permissions, people[0].categories]));
+  const data: PartnerWorkspaceData = { accessVersion, name: people[0].name, pairId: people[0].pairId, permissions: people[0].permissions,
     transactions: transactions as SharedTransaction[], accounts: accounts as PartnerWorkspaceData['accounts'],
     goals: goals as PartnerWorkspaceData['goals'], entryAccounts: entryAccounts as PartnerWorkspaceData['entryAccounts'],
     entryCategories: entryCategories as SharingCategory[], budgetCategories: budgetCategories as SharingCategory[],
+    categories: categories as PartnerWorkspaceData['categories'],
     budgets: budgets as PartnerWorkspaceData['budgets'], scheduled: scheduled as PartnerWorkspaceData['scheduled'],
     entryIncome: (people[0].permissions.addTransactions === true || people[0].permissions.addScheduled === true) && people[0].permissions.accounts === true
       ? INCOME_SHARING_KEYS.filter(key => people[0].categories.includes(key)).map(key => key.slice(7)) : [],
@@ -585,7 +593,7 @@ export const acceptPartnerInviteAction = withSessionUser(acceptInvite);
 export const savePartnerPermissionsAction = withSessionUser(savePermissions);
 export const unpairPartnerAction = withSessionUser(unpair);
 export const enterPartnerViewAction = withSessionUser(enterPartner);
-export const leavePartnerViewAction = withSessionUser(leavePartner);
-export const readPartnerWorkspaceAction = withSessionUser(userId => run(() => readWorkspace(userId)));
-export const createSharedRecordAction = withSessionUser(createSharedRecord);
-export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction);
+export const leavePartnerViewAction = withSessionUser(leavePartner, { partnerView: true });
+export const readPartnerWorkspaceAction = withSessionUser(userId => run(() => readWorkspace(userId)), { partnerView: true });
+export const createSharedRecordAction = withSessionUser(createSharedRecord, { partnerView: true });
+export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction, { partnerView: true });

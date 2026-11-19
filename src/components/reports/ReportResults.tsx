@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState, type ReactNode } from 'react';
@@ -68,6 +69,8 @@ export function ReportResults({
   sortField, sortDir, onSort, series, empty,
 }: ReportResultsProps) {
   // dict/tr: `t` is the transaction parameter in the map callbacks below.
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d: dict, t: tr, locale } = useTranslation();
   const x = dict.ux.reports;
   const amt = (t: Transaction) => (tinted ? t.amount : Math.abs(t.amount));
@@ -167,7 +170,7 @@ export function ReportResults({
             {showPeriodHeaders && (
               <header className="pb-rep-phead">
                 <h3 className="font-display">{pg.label}</h3>
-                <span className="pb-rep-phead-figs">
+                {showAmounts && <span className="pb-rep-phead-figs">
                   {tinted && (
                     <span className="pb-rep-phead-split">
                       <span className="font-mono-tab is-in">+<RollingAmount value={formatCurrency(inSum)} /></span>
@@ -175,7 +178,7 @@ export function ReportResults({
                     </span>
                   )}
                   <span className={`font-mono-tab pb-rep-phead-total${tone(pg.total)}`}><RollingAmount value={signed(pg.total)} /></span>
-                </span>
+                </span>}
               </header>
             )}
 
@@ -251,7 +254,7 @@ export function ReportResults({
                           <div key={day.ymd} className="pb-rep-day">
                             <div className="pb-rep-day-head">
                               <span><b>{l.weekday}</b> <span className="pb-tnum">{l.date}</span></span>
-                              <span className={`font-mono-tab${tone(day.total)}`}><RollingAmount value={signed(day.total)} /></span>
+                              {showAmounts && <span className={`font-mono-tab${tone(day.total)}`}><RollingAmount value={signed(day.total)} /></span>}
                             </div>
                             {day.items.map((t) => rowOf(t))}
                           </div>

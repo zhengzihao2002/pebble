@@ -22,6 +22,9 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { SETTINGS_JUMP_EVENT } from '@/components/settings/settingsTargets';
 import { searchSettings } from '@/components/settings/settingsSearch';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { partnerTransactions } from '@/lib/partnerDisplay';
+import { partnerSectionPath } from '@/lib/partnerPaths';
 import type { CategoryMeta, LedgerRecord, Transaction } from '@/types';
 
 /**
@@ -52,6 +55,7 @@ function scrollNearestWithin(el: Element | null | undefined) {
 }
 
 interface CommandPaletteProps {
+  partner?: { addTransaction: boolean; addSchedule: boolean; addGoal: boolean };
   onClose: () => void;
   onAddTransaction: () => void;
   onTransfer: () => void;
@@ -112,10 +116,12 @@ const hidden: React.CSSProperties = {
  * handing focus back to whatever was focused before it.
  */
 export function CommandPalette({
-  onClose, onAddTransaction, onTransfer, onAddGoal, onAddSchedule, onOpenTransaction,
+  partner, onClose, onAddTransaction, onTransfer, onAddGoal, onAddSchedule, onOpenTransaction,
 }: CommandPaletteProps) {
   const { d, locale } = useTranslation();
   const router = useRouter();
+  const workspace = usePartnerView();
+  const showAmounts = !partner || workspace?.data.permissions.amounts === true;
   const privacyOn = usePebbleStore((s) => s.privacyOn);
   const setPrivacyOn = usePebbleStore((s) => s.setPrivacyOn);
   const [query, setQuery] = useState('');
@@ -142,6 +148,10 @@ export function CommandPalette({
 
   const loadOnce = () => {
     if (searchState !== 'idle') return;
+    if (partner) {
+      setSearchState('ready');
+      return;
+    }
     setSearchState('loading');
     void callAction(getSearchTransactionsAction, d.palette.searchFailed).then((result) => {
       if (!aliveRef.current) return;
@@ -179,7 +189,7 @@ export function CommandPalette({
     },
     ...navItems.map((item): Command => ({
       id: item.href, label: d.nav[item.labelKey], icon: item.icon, group: 'pages',
-      run: () => { beginNavigation(item.href); router.push(item.href); },
+      run: () => { const href = partner ? partnerSectionPath(item.href) : item.href; beginNavigation(href); router.push(href); },
     })),
     { id: 's-money', label: d.settingsSections.money, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-money') },
     { id: 's-appearance', label: d.settingsSections.appearance, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-appearance') },
@@ -189,6 +199,13 @@ export function CommandPalette({
     { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => { beginNavigation('/account/security'); router.push('/account/security'); } },
   ];
 
+  const visibleCommands = partner ? commands.filter(command => {
+    if (command.group === 'settings' || command.id === 'transfer') return false;
+    if (command.id === 'add') return partner.addTransaction;
+    if (command.id === 'goal') return partner.addGoal;
+    if (command.id === 'schedule') return partner.addSchedule;
+    return true;
+  }) : commands;
   const q = query.trim().toLowerCase();
   // Amount search ignores $, commas and spaces, and only runs on queries
   // that contain a digit, so typing a word never matches every amount.
@@ -196,8 +213,8 @@ export function CommandPalette({
   const amountQuery = /[0-9]/.test(qAmount);
 
   const shownCommands = [
-    ...(q ? commands.filter((c) => c.label.toLowerCase().includes(q)) : commands),
-    ...searchSettings(d, q).map((setting): Command => ({
+    ...(q ? visibleCommands.filter((c) => c.label.toLowerCase().includes(q)) : visibleCommands),
+    ...(partner ? [] : searchSettings(d, q)).map((setting): Command => ({
       id: `setting-${setting.id}`, label: setting.label,
       description: `${setting.section} · ${setting.hint}`, icon: SettingsIcon,
       group: 'settings', run: () => {
@@ -206,15 +223,16 @@ export function CommandPalette({
       },
     })),
   ];
+  const scopedRows = partner ? (workspace ? partnerTransactions(workspace.data, d.partner.hiddenTransaction) : []) : txns;
   const shownTxns = q && searchState === 'ready'
-    ? txns.filter((x) => {
+    ? scopedRows.filter((x) => {
         const tag = x.type === 'expense' && x.tag ? x.tag.toLowerCase() : '';
         return (
           x.description.toLowerCase().includes(q)
           || x.category.toLowerCase().includes(q)
           || categoryLabel(d, x.category).toLowerCase().includes(q)
           || (tag !== '' && tag.includes(q))
-          || (amountQuery && Math.abs(x.amount).toFixed(2).includes(qAmount))
+          || (showAmounts && amountQuery && Math.abs(x.amount).toFixed(2).includes(qAmount))
         );
       }).slice(0, MAX_TXN_RESULTS)
     : [];
@@ -375,7 +393,7 @@ export function CommandPalette({
                               </span>
                               <span className="pb-shell-pal-end">
                                 <span className={`font-mono-tab pb-shell-pal-amt${x.amount > 0 ? ' pb-shell-pal-in' : ''}`}>
-                                  {x.amount > 0 ? '+' : ''}{formatCurrency(x.amount)}
+                                  {showAmounts ? (x.amount > 0 ? '+' : '') + formatCurrency(x.amount) : d.partner.censored}
                                 </span>
                                 {amountHit && <span className="pb-shell-pal-badge">{d.ux.shell.matchedAmount}</span>}
                               </span>

@@ -4,7 +4,7 @@ import { buildSync } from 'esbuild';
 import vm from 'node:vm';
 
 const source = buildSync({ entryPoints: ['src/components/reports/ReportFilters.tsx'], bundle: true, write: false,
-  platform: 'node', format: 'cjs', external: ['react', 'react/jsx-runtime', 'lucide-react', '@/lib/i18n/useTranslation', '@/lib/i18n/enumLabels'],
+  platform: 'node', format: 'cjs', external: ['react', 'react/jsx-runtime', 'lucide-react', '@/lib/i18n/useTranslation', '@/lib/i18n/enumLabels', '@/components/partner/PartnerViewContext'],
 }).outputFiles[0].text;
 
 function fixture({ managed = false } = {}) {
@@ -68,6 +68,7 @@ function fixture({ managed = false } = {}) {
       };
       if (name === 'react/jsx-runtime') return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
       if (name === '@/lib/i18n/useTranslation') return { useTranslation: () => ({ d: { reports: {}, txnSearch: {}, ux: { reports: {} } }, t: () => '' }) };
+      if (name === '@/components/partner/PartnerViewContext') return { usePartnerView: () => null };
       if (name === '@/lib/i18n/enumLabels') return { categoryLabel: () => '', periodValueLabel: () => '' };
       return {};
     },

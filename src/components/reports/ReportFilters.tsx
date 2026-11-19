@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronRight, Search, X } from 'lucide-react';
@@ -209,6 +210,9 @@ export function ReportFilters({
   showTagFilter, singleSelectedCategory, availableTags, selectedTags, onToggleTag, onClearTags,
 }: ReportFiltersProps) {
   // dict/tr, not d/t: `t` and `d` are used as closure parameters below.
+  const partner = usePartnerView();
+  const allowedTypes = (['expense', 'income'] as const).filter(kind =>
+    !partner || partner.data.permissions[kind === 'expense' ? 'expenses' : 'income'] === true);
   const { d: dict, t: tr } = useTranslation();
   const uid = useId();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -335,7 +339,7 @@ export function ReportFilters({
   const categoriesSummary =
     allSelected ? dict.reports.all
     : selectedCategories.size === 0 ? dict.reports.noneSelected
-    : selectedCategories.size === 1 ? categoryLabel(dict, Array.from(selectedCategories)[0])
+    : selectedCategories.size === 1 ? partner && selectedCategories.has('') ? dict.partner.censored : categoryLabel(dict, Array.from(selectedCategories)[0])
     : tr(dict.reports.selectedCount, { count: selectedCategories.size });
   const sortLabel = sortField === 'amount'
     ? (sortDir === 'desc' ? dict.reports.sortHighest : dict.reports.sortLowest)
@@ -393,8 +397,8 @@ export function ReportFilters({
               open={typesExpanded} onToggle={onToggleTypesExpanded} active={selectedTypes.size !== 2}
             >
               <div style={pillRowStyle}>
-                <button onClick={onToggleAllTypes} aria-pressed={selectedTypes.size === 2} className={`pill ${selectedTypes.size === 2 ? 'active' : ''}`}>{dict.reports.all}</button>
-                {(['expense', 'income'] as const).map((k) => (
+                {allowedTypes.length > 1 && <button onClick={onToggleAllTypes} aria-pressed={selectedTypes.size === 2} className={`pill ${selectedTypes.size === 2 ? 'active' : ''}`}>{dict.reports.all}</button>}
+                {allowedTypes.map((k) => (
                   <button key={k} onClick={() => onToggleType(k)} aria-pressed={selectedTypes.has(k)} className={`pill ${selectedTypes.has(k) ? 'active' : ''}`}>
                     {k === 'expense' ? dict.reports.expenses : dict.reports.income}
                   </button>
@@ -594,7 +598,7 @@ export function ReportFilters({
                         two income literals get a label; user categories pass
                         through categoryLabel unchanged. */}
                     {periodCategories.map((c) => (
-                      <button key={c} onClick={() => onToggleCategory(c)} aria-pressed={selectedCategories.has(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{categoryLabel(dict, c)}</button>
+                      <button key={c} onClick={() => onToggleCategory(c)} aria-pressed={selectedCategories.has(c)} className={`pill ${selectedCategories.has(c) ? 'active' : ''}`}>{partner && c === '' ? dict.partner.censored : categoryLabel(dict, c)}</button>
                     ))}
                   </div>
                 )}

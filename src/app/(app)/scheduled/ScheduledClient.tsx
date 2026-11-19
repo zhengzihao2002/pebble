@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { Ghost } from 'lucide-react';
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
@@ -43,6 +44,8 @@ interface ScheduledClientProps {
  * up and the schedules sit side by side (scheduled.css).
  */
 export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upcoming, previewDays, catchUp }: ScheduledClientProps) {
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const x = d.ux.scheduled;
   const today = useScheduledToday();
@@ -154,8 +157,9 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
 
       {rules.length > 0 && (
         <>
-          <ScheduleSummary rules={rules} upcoming={upcoming} previewDays={previewDays} today={today} />
-          {upcoming.length > 0 && (
+          {showAmounts ? <ScheduleSummary rules={rules} upcoming={upcoming} previewDays={previewDays} today={today} />
+            : <p className="card pb-partner-card pb-partner-note">{d.partner.amountsRestricted}</p>}
+          {showAmounts && upcoming.length > 0 && (
             <ScheduleCalendar upcoming={upcoming} previewDays={previewDays} today={today} onPick={pickDay} />
           )}
         </>

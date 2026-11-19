@@ -14,6 +14,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, PARTNER_VIEW_PERMISSIONS, PARTNER_ADD_PERMISSIONS, PARTNER_EDIT_PERMISSIONS, type PartnerPermissions, type PartnerSettingsData } from '@/lib/partner';
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
 import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
+import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { partnerError } from './partnerError';
 
 export function PartnerSettings() {
@@ -38,13 +39,13 @@ export function PartnerSettings() {
   }, [reload]);
 
   useEffect(() => {
-    if (!invite || settings?.partnerName) return;
+    if (!invite || settings?.pairId) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void reload();
     }, 5000);
     const expires = window.setTimeout(() => { setInvite(null); void reload(); }, Math.max(0, Date.parse(invite.expires) - Date.now()));
     return () => { window.clearInterval(timer); window.clearTimeout(expires); };
-  }, [invite, settings?.partnerName, reload]);
+  }, [invite, settings?.pairId, reload]);
 
   const waitingForPartner = !!settings?.pairId && !settings.partnerConfigured;
   useEffect(() => {
@@ -84,7 +85,7 @@ export function PartnerSettings() {
   const switchView = async (leave: boolean) => {
     if (await run(leave ? leavePartnerViewAction : () => enterPartnerViewAction(settings?.pairId ?? ''))) {
       // Drop the previous workspace's client state at the mode boundary.
-      window.location.assign(new URL(leave ? '/settings#settings-partner' : '/partner', window.location.origin));
+      window.location.assign(new URL(leave ? '/settings#settings-partner' : '/partner/dashboard', window.location.origin));
     }
   };
 
@@ -96,7 +97,7 @@ export function PartnerSettings() {
   };
 
   const displayedInvite = invite?.expires ?? settings?.inviteExpires;
-  const partnerName = settings?.partnerName;
+  const partnerName = settings?.pairId ? partnerDisplayName(settings.partnerName, x.partnerName) : null;
   const expiration = displayedInvite
     ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(new Date(displayedInvite))
     : '';

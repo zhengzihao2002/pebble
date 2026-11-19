@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { CSSProperties } from 'react';
@@ -42,6 +43,7 @@ const MAX_ROWS = 5;
  * Account NAMES are user data and are never translated.
  */
 export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocated = 0, trend = null }: BalanceHeroProps) {
+  const partner = usePartnerView();
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
@@ -75,7 +77,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
   const shown = rows.length > MAX_ROWS ? rows.slice(0, MAX_ROWS - 1) : rows;
   const moreCount = rows.length - shown.length;
   // One account would only repeat the total.
-  const showAccounts = rows.length > 1 || ghosts.length > 0;
+  const showAccounts = rows.length > (partner ? 0 : 1) || ghosts.length > 0;
   // Each account's share of the money that is there; a card owing money has
   // no share rather than a negative one.
   const positive = rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
@@ -84,7 +86,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
     <div className="pb-hero pb-dash-hero">
       <div className="pb-dash-hero-main">
         <p className="pb-hero-label">
-          {d.dashboard.balanceTitle}
+          {partner ? d.transactions.totalBalanceToday : d.dashboard.balanceTitle}
           <InfoTooltip label={d.dashboard.balanceTooltipLabel}>
             {renderTemplate(d.dashboard.balanceTooltip, {
               checking: d.enums.paymentMethod.Checking,
@@ -96,14 +98,14 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
         <p className="font-display hero-balance" style={{
           '--pb-balance-fit': `${100 / (whole.length * .67 + cents.length * .34 + .1)}cqi`,
         } as CSSProperties}>
-          <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />
+          {partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />}
         </p>
         {/* Reserved line: blank until today resolves, so nothing shifts. */}
         <p className="pb-dash-hero-change">
           {change && !flat && change.pct !== null && (
             <DeltaChip delta={change.change} text={`${Math.abs(change.pct).toFixed(1)}%`} good="neutral" />
           )}
-          <span>{changeText ?? ' '}</span>
+          <span>{partner ? d.partner.balancesRestricted : changeText ?? ' '}</span>
         </p>
 
         {allocated > 0 && (
@@ -163,7 +165,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-hero-account-name">
                 {r.label}
               </span>
-              <span className="pb-hero-account-amount font-mono-tab"><RollingAmount value={formatCurrency(r.balance)} /></span>
+              <span className="pb-hero-account-amount font-mono-tab">{partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(r.balance)} />}</span>
               {positive > 0 && r.balance > 0 && (
                 <span className="pb-dash-hero-share pb-chart-fill" aria-hidden="true" style={{ width: `${(r.balance / positive) * 100}%` }} />
               )}

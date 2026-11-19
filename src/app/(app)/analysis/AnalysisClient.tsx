@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
@@ -80,6 +81,7 @@ const DEDUCTION_VIEWS = ['rate', 'paycheck'] as const;
  * in the period bar, instead of twenty-one times in twenty-one tooltips.
  */
 export function AnalysisClient({ transactions, categories, budgets, rules, totalBalance }: AnalysisClientProps) {
+  const partner = usePartnerView();
   const { d, t, locale } = useTranslation();
   const x = d.ux.analysis;
   const timeZoneOverride = useTimeZoneOverride();
@@ -182,8 +184,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     [transactions, today, earliest, totalBalance, locale],
   );
   const projection = useMemo(
-    () => (today && cashflow ? computeProjection(transactions, today, totalBalance, cashflow.avgMonthlyNet) : null),
-    [transactions, today, totalBalance, cashflow],
+    () => (!partner && today && cashflow ? computeProjection(transactions, today, totalBalance, cashflow.avgMonthlyNet) : null),
+    [partner, transactions, today, totalBalance, cashflow],
   );
   const variance = useMemo(() => {
     if (!today) return [];
@@ -486,7 +488,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             </section>
 
             <div className="pb-ana-span-4 pb-ana-stack">
-              <CushionCard cashflow={cashflow} range={range} />
+              {!partner && <CushionCard cashflow={cashflow} range={range} />}
               <CommitmentsCard commitments={commitments} monthlyAverage={spending?.monthlyAverage ?? null} />
             </div>
           </div>

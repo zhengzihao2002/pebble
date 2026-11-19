@@ -13,7 +13,7 @@ test('Reports explicitly loads ghost history and account choices for its own fil
  const records=[{id:'cash-expense',accountId:'cash',amount:-30},{id:'bank-expense',accountId:'bank',amount:-20}];
  const accounts=[{id:'cash',kind:'cash',isGhost:true},{id:'bank',kind:'bank'}];
  const reader=(name,all)=>async(userId,scope)=>{calls.push({name,userId,scope});return scope?.includeGhost?all:all.filter(row=>row.accountId!=='cash'&&row.id!=='cash');};
- const page=vm.runInNewContext(`${code}\nReportsPage`,{require,getSessionUserIdOrRedirect:async()=>'owner',runRecurringCatchUp:async()=>{},getExpenses:reader('expenses',records),getIncome:reader('income',[]),getAccounts:reader('accounts',accounts),getBudgets:async()=>({}),getCategories:async()=>[],mergeTransactions:(a,b)=>[...a,...b],ReportsClient:'reports'});
+ const page=vm.runInNewContext(`${code}\nReportsPage`,{require,getOwnWorkspaceUser:async(path)=>{assert.equal(path,'/reports');return 'owner';},runRecurringCatchUp:async()=>{},getExpenses:reader('expenses',records),getIncome:reader('income',[]),getAccounts:reader('accounts',accounts),getBudgets:async()=>({}),getCategories:async()=>[],mergeTransactions:(a,b)=>[...a,...b],ReportsClient:'reports'});
  const result=await page();
  assert.equal(result.props.transactions.length,2);
  assert.equal(result.props.accounts.length,2);

@@ -1,10 +1,10 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getAccounts, getRecurringRules } from '@/lib/data/queries';
-import { addDays, generateOccurrences, todayInZone } from '@/lib/recurring/occurrences';
+import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
-import type { UpcomingOccurrence } from '@/types';
+import { getUpcomingSchedule, SCHEDULE_PREVIEW_DAYS } from '@/lib/recurring/preview';
 import { ScheduledClient } from './ScheduledClient';
 
 // Required on every page calling a Neon Auth method: the SDK reads cookies,
@@ -12,11 +12,8 @@ import { ScheduledClient } from './ScheduledClient';
 // writes, and getCategories() lazily seeds on read.
 export const dynamic = 'force-dynamic';
 
-/** How far ahead the upcoming list looks. */
-const PREVIEW_DAYS = 60;
-
 export default async function ScheduledPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/scheduled');
 
   // Materialize anything due since the last visit BEFORE reading rules, so the
   // high-water marks below are current and today's occurrence is not listed as
@@ -38,31 +35,7 @@ export default async function ScheduledPage() {
   // a first load, never what gets written. Catch-up above skips entirely
   // rather than guessing, and the client refreshes once the cookie is set.
   const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
-  const horizon = addDays(today, PREVIEW_DAYS);
-
-  // Same generator that materializes, run forward - a preview can never
-  // disagree with what will actually be created.
-  const upcoming: UpcomingOccurrence[] = rules
-    .filter((rule) => rule.status === 'active')
-    .flatMap((rule) =>
-      generateOccurrences(rule, {
-        // Exclusive lower bound. Catch-up ran above, so this is today for any
-        // rule that has ever fired - today's occurrence already exists and must
-        // not appear here as though it were still to come.
-        after: rule.materializedThrough ?? addDays(today, -1),
-        through: horizon,
-        limit: 40,
-      }).map((date) => ({
-        ruleId: rule.id,
-        description: rule.description,
-        category: rule.category,
-        kind: rule.kind,
-        paymentMethod: rule.paymentMethod,
-        amount: rule.amount,
-        date,
-      })),
-    )
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const upcoming = getUpcomingSchedule(rules, today, { afterTodayOnly: false });
 
   return (
     <ScheduledClient
@@ -70,7 +43,7 @@ export default async function ScheduledPage() {
       ghostRules={ghostRules}
       ghostAccountNames={Object.fromEntries(accounts.filter(account => account.isGhost).map(account => [account.id, account.name]))}
       upcoming={upcoming}
-      previewDays={PREVIEW_DAYS}
+      previewDays={SCHEDULE_PREVIEW_DAYS}
       catchUp={{
         expensesCreated: catchUp.expensesCreated,
         incomeCreated: catchUp.incomeCreated,

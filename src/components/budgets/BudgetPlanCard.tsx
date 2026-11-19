@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -55,6 +56,9 @@ const PACE_ICON: Record<PaceStatus, typeof Check> = {
  */
 export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome, today, incomeControl }: BudgetPlanCardProps) {
   const { d, t } = useTranslation();
+  const partner = usePartnerView();
+  const canShowBudget = !partner || partner.data.permissions.budgets === true;
+  const canShowSpending = !partner || partner.data.permissions.budgets && partner.data.permissions.amounts && partner.data.permissions.expenses;
   const ux = d.ux.budgets;
   const [page, setPage] = useState(0);
   // The segment under the pointer (or focus), and where to centre its popup.
@@ -139,14 +143,15 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
   return (
     <section ref={cardRef} className="card pb-plan-card pb-bud-plan">
       <div className="pb-plan-head">
-        <SectionHeader title={d.budgetPlan.title} subtitle={d.budgetPage.planBasis} />
+        <SectionHeader title={d.budgetPlan.title} subtitle={partner ? d.partner.sharedOnly : d.budgetPage.planBasis} />
       </div>
 
       <div className="pb-bud-glance">
-        <YearRing totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} />
+        {canShowSpending && <YearRing totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} />}
         <div className="pb-stats-grid">
           {cells.map((c) => {
             const Icon = c.icon;
+            const visible = c.key === 'budget' ? canShowBudget : canShowSpending;
             const PaceIcon = c.key === 'pace' && paceTone ? PACE_ICON[paceTone] : null;
             return (
               <div key={c.key} className="pb-stats-cell">
@@ -155,7 +160,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                   <span>{c.label}</span>
                 </div>
                 <div className="font-mono-tab pb-stats-value" style={{ color: c.color }}>
-                  {PaceIcon ? (
+                  {!visible ? <span aria-label={d.partner.censored}>—</span> : PaceIcon ? (
                     <span className="pb-bud-pace" data-tone={paceTone}>
                       <PaceIcon size={15} strokeWidth={2.4} aria-hidden="true" />{c.value}
                     </span>
@@ -163,13 +168,13 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
                 </div>
                 {/* Every cell reserves its note line, so the four stay level. */}
                 <div className="pb-stats-note font-mono-tab" aria-hidden={c.note ? undefined : true} style={c.note ? (c.key === 'pace' && overBudget ? { color: 'var(--expense)' } : undefined) : { visibility: 'hidden' }}>
-                  {c.note || ' '}
+                  {visible ? c.note || ' ' : ' '}
                 </div>
               </div>
             );
           })}
         </div>
-        <YearForecast totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} status={pace} unbudgetedSpent={unbudgetedSpent} />
+        {canShowSpending && <YearForecast totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} status={pace} unbudgetedSpent={unbudgetedSpent} />}
       </div>
 
       <div className="pb-plan-body">
@@ -239,7 +244,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
               })()}
             </div>
 
-            {today && annualIncome === null && (
+            {!partner && today && annualIncome === null && (
               <p className="pb-plan-caption">{d.budgetPlan.noIncome}</p>
             )}
             {savings !== null && savings < 0 && (

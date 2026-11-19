@@ -2,6 +2,8 @@
 import Link, { useLinkStatus } from 'next/link';
 import { forwardRef, useEffect, useRef, type ComponentProps } from 'react';
 import { beginNavigation, finishNavigation } from './navigation';
+import { usePathname } from 'next/navigation';
+import { isPartnerPath, partnerSectionPath } from '@/lib/partnerPaths';
 
 function PendingStatus({ pathname }: { pathname: string }) {
   const { pending } = useLinkStatus();
@@ -14,8 +16,11 @@ function PendingStatus({ pathname }: { pathname: string }) {
 }
 /** Shows the destination's own outline immediately, without waking unused routes. */
 const PendingLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Link>>(function PendingLink({ onNavigate, href, children, ...props }, ref) {
-  const path = typeof href === 'string' ? href : href.pathname ?? '';
-  return <Link {...props} href={href} ref={ref} onNavigate={event => {
+  const partnerView = isPartnerPath(usePathname());
+  const currentPath = typeof href === 'string' ? href : href.pathname ?? '';
+  const path = partnerView ? partnerSectionPath(currentPath) : currentPath;
+  const target = typeof href === 'string' ? path : { ...href, pathname: path };
+  return <Link {...props} href={target} prefetch={partnerView ? false : props.prefetch} ref={ref} onNavigate={event => {
     let cancelled = false;
     onNavigate?.({ preventDefault: () => { cancelled = true; event.preventDefault(); } });
     if (!cancelled) beginNavigation(path);

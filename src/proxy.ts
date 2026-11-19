@@ -66,5 +66,10 @@ export const config = {
     '/goals/:path*',
     '/settings/:path*',
     '/account/:path*',
+    '/accounts/:path*',
+    '/analysis/:path*',
+    '/insights/:path*',
+    '/scheduled/:path*',
+    '/partner/:path*',
   ],
 };

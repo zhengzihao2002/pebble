@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBudgets, getCategories, getExpenses, getIncome } from '@/lib/data/queries';
 import { mergeTransactions } from '@/lib/stats';
@@ -11,7 +11,7 @@ import { todayInZone } from '@/lib/recurring/occurrences';
 export const dynamic = 'force-dynamic';
 
 export default async function BudgetsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/budgets');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, type ReactNode } from 'react';
@@ -129,6 +130,7 @@ interface DayGroupsProps {
  */
 export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, today, lensAccountId, highlight }: DayGroupsProps) {
   const { d } = useTranslation();
+  const partner = usePartnerView();
   const label = useDayLabel(today);
   // A card lens reads as owed, like every other figure under it.
   const owed = !!lensAccountId && accounts.some((a) => a.id === lensAccountId && a.kind === 'credit');
@@ -145,8 +147,8 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
                 <span className="pb-txn-day-date pb-tnum">{l.date}</span>
               </span>
               <span className="pb-txn-day-figs">
-                {g.hasFlows && <SignedAmount value={g.net} />}
-                {mode === 'statement' && g.endBalance !== null && (
+                {(!partner || partner.data.permissions.amounts) && g.hasFlows && <SignedAmount value={g.net} />}
+                {!partner && mode === 'statement' && g.endBalance !== null && (
                   <span className="pb-txn-day-eod">
                     {renderTemplate(d.ux.transactions.endOfDay, {
                       amount: <BalanceFigure value={g.endBalance} owed={owed} />,
@@ -180,6 +182,7 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
  * where the statement is wide enough for the ledger grid (container query).
  */
 export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
+  const partner = usePartnerView();
   const { d } = useTranslation();
   const x = d.ux.transactions;
   return (
@@ -189,8 +192,8 @@ export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
       {!lensAccount && <div className="pb-txn-srow-acct">{x.colAccount}</div>}
       <div className="pb-txn-srow-money">
         <div>{x.colAmount}</div>
-        {lensAccount && <div className="pb-txn-srow-lensbal">{lensAccount.name}</div>}
-        <div className="pb-txn-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>
+        {!partner && lensAccount && <div className="pb-txn-srow-lensbal">{lensAccount.name}</div>}
+        {!partner && <div className="pb-txn-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>}
       </div>
     </div>
   );

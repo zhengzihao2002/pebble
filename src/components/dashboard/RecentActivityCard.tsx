@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
@@ -42,6 +43,7 @@ const MORE = 10;
  * on the Transactions page.
  */
 export function RecentActivityCard({ transactions, categoryMeta, today = null, accounts }: RecentActivityCardProps) {
+  const partner = usePartnerView();
   const { d, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const [selected, setSelected] = useState<Transaction | null>(null);
@@ -81,12 +83,12 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null, a
         {g.date !== continues && (
           <div className="pb-dash-day-head">
             <span>{heading(g.date)}</span>
-            <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>
+            {(!partner || partner.data.permissions.amounts) && <span className="font-mono-tab" style={{ color: net > 0 ? 'var(--income)' : net < 0 ? 'var(--expense)' : undefined }}>{net > 0 ? '+' : ''}<RollingAmount value={formatCurrency(net)} /></span>}
           </div>
         )}
         <div className="pb-dash-rows">
           {g.items.map((x) => (
-            <TransactionRow key={x.id} txn={x} compact hideDate flush focusable categoryMeta={categoryMeta} onOpenDetail={setSelected} />
+            <TransactionRow key={x.id} txn={x} compact hideDate flush focusable categoryMeta={categoryMeta} onOpenDetail={partner?.openTransaction ?? setSelected} />
           ))}
         </div>
       </div>
@@ -99,11 +101,11 @@ export function RecentActivityCard({ transactions, categoryMeta, today = null, a
       {past.length === 0 ? (
         <EmptyState
           compact icon={ReceiptText} title={ux.noTxnTitle} body={ux.noTxnBody}
-          action={(
+          action={!partner ? (
             <button type="button" className="btn-primary pb-dash-cta" onClick={() => requestShell('addTransaction')}>
               <Plus size={15} aria-hidden="true" />{d.header.addTransaction}
             </button>
-          )}
+          ) : undefined}
         />
       ) : (
         <>

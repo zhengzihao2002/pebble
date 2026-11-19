@@ -31,6 +31,8 @@ export interface SharedTransaction {
   notes: string | null;
   tag: string;
   accountName: string | null;
+  accountId: string | null;
+  grossAmount: number | null;
   canEditTag: boolean;
   canEdit: boolean;
   notesVisible: boolean;
@@ -38,13 +40,16 @@ export interface SharedTransaction {
 }
 export interface PartnerWorkspaceData {
   pairId: string;
+  accessVersion: string;
   name: string;
   permissions: PartnerPermissions;
   transactions: SharedTransaction[];
-  accounts: { id: string; name: string; kind: string; editable: boolean }[];
-  goals: { id: string; name: string; target: number | null; current: number | null; date: string }[];
+  accounts: { id: string; name: string; kind: 'bank' | 'cash' | 'credit'; status: 'active' | 'hibernated'; editable: boolean }[];
+  goals: { id: string; name: string; target: number | null; current: number | null; date: string; iconKey: string; color: string }[];
+  categories: { id: string; name: string; iconKey: string; color: string; isSystem: boolean; sortOrder: number }[];
   budgets: { id: string; name: string; amount: number }[];
-  scheduled: { id: string; kind: 'expense' | 'income'; title: string; date: string; amount: number | null; frequency: string; paused: boolean }[];
+  scheduled: { id: string; kind: 'expense' | 'income'; title: string; date: string; amount: number | null; frequency: RecurringFrequency; paused: boolean; category: string; accountId: string | null;
+    accountName: string | null; endMode: 'never' | 'after' | 'on'; endCount: number | null; endDate: string | null; materializedThrough: string | null }[];
   entryAccounts: { id: string; name: string }[];
   entryCategories: SharingCategory[];
   entryIncome: string[];

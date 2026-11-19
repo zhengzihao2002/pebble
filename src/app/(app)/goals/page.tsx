@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getGoals, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic';
 // real one and "unallocated" is what is left after those soft claims. Nothing
 // is moved between accounts and no goal balance is ever stored separately.
 export default async function GoalsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/goals');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

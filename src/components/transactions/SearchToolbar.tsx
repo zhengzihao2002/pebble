@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { forwardRef } from 'react';
 import { Search, X, Ghost } from 'lucide-react';
@@ -41,6 +42,7 @@ interface SearchToolbarProps {
 export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(function SearchToolbar({
   query, onQuery, typeFilter, onTypeFilter, accountFilter, onAccountFilter, accountOptions, hasGhostAccounts, showGhostAccounts, onShowGhostAccounts,
 }, ref) {
+  const partner = usePartnerView();
   const { d, locale } = useTranslation();
 
   // The X clears the typed text only, and shows only when there is text to
@@ -87,7 +89,7 @@ export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(func
             { value: 'all', label: d.txnSearch.typeAll },
             { value: 'expense', label: d.enums.kind.expense },
             { value: 'income', label: d.enums.kind.income },
-            { value: 'adjustment', label: d.ux.transactions.adjustmentsFilter },
+            ...(!partner ? [{ value: 'adjustment' as const, label: d.ux.transactions.adjustmentsFilter }] : []),
           ]}
           value={typeFilter}
           onChange={onTypeFilter}

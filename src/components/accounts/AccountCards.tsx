@@ -1,8 +1,9 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Coins, CreditCard, Landmark, BedDouble } from 'lucide-react';
+import { ChevronDown, ChevronRight, Coins, CreditCard, Landmark, BedDouble, Pencil, Plus } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate, splitCents } from '@/lib/format';
@@ -72,6 +73,7 @@ export function AccountCards({
   periodChip?: ReactNode;
 }) {
   const { d, t } = useTranslation();
+  const partner = usePartnerView();
   const x = d.ux.accounts;
   const ref = useRef<HTMLElement>(null);
   const width = useWidth(ref);
@@ -100,6 +102,40 @@ export function AccountCards({
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
   })();
+  if (partner) {
+    const render = (group: Account[], kind: 'bank' | 'cards' | 'sleeping', label: string) => group.length > 0 && (
+      <Group id={kind} icon={kind === 'cards' ? CreditCard : kind === 'sleeping' ? BedDouble : Landmark}
+        title={label} count={String(group.length)} subtotal="—">
+        <div className="pb-accounts-grid">
+          {group.map(account => {
+            const access = partner.data.accounts.find(row => row.id === account.id);
+            const edit = access?.editable && partner.data.permissions.editAccounts && access.kind !== 'credit';
+            return <article key={account.id} className={`card pb-accounts-tile is-${account.kind}`}>
+              <div className="pb-accounts-tile-head">
+                <NameLine a={account} badge={account.status === 'hibernated'} />
+                {edit && <button type="button" className="icon-btn" aria-label={d.partner.creation.editAccount}
+                  onClick={() => partner.openEditor({ kind: 'account', id: account.id, name: account.name, accountKind: access.kind === 'cash' ? 'cash' : 'bank' })}>
+                  <Pencil size={15} aria-hidden="true" />
+                </button>}
+              </div>
+              <p className="font-display pb-accounts-tile-bal pb-partner-censored" aria-label={d.partner.censored}>—</p>
+            </article>;
+          })}
+        </div>
+      </Group>
+    );
+    return <section aria-labelledby="pb-your-accounts" className="pb-accounts-wallet" ref={ref}>
+      <div className="pb-accounts-wallet-head">
+        <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
+        {partner.data.permissions.addAccounts && <button type="button" className="pill" onClick={() => partner.openEditor({ kind: 'account' })}>
+          <Plus size={15} aria-hidden="true" /> {d.partner.creation.newAccount}</button>}
+      </div>
+      {accounts.length === 0 && <p className="card pb-partner-card pb-partner-note">{d.partner.noShared}</p>}
+      {render(accounts.filter(account => account.status === 'active' && account.kind !== 'credit'), 'bank', x.sectionBankCash)}
+      {render(accounts.filter(account => account.status === 'active' && account.kind === 'credit'), 'cards', x.sectionCards)}
+      {render(accounts.filter(account => account.status === 'hibernated'), 'sleeping', d.accounts.hibernated)}
+    </section>;
+  }
   if (!groups || groups.count === 0) return null;
 
   const words = { changeOver: changeOver ?? t(d.accountsPage.changeOver, { period }), sparkLabel: sparkLabel ?? ((name: string) => t(d.accountsPage.sparkLabel, { name, period })) };

@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { Banknote } from 'lucide-react';
@@ -38,10 +39,12 @@ interface TransactionRowProps {
 }
 
 export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideDate, flush, focusable, silent, lead, className }: TransactionRowProps) {
+  const partner = usePartnerView();
+  const amountVisible = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const meta = categoryMeta[txn.category];
   const Icon = meta ? meta.icon : Banknote;
-  const isIncome = txn.amount > 0;
+  const isIncome = txn.type === 'income';
   // txn.category is either a real category NAME (user data, for an
   // expense) or one of the two income literals 'Standard Income'/'Side Cash'.
   // categoryLabel() handles both: user names pass through unchanged, the two
@@ -102,7 +105,7 @@ export function TransactionRow({ txn, compact, onOpenDetail, categoryMeta, hideD
         )}
       </div>
       <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: isIncome ? 'var(--income)' : 'var(--expense)', whiteSpace: 'nowrap' }}>
-        {isIncome ? '+' : ''}<RollingAmount value={formatCurrency(txn.amount)} />
+        {amountVisible ? <>{isIncome ? '+' : ''}<RollingAmount value={formatCurrency(txn.amount)} /></> : <span className="pb-partner-censored" aria-label={d.partner.censored}>—</span>}
       </div>
     </div>
   );

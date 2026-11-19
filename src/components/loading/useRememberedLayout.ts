@@ -6,6 +6,7 @@ import { settleCardResizes } from '@/lib/cardResize';
 /** Observe loaded card geometry; never cache a fallback or a hidden old page. */
 export function useRememberedLayout(ref: RefObject<HTMLDivElement | null>, pathname: string) {
   useLayoutEffect(() => {
+    if (!pathname) return;
     const content = ref.current;
     const main = content?.closest<HTMLElement>('.pebble-main');
     if (!content || !main) return;

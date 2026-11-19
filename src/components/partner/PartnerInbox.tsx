@@ -8,6 +8,7 @@ import { callAction } from '@/lib/actions/callAction';
 import { readPartnerInboxAction, readPartnerInboxItemAction } from '@/lib/actions/partner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PartnerInboxItem } from '@/lib/partner';
+import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { partnerError } from './partnerError';
 
 export function PartnerInbox() {
@@ -62,7 +63,7 @@ export function PartnerInbox() {
       {items.map(item => <li key={item.id} className="pb-partner-list-row">
         <div>
           <strong>{t(x[item.operation], { resource: x.resources[item.resource] })}{item.label && <> · <bdi>{item.label}</bdi></>}</strong>
-          <p className="pb-partner-note">{item.guestName ?? x.guest} · {new Intl.DateTimeFormat(locale, {
+          <p className="pb-partner-note">{item.guestName === null ? x.formerPartner : partnerDisplayName(item.guestName, d.partner.partnerName)} · {new Intl.DateTimeFormat(locale, {
             dateStyle: 'medium', timeStyle: 'short',
           }).format(new Date(item.createdAt))}</p>
         </div>

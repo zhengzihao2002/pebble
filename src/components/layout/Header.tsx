@@ -12,10 +12,12 @@ import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { currentNavItem } from './navItems';
 import { useShortcutLabel } from './useShortcutLabel';
+import { PartnerViewBar } from '@/components/partner/PartnerViewBar';
 import { OfflineStatus } from '@/components/offline/OfflineStatus';
 import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 
 interface HeaderProps {
+  partner?: { name: string | null; addTransaction: boolean; addSchedule: boolean };
   onAddTransactionClick: () => void;
   onAddGoalClick: () => void;
   onAddScheduleClick: () => void;
@@ -36,7 +38,7 @@ interface PageMeta {
   secondaryAction?: { label: string; kind: 'transfer' };
 }
 
-export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
+export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddScheduleClick, onTransferClick, onSearchClick }: HeaderProps) {
   const pathname = usePathname();
   const budgetPlanYear = useBudgetPlanNavigation();
   const { name, isPending } = useCurrentUser();
@@ -160,7 +162,12 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
   // than falling back to Dashboard - whose greeting and Add transaction
   // button made those pages look like the wrong place.
   const accountMeta: PageMeta = { title: d.account.title, subtitle: d.ux.shell.subtitleAccount };
-  const current = pageMeta[pathname] ?? (pathname.startsWith('/budgets/') ? pageMeta['/budgets'] : pathname.startsWith('/account/') ? accountMeta : pageMeta['/dashboard']);
+  const local = pageMeta[pathname] ?? (pathname.startsWith('/budgets/') ? pageMeta['/budgets'] : pathname.startsWith('/account/') ? accountMeta : pageMeta['/dashboard']);
+  const current = partner ? {
+    ...local, subtitle: d.partner.sharedSubtitle, secondaryAction: undefined,
+    action: local.action?.kind === 'addTransaction' && partner.addTransaction
+      || local.action?.kind === 'addSchedule' && partner.addSchedule ? local.action : undefined,
+  } : local;
   // The page's own nav icon beside its title, so the header and the nav read
   // as one system. Settings' icon on /account/*, matching the lit nav item.
   const PageIcon = currentNavItem(pathname)?.icon;
@@ -185,7 +192,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
-          {pathname === '/budgets' && budgetPlanYear !== null && (
+          {!partner && pathname === '/budgets' && budgetPlanYear !== null && (
             <div className="header-actions">
               <Link href="/budgets/plan" prefetch={false} className="btn-primary pb-budget-plan-action" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', textDecoration: 'none', whiteSpace: 'nowrap' }}>
                 <CalendarClock size={16} aria-hidden="true" />{t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) })}
@@ -293,6 +300,7 @@ export function Header({ onAddTransactionClick, onAddGoalClick, onAddScheduleCli
       </div>
       {/* Only present while offline or while transactions wait to upload. */}
       <OfflineStatus />
+      {partner && <PartnerViewBar name={partner.name} pathname={pathname} />}
     </header>
   );
 }

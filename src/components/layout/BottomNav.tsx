@@ -15,6 +15,7 @@ import { bottomNavBootstrap } from './bottomNavSnapshot';
 import { useRememberedBottomNav } from './useRememberedBottomNav';
 
 interface BottomNavProps {
+  partner?: Partial<Record<PageActionKind, boolean>>;
   onAddTransactionClick: () => void;
   onTransferClick: () => void;
   onAddGoalClick: () => void;
@@ -41,20 +42,20 @@ interface BottomNavProps {
  * the page's own action first when it has one (Modify budget, Add goal, Add
  * schedule), then Add transaction and Transfer on every page.
  */
-export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
+export function BottomNav({ partner, onAddTransactionClick, onTransferClick, onAddGoalClick, onAddScheduleClick }: BottomNavProps) {
   const pathname = usePathname();
   const { d, t } = useTranslation();
   const budgetPlanYear = useBudgetPlanNavigation();
   // The entry must exist even before the streamed budget page registers its
   // server-resolved year. Only its label depends on that registration.
-  const showBudgetPlan = pathname === '/budgets' || pathname === '/budgets/plan';
+  const showBudgetPlan = !partner && (pathname === '/budgets' || pathname === '/budgets/plan');
   const budgetPlanLabel = budgetPlanYear === null ? d.ux.annualBudgets.openPlanner
     : t(d.ux.annualBudgets.planNextYear, { year: String(budgetPlanYear) });
   const addPanelRef = useRef<HTMLDivElement>(null);
   const morePanelRef = useRef<HTMLDivElement>(null);
   const { open, addOpen, engaged, dimmed, toggle, close } = useBottomNavPanels(addPanelRef, morePanelRef);
   const { ref: navRef, indicatorRef } = useNavGlass<HTMLElement>(`${pathname}:${open}`, true);
-  useRememberedBottomNav(navRef, pathname, engaged);
+  useRememberedBottomNav(navRef, pathname, engaged || !!partner);
 
   // Navigating must collapse both - the destination is a Link away and
   // leaving either expanded would cover the page the user just chose.
@@ -96,6 +97,9 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
     { kind: 'addTransaction', label: d.header.addTransaction },
     { kind: 'transfer', label: d.transfer.title },
   ];
+  const availableActions = partner ? actions.filter(action => action.kind !== 'transfer' && partner[action.kind]) : actions;
+  if (partner?.addGoal && own !== 'addGoal') availableActions.push({ kind: 'addGoal', label: actionLabel.addGoal });
+  if (partner?.addSchedule && own !== 'addSchedule') availableActions.push({ kind: 'addSchedule', label: actionLabel.addSchedule });
 
   // While the More column is open, More is the one lit tab: lighting the
   // current page's tab as well showed two selected at once.
@@ -148,12 +152,12 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
           <div className={`pebble-add-menu pb-shell-sheet-clip ${addOpen ? 'open' : ''}`}>
             <div ref={addPanelRef} className="pebble-bottom-nav-stack-panel pb-shell-sheet">
               <p className="pb-shell-sheet-title" aria-hidden="true">{d.ux.shell.addTitle}</p>
-              <div className="pb-shell-sheet-grid" data-count={actions.length + (showBudgetPlan ? 1 : 0)}>
+              <div className="pb-shell-sheet-grid" data-count={availableActions.length + (showBudgetPlan ? 1 : 0)}>
                 {showBudgetPlan && <Link href="/budgets/plan" prefetch={false} onClick={close} tabIndex={addOpen ? 0 : -1} className="pb-shell-tile pb-shell-tile-primary" style={{textDecoration:'none'}}>
                   <span className="pb-shell-tile-icon" aria-hidden="true"><CalendarClock size={20} strokeWidth={2} /></span>
                   <span className="pb-shell-tile-label">{budgetPlanLabel}</span>
                 </Link>}
-                {actions.map((a, i) => {
+                {availableActions.map((a, i) => {
                   const Icon = actionIcon[a.kind];
                   return (
                     <button
@@ -178,6 +182,7 @@ export function BottomNav({ onAddTransactionClick, onTransferClick, onAddGoalCli
           <button
             type="button"
             onClick={() => toggle('add')}
+            disabled={availableActions.length === 0 && !showBudgetPlan}
             aria-expanded={addOpen}
             aria-label={addOpen ? d.common.close : d.header.addTransaction}
             className="bottom-nav-add"

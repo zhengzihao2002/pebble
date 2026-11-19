@@ -1,7 +1,7 @@
-import { PartnerWorkspace } from '@/components/partner/PartnerWorkspace';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default function PartnerPage() {
-  return <PartnerWorkspace />;
+  redirect('/partner/dashboard');
 }

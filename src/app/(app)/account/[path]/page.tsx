@@ -1,3 +1,4 @@
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { notFound } from 'next/navigation';
 import { accountViewPaths } from '@neondatabase/auth-ui/server';
 import { AccountViewClient } from './AccountViewClient';
@@ -19,6 +20,7 @@ export const dynamic = 'force-dynamic';
 const VALID_PATHS = new Set<string>(Object.values(accountViewPaths));
 
 export default async function AccountPage({ params }: { params: Promise<{ path: string }> }) {
+  await getOwnWorkspaceUser('/settings');
   const { path } = await params;
   if (!VALID_PATHS.has(path)) notFound();
 

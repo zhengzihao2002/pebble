@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useRef, type PointerEvent, type MouseEvent } from 'react';
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -126,6 +127,7 @@ export function DashboardStatsCard({
   rangeLabel, inProgress, inProgressNote, income, spending, savingsRate, saved,
   compare = null, compareLabel = '',
 }: DashboardStatsCardProps) {
+  const partner = usePartnerView();
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const deltaFor = useDelta();
@@ -269,7 +271,11 @@ export function DashboardStatsCard({
         {cells.map((c) => {
           const Icon = c.icon;
           const delta = compare?.previous ? deltaFor(c.metric, compare.current, compare.previous, compareLabel) : null;
-          const hasComparison = Boolean(delta && compare?.previous) || Boolean(compare && !compare.previous);
+          const visible = !partner || partner.data.permissions.amounts && (
+            c.key === 'income' ? partner.data.permissions.income
+              : c.key === 'spending' ? partner.data.permissions.expenses
+              : partner.data.permissions.income && partner.data.permissions.expenses);
+          const hasComparison = visible && (Boolean(delta && compare?.previous) || Boolean(compare && !compare.previous));
           return (
             <div key={c.key} className="pb-stats-cell pb-dash-tile">
               <div className="pb-stats-label">
@@ -278,7 +284,7 @@ export function DashboardStatsCard({
                 {c.info}
               </div>
               <div className="pb-dash-tile-value">
-                <div className="font-mono-tab pb-stats-value"><RollingAmount headline={c.key !== 'rate'} value={c.value} /></div>
+                <div className="font-mono-tab pb-stats-value">{visible ? <RollingAmount headline={c.key !== 'rate'} value={c.value} /> : <span className="pb-partner-censored" aria-label={d.partner.censored}>—</span>}</div>
               </div>
               {/* Undefined changes (for example, income compared with zero)
                   have no row: supporting text stays directly below the value. */}

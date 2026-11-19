@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { observeLegendMotion } from './legendMotion';
@@ -76,6 +77,7 @@ const pct = (v: number) => (v > 0 && v < 0.01 ? '<1%' : `${Math.round(v * 100)}%
  * bars sit in pb-chart-fill.
  */
 export function ReportSummary(p: ReportSummaryProps) {
+  const partner = usePartnerView();
   const legendRef = useRef<HTMLUListElement>(null);
   const hasShares = p.shares.length > 0;
   useLayoutEffect(() => { if (legendRef.current) return observeLegendMotion(legendRef.current); }, [hasShares]);
@@ -87,7 +89,7 @@ export function ReportSummary(p: ReportSummaryProps) {
   const { whole, cents } = splitCents(text);
   const flowMax = p.inSum + p.outSum;
   const color = (k: string) => (k === '__other__' ? 'var(--ink-faint)' : p.categoryMeta[k]?.color ?? (p.shareSide === 'in' ? 'var(--income)' : 'var(--pine)'));
-  const name = (k: string) => (k === '__other__' ? x.other : categoryLabel(d, k));
+  const name = (k: string) => (k === '__other__' ? x.other : partner && k === '' ? d.partner.censored : categoryLabel(d, k));
   const deltaWords = p.delta
     ? (Math.round(p.delta.delta * 100) === 0
       ? t(x.vsSame, { period: p.delta.period })

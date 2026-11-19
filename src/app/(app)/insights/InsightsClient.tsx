@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
@@ -57,6 +58,7 @@ const rise = (i: number) => ({ ['--pb-i' as string]: i }) as CSSProperties;
 export function InsightsClient({ transactions, categories, budgets, rules, goals, accounts }: InsightsClientProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
+  const partner = usePartnerView();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
@@ -68,6 +70,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
   }, [timeZoneOverride]);
 
   const [selected, setSelected] = useState<LedgerRecord | null>(null);
+  const openTransaction = partner?.openTransaction ?? setSelected;
   const [prefill, setPrefill] = useState<SchedulePrefill | null>(null);
   // The card being paid off from a reminder.
   const [payOff, setPayOff] = useState<Account | null>(null);
@@ -76,10 +79,10 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
   const dismiss = usePebbleStore((s) => s.dismissInsight);
   const notes = useDismissQueue(dismiss);
 
-  const items = useMemo(() => (today === null ? null : buildInsights({
+  const items = useMemo(() => (today === null ? null : partner ? [] : buildInsights({
     transactions, rules, goals, accounts, today, d, t, locale,
     onOpen: setSelected, onCreateSchedule: setPrefill, onPayOff: setPayOff,
-  })), [today, transactions, rules, goals, accounts, d, t, locale]);
+  })), [today, transactions, rules, goals, accounts, d, t, locale, partner]);
   const shown = items === null ? null : items.filter((i) => !(dismissed ?? []).includes(i.id));
   const attention = shown === null ? null : shown.filter((i) => i.group !== 'good');
   const good = shown === null ? [] : shown.filter((i) => i.group === 'good');
@@ -93,7 +96,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
     { id: SECTION_IDS.trends, label: ux.sectionTrends },
     { id: SECTION_IDS.places, label: ux.sectionPlaces },
     { id: SECTION_IDS.good, label: ux.sectionGood },
-  ];
+  ].filter(item => !partner || (item.id !== SECTION_IDS.attention && item.id !== SECTION_IDS.good));
 
   if (!today) return <PageSkeleton pathname="/insights"/>;
 
@@ -104,11 +107,11 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
         <div className="pb-ins-area pb-ins-area-hero pb-rise" style={rise(0)}>
           <SavingsHeadline transactions={transactions} today={today} />
         </div>
-        <div id={SECTION_IDS.attention} className="pb-ins-area pb-ins-area-rail pb-rise" style={rise(1)}>
+        {!partner && <div id={SECTION_IDS.attention} className="pb-ins-area pb-ins-area-rail pb-rise" style={rise(1)}>
           <WorthKnowing items={attention} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
-        </div>
+        </div>}
         <div id={SECTION_IDS.calendar} className="pb-ins-area pb-ins-area-cal pb-rise" style={rise(2)}>
-          <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={setSelected} />
+          <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={openTransaction} />
         </div>
         <div id={SECTION_IDS.week} className="pb-ins-area pb-ins-area-week pb-rise" style={rise(3)}>
           <YourWeek transactions={transactions} today={today} />
@@ -120,17 +123,17 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
           <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} />
         </div>
         <div id={SECTION_IDS.places} className="pb-ins-area pb-ins-area-places pb-rise" style={rise(6)}>
-          <TopPlaces transactions={transactions} today={today} categoryMeta={categoryMeta} onOpen={setSelected} />
+          <TopPlaces transactions={transactions} today={today} categoryMeta={categoryMeta} onOpen={openTransaction} />
         </div>
-        <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
+        {!partner && <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
           <GoodNews items={good} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
-        </div>
+        </div>}
       </div>
-      {selected && (
+      {!partner && selected && (
         <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} accounts={accounts} onClose={() => setSelected(null)} />
       )}
-      {prefill && <RecurringRuleModal prefill={prefill} onClose={() => setPrefill(null)} />}
-      {payOff && (
+      {!partner && prefill && <RecurringRuleModal prefill={prefill} onClose={() => setPrefill(null)} />}
+      {!partner && payOff && (
         <PayOffDialog
           card={payOff} allAccounts={accounts}
           charges={transactions.filter((x): x is Extract<Transaction, { type: 'expense' }> => x.type === 'expense' && x.accountId === payOff.id)}

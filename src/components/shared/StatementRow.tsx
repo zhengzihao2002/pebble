@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useState, type KeyboardEvent } from 'react';
@@ -54,6 +55,8 @@ export function StatementRow({
   showDate = true, highlight, keyboard = false, ledger = false, lensAccountId,
 }: StatementRowProps) {
   const { d, t, locale } = useTranslation();
+  const partner = usePartnerView();
+  const amountVisible = !partner || partner.data.permissions.amounts === true;
 
   // Adjustments have no category. They are manual balance corrections, so
   // they get their own icon and a neutral treatment rather than being coloured
@@ -65,7 +68,7 @@ export function StatementRow({
   // category is chosen, rather than the income banknote.
   const uncategorised = !isAdjustment && !txn.category;
   const Icon = isAdjustment ? SlidersHorizontal : uncategorised ? CircleHelp : (meta ? meta.icon : Banknote);
-  const isIncome = !isAdjustment && txn.amount > 0;
+  const isIncome = txn.type === 'income';
 
   // txn.category is either a real category NAME (user data) or one of the
   // two income literals - categoryLabel() handles both, translating only
@@ -227,7 +230,7 @@ export function StatementRow({
       {/* Ledger only, shown only on the widest statement: the category with
           its colour dot (identity only - the label says it in words).
           Category names are USER DATA; income literals are translated. */}
-      {ledger && (
+      {!partner && ledger && (
         <div className="pb-txn-srow-cat">
           <span className="pb-txn-srow-catdot" aria-hidden="true" style={{ backgroundColor: isAdjustment || uncategorised ? 'var(--ink-faint)' : accentColor }} />
           <span>{markHits(categoryText, highlight)}</span>
@@ -236,7 +239,7 @@ export function StatementRow({
       {/* Ledger only, and shown only once the statement is wide enough: the
           account the record belongs to. Names are USER DATA. Hidden under the
           lens, where every row is the same account. */}
-      {ledger && !lensAccount && (
+      {!partner && ledger && !lensAccount && (
         <div className="pb-txn-srow-acct">
           <RowAccountIcon size={13} aria-hidden="true" />
           <span>{accountName}</span>
@@ -247,17 +250,17 @@ export function StatementRow({
       <div
         className={ledger ? 'pb-txn-srow-money' : undefined}
         style={{ textAlign: 'right', flexShrink: 0, cursor: 'pointer' }}
-        onClick={canHover ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
-        onMouseEnter={canHover ? updateHoverPos : undefined}
-        onMouseMove={canHover ? updateHoverPos : undefined}
+        onClick={canHover || partner ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
+        onMouseEnter={!partner && canHover ? updateHoverPos : undefined}
+        onMouseMove={!partner && canHover ? updateHoverPos : undefined}
         onMouseLeave={canHover ? () => setHoverPos(null) : undefined}
       >
         <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
-          {amountPrefix}<RollingAmount value={formatCurrency(txn.amount)} />
+          {amountVisible ? <>{amountPrefix}<RollingAmount value={formatCurrency(txn.amount)} /></> : <span className="pb-partner-censored" aria-label={d.partner.censored}>—</span>}
         </div>
         {/* Account lens: this account's own running balance, above the
             unchanged total line. */}
-        {lensAccount && (
+        {!partner && lensAccount && (
           <div className="pb-txn-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
             {/* The gap is the name's own margin: a space inside the clipped
                 inline-block was swallowed ("Ally Savings$15,675.72"). A card
@@ -270,12 +273,12 @@ export function StatementRow({
             )}
           </div>
         )}
-        <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
+        {!partner && <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
           <RollingMoneyText value={t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })} />
-        </div>
+        </div>}
         {/* The same figure without the "Bal" prefix, for the ledger's
             "Balance after" column (one or the other is displayed). */}
-        {ledger && (
+        {!partner && ledger && (
           <div className="font-mono-tab pb-txn-srow-balcell"><RollingAmount value={formatCurrency(totalBalanceAfter)} /></div>
         )}
       </div>
@@ -285,7 +288,7 @@ export function StatementRow({
       {/* Same 0fr -> 1fr technique as .collapsible-rows elsewhere. Hibernated
           accounts are listed too: a historical row may reference one, and
           hiding it would leave an unexplained figure. */}
-      <div
+      {!partner && <div
         style={{
           display: 'grid',
           gridTemplateRows: expanded ? '1fr' : '0fr',
@@ -310,7 +313,7 @@ export function StatementRow({
                 </span>
               </div>
             ))}
-            {lensAccount && (
+            {!partner && lensAccount && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
                 <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
@@ -318,9 +321,9 @@ export function StatementRow({
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
-      {hoverPos && (
+      {!partner && hoverPos && (
         <div
           style={{
             position: 'fixed', left: hoverPos.x, top: hoverPos.y, zIndex: 100, pointerEvents: 'none',
@@ -346,7 +349,7 @@ export function StatementRow({
               </span>
             </div>
           ))}
-          {lensAccount && (
+          {!partner && lensAccount && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
               <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>

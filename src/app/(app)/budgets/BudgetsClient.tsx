@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useMemo } from 'react';
 import type { Transaction } from '@/types';
@@ -23,6 +24,7 @@ interface BudgetsClientProps {
 }
 
 export function BudgetsClient({ transactions, categories, budgets, budgetsByYear, today }: BudgetsClientProps) {
+  const partner = usePartnerView();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Server-resolved in the saved planning timezone; the year boundary refresh
@@ -74,12 +76,12 @@ export function BudgetsClient({ transactions, categories, budgets, budgetsByYear
         entries={entries}
         totalBudget={totalBudget}
         totalSpent={totalSpent}
-        annualIncome={income.control.effectiveAnnual}
+        annualIncome={partner ? null : income.control.effectiveAnnual}
         today={today}
-        incomeControl={<IncomeControl {...income.control} />}
+        incomeControl={partner ? undefined : <IncomeControl {...income.control} />}
       />
       <BudgetRows entries={entries} today={today} history={history} />
-      <UnbudgetedList entries={entries} others={others} history={history} today={today} />
+      {!partner && <UnbudgetedList entries={entries} others={others} history={history} today={today} />}
     </div>
   );
 }

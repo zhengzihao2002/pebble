@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getIncome, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, computeRecentTransactions, mergeTransactions } from '@/lib/stats';
@@ -7,7 +7,7 @@ import { TransactionsClient } from './TransactionsClient';
 export const dynamic = 'force-dynamic';
 
 export default async function TransactionsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/transactions');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

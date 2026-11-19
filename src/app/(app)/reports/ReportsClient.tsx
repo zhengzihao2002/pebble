@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
@@ -48,6 +49,8 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // ⚠️ Destructured as dict/tr, NOT d/t. This file uses `t` for a transaction
   // in a dozen closures and `d` for a parsed Date in two more; the obvious
   // names would shadow both and silently change what the code means.
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d: dict, t: tr, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
@@ -68,7 +71,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // selection: both is ALL, and an empty set means nothing is selected. Static
   // for server/client parity like the rest - the saved choice is applied in the
   // restore effect.
-  const [selectedTypes, setSelectedTypes] = useState<Set<ReportType>>(new Set<ReportType>(['expense', 'income']));
+  const allowedTypes = (['expense', 'income'] as const).filter(kind =>
+    !partner || partner.data.permissions[kind === 'expense' ? 'expenses' : 'income'] === true);
+  const [selectedTypes, setSelectedTypes] = useState(() => new Set<ReportType>(allowedTypes));
   const [periodGroup, setPeriodGroup] = useState<PeriodGroup>('month');
   const [subPeriod, setSubPeriod] = useState('All');
   const [subYear, setSubYear] = useState('All');
@@ -106,13 +111,16 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   }, [timeZoneOverride]);
 
   const expenseCats = Object.keys(categoryMeta);
-  const incomeCats = ['Standard Income', 'Side Cash'];
+  if (partner && transactions.some(row => row.type === 'expense' && row.category === '')) expenseCats.push('');
+  const incomeCats = partner
+    ? Array.from(new Set(transactions.filter(row => row.type === 'income').map(row => row.category)))
+    : ['Standard Income', 'Side Cash'];
   // Categories on offer for a type selection: the expense categories, then the
   // two income ones.
-  const catsForTypes = (types: ReadonlySet<ReportType>) => [
+  const catsForTypes = (types: ReadonlySet<ReportType>) => Array.from(new Set([
     ...(types.has('expense') ? expenseCats : []),
     ...(types.has('income') ? incomeCats : []),
-  ];
+  ]));
   const includeExpense = selectedTypes.has('expense');
   const includeIncome = selectedTypes.has('income');
   // Both types showing: totals are NET (income minus expenses, signed). One
@@ -132,7 +140,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // things that no longer exist, and accounts can be deleted outright.
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
 
-  const showTagFilter = includeExpense && selectedCategories.size === 1
+  const showTagFilter = includeExpense && selectedCategories.size === 1 && !selectedCategories.has('')
     && expenseCats.includes(Array.from(selectedCategories)[0]);
   const singleSelectedCategory = showTagFilter ? Array.from(selectedCategories)[0] : null;
   const availableTags = showTagFilter
@@ -157,7 +165,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     if (restoreRef.current) return;
     restoreRef.current = true;
 
-    const saved = usePebbleStore.getState().reportFilters;
+    const saved = partner ? null : usePebbleStore.getState().reportFilters;
     if (saved) {
       // typeSelection is the source of truth: the explicit set of shown types,
       // where an empty list means nothing is selected. Older prefs carry
@@ -210,7 +218,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // Write back on every change, but only after the restore pass - otherwise the
   // static seed values would overwrite the stored ones before they were read.
   useEffect(() => {
-    if (!restored) return;
+    if (!restored || partner) return;
     usePebbleStore.getState().setReportFilters({
       // The legacy single type is still written so an older build keeps working.
       reportType: selectedTypes.size === 1 ? Array.from(selectedTypes)[0] : 'expense',
@@ -220,7 +228,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       accountsExpanded, categoriesExpanded, periodExpanded, groupSortExpanded, findExpanded, typesExpanded,
       chartHidden,
     });
-  }, [restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+  }, [partner, restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
       filtersExpanded, groupsExpanded, customStart, customEnd, accountsExpanded, categoriesExpanded,
       periodExpanded, groupSortExpanded, findExpanded, typesExpanded, chartHidden]);
 
@@ -254,7 +262,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   };
   // All while everything is selected clears the selection; otherwise it selects both.
   const toggleAllTypes = () =>
-    applyTypes(selectedTypes.size === 2 ? new Set<ReportType>() : new Set<ReportType>(['expense', 'income']));
+    applyTypes(selectedTypes.size === allowedTypes.length ? new Set<ReportType>() : new Set<ReportType>(allowedTypes));
   const handlePeriodGroupChange = (mode: PeriodGroup) => {
     setPeriodGroup(mode);
     setSubPeriod('All');
@@ -781,7 +789,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     chips.push({
       key: 'categories',
       label: selectedCategories.size === 0 ? `${dict.reports.categoriesLabel} · ${dict.reports.noneSelected}`
-        : selectedCategories.size === 1 ? categoryLabel(dict, Array.from(selectedCategories)[0])
+        : selectedCategories.size === 1 ? partner && selectedCategories.has('') ? dict.partner.censored : categoryLabel(dict, Array.from(selectedCategories)[0])
         : tr(dict.reports.categoriesOther, { count: selectedCategories.size }),
       onRemove: () => setSelectedCategories(new Set(availableCats)),
     });
@@ -971,9 +979,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         anyExpanded={anyGroupsExpanded}
         onToggleAll={handleToggleAllGroups}
         onExport={exportCsv}
-        canExport={shownRows.length > 0}
+        canExport={!partner && shownRows.length > 0}
         onCopy={copySummary}
-        copyBlocked={privacyOn}
+        copyBlocked={privacyOn || !!partner}
       />
 
       <ReportFilterChips chips={chips} onClearAll={clearAllFilters} summary={filterSummary} />
@@ -1061,7 +1069,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         {/* Keyed on the period: a period change cross-fades the content
             rather than swapping every card in one frame. */}
         <div className="pb-rep-main pb-rep-swap" key={periodKey}>
-          {periodFiltered.length > 0 && (
+          {showAmounts && periodFiltered.length > 0 && (
             <ReportSummary
               eyebrow={periodSummary}
               kind={heroKind}
@@ -1080,7 +1088,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
               largest={largest}
               topCategory={ranked.length > 1 ? { key: ranked[0][0], value: ranked[0][1] } : null}
               categoryMeta={categoryMeta}
-              onOpenDetail={setSelectedTransaction}
+              onOpenDetail={partner?.openTransaction ?? setSelectedTransaction}
               showChartToggle={!!timeline && timeline.buckets.length > 1}
               chartHidden={chartHidden}
               onToggleChart={() => setChartHidden((v) => !v)}
@@ -1100,6 +1108,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             />
           )}
 
+          {!showAmounts && <p className="card pb-partner-card pb-partner-note">{dict.partner.amountsRestricted}</p>}
           <ReportResults
             periodGroups={periodGroups}
             periodFilteredCount={periodFiltered.length}
@@ -1109,7 +1118,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
             expandedCategoryGroups={expandedCategoryGroups}
             onToggleCategoryGroup={toggleCategoryGroupExpanded}
             categoryMeta={categoryMeta}
-            onOpenDetail={setSelectedTransaction}
+            onOpenDetail={partner?.openTransaction ?? setSelectedTransaction}
             sortField={sortField}
             sortDir={sortDir}
             onSort={sortByColumn}
@@ -1119,7 +1128,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         </div>
       </div>
 
-      {selectedTransaction && (
+      {!partner && selectedTransaction && (
         <TransactionDetailModal
           txn={selectedTransaction}
           onClose={() => setSelectedTransaction(null)}

@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getBalanceAdjustments, getExpenses, getIncome, getUserTimeZoneOverride, getAccounts, getRecurringRules } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
@@ -12,7 +12,7 @@ import { groupTransactionTags } from '@/lib/transactionTags';
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/settings');
 
   // Materialize any recurring occurrences that came due since the last visit.
   // MUST complete before the reads below, or new rows surface one load late.

@@ -1,4 +1,5 @@
 'use client';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import type { KeyboardEvent } from 'react';
@@ -43,11 +44,13 @@ const pctText = (v: number) => (v > 0 && v < 0.01 ? '<1%' : `${Math.round(v * 10
  * capture, so it does not toggle the group); the bar sits in pb-chart-fill.
  */
 export function ReportCategoryRow({ category, total, count, share, series, expanded, controls, onToggle, categoryMeta }: ReportCategoryRowProps) {
+  const partner = usePartnerView();
+  const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t } = useTranslation();
   const meta = categoryMeta[category];
   const Icon = meta ? meta.icon : Banknote;
   const color = meta ? meta.color : 'var(--income)';
-  const name = categoryLabel(d, category);
+  const name = partner && category === '' ? d.partner.censored : categoryLabel(d, category);
   const countText = t(count === 1 ? d.reports.transactionsOne : d.reports.transactionsOther, { count });
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return;
@@ -62,22 +65,22 @@ export function ReportCategoryRow({ category, total, count, share, series, expan
       <span className="pb-rep-cat-tile" aria-hidden="true"><Icon size={16} /></span>
       <span className="pb-rep-cat-text">
         <span className="pb-rep-cat-name">{name}</span>
-        <span className="pb-rep-cat-meta pb-tnum"><RollingAmount value={countText} /> · <RollingAmount value={pctText(share)} /></span>
-        <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true">
-          <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />
+        <span className="pb-rep-cat-meta pb-tnum"><RollingAmount value={countText} />{showAmounts && <> · <RollingAmount value={pctText(share)} /></>}</span>
+        <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true" hidden={!showAmounts}>
+          {showAmounts && <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />}
         </span>
       </span>
       <span className="pb-rep-cat-count pb-tnum"><RollingAmount value={String(count)} /></span>
-      <span className="pb-rep-cat-share">
-        <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true">
-          <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />
+      <span className="pb-rep-cat-share" hidden={!showAmounts}>
+        <span className="pb-rep-cat-bar pb-chart-fill" aria-hidden="true" hidden={!showAmounts}>
+          {showAmounts && <i style={{ transform: `scaleX(${Math.max(0, Math.min(1, share))})` }} />}
         </span>
-        <span className="pb-tnum"><RollingAmount value={pctText(share)} /></span>
+        {showAmounts && <span className="pb-tnum"><RollingAmount value={pctText(share)} /></span>}
       </span>
       <span className="pb-rep-cat-trend">
-        {series && series.some((v) => v > 0) && <Sparkline values={series} height={22} color={color} endDot area={false} />}
+        {showAmounts && series && series.some((v) => v > 0) && <Sparkline values={series} height={22} color={color} endDot area={false} />}
       </span>
-      <span className="pb-rep-cat-total font-mono-tab"><RollingAmount value={formatCurrency(total)} /></span>
+      <span className="pb-rep-cat-total font-mono-tab">{showAmounts ? <RollingAmount value={formatCurrency(total)} /> : <span aria-label={d.partner.censored}>—</span>}</span>
       <ChevronRight size={16} aria-hidden="true" className="pb-rep-cat-chev" />
     </div>
   );

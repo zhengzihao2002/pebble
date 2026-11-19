@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { partnerViewPair } from '@/lib/partnerView.server';
+
 import {
   AuthRequiredError,
   AuthUnavailableError,
@@ -36,6 +38,7 @@ type AuthFailure = { ok: false; error: string; kind?: FailureKind; code?: Server
  */
 export function withSessionUser<TArgs extends unknown[], TResult>(
   handler: (userId: string, ...args: TArgs) => Promise<TResult>,
+  options?: { partnerView?: boolean },
 ): (...args: TArgs) => Promise<TResult | AuthFailure> {
   return async (...args: TArgs): Promise<TResult | AuthFailure> => {
     let userId: string;
@@ -61,6 +64,9 @@ export function withSessionUser<TArgs extends unknown[], TResult>(
 
     // Deliberately outside the try above: a failure inside the handler is the
     // handler's own concern and must not be reported as an auth failure.
+    if (!options?.partnerView && await partnerViewPair(userId)) {
+      return { ok: false, error: 'Switch to your own view to use this action.', kind: 'validation' };
+    }
     return handler(userId, ...args);
   };
 }

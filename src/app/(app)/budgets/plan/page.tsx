@@ -1,4 +1,4 @@
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
 import { getCategories, getExpenses, getIncome, getRecurringRules } from '@/lib/data/queries';
 import { getAnnualPlannerData } from '@/lib/budgets/annualData';
@@ -11,7 +11,7 @@ import { BudgetPlanNavigationRegistration } from '@/components/budgets/BudgetPla
 export const dynamic = 'force-dynamic';
 
 export default async function AnnualPlannerPage() {
-  const userId = await getSessionUserIdOrRedirect();
+  const userId = await getOwnWorkspaceUser('/budgets/plan');
   await runRecurringCatchUp(userId);
   const [data, categories, expenses, income, recurringRules] = await Promise.all([
     getAnnualPlannerData(userId), getCategories(userId), getExpenses(userId), getIncome(userId), getRecurringRules(userId),

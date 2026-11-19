@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { isServerReachable, readOffline, subscribeConnectivity } from '@/lib/offline/connectivity';
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
@@ -25,9 +25,15 @@ import { TransactionDetailModal } from '@/components/modals/TransactionDetailMod
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 import { SHELL_EVENTS } from './shellEvents';
+import { isPartnerPath } from '@/lib/partnerPaths';
+import { partnerCanPost } from '@/lib/partnerDisplay';
+import type { PartnerWorkspaceData } from '@/lib/partner';
+import { PartnerCreateDialog, type PartnerEditor } from '@/components/partner/PartnerCreateDialog';
+import { PartnerTransactionDetail } from '@/components/partner/PartnerTransactionDetail';
+import { PartnerViewContext } from '@/components/partner/PartnerViewContext';
 import { useCardResize } from './useCardResize';
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, partnerData }: { children: ReactNode; partnerData?: PartnerWorkspaceData }) {
   const router = useRouter();
   const locale = usePebbleStore((s) => s.locale);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
@@ -154,6 +160,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
   const pathname = usePathname();
+  const partnerView = isPartnerPath(pathname);
+  const [partnerEditor, setPartnerEditor] = useState<PartnerEditor | null>(null);
+  const [partnerTransaction, setPartnerTransaction] = useState<LedgerRecord | null>(null);
+  const partnerContext = useMemo(() => partnerView && partnerData
+    ? { data: partnerData, openEditor: setPartnerEditor, openTransaction: setPartnerTransaction }
+    : null, [partnerView, partnerData]);
+  const partnerRow = partnerData?.transactions.find(row => row.id === partnerTransaction?.id && row.kind === partnerTransaction.type);
+  const canPost = partnerData ? partnerCanPost(partnerData) : false;
+  const partnerActions = {
+    addTransaction: canPost && partnerData?.permissions.addTransactions === true,
+    addSchedule: canPost && partnerData?.permissions.addScheduled === true,
+    addGoal: partnerData?.permissions.addPersonalGoals === true,
+  };
 
   // Loads THIS user's saved preferences (per-user storage - see
   // switchPebbleUser). Until the session resolves, the most recent user's are
@@ -199,6 +218,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener(WELCOME_PREVIEW_EVENT, preview);
     return () => window.removeEventListener(WELCOME_PREVIEW_EVENT, preview);
   }, []);
+  const add = (kind: 'transaction' | 'goal' | 'schedule') => {
+    if (partnerView) {
+      if (kind === 'transaction' && partnerActions.addTransaction || kind === 'goal' && partnerActions.addGoal
+        || kind === 'schedule' && partnerActions.addSchedule) setPartnerEditor({ kind });
+    } else if (kind === 'transaction') setShowAddModal(true);
+    else if (kind === 'goal') setShowAddGoalModal(true);
+    else setShowAddScheduleModal(true);
+  };
+  const openTransfer = () => { if (!partnerView) setShowTransferModal(true); };
+
+  // Recheck sharing when a tab becomes active again or stays open through a permission change.
+  useEffect(() => {
+    if (!partnerView) return;
+    const refresh = () => { if (document.visibilityState === 'visible') router.refresh(); };
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 15000);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [partnerView, router]);
+
   // Pages ask for the shell's dialogs through window events (shellEvents.ts):
   // an empty state's "Add transaction" opens the same dialog the header does.
   useEffect(() => {
@@ -210,12 +251,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       [SHELL_EVENTS.palette]: () => setShowPalette(true),
     };
     const handlers = Object.entries(open).map(([name, fn]) => {
-      const h = () => fn();
+      const h = () => { if (!partnerView || name === SHELL_EVENTS.palette) fn(); };
       window.addEventListener(name, h);
       return [name, h] as const;
     });
     return () => handlers.forEach(([name, h]) => window.removeEventListener(name, h));
-  }, []);
+  }, [partnerView]);
 
   // Removes the pre-migration store (transactions and balances from before
   // the database existed). Nothing reads it; it only sat on disk. A no-op
@@ -312,7 +353,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (existing === locale) return;
 
     document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
-  }, [locale]);
+    if (partnerView) refreshSoon();
+  }, [locale, partnerView, refreshSoon]);
 
   // Click feedback, delegated from one listener rather than wired into every
   // button. Scoped to interactive elements: clicking blank space and hearing a
@@ -424,7 +466,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // palette's own ⌘K / Ctrl+K), or while any dialog is open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (pathname === '/partner' || e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+      if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
       const root = rootRef.current;
       if (!root) return;
       const dialogOpen = root.querySelector('[role="dialog"]') !== null;
@@ -438,8 +480,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (e.metaKey || e.ctrlKey || e.altKey || dialogOpen) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="combobox"]'))) return;
-      if (key === 'n' && !e.shiftKey) { e.preventDefault(); setShowAddModal(true); }
-      else if (key === 't' && !e.shiftKey) { e.preventDefault(); setShowTransferModal(true); }
+      if (key === 'n' && !e.shiftKey && (!partnerView || partnerActions.addTransaction)) {
+        e.preventDefault();
+        if (partnerView) setPartnerEditor({ kind: 'transaction' }); else setShowAddModal(true);
+      }
+      else if (key === 't' && !e.shiftKey && !partnerView) { e.preventDefault(); setShowTransferModal(true); }
       else if (e.key === '/') {
         e.preventDefault();
         // On Transactions, / goes to the page's own search field.
@@ -450,17 +495,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [pathname]);
-
-  if (pathname === '/partner') {
-    return (
-      <div ref={rootRef} className="pebble-root themed-scroll">
-        <AmbientBackground />
-        {children}
-        <CardGlow />
-      </div>
-    );
-  }
+  }, [partnerView, partnerActions.addTransaction]);
 
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
@@ -481,47 +516,56 @@ export function AppShell({ children }: { children: ReactNode }) {
           {truncTip.text}
         </div>
       )}
+      <PartnerViewContext.Provider value={partnerContext}>
       <UndoDeleteProvider>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">
           <Header
-            onAddTransactionClick={() => setShowAddModal(true)}
-            onAddGoalClick={() => setShowAddGoalModal(true)}
-            onAddScheduleClick={() => setShowAddScheduleModal(true)}
-            onTransferClick={() => setShowTransferModal(true)}
+            partner={partnerView ? { name: partnerData?.name ?? null, ...partnerActions } : undefined}
+            onAddTransactionClick={() => add('transaction')}
+            onAddGoalClick={() => add('goal')}
+            onAddScheduleClick={() => add('schedule')}
+            onTransferClick={openTransfer}
             onSearchClick={() => setShowPalette(true)}
           />
           <main className="pebble-main"><NavigationContent>{children}</NavigationContent></main>
         </div>
         <BottomNav
-          onAddTransactionClick={() => setShowAddModal(true)}
-          onTransferClick={() => setShowTransferModal(true)}
-          onAddGoalClick={() => setShowAddGoalModal(true)}
-          onAddScheduleClick={() => setShowAddScheduleModal(true)}
+          partner={partnerView ? partnerActions : undefined}
+          onAddTransactionClick={() => add('transaction')}
+          onTransferClick={openTransfer}
+          onAddGoalClick={() => add('goal')}
+          onAddScheduleClick={() => add('schedule')}
         />
       </div>
 
       <CardGlow />
-      {showAddModal && <AddTransactionModal onClose={() => setShowAddModal(false)} />}
-      {showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
-      {showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
-      {showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
+      {!partnerView && showAddModal && <AddTransactionModal onClose={() => setShowAddModal(false)} />}
+      {!partnerView && showAddGoalModal && <GoalModal onClose={() => setShowAddGoalModal(false)} />}
+      {!partnerView && showAddScheduleModal && <RecurringRuleModal onClose={() => setShowAddScheduleModal(false)} />}
+      {!partnerView && showTransferModal && <TransferModal onClose={() => setShowTransferModal(false)} />}
       {showPalette && (
         <CommandPalette
           onClose={() => setShowPalette(false)}
-          onAddTransaction={() => setShowAddModal(true)}
-          onTransfer={() => setShowTransferModal(true)}
-          onAddGoal={() => setShowAddGoalModal(true)}
-          onAddSchedule={() => setShowAddScheduleModal(true)}
-          onOpenTransaction={(txn, categoryMeta) => setPaletteTxn({ txn, categoryMeta })}
+          onAddTransaction={() => add('transaction')}
+          partner={partnerView ? partnerActions : undefined}
+          onTransfer={openTransfer}
+          onAddGoal={() => add('goal')}
+          onAddSchedule={() => add('schedule')}
+          onOpenTransaction={(txn, categoryMeta) => partnerView ? setPartnerTransaction(txn) : setPaletteTxn({ txn, categoryMeta })}
         />
       )}
-      {paletteTxn && (
+      {!partnerView && paletteTxn && (
         <TransactionDetailModal txn={paletteTxn.txn} categoryMeta={paletteTxn.categoryMeta} onClose={() => setPaletteTxn(null)} />
       )}
-      {welcome && <WelcomeOverlay onDone={closeWelcome} />}
+      {partnerView && partnerData && partnerEditor && <PartnerCreateDialog editor={partnerEditor} data={partnerData}
+        onClose={() => setPartnerEditor(null)} onCreated={() => router.refresh()} />}
+      {partnerView && partnerRow && <PartnerTransactionDetail key={partnerRow.kind + ':' + partnerRow.id} row={partnerRow}
+        onClose={() => setPartnerTransaction(null)} onSaved={() => router.refresh()} />}
+      {!partnerView && welcome && <WelcomeOverlay onDone={closeWelcome} />}
       </UndoDeleteProvider>
+      </PartnerViewContext.Provider>
     </div>
   );
 }

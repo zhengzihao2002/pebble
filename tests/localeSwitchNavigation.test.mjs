@@ -31,15 +31,18 @@ const compiled = buildSync({
   bundle: true, write: false, platform: 'node', format: 'cjs',
 }).outputFiles[0].text;
 
-function fixture(initialCookie) {
+function fixture(initialCookie, partnerView = false) {
   const compiledModule = { exports: {} };
-  let cookie = initialCookie, writes = 0;
+  let cookie = initialCookie, writes = 0, refreshes = 0;
   const document = { documentElement: { lang: 'zh-CN' } };
   Object.defineProperty(document, 'cookie', { get: () => cookie, set: value => { cookie = value; writes++; } });
   const location = { pathname: '/settings', hash: '#settings-money' };
-  const refreshSoon = () => { throw new Error('A display-language switch must not refresh or navigate the Settings route'); };
-  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports, document, location, refreshSoon });
-  return { sync: compiledModule.exports.syncLocale, document, location, cookie: () => cookie, writes: () => writes };
+  const refreshSoon = () => {
+    if (!partnerView) throw new Error('A display-language switch must not refresh or navigate the Settings route');
+    refreshes++;
+  };
+  vm.runInNewContext(compiled, { module: compiledModule, exports: compiledModule.exports, document, location, refreshSoon, partnerView });
+  return { sync: compiledModule.exports.syncLocale, document, location, cookie: () => cookie, writes: () => writes, refreshes: () => refreshes };
 }
 
 test('Chinese to English updates language and cookie without replaying the Money route', () => {
@@ -64,4 +67,13 @@ test('an already matching cookie does not need a request or rewrite', () => {
   f.sync('en');
   assert.equal(f.document.documentElement.lang, 'en');
   assert.equal(f.writes(), 0);
+});
+
+
+test('partner view refreshes once to translate server-projected censored labels', () => {
+  const f = fixture('pebble-lang=zh', true);
+  f.sync('en');
+  f.sync('en');
+  assert.equal(f.refreshes(), 1);
+  assert.equal(f.writes(), 1);
 });
