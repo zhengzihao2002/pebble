@@ -145,9 +145,19 @@
 
 /* ---------- Hero: figure | trajectory | accounts ---------- */
 .pebble-root .pb-dash .pb-hero { margin-bottom: 0; grid-template-areas: "main" "trend" "acct"; }
-.pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; }
+.pebble-root .pb-dash-hero-main { grid-area: main; min-width: 0; container-type: inline-size; }
+.pebble-root .pb-dash-hero .hero-balance {
+  font-size: min(var(--pb-balance-size, 2.5rem), var(--pb-balance-fit, 12cqi));
+  white-space: nowrap;
+}
 .pebble-root .pb-dash-hero-trend { grid-area: trend; min-width: 0; min-height: 44px; align-self: end; }
 .pebble-root .pb-dash .pb-hero-accounts { grid-area: acct; }
+@container content (min-width: 480px) {
+  .pebble-root .pb-dash-hero .hero-balance { --pb-balance-size: 3.1rem; }
+}
+@container content (min-width: 700px) {
+  .pebble-root .pb-dash-hero .hero-balance { --pb-balance-size: 3.75rem; }
+}
 @container content (min-width: 640px) {
   .pebble-root .pb-dash .pb-hero { grid-template-areas: "main acct" "trend acct"; row-gap: 1rem; }
   /* One visible account hides the list (it would repeat the total): no
@@ -545,10 +555,6 @@
     display: block !important;
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: break-word;
   }
-  /* The balance is 2.5rem, which at 28px text is 70px: "$30,607.81" ran under
-     the hero's edge. Capped by the column's width instead (12cqi; at the
-     default size 2.5rem is smaller and still wins). */
-  .pebble-root .pb-dash-hero .hero-balance { font-size: min(2.5rem, 12cqi); }
   .pebble-root .pb-dash-fact dt { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
   /* The hero's change sentence ("Up $11,230.95 over the last ...") and its
      account names wrap too, instead of ending in an ellipsis. */

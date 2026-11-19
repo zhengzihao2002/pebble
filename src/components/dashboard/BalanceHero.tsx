@@ -1,6 +1,7 @@
 'use client';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
+import type { CSSProperties } from 'react';
 import Link from '@/components/loading/PendingLink';
 import { Ghost, ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -92,7 +93,9 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
             })}
           </InfoTooltip>
         </p>
-        <p className="font-display hero-balance">
+        <p className="font-display hero-balance" style={{
+          '--pb-balance-fit': `${100 / (whole.length * .67 + cents.length * .34 + .1)}cqi`,
+        } as CSSProperties}>
           <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />
         </p>
         {/* Reserved line: blank until today resolves, so nothing shifts. */}
