@@ -1,4 +1,5 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
@@ -56,6 +57,7 @@ export function StatementRow({
 }: StatementRowProps) {
   const { d, t, locale } = useTranslation();
   const partner = usePartnerView();
+  const balancesVisible = !partner || ledger && canSeePartnerBalances(partner.data.permissions);
   const amountVisible = !partner || partner.data.permissions.amounts === true;
 
   // Adjustments have no category. They are manual balance corrections, so
@@ -73,7 +75,7 @@ export function StatementRow({
   // txn.category is either a real category NAME (user data) or one of the
   // two income literals - categoryLabel() handles both, translating only
   // the latter.
-  const categoryText = isAdjustment ? d.txn.balanceAdjustment : uncategorised ? '' : categoryLabel(d, txn.category);
+  const categoryText = isAdjustment ? d.txn.balanceAdjustment : uncategorised ? (partner ? d.partner.censored : '') : categoryLabel(d, txn.category);
 
   const accentColor = isAdjustment || uncategorised
     ? 'var(--ink-soft)'
@@ -126,7 +128,7 @@ export function StatementRow({
   const shadow = payoff !== undefined && lensAccountId === payoff.cardId;
   const payer = accounts.find((a) => a.id === txn.accountId);
   const account = payoff ? accounts.find((a) => a.id === payoff.cardId) : payer;
-  const accountName = account?.name ?? payoff?.cardName ?? txn.paymentMethod;
+  const accountName = partner && !partner.data.permissions.accounts ? d.partner.censored : account?.name ?? payoff?.cardName ?? txn.paymentMethod;
   const RowAccountIcon = payoff || account?.kind === 'credit' ? CreditCard : account?.kind === 'bank' ? Landmark : Coins;
   const restParts: string[] = [];
   if (txn.type === 'expense' && txn.tag) restParts.push(txn.tag);
@@ -230,7 +232,7 @@ export function StatementRow({
       {/* Ledger only, shown only on the widest statement: the category with
           its colour dot (identity only - the label says it in words).
           Category names are USER DATA; income literals are translated. */}
-      {!partner && ledger && (
+      {ledger && (
         <div className="pb-txn-srow-cat">
           <span className="pb-txn-srow-catdot" aria-hidden="true" style={{ backgroundColor: isAdjustment || uncategorised ? 'var(--ink-faint)' : accentColor }} />
           <span>{markHits(categoryText, highlight)}</span>
@@ -239,7 +241,7 @@ export function StatementRow({
       {/* Ledger only, and shown only once the statement is wide enough: the
           account the record belongs to. Names are USER DATA. Hidden under the
           lens, where every row is the same account. */}
-      {!partner && ledger && !lensAccount && (
+      {ledger && !lensAccount && (
         <div className="pb-txn-srow-acct">
           <RowAccountIcon size={13} aria-hidden="true" />
           <span>{accountName}</span>
@@ -250,9 +252,9 @@ export function StatementRow({
       <div
         className={ledger ? 'pb-txn-srow-money' : undefined}
         style={{ textAlign: 'right', flexShrink: 0, cursor: 'pointer' }}
-        onClick={canHover || partner ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
-        onMouseEnter={!partner && canHover ? updateHoverPos : undefined}
-        onMouseMove={!partner && canHover ? updateHoverPos : undefined}
+        onClick={canHover || !balancesVisible ? undefined : (e) => { e.stopPropagation(); if (!hasTextSelection()) setExpanded((v) => !v); }}
+        onMouseEnter={balancesVisible && canHover ? updateHoverPos : undefined}
+        onMouseMove={balancesVisible && canHover ? updateHoverPos : undefined}
         onMouseLeave={canHover ? () => setHoverPos(null) : undefined}
       >
         <div className="font-mono-tab" style={{ fontSize: '0.87rem', fontWeight: 600, color: amountColor, whiteSpace: 'nowrap' }}>
@@ -260,7 +262,7 @@ export function StatementRow({
         </div>
         {/* Account lens: this account's own running balance, above the
             unchanged total line. */}
-        {!partner && lensAccount && (
+        {balancesVisible && lensAccount && (
           <div className="pb-txn-srow-lensbal" style={{ fontSize: '0.72rem', color: 'var(--ink)', whiteSpace: 'nowrap', marginTop: 1 }}>
             {/* The gap is the name's own margin: a space inside the clipped
                 inline-block was swallowed ("Ally Savings$15,675.72"). A card
@@ -273,13 +275,14 @@ export function StatementRow({
             )}
           </div>
         )}
-        {!partner && <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
-          <RollingMoneyText value={t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })} />
-        </div>}
+        <div className={`font-mono-tab${ledger ? ' pb-txn-srow-balline' : ''}`} style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', marginTop: 1 }}>
+          {balancesVisible ? <RollingMoneyText value={t(d.txn.balanceAfter, { amount: formatCurrency(totalBalanceAfter) })} />
+            : <span aria-label={d.partner.censored}>—</span>}
+        </div>
         {/* The same figure without the "Bal" prefix, for the ledger's
             "Balance after" column (one or the other is displayed). */}
-        {!partner && ledger && (
-          <div className="font-mono-tab pb-txn-srow-balcell"><RollingAmount value={formatCurrency(totalBalanceAfter)} /></div>
+        {ledger && (
+          <div className="font-mono-tab pb-txn-srow-balcell">{balancesVisible ? <RollingAmount value={formatCurrency(totalBalanceAfter)} /> : <span aria-label={d.partner.censored}>—</span>}</div>
         )}
       </div>
 
@@ -288,7 +291,7 @@ export function StatementRow({
       {/* Same 0fr -> 1fr technique as .collapsible-rows elsewhere. Hibernated
           accounts are listed too: a historical row may reference one, and
           hiding it would leave an unexplained figure. */}
-      {!partner && <div
+      {balancesVisible && <div
         style={{
           display: 'grid',
           gridTemplateRows: expanded ? '1fr' : '0fr',
@@ -313,7 +316,7 @@ export function StatementRow({
                 </span>
               </div>
             ))}
-            {!partner && lensAccount && (
+            {balancesVisible && lensAccount && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.3rem' }}>
                 <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
                 <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>
@@ -323,7 +326,7 @@ export function StatementRow({
         </div>
       </div>}
 
-      {!partner && hoverPos && (
+      {balancesVisible && hoverPos && (
         <div
           style={{
             position: 'fixed', left: hoverPos.x, top: hoverPos.y, zIndex: 100, pointerEvents: 'none',
@@ -349,7 +352,7 @@ export function StatementRow({
               </span>
             </div>
           ))}
-          {!partner && lensAccount && (
+          {balancesVisible && lensAccount && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.72rem', marginTop: 6, paddingTop: 5, borderTop: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--ink-soft)' }}>{d.ux.transactions.total}</span>
               <span className="font-mono-tab" style={{ color: 'var(--ink)', fontWeight: 600 }}><RollingAmount value={formatCurrency(totalBalanceAfter)} /></span>

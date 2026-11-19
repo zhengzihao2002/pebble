@@ -120,9 +120,6 @@ export function AccountDetailSheet({
     () => records.filter((r) => r.kind !== 'expense' || !r.fundedPayoff),
     [records],
   );
-  const visibleRecords = partner
-    ? activityRecords.filter(row => row.kind === 'expense' || row.kind === 'income')
-    : activityRecords;
   const latestActivity = credit ? records.find((r) => r.date <= today)?.date : lastActivity;
   const from = days[0]?.date ?? today;
   const inRange = activityRecords.filter((r) => r.date >= from && r.date <= today);
@@ -285,12 +282,12 @@ export function AccountDetailSheet({
                 </dl>
 
                 <p className="pb-accounts-detail-cap">{x.recentActivity}</p>
-                {visibleRecords.length === 0 ? (
+                {activityRecords.length === 0 ? (
                   <EmptyState compact icon={Icon} title={x.noRecordsHere} />
                 ) : (
                   <>
                     <ul className="pb-accounts-detail-list">
-                      {visibleRecords.slice(0, shownCount).map((r) => {
+                      {activityRecords.slice(0, shownCount).map((r) => {
                         const RowIcon = r.kind === 'transfer' ? ArrowRightLeft : r.kind === 'correction' ? SlidersHorizontal : r.amount > 0 ? ArrowDownLeft : ArrowUpRight;
                         return (
                           <li key={r.id}>
@@ -311,7 +308,7 @@ export function AccountDetailSheet({
                         );
                       })}
                     </ul>
-                    {visibleRecords.length > shownCount && (
+                    {activityRecords.length > shownCount && (
                       <button type="button" className="pill pb-accounts-detail-more" onClick={() => setShownCount((c) => c + PAGE)}>{x.showMore}</button>
                     )}
                   </>

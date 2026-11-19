@@ -1,3 +1,4 @@
+import { workspacePath } from '@/lib/partnerPaths';
 import { CachedPageSkeleton } from './CachedPageSkeleton';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { TransactionsSkeleton } from './TransactionsSkeleton';
@@ -26,5 +27,5 @@ function DefaultPageSkeleton({ pathname }: { pathname: string }) {
 }
 
 export function PageSkeleton({ pathname }: { pathname:string }) {
-  return <CachedPageSkeleton pathname={pathname}><DefaultPageSkeleton pathname={pathname}/></CachedPageSkeleton>;
+  return <CachedPageSkeleton pathname={pathname}><DefaultPageSkeleton pathname={workspacePath(pathname)}/></CachedPageSkeleton>;
 }

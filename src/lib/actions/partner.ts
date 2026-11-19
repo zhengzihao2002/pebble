@@ -1,5 +1,7 @@
 'use server';
 
+import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
+
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
@@ -180,13 +182,32 @@ async function leavePartner() {
   return success;
 }
 
+function queryWorkspaceAccess(userId: string, pairId: string) {
+  return neonSql`SELECT profile.name, scope.permissions, scope.pair_id AS "pairId", scope.shared_categories AS categories
+    FROM public.pebble_partner_scope scope JOIN neon_auth."user" profile ON profile.id=scope.owner_id
+    WHERE scope.viewer_id=${userId}::uuid AND scope.pair_id=${pairId}::uuid`;
+}
+
+function workspaceAccess(row: Record<string, unknown>) {
+  return {
+    name: row.name as string, permissions: row.permissions as PartnerPermissions,
+    accessVersion: digest(JSON.stringify([row.pairId, row.permissions, row.categories])),
+  };
+}
+
+async function readWorkspaceAccess(userId: string) {
+  const pairId = await partnerViewPair(userId);
+  if (!pairId) return failure('denied');
+  const rows = await queryWorkspaceAccess(userId, pairId);
+  return rows[0] ? { ...success, data: workspaceAccess(rows[0]) } : failure('noPair');
+}
+
 async function readWorkspace(userId: string) {
   const pairId = await partnerViewPair(userId);
   if (!pairId) return failure('denied');
   // One permission snapshot per response. Only authorized fields leave the database.
-  const [people, transactions, accounts, goals, entryAccounts, entryCategories, budgetCategories, budgets, scheduled, categories, dailyBalanceAdjustments] = await neonSql.transaction([
-    neonSql`SELECT profile.name, scope.permissions, scope.pair_id AS "pairId", scope.shared_categories AS "categories" FROM public.pebble_partner_scope scope
-      JOIN neon_auth."user" profile ON profile.id = scope.owner_id WHERE scope.viewer_id = ${userId}::uuid AND scope.pair_id = ${pairId}::uuid`,
+  const [people, transactions, accounts, goals, entryAccounts, entryCategories, budgetCategories, budgets, scheduled, categories, adjustments, budgetSummary] = await neonSql.transaction([
+    queryWorkspaceAccess(userId, pairId),
     neonSql`WITH ledger AS (
       SELECT e.id,e.user_id,e.account_id,'expense'::text AS kind,e.transaction_date,e.description,e.category,e.tag,
         e.amount,NULL::numeric AS gross_amount,e.recurring_rule_id IS NULL AND e.credit_card_payoff IS NULL AS editable,e.credit_card_payoff
@@ -202,12 +223,12 @@ async function readWorkspace(userId: string) {
       CASE WHEN v.visible THEN split_part(l.description,chr(10),1) ELSE '' END AS title,
       CASE WHEN v.visible THEN l.category ELSE '' END AS category,
       CASE WHEN s.permissions @> '{"amounts":true}'::jsonb THEN l.amount::float8 END AS amount,
-      CASE WHEN s.permissions @> '{"notes":true}'::jsonb AND strpos(l.description,chr(10))>0
+      CASE WHEN v.visible AND s.permissions @> '{"notes":true}'::jsonb AND strpos(l.description,chr(10))>0
         THEN substr(l.description,strpos(l.description,chr(10))+1) END AS notes,
       CASE WHEN v.visible THEN l.tag ELSE '' END AS tag,
       (v.visible AND l.kind='expense' AND s.permissions @> '{"editTags":true}'::jsonb) AS "canEditTag",
       (v.visible AND a.status='active' AND l.editable AND s.permissions @> '{"editTransactions":true}'::jsonb) AS "canEdit",
-      (s.permissions @> '{"notes":true}'::jsonb) AS "notesVisible",
+      (v.visible AND s.permissions @> '{"notes":true}'::jsonb) AS "notesVisible",
       NOT v.visible AS hidden,
       CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN coalesce(card.name,a.name) END AS "accountName",
       CASE WHEN card.id IS NOT NULL THEN jsonb_build_object(
@@ -281,24 +302,71 @@ async function readWorkspace(userId: string) {
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid
         AND (s.permissions @> '{"expenses":true}'::jsonb OR s.permissions @> '{"budgets":true}'::jsonb)
       ORDER BY c.sort_order,c.name`,
-    // No private adjustment descriptions, ids or transfer references cross this boundary.
-    neonSql`SELECT a.id AS "accountId", b.transaction_date::text AS date, sum(b.amount)::float8 AS amount
+    neonSql`SELECT b.id,'adjustment' AS type,a.id AS "accountId",a.name AS "paymentMethod",
+        b.transaction_date::text AS date,b.amount::float8,
+        CASE WHEN s.permissions @> '{"notes":true}'::jsonb AND private_side.hidden IS NULL
+          THEN b.description ELSE '' END AS description,
+        CASE WHEN private_side.hidden IS NULL THEN b.transfer_group_id END AS "transferGroupId"
       FROM public.pebble_partner_scope s
       JOIN public.balance_adjustment b ON b.user_id=s.owner_id
       JOIN public.account a ON a.user_id=s.owner_id AND a.id=b.account_id AND NOT a.is_ghost
+      LEFT JOIN LATERAL (
+        SELECT true AS hidden FROM public.balance_adjustment other
+        JOIN public.account linked ON linked.id=other.account_id AND linked.user_id=other.user_id
+        WHERE other.user_id=s.owner_id AND other.transfer_group_id=b.transfer_group_id AND linked.is_ghost
+        LIMIT 1
+      ) private_side ON b.transfer_group_id IS NOT NULL
       WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid
         AND s.permissions @> ${JSON.stringify(PARTNER_BALANCE_PERMISSIONS)}::jsonb
-      GROUP BY a.id,b.transaction_date HAVING sum(b.amount) <> 0
-      ORDER BY b.transaction_date,a.id`,
+      ORDER BY b.transaction_date DESC,b.id DESC`,
+    // Fold every withheld category into one unnamed aggregate. Spending never
+    // uses transaction numbers if the owner disabled expenses or amounts.
+    neonSql`WITH planning AS (
+        SELECT s.owner_id,s.shared_categories,s.permissions,active.year AS plan_year,
+          (now() AT TIME ZONE coalesce(upcoming.time_zone,active.time_zone,ua.time_zone,${FALLBACK_TIME_ZONE}))::date AS today
+        FROM public.pebble_partner_scope s
+        LEFT JOIN public.user_account ua ON ua.user_id=s.owner_id
+        LEFT JOIN LATERAL (
+          SELECT year,time_zone FROM public.annual_budget_plan p WHERE p.user_id=s.owner_id AND state='scheduled' AND effective_at<=now()
+          ORDER BY year DESC LIMIT 1
+        ) active ON true
+        LEFT JOIN LATERAL (
+          SELECT time_zone FROM public.annual_budget_plan p WHERE p.user_id=s.owner_id AND state='scheduled' AND effective_at>now()
+          ORDER BY year DESC LIMIT 1
+        ) upcoming ON true
+        WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND s.permissions @> '{"budgets":true}'::jsonb
+      ), censored_categories AS (
+        SELECT c.name,coalesce(i.annual_amount,b.annual_amount,0) AS amount
+        FROM planning s JOIN public.category c ON c.user_id=s.owner_id AND NOT (c.id=ANY(s.shared_categories))
+        LEFT JOIN public.annual_budget_plan_item i ON i.user_id=s.owner_id AND i.year=s.plan_year AND i.category_id=c.id
+        LEFT JOIN public.budget b ON b.user_id=s.owner_id AND b.category=c.name AND s.plan_year IS NULL
+      )
+      SELECT s.today::text,
+        (s.permissions @> '{"amounts":true,"expenses":true,"income":true}'::jsonb
+          AND ${INCOME_SHARING_KEYS}::text[] <@ s.shared_categories) AS "canEstimateBudgetIncome",
+        (SELECT coalesce(sum(c.amount),0)::float8 FROM censored_categories c) AS amount,
+        coalesce(t.budgeted,0)::float8 AS "budgetedSpending",coalesce(t.unbudgeted,0)::float8 AS "unbudgetedSpending"
+      FROM planning s LEFT JOIN LATERAL (
+        SELECT -sum(e.amount) FILTER (WHERE c.amount>0) AS budgeted,-sum(e.amount) FILTER (WHERE c.amount=0) AS unbudgeted
+        FROM public.expense e JOIN censored_categories c ON c.name=e.category
+        JOIN public.account a ON a.id=e.account_id AND a.user_id=s.owner_id AND NOT a.is_ghost
+        WHERE s.permissions @> '{"amounts":true,"expenses":true}'::jsonb AND e.user_id=s.owner_id AND e.amount<0
+          AND e.transaction_date>=date_trunc('year',s.today)::date
+          AND e.transaction_date<(date_trunc('year',s.today)+interval '1 year')::date
+      ) t ON true`,
   ], { isolationLevel: 'RepeatableRead', readOnly: true });
   if (!people.length) return failure('noPair');
-  const accessVersion = digest(JSON.stringify([people[0].pairId, people[0].permissions, people[0].categories]));
-  const data: PartnerWorkspaceData = { accessVersion, name: people[0].name, pairId: people[0].pairId, permissions: people[0].permissions,
+  const sharedBudget = budgetSummary[0];
+  const data: PartnerWorkspaceData = { ...workspaceAccess(people[0]), pairId: people[0].pairId,
     transactions: transactions as SharedTransaction[], accounts: accounts as PartnerWorkspaceData['accounts'],
     goals: goals as PartnerWorkspaceData['goals'], entryAccounts: entryAccounts as PartnerWorkspaceData['entryAccounts'],
     entryCategories: entryCategories as SharingCategory[], budgetCategories: budgetCategories as SharingCategory[],
     categories: categories as PartnerWorkspaceData['categories'],
-    dailyBalanceAdjustments: dailyBalanceAdjustments as PartnerWorkspaceData['dailyBalanceAdjustments'],
+    adjustments: adjustments as PartnerWorkspaceData['adjustments'],
+    budgetToday: sharedBudget?.today ?? null,
+    censoredBudget: sharedBudget ? { amount: sharedBudget.amount, budgetedSpending: sharedBudget.budgetedSpending,
+      unbudgetedSpending: sharedBudget.unbudgetedSpending } : null,
+    canEstimateBudgetIncome: sharedBudget?.canEstimateBudgetIncome === true,
     budgets: budgets as PartnerWorkspaceData['budgets'], scheduled: scheduled as PartnerWorkspaceData['scheduled'],
     entryIncome: (people[0].permissions.addTransactions === true || people[0].permissions.addScheduled === true) && people[0].permissions.accounts === true
       ? INCOME_SHARING_KEYS.filter(key => people[0].categories.includes(key)).map(key => key.slice(7)) : [],
@@ -613,6 +681,7 @@ export const savePartnerPermissionsAction = withSessionUser(savePermissions);
 export const unpairPartnerAction = withSessionUser(unpair);
 export const enterPartnerViewAction = withSessionUser(enterPartner);
 export const leavePartnerViewAction = withSessionUser(leavePartner, { partnerView: true });
+export const readPartnerWorkspaceAccessAction = withSessionUser(userId => run(() => readWorkspaceAccess(userId)), { partnerView: true });
 export const readPartnerWorkspaceAction = withSessionUser(userId => run(() => readWorkspace(userId)), { partnerView: true });
 export const createSharedRecordAction = withSessionUser(createSharedRecord, { partnerView: true });
 export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction, { partnerView: true });

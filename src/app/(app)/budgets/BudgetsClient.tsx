@@ -1,6 +1,11 @@
 'use client';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
+import { LockKeyhole } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { formatCurrency } from '@/lib/format';
+import { RollingAmount } from '@/components/shared/RollingAmount';
+import { PartnerCensored, PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { useMemo } from 'react';
 import type { Transaction } from '@/types';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -25,6 +30,8 @@ interface BudgetsClientProps {
 
 export function BudgetsClient({ transactions, categories, budgets, budgetsByYear, today }: BudgetsClientProps) {
   const partner = usePartnerView();
+  const { d } = useTranslation();
+  const censored = partner?.data.censoredBudget;
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Server-resolved in the saved planning timezone; the year boundary refresh
@@ -33,14 +40,24 @@ export function BudgetsClient({ transactions, categories, budgets, budgetsByYear
   const entries: BudgetEntry[] = useMemo(() => {
     const categorySpent = computeCategorySpent(transactions, year);
 
-    return Object.entries(categoryMeta)
+    const shown: BudgetEntry[] = Object.entries(categoryMeta)
       .map(([name, meta]) => {
         const spent = categorySpent[name] || 0;
         const pct = meta.budget > 0 ? (spent / meta.budget) * 100 : (spent > 0 ? 100 : 0);
         return { name, icon: meta.icon, color: meta.color, budget: meta.budget, spent, pct };
       })
       .filter((e) => e.budget > 0 || e.spent > 0);
-  }, [transactions, categoryMeta, year]);
+    if (censored) {
+      const anonymous = { name: d.partner.censoredCategories, icon: LockKeyhole, color: '#788394', censored: true };
+      if (censored.amount > 0) shown.push({
+        ...anonymous, budget: censored.amount, spent: censored.budgetedSpending, pct: 100 * censored.budgetedSpending / censored.amount,
+      });
+      if (censored.unbudgetedSpending > 0) shown.push({
+        ...anonymous, budget: 0, spent: censored.unbudgetedSpending, pct: 100,
+      });
+    }
+    return shown;
+  }, [transactions, categoryMeta, year, censored, d.partner.censoredCategories]);
 
   // Categories with no budget and no spending this year, for Other categories.
   const others: BudgetEntry[] = useMemo(() => {
@@ -63,6 +80,18 @@ export function BudgetsClient({ transactions, categories, budgets, budgetsByYear
   const totalSpent = entries.reduce((s, e) => s + e.spent, 0);
 
   const income = useBudgetIncome(transactions, today);
+  const sharedEstimate = partner?.data.canEstimateBudgetIncome ? income.estimate?.annual ?? null : null;
+  const incomeControl = partner ? (
+    <div className="pb-bud-income">
+      <div className="pb-bud-income-fig">
+        <span className="pb-bud-income-label">{d.budgetModal.estimatedIncome}</span>
+        {partner.data.canEstimateBudgetIncome ? <>
+          <span className="font-mono-tab pb-bud-income-value"><RollingAmount value={sharedEstimate === null ? '—' : formatCurrency(sharedEstimate)} /></span>
+          <span className="pb-bud-income-needs">{sharedEstimate === null ? d.ux.budgets.incomeNeeds : d.partner.budgetIncomeBasis}</span>
+        </> : <PartnerCensored />}
+      </div>
+    </div>
+  ) : <IncomeControl {...income.control} />;
 
   // One column on every width, as on a phone: the plan, the budget list, then
   // spending without a budget. It used to become a side column on a wide
@@ -76,12 +105,14 @@ export function BudgetsClient({ transactions, categories, budgets, budgetsByYear
         entries={entries}
         totalBudget={totalBudget}
         totalSpent={totalSpent}
-        annualIncome={partner ? null : income.control.effectiveAnnual}
+        annualIncome={partner ? sharedEstimate : income.control.effectiveAnnual}
         today={today}
-        incomeControl={partner ? undefined : <IncomeControl {...income.control} />}
+        incomeControl={incomeControl}
       />
       <BudgetRows entries={entries} today={today} history={history} />
-      {!partner && <UnbudgetedList entries={entries} others={others} history={history} today={today} />}
+      {partner && (!partner.data.permissions.amounts || !partner.data.permissions.expenses || !partner.data.permissions.budgets)
+        ? <PartnerCensoredCard title={d.budgetPlan.unbudgetedTitle} className="pb-unb pb-bud-unb" />
+        : <UnbudgetedList entries={entries} others={others} history={history} today={today} />}
     </div>
   );
 }

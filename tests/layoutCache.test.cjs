@@ -7,14 +7,16 @@ buildSync({entryPoints:{cache:path.resolve('src/components/loading/layoutCache.t
 const cache = require(path.join(temp,'cache.cjs'));
 process.on('exit',()=>fs.rmSync(temp,{recursive:true,force:true}));
 const values = new Map();
-let owner, content;
+let owner, content, partnerScope;
 const html = { lang:'en', getAttribute:()=>null };
 const main = { clientWidth:600, getBoundingClientRect:()=>({left:0,top:0}), closest:()=>({scrollTop:0,querySelector:()=>null}) };
 global.window = {innerWidth:1024,innerHeight:768,location:{pathname:'/accounts'}};
-global.document = {documentElement:html,querySelector:selector=>selector.startsWith('meta')?{content:owner+'|test'}:content};
+global.document = {documentElement:html,querySelector:selector=>selector.includes('pebble-layout-scope')
+ ? (partnerScope ? {content:partnerScope} : null)
+ : selector.startsWith('meta')?{content:owner+'|test'}:content};
 global.localStorage = { getItem:key=>values.get(key)??null, setItem:(key,value)=>values.set(key,value), removeItem:key=>values.delete(key) };
 global.getComputedStyle = element=>element===html?{fontSize:'16px'}:element===main?{paddingLeft:'20px',paddingRight:'20px',paddingTop:'20px'}:{visibility:'visible',borderTopLeftRadius:'22px',boxShadow:'none'};
-function entry() { return {key:cache.layoutProfile('/accounts',main),savedAt:Date.now(),width:560,height:640,boxes:[{x:0,y:0,width:560,height:640,radius:22,kind:'card',flat:true}]}; }
+function entry(pathname = '/accounts') { return {key:cache.layoutProfile(pathname,main),savedAt:Date.now(),width:560,height:640,boxes:[{x:0,y:0,width:560,height:640,radius:22,kind:'card',flat:true}]}; }
 function seed(value) { values.set(cache.LAYOUT_CACHE_PREFIX+owner,JSON.stringify({version:2,entries:[value]})); }
 function setup(name) {owner=name;window.innerWidth=1024;window.innerHeight=768;html.lang='en';main.clientWidth=600;content=null;}
 
@@ -220,4 +222,29 @@ test('desktop Transactions captures only visible pane contours and ignores indep
  pane.scrollTop=80;cache.capturePageLayout('/transactions');
  assert.equal(localStorage.getItem(cache.LAYOUT_CACHE_PREFIX+owner),before,'pane scrolling cannot replace the initial layout');
  window.location.pathname='/accounts';
+});
+
+test('partner geometry is isolated from the owner and changes in shared permissions',()=>{
+ setup('viewer');
+ seed(entry());
+ assert.equal(cache.readPageLayout('/partner/accounts',main),null);
+ partnerScope='viewer:pair-and-permissions';
+ const saved=entry('/partner/accounts');
+ saved.height=920;
+ saved.boxes[0].height=920;
+ values.set(cache.LAYOUT_CACHE_PREFIX+partnerScope,JSON.stringify({version:2,entries:[saved]}));
+ assert.equal(cache.readPageLayout('/partner/accounts',main).height,920);
+ assert.equal(cache.readPageLayout('/accounts',main).height,640);
+ const {layoutBootstrap}=require(path.join(temp,'snapshot.cjs'));
+ const node=()=>({style:{},dataset:{},children:[],setAttribute(key,value){this[key]=value},removeAttribute(key){delete this[key]},append(child){this.children.push(child)},replaceChildren(...children){this.children=children}});
+ const surface=node(),host=node();
+ host.dataset.layoutPath='/partner/accounts';
+ host.closest=()=>main;host.querySelector=()=>surface;
+ const doc={...document,currentScript:{parentElement:host},createElement:node};
+ require('node:vm').runInNewContext(layoutBootstrap,{document:doc,window,localStorage,getComputedStyle,Date});
+ assert.equal(surface.children[0].style.height,'920px');
+ partnerScope='viewer:permissions-changed';
+ assert.equal(cache.readPageLayout('/partner/accounts',main),null);
+ partnerScope=undefined;
+ assert.equal(cache.readPageLayout('/partner/accounts',main),null);
 });

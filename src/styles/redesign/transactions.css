@@ -35,7 +35,7 @@
 @container content (min-width: 1220px) {
   /* Contours already end at the viewport; cancel the main's trailing padding
      so the fallback cannot introduce a temporary outer scrollbar. */
-  .pebble-root .pb-layout-skeleton-host[data-layout-path="/transactions"] { margin-bottom: calc(-1 * var(--pb-main-pad-bottom)); }
+  .pebble-root .pb-layout-skeleton-host:is([data-layout-path="/transactions"], [data-layout-path="/partner/transactions"]) { margin-bottom: calc(-1 * var(--pb-main-pad-bottom)); }
   .pebble-root .pb-txn-skel-page.pb-txn-skel-page {
     display: grid; grid-template-columns: 24.5rem minmax(0, 1fr); align-items: start;
     height: calc(100dvh - var(--pb-header-h) - var(--pb-main-pad-top)); min-height: 0; overflow: clip;

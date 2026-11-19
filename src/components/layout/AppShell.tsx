@@ -26,14 +26,19 @@ import type { CategoryMeta, LedgerRecord } from '@/types';
 import { WelcomeOverlay, WELCOME_PREVIEW_EVENT } from './WelcomeOverlay';
 import { SHELL_EVENTS } from './shellEvents';
 import { isPartnerPath } from '@/lib/partnerPaths';
-import { partnerCanPost } from '@/lib/partnerDisplay';
-import type { PartnerWorkspaceData } from '@/lib/partner';
+import { partnerAccounts, partnerCanPost } from '@/lib/partnerDisplay';
+import type { PartnerWorkspaceAccess, PartnerWorkspaceData } from '@/lib/partner';
 import { PartnerCreateDialog, type PartnerEditor } from '@/components/partner/PartnerCreateDialog';
-import { PartnerTransactionDetail } from '@/components/partner/PartnerTransactionDetail';
-import { PartnerViewContext } from '@/components/partner/PartnerViewContext';
+import type { StatementEntry } from '@/components/transactions/StatementList';
+import { buildCategoryMeta } from '@/lib/data/categoryMeta';
+import { PartnerViewContext, PartnerWorkspaceControlsContext } from '@/components/partner/PartnerViewContext';
 import { useCardResize } from './useCardResize';
 
-export function AppShell({ children, partnerData }: { children: ReactNode; partnerData?: PartnerWorkspaceData }) {
+export function AppShell({ children, partnerAccess, viewerId }: {
+  children: ReactNode;
+  partnerAccess?: PartnerWorkspaceAccess;
+  viewerId?: string;
+}) {
   const router = useRouter();
   const locale = usePebbleStore((s) => s.locale);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
@@ -161,13 +166,26 @@ export function AppShell({ children, partnerData }: { children: ReactNode; partn
   }, []);
   const pathname = usePathname();
   const partnerView = isPartnerPath(pathname);
+  const [workspace, setWorkspace] = useState<{ pathname: string; data: PartnerWorkspaceData } | null>(null);
+  const partnerData = workspace?.pathname === pathname ? workspace.data : undefined;
+  const registerPartnerWorkspace = useCallback((pathname: string, data: PartnerWorkspaceData) => {
+    setWorkspace(previous => previous?.pathname === pathname && previous.data === data ? previous : { pathname, data });
+  }, []);
   const [partnerEditor, setPartnerEditor] = useState<PartnerEditor | null>(null);
-  const [partnerTransaction, setPartnerTransaction] = useState<LedgerRecord | null>(null);
+  const [partnerTransaction, setPartnerTransaction] = useState<{ txn: LedgerRecord; entry?: StatementEntry } | null>(null);
+  const openPartnerTransaction = useCallback((txn: LedgerRecord, entry?: StatementEntry) => setPartnerTransaction({ txn, entry }), []);
+  const partnerControls = useMemo(() => ({
+    register: registerPartnerWorkspace, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction,
+  }), [registerPartnerWorkspace, openPartnerTransaction]);
   const partnerContext = useMemo(() => partnerView && partnerData
-    ? { data: partnerData, openEditor: setPartnerEditor, openTransaction: setPartnerTransaction }
-    : null, [partnerView, partnerData]);
-  const partnerRow = partnerData?.transactions.find(row => row.id === partnerTransaction?.id && row.kind === partnerTransaction.type);
+    ? { data: partnerData, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction }
+    : null, [partnerView, partnerData, openPartnerTransaction]);
+  const selectedPartnerRecord = partnerTransaction?.txn;
+  const partnerRow = partnerData?.transactions.find(row => row.id === selectedPartnerRecord?.id && row.kind === selectedPartnerRecord.type);
+  const partnerAdjustment = selectedPartnerRecord?.type === 'adjustment'
+    ? partnerData?.adjustments?.find(row => row.id === selectedPartnerRecord.id) : undefined;
   const canPost = partnerData ? partnerCanPost(partnerData) : false;
+  const layoutScope = partnerData?.accessVersion ?? partnerAccess?.accessVersion;
   const partnerActions = {
     addTransaction: canPost && partnerData?.permissions.addTransactions === true,
     addSchedule: canPost && partnerData?.permissions.addScheduled === true,
@@ -516,13 +534,15 @@ export function AppShell({ children, partnerData }: { children: ReactNode; partn
           {truncTip.text}
         </div>
       )}
+      {partnerView && viewerId && layoutScope && <meta name="pebble-layout-scope" content={`${viewerId}:${layoutScope}`} />}
+      <PartnerWorkspaceControlsContext.Provider value={partnerControls}>
       <PartnerViewContext.Provider value={partnerContext}>
       <UndoDeleteProvider>
       <div className="pebble-shell">
         <Sidebar />
         <div className="pebble-main-content">
           <Header
-            partner={partnerView ? { name: partnerData?.name ?? null, ...partnerActions } : undefined}
+            partner={partnerView ? { name: partnerData?.name ?? partnerAccess?.name ?? null, ...partnerActions } : undefined}
             onAddTransactionClick={() => add('transaction')}
             onAddGoalClick={() => add('goal')}
             onAddScheduleClick={() => add('schedule')}
@@ -553,7 +573,7 @@ export function AppShell({ children, partnerData }: { children: ReactNode; partn
           onTransfer={openTransfer}
           onAddGoal={() => add('goal')}
           onAddSchedule={() => add('schedule')}
-          onOpenTransaction={(txn, categoryMeta) => partnerView ? setPartnerTransaction(txn) : setPaletteTxn({ txn, categoryMeta })}
+          onOpenTransaction={(txn, categoryMeta) => partnerView ? openPartnerTransaction(txn) : setPaletteTxn({ txn, categoryMeta })}
         />
       )}
       {!partnerView && paletteTxn && (
@@ -561,11 +581,16 @@ export function AppShell({ children, partnerData }: { children: ReactNode; partn
       )}
       {partnerView && partnerData && partnerEditor && <PartnerCreateDialog editor={partnerEditor} data={partnerData}
         onClose={() => setPartnerEditor(null)} onCreated={() => router.refresh()} />}
-      {partnerView && partnerRow && <PartnerTransactionDetail key={partnerRow.kind + ':' + partnerRow.id} row={partnerRow}
-        onClose={() => setPartnerTransaction(null)} onSaved={() => router.refresh()} />}
+      {partnerView && partnerData && partnerTransaction && (partnerRow || partnerAdjustment) && (
+        <TransactionDetailModal txn={partnerAdjustment ?? partnerTransaction.txn}
+          categoryMeta={buildCategoryMeta(partnerData.categories, {})} accounts={partnerAccounts(partnerData)}
+          ledgerEntry={partnerTransaction.entry} onClose={() => setPartnerTransaction(null)}
+          shared={{ row: partnerRow, showAccount: partnerData.permissions.accounts === true, onSaved: () => router.refresh() }} />
+      )}
       {!partnerView && welcome && <WelcomeOverlay onDone={closeWelcome} />}
       </UndoDeleteProvider>
       </PartnerViewContext.Provider>
+      </PartnerWorkspaceControlsContext.Provider>
     </div>
   );
 }

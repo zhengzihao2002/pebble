@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import { capturePageLayout } from './layoutCache';
 import { usePathname } from 'next/navigation';
-import { isPartnerPath, workspacePath } from '@/lib/partnerPaths';
+import { workspacePath } from '@/lib/partnerPaths';
 
 let destination: { pathname: string; id: number } | null = null;
 let sequence = 0;
@@ -14,7 +14,7 @@ export const useNavigationDestination = () => useSyncExternalStore(subscribe, sn
 export function beginNavigation(href: string) {
   const url = new URL(href, window.location.href);
   if (url.origin !== window.location.origin || url.pathname === window.location.pathname || !document.querySelector('.pebble-main') || !/^\/(dashboard|transactions|accounts|analysis|insights|reports|budgets|goals|scheduled|settings|account)(\/|$)/.test(workspacePath(url.pathname))) return;
-  if (!isPartnerPath(window.location.pathname)) capturePageLayout(window.location.pathname);
+  capturePageLayout(window.location.pathname);
   destination = { pathname: url.pathname, id: ++sequence };
   listeners.forEach(listener => listener());
 }

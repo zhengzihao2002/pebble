@@ -11,14 +11,14 @@ const rounded = (value: number) => Math.round(value * 100) / 100;
 const { owner, valid } = layoutTools;
 export const layoutProfile = layoutTools.profile;
 export function readPageLayout(pathname: string, main: HTMLElement): PageLayout | null {
-  const user = owner(), key = layoutProfile(pathname,main);
+  const user = owner(pathname), key = layoutProfile(pathname,main);
   if (!user || !key) return null;
   return layoutTools.read(pathname,main);
 }
 export function capturePageLayout(pathname: string): void {
   const content = document.querySelector<HTMLElement>('.pb-navigation-content');
   const main = content?.closest<HTMLElement>('.pebble-main');
-  const user = owner();
+  const user = owner(pathname);
   if (!content || !main || !user || pausedOwners.has(user) || content.hidden || pathname !== window.location.pathname
     || document.fonts?.status==='loading' || content.querySelector(loading) || (main.closest('.pebble-root')?.scrollTop ?? 0) > 2) return;
   const panes = content.querySelector<HTMLElement>('.pb-txn-page[data-txn-panes]');

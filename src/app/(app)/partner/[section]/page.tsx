@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { LockKeyhole } from 'lucide-react';
 import { loadPartnerSnapshot } from '@/lib/partnerSnapshot.server';
-import { isPartnerSection } from '@/lib/partnerPaths';
+import { isPartnerSection, type PartnerSection } from '@/lib/partnerPaths';
 import { partnerAccounts, partnerBalanceAdjustments, partnerGoals, partnerRules, partnerTransactions } from '@/lib/partnerDisplay';
-import { getDictionary } from '@/lib/i18n';
+import { getDictionary, type Dictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
@@ -11,7 +11,8 @@ import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
 import { computeCurrentBalances, computeRecentTransactions, mergeTransactions } from '@/lib/stats';
 import { SectionHeader } from '@/components/kit/SectionHeader';
-import { canSeePartnerBalances } from '@/lib/partner';
+import { canSeePartnerBalances, type PartnerWorkspaceData } from '@/lib/partner';
+import { PartnerWorkspaceScope } from '@/components/partner/PartnerViewContext';
 import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { GoalsSummary } from '@/components/goals/GoalsSummary';
 import { GoalsView } from '@/components/goals/GoalsView';
@@ -40,7 +41,12 @@ export default async function PartnerSectionPage({ params }: { params: Promise<{
   if (!snapshot.ok) return <Restricted title={d.partner.title} body={d.partner.viewUnavailable} />;
   if (section === 'settings') return <Restricted title={d.nav.settings} body={d.partner.settingsRestricted} />;
 
-  const data = snapshot.data;
+  return <PartnerWorkspaceScope data={snapshot.data} pathname={`/partner/${section}`}>
+    {await renderSection(section, snapshot.data, d)}
+  </PartnerWorkspaceScope>;
+}
+
+async function renderSection(section: PartnerSection, data: PartnerWorkspaceData, d: Dictionary) {
   const transactions = partnerTransactions(data, d.partner.hiddenTransaction);
   const expenses = transactions.filter(row => row.type === 'expense');
   const income = transactions.filter(row => row.type === 'income');
@@ -60,8 +66,7 @@ export default async function PartnerSectionPage({ params }: { params: Promise<{
       return <DashboardClient transactions={ledger} categories={categories} budgets={budgets} accounts={accounts}
         balancesByAccount={balances.byAccount} totalBalance={balances.total} allocated={allocated} adjustments={adjustments} catchUp={NO_CATCH_UP} goals={goals} rules={rules} />;
     case 'transactions':
-      return <TransactionsClient transactions={ledger} adjustments={[]}
-        partnerDailyAdjustments={adjustments}
+      return <TransactionsClient transactions={ledger} adjustments={adjustments}
         ledger={showBalances ? computeRecentTransactions(expenses, income, accounts, adjustments)
           : ledger.map(row => ({ transId: row.id, balancesAfter: {}, totalBalanceAfter: 0 }))}
         categories={categories} budgets={budgets} accounts={accounts}
@@ -86,7 +91,7 @@ export default async function PartnerSectionPage({ params }: { params: Promise<{
     case 'scheduled': {
       const userId = await getSessionUserIdOrRedirect();
       const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
-      if (section === 'budgets') return <BudgetsClient transactions={ledger} categories={categories} budgets={budgets} budgetsByYear={{}} today={today} />;
+      if (section === 'budgets') return <BudgetsClient transactions={ledger} categories={categories} budgets={budgets} budgetsByYear={{}} today={data.budgetToday ?? today} />;
       return <ScheduledClient rules={rules} upcoming={getUpcomingSchedule(rules, today)} previewDays={SCHEDULE_PREVIEW_DAYS} catchUp={NO_CATCH_UP} />;
     }
   }

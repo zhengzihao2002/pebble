@@ -1,4 +1,5 @@
 'use client';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
@@ -45,7 +46,7 @@ function thisYear(history: BudgetHistory, name: string): { values: (number | nul
 function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: number | null; history: BudgetHistory | null; today: string | null }) {
   const { d, t } = useTranslation();
   const partner = usePartnerView();
-  const category = partner?.data.budgets.find(row => row.name === e.name);
+  const category = !e.censored && partner?.data.budgets.find(row => row.name === e.name);
   const showSpent = !partner || partner.data.permissions.amounts === true && partner.data.permissions.expenses === true;
   const canEdit = !partner || partner.data.permissions.editBudgets && category;
   const edit = () => {
@@ -66,7 +67,7 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
     else pace = d.budgetPlan.onPace;
   }
   const fill = Math.min((e.spent / e.budget) * 100, 100);
-  const spark = history ? thisYear(history, e.name) : null;
+  const spark = history && !e.censored && showSpent ? thisYear(history, e.name) : null;
 
   return (
     <div className={`pb-row pb-bud-row${editing !== null ? ' is-editing' : ''}`}>
@@ -128,17 +129,17 @@ function BudgetRow({ e, fraction, history, today }: { e: BudgetEntry; fraction: 
         {pace && <span className="pb-bud-row-pace">{' · '}<span className="font-mono-tab"><RollingMoneyText value={pace} /></span></span>}
       </div>
       </>}
-      {showSpent && !partner && <div className="pb-row-more">
+      {showSpent && !e.censored && <div className="pb-row-more">
         <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           {open ? d.budgetDetails.hide : d.budgetDetails.details}
           <ChevronDown size={14} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--pb-dur-std) var(--pb-ease-out)' }} />
         </button>
       </div>}
-      {showSpent && !partner && open && (
+      {showSpent && !e.censored && open && (
         <div className="pb-row-details goal-step">
           <BudgetDetails
             name={e.name} color={e.color} budget={e.budget} history={history} today={today}
-            onSuggest={(yearly) => setEditing(String(yearly))}
+            onSuggest={(yearly) => setEditing(String(yearly))} hideQuickSet={!!partner}
           />
         </div>
       )}
@@ -168,16 +169,19 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
   // near or over its limit is on top. Ties fall back to the larger budget.
   const rows = entries.filter((e) => e.budget > 0)
     .sort((a, b) => (b.spent / b.budget) - (a.spent / a.budget) || b.budget - a.budget);
-  if (partner) return <section className="card pb-rows pb-bud-rows">
+  const canShowBudget = !partner || partner.data.permissions.budgets;
+  const canShowSpending = !partner || partner.data.permissions.expenses && partner.data.permissions.amounts;
+  const addBudget = partner?.data.permissions.addBudgets && (
+    <button className="pill" type="button" disabled={!partner.data.budgetCategories.length} onClick={() => partner.openEditor({ kind: 'budget' })}>
+      <Plus size={15} aria-hidden="true" /> {d.partner.creation.budget}
+    </button>
+  );
+  if (!canShowBudget || !canShowSpending) return <section className="card pb-rows pb-bud-rows">
     <div className="pb-bud-rows-head">
-      <SectionHeader title={ux.rowsTitle} actions={partner.data.permissions.addBudgets && (
-        <button className="pill" type="button" disabled={!partner.data.budgetCategories.length} onClick={() => partner.openEditor({ kind: 'budget' })}>
-          <Plus size={15} aria-hidden="true" /> {d.partner.creation.budget}
-        </button>
-      )} />
+      <SectionHeader title={ux.rowsTitle} actions={addBudget || undefined} />
     </div>
-    {partner.data.budgets.length === 0 ? <p className="pb-partner-note pb-partner-card">{d.partner.noShared}</p>
-      : entries.map(e => <BudgetRow key={e.name} e={e} fraction={today ? yearFraction(today) : null} history={history} today={today} />)}
+    {!canShowBudget || rows.length === 0 ? <PartnerCensored />
+      : rows.map(e => <BudgetRow key={e.censored ? 'censored' : `category:${e.name}`} e={e} fraction={today ? yearFraction(today) : null} history={history} today={today} />)}
   </section>;
   // No budgets yet: keep the card (a new account sees the same page as a full
   // one) and say what fills it, instead of the section vanishing.
@@ -185,7 +189,7 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
     return (
       <section className="card pb-rows pb-bud-rows">
         <div className="pb-bud-rows-head">
-          <SectionHeader title={ux.rowsTitle} />
+          <SectionHeader title={ux.rowsTitle} actions={addBudget || undefined} />
         </div>
         <div className="pb-bud-empty">
           <EmptyState compact icon={ListChecks} title={ux.rowsEmptyTitle} body={ux.rowsEmptyBody} />
@@ -205,7 +209,7 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
             {' · '}{d.budgetRow.yearlyNote}{' · '}{d.budgetPlan.sortedBy}
           </p>
         )}
-        actions={<span className="pb-bud-key"><span className="pb-bud-key-tick" aria-hidden="true" />{ux.paceKey}</span>}
+        actions={<>{addBudget}<span className="pb-bud-key"><span className="pb-bud-key-tick" aria-hidden="true" />{ux.paceKey}</span></>}
       />
     </div>
   );
@@ -259,7 +263,7 @@ export function BudgetRows({ entries, today, history }: BudgetRowsProps) {
                 <RollingMoneyText value={t(g.status === 'over' ? d.budgetEdit.over : d.budgetEdit.left, { amount: formatCurrency(total) })} />
               </span>
             </div>
-            {g.rows.map((e) => <BudgetRow key={e.name} e={e} fraction={fraction} history={history} today={today} />)}
+            {g.rows.map((e) => <BudgetRow key={e.censored ? 'censored' : `category:${e.name}`} e={e} fraction={fraction} history={history} today={today} />)}
           </div>
         );
       })}

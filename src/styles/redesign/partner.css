@@ -107,7 +107,6 @@
   display: flex; gap: .5rem 1rem; justify-content: space-between; align-items: center; min-width: 0;
   flex-wrap: wrap; overflow-wrap: anywhere;
 }
-.pebble-root .pb-partner-transaction-notes { white-space: pre-wrap; }
 
 .pebble-root .pb-partner-record-form { display: flex; flex-direction: column; min-height: 0; }
 .pebble-root .pb-partner-record-fields { display: grid; gap: .85rem; }

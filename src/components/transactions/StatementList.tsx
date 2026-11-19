@@ -1,4 +1,5 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -131,6 +132,7 @@ interface DayGroupsProps {
 export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, today, lensAccountId, highlight }: DayGroupsProps) {
   const { d } = useTranslation();
   const partner = usePartnerView();
+  const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const label = useDayLabel(today);
   // A card lens reads as owed, like every other figure under it.
   const owed = !!lensAccountId && accounts.some((a) => a.id === lensAccountId && a.kind === 'credit');
@@ -148,7 +150,7 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
               </span>
               <span className="pb-txn-day-figs">
                 {(!partner || partner.data.permissions.amounts) && g.hasFlows && <SignedAmount value={g.net} />}
-                {!partner && mode === 'statement' && g.endBalance !== null && (
+                {showBalances && mode === 'statement' && g.endBalance !== null && (
                   <span className="pb-txn-day-eod">
                     {renderTemplate(d.ux.transactions.endOfDay, {
                       amount: <BalanceFigure value={g.endBalance} owed={owed} />,
@@ -182,7 +184,6 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
  * where the statement is wide enough for the ledger grid (container query).
  */
 export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
-  const partner = usePartnerView();
   const { d } = useTranslation();
   const x = d.ux.transactions;
   return (
@@ -192,8 +193,8 @@ export function LedgerHead({ lensAccount }: { lensAccount?: Account | null }) {
       {!lensAccount && <div className="pb-txn-srow-acct">{x.colAccount}</div>}
       <div className="pb-txn-srow-money">
         <div>{x.colAmount}</div>
-        {!partner && lensAccount && <div className="pb-txn-srow-lensbal">{lensAccount.name}</div>}
-        {!partner && <div className="pb-txn-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>}
+        {lensAccount && <div className="pb-txn-srow-lensbal">{lensAccount.name}</div>}
+        <div className="pb-txn-srow-balcell">{lensAccount ? x.colTotal : x.colBalance}</div>
       </div>
     </div>
   );
@@ -204,6 +205,7 @@ export function StatementList({
   closingBalance, monthInfo, today, lensAccountId, head, id,
 }: StatementListProps) {
   const { d, t, locale } = useTranslation();
+  const partner = usePartnerView();
   const groups = useMemo(() => {
     const ghostIds = new Set(accounts.filter(account => account.isGhost).map(account => account.id));
     return groupByDay(entries, balanceReader(lensAccountId ?? null), lensAccountId, payoffs, ghostIds);
@@ -233,9 +235,9 @@ export function StatementList({
           title={d.transactions.noActivity}
           // The carried-forward amount is money: font-mono-tab so privacy
           // mode blurs it like every other figure (it used to be plain text).
-          body={renderTemplate(d.transactions.carriedForward, {
+          body={!partner || closingBalance !== undefined ? renderTemplate(d.transactions.carriedForward, {
             amount: <BalanceFigure value={openingBalance} owed={owed} />,
-          })}
+          }) : undefined}
         />
       ) : (
         <div>

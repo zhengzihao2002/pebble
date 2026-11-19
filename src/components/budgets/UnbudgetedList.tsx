@@ -1,5 +1,6 @@
 'use client';
 
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
 import { ChevronDown, Plus, ShieldCheck } from 'lucide-react';
@@ -14,6 +15,12 @@ import type { BudgetEntry } from './types';
 
 function UnbudgetedRow({ e, history, today, max }: { e: BudgetEntry; history: BudgetHistory | null; today: string | null; max: number }) {
   const { d } = useTranslation();
+  const partner = usePartnerView();
+  const target = !e.censored && partner?.data.budgetCategories.find(category => category.name === e.name);
+  const setBudget = () => {
+    if (partner && target) partner.openEditor({ kind: 'budget', categoryId: target.id });
+    else setEditing('');
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const Icon = e.icon;
@@ -38,20 +45,20 @@ function UnbudgetedRow({ e, history, today, max }: { e: BudgetEntry; history: Bu
           <InlineBudgetEditor name={e.name} initial={editing} onClose={() => setEditing(null)} />
         ) : (
           <>
-            <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            {!e.censored && <button type="button" className="pb-bud-more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
               {open ? d.budgetDetails.hide : d.budgetDetails.details}
               <ChevronDown size={14} aria-hidden="true" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform var(--pb-dur-std) var(--pb-ease-out)' }} />
-            </button>
-            <button type="button" className="pill pb-bud-set" onClick={() => setEditing('')}>
+            </button>}
+            {(!partner || target) && <button type="button" className="pill pb-bud-set" onClick={setBudget}>
               <Plus size={14} aria-hidden="true" />
               {d.budgetDetails.setBudget}
-            </button>
+            </button>}
           </>
         )}
       </span>
       {open && (
         <div className="pb-bud-unb-details goal-step">
-          <BudgetDetails name={e.name} color={e.color} budget={0} history={history} today={today} onSuggest={(yearly) => setEditing(String(yearly))} />
+          <BudgetDetails name={e.name} color={e.color} budget={0} history={history} today={today} onSuggest={(yearly) => setEditing(String(yearly))} hideQuickSet={!!partner} />
         </div>
       )}
     </li>
@@ -61,6 +68,8 @@ function UnbudgetedRow({ e, history, today, max }: { e: BudgetEntry; history: Bu
 /** NEW: a category with no budget and no spending, as a chip that turns into the editor in place. */
 function OtherChip({ e }: { e: BudgetEntry }) {
   const { d } = useTranslation();
+  const partner = usePartnerView();
+  const target = partner?.data.budgetCategories.find(category => category.name === e.name);
   const [editing, setEditing] = useState(false);
   const Icon = e.icon;
   if (editing) {
@@ -78,7 +87,7 @@ function OtherChip({ e }: { e: BudgetEntry }) {
   }
   return (
     <li className="pb-bud-chip">
-      <button type="button" className="pb-bud-chip-btn" onClick={() => setEditing(true)} aria-label={`${d.budgetDetails.setBudget}: ${e.name}`}>
+      <button type="button" className="pb-bud-chip-btn" onClick={() => { if (partner && target) partner.openEditor({ kind: 'budget', categoryId: target.id }); else setEditing(true); }} disabled={!!partner && !target} aria-label={`${d.budgetDetails.setBudget}: ${e.name}`}>
         <span className="pb-budget-icon pb-bud-chip-icon" style={{ backgroundColor: `${e.color}20` }}>
           <Icon size={13} style={{ color: e.color }} />
         </span>
@@ -124,7 +133,7 @@ export function UnbudgetedList({ entries, others, history, today = null }: { ent
             })}
           />
           <ul className="pb-unb-list">
-            {rows.map((e) => <UnbudgetedRow key={e.name} e={e} history={history} today={today} max={max} />)}
+            {rows.map((e) => <UnbudgetedRow key={e.censored ? 'censored' : `category:${e.name}`} e={e} history={history} today={today} max={max} />)}
           </ul>
         </>
       )}

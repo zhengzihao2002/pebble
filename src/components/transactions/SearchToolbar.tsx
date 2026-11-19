@@ -1,4 +1,5 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { forwardRef } from 'react';
@@ -89,7 +90,7 @@ export const SearchToolbar = forwardRef<HTMLDivElement, SearchToolbarProps>(func
             { value: 'all', label: d.txnSearch.typeAll },
             { value: 'expense', label: d.enums.kind.expense },
             { value: 'income', label: d.enums.kind.income },
-            ...(!partner ? [{ value: 'adjustment' as const, label: d.ux.transactions.adjustmentsFilter }] : []),
+            ...(!partner || canSeePartnerBalances(partner.data.permissions) ? [{ value: 'adjustment' as const, label: d.ux.transactions.adjustmentsFilter }] : []),
           ]}
           value={typeFilter}
           onChange={onTypeFilter}

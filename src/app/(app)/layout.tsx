@@ -6,7 +6,7 @@ import { getUserTimeZoneOverride } from '@/lib/data/queries';
 import { TimeZoneOverrideProvider } from '@/lib/time/TimeZoneOverrideContext';
 import { OfflineProvider } from '@/components/offline/OfflineProvider';
 import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNavigation';
-import { loadPartnerSnapshot } from '@/lib/partnerSnapshot.server';
+import { loadPartnerWorkspaceAccess } from '@/lib/partnerSnapshot.server';
 import { partnerViewPair } from '@/lib/partnerView.server';
 import { BUILD_ID } from '@/lib/offline/buildId';
 
@@ -42,7 +42,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     partnerViewPair(userId),
   ]);
 
-  const snapshot = partnerPair ? await loadPartnerSnapshot() : null;
+  const access = partnerPair ? await loadPartnerWorkspaceAccess() : null;
 
   return (
     <LocaleProvider locale={locale}>
@@ -51,7 +51,10 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
             it to keep saved pages apart per person and per deploy, and stores
             no page without it. Not a secret: the same id is in the page data. */}
         {partnerPair
-          ? <BudgetPlanNavigationProvider><AppShell key={snapshot?.ok ? snapshot.data.accessVersion : 'partner-unavailable'} partnerData={snapshot?.ok ? snapshot.data : undefined}>{children}</AppShell></BudgetPlanNavigationProvider>
+          ? <BudgetPlanNavigationProvider>
+              <AppShell key={access?.ok ? access.data.accessVersion : 'partner-unavailable'}
+                partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
+            </BudgetPlanNavigationProvider>
           : <>
             <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
             <OfflineProvider userId={userId}>

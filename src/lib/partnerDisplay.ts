@@ -12,13 +12,13 @@ export function partnerTransactions(data: PartnerWorkspaceData, maskedTitle: str
   return data.transactions.map(row => {
     const title = row.hidden ? maskedTitle : row.title;
     const common = {
-      id: row.id, date: row.date, description: row.notes ? title + '\n' + row.notes : title,
+      id: row.id, date: row.date, description: !row.hidden && row.notes ? title + '\n' + row.notes : title,
       accountId: row.accountId ?? '', paymentMethod: row.accountName ?? '',
       amount: row.amount ?? 0,
     };
-    if (row.kind === 'expense') return { ...common, type: 'expense', category: row.category, tag: row.tag, creditCardPayoff: row.creditCardPayoff ?? undefined };
+    if (row.kind === 'expense') return { ...common, type: 'expense', category: row.hidden ? '' : row.category, tag: row.hidden ? '' : row.tag, creditCardPayoff: row.creditCardPayoff ?? undefined };
     return {
-      ...common, type: 'income', category: row.category as IncomeTransaction['category'],
+      ...common, type: 'income', category: (row.hidden ? '' : row.category) as IncomeTransaction['category'],
       grossAmount: row.grossAmount ?? common.amount, netAmount: common.amount,
     };
   });
@@ -32,10 +32,7 @@ export function partnerAccounts(data: PartnerWorkspaceData): Account[] {
 
 export function partnerBalanceAdjustments(data: PartnerWorkspaceData): BalanceAdjustment[] {
   if (!canSeePartnerBalances(data.permissions)) return [];
-  return (data.dailyBalanceAdjustments ?? []).map(({ accountId, date, amount }) => ({
-    id: `partner-balance-${date}-${accountId}`, type: 'adjustment', accountId, date, amount,
-    description: '', paymentMethod: '', transferGroupId: null,
-  }));
+  return data.adjustments ?? [];
 }
 
 export function partnerGoals(data: PartnerWorkspaceData): Goal[] {

@@ -1,4 +1,5 @@
 'use client';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
@@ -85,7 +86,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
   const base = showSavings ? (income as number) : totalBudget;
 
   const rows = [
-    ...budgeted.map((e) => ({ key: `b:${e.name}`, name: e.name, color: e.color, value: e.budget, savings: false })),
+    ...budgeted.map((e) => ({ key: e.censored ? 'censored' : `b:${e.name}`, name: e.name, color: e.color, value: e.budget, savings: false })),
     ...(showSavings ? [{ key: 'savings', name: d.budgetPlan.savings, color: 'var(--income)', value: savings as number, savings: true }] : []),
   ];
   const largest = rows.reduce((m, r) => Math.max(m, r.value), 0);
@@ -147,7 +148,7 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
       </div>
 
       <div className="pb-bud-glance">
-        {canShowSpending && <YearRing totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} />}
+        {canShowSpending ? <YearRing totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} /> : <PartnerCensored />}
         <div className="pb-stats-grid">
           {cells.map((c) => {
             const Icon = c.icon;
@@ -174,12 +175,12 @@ export function BudgetPlanCard({ entries, totalBudget, totalSpent, annualIncome,
             );
           })}
         </div>
-        {canShowSpending && <YearForecast totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} status={pace} unbudgetedSpent={unbudgetedSpent} />}
+        {canShowSpending ? <YearForecast totalBudget={totalBudget} totalSpent={totalSpent} fraction={fraction} status={pace} unbudgetedSpent={unbudgetedSpent} /> : <PartnerCensored />}
       </div>
 
       <div className="pb-plan-body">
         {incomeControl}
-        {rows.length === 0 ? (
+        {!canShowBudget ? <PartnerCensored /> : rows.length === 0 ? (
           <p className="pb-bud-needs">
             <PiggyBank size={16} aria-hidden="true" />
             <span>{ux.ribbonNeeds}</span>

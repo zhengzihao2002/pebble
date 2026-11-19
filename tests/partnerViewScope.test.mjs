@@ -75,19 +75,22 @@ test('saved partner names are preserved and restricted ledger fields are censore
   assert.equal(scope.partnerDisplayName(null, 'Partner'), 'Partner');
   assert.equal(scope.partnerDisplayName('Morgan', 'Partner'), 'Morgan');
   const data = { transactions: [{ id: 'x', kind: 'expense', date: '2026-11-19', hidden: true,
-    title: '', category: '', tag: '', accountId: null, accountName: null, amount: null, notes: 'Shared notes' }] };
+    title: '', category: '', tag: '', accountId: null, accountName: null, amount: null, notes: 'Private description' }] };
   const [row] = scope.partnerTransactions(data, 'Hidden Transaction');
-  assert.equal(row.description, 'Hidden Transaction\nShared notes');
+  assert.equal(row.description, 'Hidden Transaction');
   assert.equal(row.category, '');
   assert.equal(row.accountId, '');
   assert.equal(row.tag, '');
 });
 
-test('a shared balance includes daily corrections only with all of its inputs authorized', () => {
+test('shared balances include individual adjustments only when all inputs are authorized', () => {
   const permissions = { accounts: true, expenses: true, income: true, amounts: true };
   const data = {
     permissions,
-    dailyBalanceAdjustments: [{ accountId: 'checking', date: '2026-11-03', amount: 400 }],
+    adjustments: [
+      { id: 'opening', type: 'adjustment', accountId: 'checking', date: '2026-11-03', amount: 430, description: '', transferGroupId: null },
+      { id: 'correction', type: 'adjustment', accountId: 'checking', date: '2026-11-03', amount: -30, description: '', transferGroupId: null },
+    ],
     transactions: [
       { id: 'masked', kind: 'expense', date: '2026-11-18', hidden: true, amount: -50, accountId: 'checking' },
     ],
@@ -95,6 +98,7 @@ test('a shared balance includes daily corrections only with all of its inputs au
   assert.equal(scope.canSeePartnerBalances(permissions), true);
   const withdrawals = scope.partnerTransactions(data, 'Hidden Transaction');
   const adjustments = scope.partnerBalanceAdjustments(data);
+  assert.deepEqual(adjustments.map(row => row.id), ['opening', 'correction']);
   assert.equal(adjustments[0].description, '');
   assert.equal(adjustments[0].transferGroupId, null);
   const current = scope.computeCurrentBalances(withdrawals, [{ id: 'checking' }], adjustments);

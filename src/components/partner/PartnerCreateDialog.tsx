@@ -13,7 +13,7 @@ import { partnerError } from './partnerError';
 
 const cents = (value: string) => /^\d{1,9}(\.\d{1,2})?$/.test(value) ? Math.round(Number(value) * 100) : 0;
 
-export type PartnerEditor = { kind: PartnerCreation['kind']; id?: string; name?: string; date?: string;
+export type PartnerEditor = { kind: PartnerCreation['kind']; id?: string; categoryId?: string; name?: string; date?: string;
   amount?: number | null; accountKind?: 'bank' | 'cash' };
 
 export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
@@ -29,7 +29,7 @@ export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
   const labelId = useId();
   const retry = useRef<{ fingerprint: string; id: string } | null>(null);
   const [type, setType] = useState<'expense' | 'income'>(data.entryCategories.length ? 'expense' : 'income');
-  const [category, setCategory] = useState(editor.kind === 'budget' ? editor.id ?? '' : '');
+  const [category, setCategory] = useState(editor.kind === 'budget' ? editor.id ?? editor.categoryId ?? '' : '');
   const [accountKind, setAccountKind] = useState<'bank' | 'cash'>(editor.accountKind ?? 'cash');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

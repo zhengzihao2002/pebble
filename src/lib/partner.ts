@@ -1,4 +1,4 @@
-import type { CreditCardPayoff, RecurringFrequency } from '@/types';
+import type { BalanceAdjustment, CreditCardPayoff, RecurringFrequency } from '@/types';
 
 export const PARTNER_VIEW_PERMISSIONS = ['expenses', 'income', 'amounts', 'notes', 'accounts', 'personalGoals', 'budgets', 'scheduled'] as const;
 export const PARTNER_ADD_PERMISSIONS = ['addTransactions', 'addPersonalGoals', 'addAccounts', 'addBudgets', 'addScheduled'] as const;
@@ -45,13 +45,20 @@ export interface SharedTransaction {
   notesVisible: boolean;
   hidden: boolean;
 }
-export interface PartnerWorkspaceData {
-  pairId: string;
+export interface PartnerWorkspaceAccess {
   accessVersion: string;
   name: string;
   permissions: PartnerPermissions;
+}
+
+export interface PartnerWorkspaceData extends PartnerWorkspaceAccess {
+  pairId: string;
   transactions: SharedTransaction[];
-  dailyBalanceAdjustments: { accountId: string; date: string; amount: number }[];
+  adjustments: BalanceAdjustment[];
+  /** Shared annual planning date, without exposing the owner's preferences. */
+  budgetToday: string | null;
+  censoredBudget: { amount: number; budgetedSpending: number; unbudgetedSpending: number } | null;
+  canEstimateBudgetIncome: boolean;
   accounts: { id: string; name: string; kind: 'bank' | 'cash' | 'credit'; status: 'active' | 'hibernated'; editable: boolean }[];
   goals: { id: string; name: string; target: number | null; current: number | null; date: string; iconKey: string; color: string }[];
   categories: { id: string; name: string; iconKey: string; color: string; isSystem: boolean; sortOrder: number }[];

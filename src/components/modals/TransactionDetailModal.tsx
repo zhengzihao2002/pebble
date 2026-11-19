@@ -1,12 +1,17 @@
 'use client';
 
+import { isPartnerPath } from '@/lib/partnerPaths';
+import { changeSharedTransactionAction } from '@/lib/actions/partner';
+import type { SharedTransaction } from '@/lib/partner';
+import { partnerError } from '@/components/partner/partnerError';
+import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 import { readOffline } from '@/lib/offline/connectivity';
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 import { useUndoDelete } from '@/components/shared/UndoDelete';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, Briefcase, CalendarDays, Coins, Ghost, CreditCard, Hash, Landmark, Pencil, SlidersHorizontal, Trash2, Wallet } from 'lucide-react';
+import { Banknote, Briefcase, CalendarDays, Coins, Ghost, CreditCard, Hash, LockKeyhole, Landmark, Pencil, SlidersHorizontal, Trash2, Wallet } from 'lucide-react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -33,7 +38,14 @@ import { translateActionError } from '@/lib/i18n/actionErrors';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { renderTemplate } from '@/lib/i18n/RichText';
 
+interface SharedReceipt {
+  row?: SharedTransaction;
+  showAccount: boolean;
+  onSaved: () => void;
+}
+
 interface TransactionDetailModalProps {
+  shared?: SharedReceipt;
   txn: LedgerRecord | null;
   onClose: () => void;
   categoryMeta: CategoryMeta;
@@ -67,7 +79,7 @@ const labelStyle: React.CSSProperties = {
 const bigAmountStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.8rem 0.9rem 0.8rem 2.2rem', borderRadius: '0.8rem', border: '1px solid var(--line)', fontSize: '1.6rem', fontWeight: 600, color: 'var(--ink)', backgroundColor: 'var(--paper)' };
 const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: '1.5rem', color: 'var(--ink-soft)' };
 
-type Mode = 'view' | 'edit' | 'confirmDelete' | 'confirmOverspend';
+type Mode = 'view' | 'edit' | 'tag' | 'confirmDelete' | 'confirmOverspend';
 
 // The active accounts as last seen by ANY detail dialog (or by the idle
 // warm-up below). The receipt's account chip needs the account's kind and
@@ -105,7 +117,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, () => { detailAccountGeneration++; detailAccountsMemo = null; });
   // Not offline: the request cannot succeed, and the first dialog will ask
   // again by itself once it is open.
-  const warm = () => { if (!readOffline()) void fetchDetailAccounts(); };
+  const warm = () => { if (!readOffline() && !isPartnerPath(window.location.pathname)) void fetchDetailAccounts(); };
   // Safari has no requestIdleCallback.
   if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 4000 });
   else window.setTimeout(warm, 2000);
@@ -143,11 +155,19 @@ function BalanceSlope({ before, after, tone }: { before: number; after: number; 
  * hook can sit after an early return. key={txn.id} remounts the content for
  * a different transaction, so one record's draft never bleeds into another.
  */
-function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, accounts: accountsProp }: { txn: LedgerRecord; onClose: () => void; categoryMeta: CategoryMeta; ledgerEntry?: StatementEntry | null; accounts?: Account[] }) {
+function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, accounts: accountsProp, shared }: TransactionDetailModalProps & { txn: LedgerRecord }) {
   const deleteLocked = useSafetyLock('deleteTransactions');
   const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
   const x = d.ux.transactionDialogs;
+  const sharedRow = shared?.row;
+  const hidden = sharedRow?.hidden === true;
+  const showAmount = !sharedRow || sharedRow.amount !== null;
+  const showGross = !sharedRow || sharedRow.grossAmount !== null;
+  const canReadNotes = !sharedRow || (!hidden && sharedRow.notesVisible);
+  const canEdit = !shared || (!hidden && sharedRow?.canEdit);
+  const canEditTag = !hidden && sharedRow?.canEditTag;
+  const [replaceNotes, setReplaceNotes] = useState(false);
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +210,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   useEffect(() => {
     setMode('view');
     setError(null);
+    setReplaceNotes(false);
     const parts = parseDescription(txn.description);
     setTitle(parts.title);
     setDescription(parts.description);
@@ -205,6 +226,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // Active accounts for the picker. The transaction's OWN account may be
   // closed and therefore absent from this list - handled below.
   useEffect(() => {
+    if (shared) return;
     let cancelled = false;
     callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
       if (cancelled) return;
@@ -234,8 +256,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // edit, since changing the amount just means making a different correction.
   const isAdjustment = txn.type === 'adjustment';
   const meta = isAdjustment ? undefined : categoryMeta[txn.category];
-  const Icon = isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
-  const isIncome = !isAdjustment && txn.amount > 0;
+  const Icon = hidden ? LockKeyhole : isAdjustment ? SlidersHorizontal : (meta ? meta.icon : Banknote);
+  const isIncome = txn.type === 'income';
   const iconColor = isIncome ? 'var(--income)' : (meta ? meta.color : 'var(--ink-soft)');
   // The tile's tint and its soft highlight are mixed from this one hue in
   // CSS (.pb-tdlg-tile). No category colour: the soft ink token, never a hex.
@@ -262,7 +284,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const descRest = descLines.slice(1).join('\n').trim();
   // An imported record can have an empty first line; the heading falls back
   // to something true rather than rendering nothing.
-  const headingText = descTitle || (isAdjustment ? d.txn.balanceAdjustment : categoryLabel(d, txn.category));
+  const headingText = hidden ? d.partner.hiddenTransaction : descTitle || (isAdjustment ? d.txn.balanceAdjustment : categoryLabel(d, txn.category));
 
   // categoryMeta already carries a resolved icon and colour per name, so no
   // resolveCategoryIcon() call is needed here. label === value: category
@@ -332,7 +354,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const onHibernatedAccount = accounts.length > 0 && !accounts.some((a) => a.id === accountId);
   // For DISPLAY the last known list is enough (the receipt must not wait for
   // the server); an empty current list falls back to it.
-  const shownAccounts = accounts.length > 0 ? accounts : (detailAccountsMemo ?? accounts);
+  const shownAccounts = shared ? (accountsProp ?? []) : accounts.length > 0 ? accounts : (detailAccountsMemo ?? accounts);
   const accountName = shownAccounts.find((a) => a.id === txn.accountId)?.name ?? txn.paymentMethod ?? '';
   const chargedCard = creditCardPayoff && (accountsProp ?? shownAccounts).find((a) => a.id === creditCardPayoff.cardId);
   const chargedCardName = chargedCard
@@ -343,7 +365,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   // form stays mounted behind the confirm, so this re-derives its payload from
   // the same state rather than from a copy taken before the check.
   const performSave = async () => {
-    if (busy || txn.type === 'adjustment' || titleMissing) return;
+    if (shared || busy || txn.type === 'adjustment' || titleMissing) return;
     setBusy(true);
     setError(null);
 
@@ -378,6 +400,21 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
 
   const handleSave = async () => {
     if (busy || txn.type === 'adjustment') return;
+    if (shared) {
+      if (!sharedRow || (mode === 'tag' ? !canEditTag : !canEdit || !title.trim())) return;
+      setBusy(true);
+      setError(null);
+      setErrorKind(undefined);
+      const change = mode === 'tag'
+        ? { kind: 'tag' as const, tag }
+        : { kind: 'edit' as const, title, date, notes: canReadNotes || replaceNotes ? description : undefined };
+      const result = await callAction(() => changeSharedTransactionAction(sharedRow.id, sharedRow.kind, change));
+      setBusy(false);
+      if (!result.ok) { setError(partnerError(d, result)); return; }
+      shared.onSaved();
+      setSuccess({ title: d.txnDetail.updated, summary: mode === 'tag' ? headingText : title.trim() });
+      return;
+    }
 
     // An edit moves the balance by the CHANGE in amount, not by the amount.
     // Transaction.amount is signed - expenses negative, income positive - so
@@ -416,7 +453,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   };
 
   const handleDelete = () => {
-    if (busy || deleted || deleteLocked) return;
+    if (shared || busy || deleted || deleteLocked) return;
     setError(null);
     // Nothing is sent yet. The SAME delete call runs after a 5-second undo
     // window (UndoDeleteProvider in AppShell); until it lands the row and
@@ -449,34 +486,36 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const MONEY_ROWS = new Set(['amount', 'gross', 'net']);
   const NUMBER_ROWS = new Set(['date', 'deductions']);
   const rowValueClass = (key: string) => (MONEY_ROWS.has(key) ? 'font-mono-tab' : NUMBER_ROWS.has(key) ? 'pb-tnum' : undefined);
+  const accountDisplay = shared && !shared.showAccount ? d.partner.censored : accountName;
+  const categoryDisplay = hidden ? d.partner.censored : !isAdjustment ? categoryLabel(d, txn.category) : d.txn.balanceAdjustment;
   const rows: { key: string; label: string; value: string }[] = isAdjustment ? [
     { key: 'type', label: d.txnDetail.rowType, value: d.txn.balanceAdjustment },
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
-    { key: 'account', label: d.txnDetail.rowAccount, value: accountName },
+    { key: 'account', label: d.txnDetail.rowAccount, value: accountDisplay },
   ] : [
     { key: 'type', label: d.txnDetail.rowType, value: isIncome ? d.enums.kind.income : d.enums.kind.expense },
     // Category and tag are USER DATA - shown exactly as stored.
     // txn.category is either a real category NAME (user data) or one of the
     // two income literals - categoryLabel() handles both.
-    { key: 'category', label: d.txnDetail.rowCategory, value: categoryLabel(d, txn.category) },
-    ...(txn.type === 'expense' && txn.tag ? [{ key: 'tag', label: d.txnDetail.rowTag, value: txn.tag }] : []),
+    { key: 'category', label: d.txnDetail.rowCategory, value: categoryDisplay },
+    ...(txn.type === 'expense' && (hidden || txn.tag) ? [{ key: 'tag', label: d.txnDetail.rowTag, value: hidden ? d.partner.censored : txn.tag ?? '' }] : []),
     { key: 'date', label: d.txnDetail.rowDate, value: formatFullDate(txn.date, locale) },
     // Income shows a different heading than expense: 'Payment method'
     // implies the user is spending, which is backwards for a deposit. Only
     // the label changes - the underlying value/comparison is untouched.
     ...(hasPayoff ? [
       { key: 'method', label: x.chargedTo, value: chargedCardName },
-      { key: 'funding', label: x.paidFrom, value: accountName || '—' },
+      { key: 'funding', label: x.paidFrom, value: accountDisplay || '—' },
     ] : [
-      { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountName || '—' },
+      { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountDisplay || '—' },
     ]),
     // Side cash is untaxed, so the actions store gross = net. One "Amount"
     // row, matching the edit form's label.
     ...(txn.type === 'income' ? (isSideCash ? [
-      { key: 'amount', label: d.txnDetail.rowAmount, value: formatCurrency(txn.netAmount) },
+      { key: 'amount', label: d.txnDetail.rowAmount, value: showAmount ? formatCurrency(txn.netAmount) : d.partner.censored },
     ] : [
-      { key: 'gross', label: d.txnDetail.rowPayBefore, value: formatCurrency(txn.grossAmount) },
-      { key: 'net', label: d.txnDetail.rowPayAfter, value: formatCurrency(txn.netAmount) },
+      { key: 'gross', label: d.txnDetail.rowPayBefore, value: showGross ? formatCurrency(txn.grossAmount) : d.partner.censored },
+      { key: 'net', label: d.txnDetail.rowPayAfter, value: showAmount ? formatCurrency(txn.netAmount) : d.partner.censored },
       // Derived at render, never stored: gross and net already determine it,
       // and a stored copy would be a second source of truth that can drift.
       // Labelled "deductions" because the gap also covers insurance and
@@ -484,7 +523,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
       {
         key: 'deductions',
         label: d.txnDetail.rowDeductions,
-        value: `${deductionPct(txn.grossAmount, txn.netAmount).toFixed(1)}%`,
+        value: showGross && showAmount ? `${deductionPct(txn.grossAmount, txn.netAmount).toFixed(1)}%` : d.partner.censored,
       },
     ]) : []),
   ];
@@ -513,11 +552,11 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const amountParts = splitCents(amountText);
   const ownAccount = shownAccounts.find((a) => a.id === txn.accountId);
   const AccountIcon = ownAccount?.isGhost ? Ghost : !ownAccount ? Wallet : ownAccount.kind === 'credit' ? CreditCard : ownAccount.kind === 'bank' ? Landmark : Coins;
-  const accountChip = accountName ? ghostAccountLabel(ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName, ownAccount?.isGhost, locale) : '';
+  const accountChip = shared && !shared.showAccount ? d.partner.censored : accountName ? ghostAccountLabel(ownAccount?.last4 ? `${accountName} ····${ownAccount.last4}` : accountName, ownAccount?.isGhost, locale) : '';
 
   // Standard income only: how much of the pay arrived. Side Cash stores
   // gross = net, so it has nothing to show.
-  const showNetBar = txn.type === 'income' && !isSideCash && txn.grossAmount > 0 && txn.netAmount >= 0 && txn.netAmount <= txn.grossAmount;
+  const showNetBar = showAmount && showGross && !hidden && txn.type === 'income' && !isSideCash && txn.grossAmount > 0 && txn.netAmount >= 0 && txn.netAmount <= txn.grossAmount;
   const deductionAmount = txn.type === 'income' ? txn.grossAmount - txn.netAmount : 0;
 
   // The Balance strip needs the entry FOR THIS record, with this record's
@@ -543,9 +582,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const amountBlock = (
     <div className="pb-tdlg-hero">
       <p className="font-display pb-money pb-tdlg-amount" style={{ color: amountColor }}>
-        {amountSign}{amountParts.whole}<span className="pb-tdlg-cents">{amountParts.cents}</span>
+        {showAmount ? <>{amountSign}{amountParts.whole}<span className="pb-tdlg-cents">{amountParts.cents}</span></> : <span aria-label={d.partner.censored}>—</span>}
       </p>
-      {descRest && <p className="pb-tdlg-desc">{descRest}</p>}
+      {canReadNotes && descRest && <p className="pb-tdlg-desc">{descRest}</p>}
     </div>
   );
 
@@ -557,7 +596,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
           {isAdjustment
             ? <SlidersHorizontal size={13} aria-hidden="true" />
             : <span className="pb-tdlg-dot" style={{ backgroundColor: iconColor }} aria-hidden="true" />}
-          <span className="pb-tdlg-chip-text">{isAdjustment ? d.txn.balanceAdjustment : categoryLabel(d, txn.category)}</span>
+          <span className="pb-tdlg-chip-text">{categoryDisplay}</span>
         </li>
         {txn.type === 'expense' && txn.tag && (
           <li className="pb-tdlg-chip"><Hash size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{txn.tag}</span></li>
@@ -626,7 +665,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
         <div className="pb-modal-head">
           <div className="pb-tdlg-head">
             <span className="pb-tdlg-tile" style={{ '--pb-tdlg-hue': tileHue } as React.CSSProperties} aria-hidden="true">
-              <TransactionIcon description={isAdjustment ? undefined : txn.description} size={24} fallback={<Icon size={24} style={{ color: iconColor }} />} />
+              <TransactionIcon description={isAdjustment || hidden ? undefined : txn.description} size={24} fallback={<Icon size={24} style={{ color: iconColor }} />} />
             </span>
             <h2 id="txn-detail-title" className="font-display pb-tdlg-title">{headingText}</h2>
             <ModalCloseButton onClick={close} disabled={busy} />
@@ -661,7 +700,31 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                 </div>
               )}
 
-              {mode === 'edit' && (
+              {shared && sharedRow && (mode === 'edit' || mode === 'tag') && (
+                <form id={FORM_ID} className="pb-form-grid" onSubmit={e => { e.preventDefault(); void handleSave(); }}>
+                  {mode === 'tag' ? (
+                    <label className="pb-span-2" style={labelStyle}>{d.txnDetail.rowTag}
+                      <input style={inputStyle} value={tag} maxLength={MAX_TAG_NAME_LENGTH} onChange={e => setTag(e.target.value)} />
+                    </label>
+                  ) : <>
+                    <label className="pb-span-2" style={labelStyle}>{d.partner.transactionTitle}
+                      <input style={inputStyle} required maxLength={300} value={title} onChange={e => setTitle(e.target.value)} />
+                    </label>
+                    <label style={labelStyle}>{d.txnDetail.rowDate}
+                      <input style={inputStyle} required type="date" value={date} onChange={e => setDate(e.target.value)} />
+                    </label>
+                    {!canReadNotes && <label className="pb-partner-check pb-span-2">
+                      <input type="checkbox" checked={replaceNotes} onChange={e => setReplaceNotes(e.target.checked)} />{d.partner.replaceHiddenNotes}
+                    </label>}
+                    {replaceNotes && <p className="pb-partner-note pb-span-2">{d.partner.replaceHiddenNotesHint}</p>}
+                    {(canReadNotes || replaceNotes) && <label className="pb-span-2" style={labelStyle}>{d.partner.transactionNotes}
+                      <textarea style={inputStyle} maxLength={4000} value={description} onChange={e => setDescription(e.target.value)} />
+                    </label>}
+                  </>}
+                </form>
+              )}
+
+              {!shared && mode === 'edit' && (
                 <form id={FORM_ID} className="pb-form-grid" onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
                   {/* An expense's amount field already says "Amount"; income
                       groups its category tiles and pay fields under it. */}
@@ -834,39 +897,42 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
         {/* FOOT: never scrolls; any error sits directly above the buttons so a
             failed save or delete is visible without scrolling. Absent on the
             confirmation. */}
-        {!success && (
+        {!success && (!shared || canEdit || canEditTag) && (
           <div className="pb-modal-foot">
             {mode === 'view' && (
               <>
                 <ActionError message={error} kind={errorKind} />
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {!isAdjustment && (
+                  {canEditTag && <button type="button" className="pill" onClick={() => { setMode('tag'); setError(null); }}>
+                    <Hash size={14} />{d.partner.editTag}
+                  </button>}
+                  {!isAdjustment && canEdit && (
                     <button type="button" onClick={() => { setMode('edit'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <Pencil size={14} />{d.txnDetail.edit}
+                      <Pencil size={14} />{shared ? d.partner.editTransaction : d.txnDetail.edit}
                     </button>
                   )}
-                  <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}>
+                  {!shared && <button type="button" onClick={() => { setMode('confirmDelete'); setError(null); }} disabled={deleteLocked} title={deleteLocked ? d.safetyLocks.lockedHint : undefined} className="pill" style={{ flex: 1, padding: '0.6rem', color: 'var(--wine)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: deleteLocked ? 0.45 : 1, cursor: deleteLocked ? 'not-allowed' : 'pointer' }}>
                     <Trash2 size={14} />{d.txnDetail.delete}
-                  </button>
+                  </button>}
                 </div>
-                {deleteLocked && (
+                {!shared && deleteLocked && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', textAlign: 'center', margin: 0 }}>{d.safetyLocks.lockedHint}</p>
                 )}
               </>
             )}
 
-            {mode === 'edit' && (
+            {(mode === 'edit' || mode === 'tag') && (
               <>
                 <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={busy} />
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.cancel}</button>
                   <button
                     type="submit" form={FORM_ID}
-                    disabled={busy || netExceedsGross || !hasChanges || titleMissing}
+                    disabled={busy || (shared ? mode === 'edit' && !title.trim() : netExceedsGross || !hasChanges || titleMissing)}
                     className="btn-primary"
                     style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges || titleMissing ? 0.6 : 1 }}
                   >
-                    {busy ? d.common.saving : d.txnDetail.saveChanges}
+                    {busy ? d.common.saving : shared ? d.partner.apply : d.txnDetail.saveChanges}
                   </button>
                 </div>
               </>
@@ -905,7 +971,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   );
 }
 
-export function TransactionDetailModal({ txn, onClose, categoryMeta, ledgerEntry, accounts }: TransactionDetailModalProps) {
+export function TransactionDetailModal({ txn, ...props }: TransactionDetailModalProps) {
   if (!txn) return null;
-  return <TransactionDetailContent key={txn.id} txn={txn} onClose={onClose} categoryMeta={categoryMeta} ledgerEntry={ledgerEntry} accounts={accounts} />;
+  return <TransactionDetailContent key={txn.type + ':' + txn.id} txn={txn} {...props} />;
 }

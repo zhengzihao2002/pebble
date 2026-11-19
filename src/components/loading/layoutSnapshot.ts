@@ -14,7 +14,12 @@ type HandoffStage = HTMLElement & {
 export function snapshotTools() {
   const prefix = 'pebble-layout-sizes:v2:';
   const ttl = 30 * 86400000;
-  function owner() {
+  function owner(pathname = window.location.pathname) {
+    // Only allow geometry for the verified viewer and permission scope.
+    // The service worker never receives the marker used for Partner View.
+    if (pathname.startsWith('/partner/')) {
+      return document.querySelector<HTMLMetaElement>('meta[name="pebble-layout-scope"]')?.content.slice(0,128) || null;
+    }
     return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"]')?.content.split('|')[0].slice(0,128) || null;
   }
   function canonicalProfile(key: string): string {
@@ -34,7 +39,7 @@ export function snapshotTools() {
     return canonicalProfile(first) === canonicalProfile(second);
   }
   function profile(pathname: string, main: HTMLElement): string | null {
-    if (!/^\/(dashboard|transactions|accounts|analysis|insights|reports|budgets(?:\/plan)?|goals|scheduled|settings|account\/(?:settings|security))\/?$/.test(pathname)) return null;
+    if (!/^\/(?:partner\/)?(dashboard|transactions|accounts|analysis|insights|reports|budgets(?:\/plan)?|goals|scheduled|settings|account\/(?:settings|security))\/?$/.test(pathname)) return null;
     const style = getComputedStyle(main);
     const width = main.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     if (width < 100) return null;
@@ -64,7 +69,7 @@ export function snapshotTools() {
     } catch { return []; }
   }
   function read(pathname: string, main: HTMLElement): PageLayout | null {
-    const user = owner(), key = profile(pathname,main);
+    const user = owner(pathname), key = profile(pathname,main);
     return user && key ? entries(user).filter(e=>sameProfile(e.key,key)).sort((a,b)=>b.savedAt-a.savedAt)[0] ?? null : null;
   }
   // Install this from the streamed fallback itself. The server can swap in
@@ -156,7 +161,9 @@ export function snapshotTools() {
     const surface = host.querySelector<HTMLElement>('.pb-layout-restored');
     // Streamed React segments can be parsed in a hidden staging container.
     // That is not a cache miss: wait until the real main column has a width.
-    if (!main || !surface || main.clientWidth < 100 || !owner()) return false;
+    if (!main || !surface || main.clientWidth < 100) return false;
+    const pathname = host.dataset.layoutPath ?? '';
+    if (!pathname.startsWith('/partner/') && !owner(pathname)) return false;
     // Every spinner uses the available viewport height. Measure the rendered
     // header before showing it, rather than recentering after Header hydrates.
     // Transactions' viewport-height panes use the same calibration.
