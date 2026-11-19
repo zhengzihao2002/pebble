@@ -78,7 +78,8 @@ export function TransactionsClient({
   usePaneCardShadows(pageRef);
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
-  const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // 0 = current month
+  const [monthSelection, setMonthSelection] = useState({ index: 0, animate: false }); // 0 = current month
+  const selectedMonthIndex = monthSelection.index;
   // The whole ledger entry, not only the record, so the dialog can later show
   // where the record sits in the running balance. Today it reads the record.
   const [selectedEntry, setSelectedEntry] = useState<StatementEntry | null>(null);
@@ -126,7 +127,7 @@ export function TransactionsClient({
     const saved = readPartnerChoice('transactions', partner.preferenceScope) as { month?: string; type?: string; account?: string } | null;
     if (saved) {
       const index = monthOptions.findIndex(month => monthBounds(month.year, month.month).prefix === saved.month);
-      setSelectedMonthIndex(Math.max(0, index));
+      setMonthSelection({ index: Math.max(0, index), animate: false });
       if (saved.type === 'expense' && partner.data.permissions.expenses || saved.type === 'income' && partner.data.permissions.income
         || saved.type === 'adjustment' && showBalances) setTypeFilter(saved.type);
       if (saved.account && ordinaryAccounts.some(account => account.id === saved.account)) setAccountFilter(saved.account);
@@ -251,7 +252,7 @@ export function TransactionsClient({
   const canGoNewer = selectedMonthIndex > 0;
   const goToMonth = useCallback((i: number) => {
     if (i === selectedMonthIndex || i < 0 || i >= monthOptions.length) return;
-    setSelectedMonthIndex(i);
+    setMonthSelection({ index: i, animate: true });
   }, [selectedMonthIndex, monthOptions.length]);
 
   // Optional page shortcuts: [ older month, ] newer. Gated exactly like
@@ -524,7 +525,7 @@ export function TransactionsClient({
 
         {/* Keep the statement mounted as months change. Recreating it replayed
             a fade and sideways slide on the entire card and its glow. */}
-        <div data-pb-resize-reset={monthPrefix}>
+        <div data-pb-resize-reset={monthPrefix} data-pb-resize-transition={monthSelection.animate || undefined}>
           {ghostLens ? null : searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">
@@ -534,25 +535,27 @@ export function TransactionsClient({
                 </p>
                 {importButton}
               </div>
-              {results.length === 0 ? (
-                <EmptyState
-                  icon={SearchX}
-                  title={d.txnSearch.empty}
-                  body={<>{x.noMatchBody}<span className="pb-txn-older-hint"> {x.olderHint}</span></>}
-                  action={<button type="button" className="pill" onClick={clearFilters}>{x.clearFilters}</button>}
-                />
-              ) : (
-                <>
-                  {showAmounts && typeFilter !== 'adjustment' && resultTransactions.length > 0 && (
-                    <ResultsSummary results={resultTransactions} categoryMeta={categoryMeta} type={typeFilter} />
-                  )}
-                  <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
-                  <DayGroups
-                    groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
-                    onOpenDetail={openDetail} today={today} lensAccountId={resultsLensId} highlight={q || undefined}
+              <div data-pb-period-body>
+                {results.length === 0 ? (
+                  <EmptyState
+                    icon={SearchX}
+                    title={d.txnSearch.empty}
+                    body={<>{x.noMatchBody}<span className="pb-txn-older-hint"> {x.olderHint}</span></>}
+                    action={<button type="button" className="pill" onClick={clearFilters}>{x.clearFilters}</button>}
                   />
-                </>
-              )}
+                ) : (
+                  <>
+                    {showAmounts && typeFilter !== 'adjustment' && resultTransactions.length > 0 && (
+                      <ResultsSummary results={resultTransactions} categoryMeta={categoryMeta} type={typeFilter} />
+                    )}
+                    <LedgerHead lensAccount={resultsLensId ? accounts.find((a) => a.id === resultsLensId) ?? null : null} />
+                    <DayGroups
+                      groups={resultGroups} mode="results" accounts={accounts} categoryMeta={categoryMeta}
+                      onOpenDetail={openDetail} today={today} lensAccountId={resultsLensId} highlight={q || undefined}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           ) : (
             <StatementList

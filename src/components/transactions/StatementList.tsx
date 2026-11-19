@@ -229,37 +229,39 @@ export function StatementList({
     // day headers inside it from sticking.
     <div id={id} className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
       {head}
-      {groups.length === 0 ? (
-        <EmptyState
-          icon={CalendarX2}
-          title={d.transactions.noActivity}
-          // The carried-forward amount is money: font-mono-tab so privacy
-          // mode blurs it like every other figure (it used to be plain text).
-          body={!partner || closingBalance !== undefined ? renderTemplate(d.transactions.carriedForward, {
-            amount: <BalanceFigure value={openingBalance} owed={owed} />,
-          }) : undefined}
-        />
-      ) : (
-        <div>
-          <LedgerHead lensAccount={lensAccount} />
-          {bookends && (
-            <div className="pb-txn-bookend">
-              <span>{t(d.ux.transactions.closingOn, { date: formatDate(bookends.closingDate, locale) })}</span>
-              <span><BalanceFigure value={closingBalance ?? 0} owed={owed} /></span>
-            </div>
-          )}
-          <DayGroups
-            groups={groups} mode="statement" accounts={accounts} categoryMeta={categoryMeta}
-            onOpenDetail={onOpenDetail} today={today} lensAccountId={lensAccountId}
+      <div data-pb-period-body>
+        {groups.length === 0 ? (
+          <EmptyState
+            icon={CalendarX2}
+            title={d.transactions.noActivity}
+            // The carried-forward amount is money: font-mono-tab so privacy
+            // mode blurs it like every other figure (it used to be plain text).
+            body={!partner || closingBalance !== undefined ? renderTemplate(d.transactions.carriedForward, {
+              amount: <BalanceFigure value={openingBalance} owed={owed} />,
+            }) : undefined}
           />
-          {bookends && (
-            <div className="pb-txn-bookend pb-txn-bookend-foot">
-              <span>{t(d.ux.transactions.openingOn, { date: formatDate(bookends.openingDate, locale) })}</span>
-              <span><BalanceFigure value={openingBalance} owed={owed} /></span>
-            </div>
-          )}
-        </div>
-      )}
+        ) : (
+          <>
+            <LedgerHead lensAccount={lensAccount} />
+            {bookends && (
+              <div className="pb-txn-bookend">
+                <span>{t(d.ux.transactions.closingOn, { date: formatDate(bookends.closingDate, locale) })}</span>
+                <span><BalanceFigure value={closingBalance ?? 0} owed={owed} /></span>
+              </div>
+            )}
+            <DayGroups
+              groups={groups} mode="statement" accounts={accounts} categoryMeta={categoryMeta}
+              onOpenDetail={onOpenDetail} today={today} lensAccountId={lensAccountId}
+            />
+            {bookends && (
+              <div className="pb-txn-bookend pb-txn-bookend-foot">
+                <span>{t(d.ux.transactions.openingOn, { date: formatDate(bookends.openingDate, locale) })}</span>
+                <span><BalanceFigure value={openingBalance} owed={owed} /></span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -30,9 +30,9 @@ function fixture() {
     animate(frames, options) {
       const card = this;
       const animation = {
-        frames, options, visibleHeight: parseFloat(frames[0].height),
-        cancel() { card.active = null; animation.oncancel?.(); },
-        finish() { card.active = null; animation.onfinish?.(); },
+        frames, options, visibleHeight: parseFloat(frames[0].height), playState: 'running',
+        cancel() { card.active = null; animation.playState = 'idle'; animation.oncancel?.(); },
+        finish() { card.active = null; animation.playState = 'finished'; animation.onfinish?.(); },
       };
       this.active = animation; this.animations.push(animation);
       return animation;
@@ -116,7 +116,8 @@ test('ordinary resize measures paired cards before applying either animation', (
 test('replacing a statement month cancels its resize and adopts the new height', () => {
   const f = fixture();
   const statement = new f.Element();
-  statement.querySelectorAll = () => [f.card];
+  statement.querySelectorAll = selector => selector.includes('period-body') ? [] : [f.card];
+  statement.hasAttribute = () => false;
   const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
 
   f.card.naturalHeight = 300;
@@ -135,6 +136,40 @@ test('replacing a statement month cancels its resize and adopts the new height',
   assert.equal(f.card.offsetHeight, 160);
   assert.equal(f.card.classes.size, 0);
   assert.equal(f.card.animations.length, 1);
+  f.stop();
+});
+
+test('a user-selected month owns its animation and a quick reversal starts at the painted height', () => {
+  const f = fixture();
+  const statement = new f.Element();
+  const body = new f.Element();
+  statement.querySelectorAll = selector => selector.includes('period-body') ? [body] : [f.card];
+  statement.hasAttribute = () => true;
+  const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
+
+  f.card.naturalHeight = 300;
+  f.mutation.callback([monthChanged]);
+  const first = f.card.active;
+  assert.equal(first.frames[0].height, '100px');
+  assert.equal(first.frames[1].height, '300px');
+  assert.equal(body.active.frames[1].opacity, 1);
+
+  first.visibleHeight = 180;
+  f.mutation.callback([{ target: f.card, addedNodes: [] }]);
+  assert.equal(f.card.active, first);
+
+  f.card.naturalHeight = 120;
+  f.mutation.callback([monthChanged]);
+  assert.equal(f.card.active.frames[0].height, '180px');
+  assert.equal(f.card.active.frames[1].height, '120px');
+  // A browser can drop the finished effect before delivering its callback.
+  f.card.active.playState = 'finished';
+  f.card.active.visibleHeight = undefined;
+  f.card.naturalHeight = 260;
+  f.mutation.callback([monthChanged]);
+  assert.equal(f.card.active.frames[0].height, '120px');
+  f.card.active.finish();
+  assert.equal(f.card.offsetHeight, 260);
   f.stop();
 });
 

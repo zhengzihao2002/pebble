@@ -4,14 +4,19 @@ const ANIMATION_ID = 'pb-card-resize';
 const RESET_ATTRIBUTE = 'data-pb-resize-reset';
 const DURATION = 260;
 const LANGUAGE_DURATION = 420;
+const PERIOD_DURATION = 300;
+const PERIOD_EASING = 'cubic-bezier(.4,0,.2,1)';
+const PERIOD_FADE = 'pb-period-fade';
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];
+
+type ResizeMode = 'content' | 'language' | 'period';
 
 interface CardState {
   element: HTMLElement;
   width: number;
   height: number;
   animation: Animation | null;
-  languageChange: boolean;
+  mode: ResizeMode;
 }
 
 /** Settle before saving a page's geometry, or when the page becomes hidden. */
@@ -56,18 +61,18 @@ export function observeCardResizes(root: HTMLElement) {
     // Measure paired grid cards before the first animated height can alter
     // the other card's layout.
     for (const { state, width, height } of targets) {
-      update(state, state.height, false, { width, height });
+      update(state, state.height, 'content', { width, height });
     }
   });
 
-  function update(state: CardState, from = state.height, languageChange = false, measured?: { width: number; height: number }) {
+  function update(state: CardState, from = state.height, mode: ResizeMode = 'content', measured?: { width: number; height: number }) {
     const card = state.element;
     const width = measured?.width ?? card.offsetWidth, height = measured?.height ?? card.offsetHeight;
     const previousWidth = state.width;
     state.width = width; state.height = height;
     if (disposed || !card.isConnected || reduced.matches || document.hidden || card.closest(EXCLUDED)
       || !card.getClientRects().length || !width || !height || !from
-      || (!languageChange && (card.parentElement?.closest(CARDS) || Math.abs(width - previousWidth) > 1)) || Math.abs(height - from) < 2) return;
+      || (mode !== 'language' && (card.parentElement?.closest(CARDS) || Math.abs(width - previousWidth) > 1)) || Math.abs(height - from) < 2) return;
     // Existing expanding sections already move the surrounding layout smoothly.
     // Let those transitions finish instead of adding another lagging animation.
     const alreadyResizing = card.getAnimations({ subtree: true }).some(animation =>
@@ -81,22 +86,29 @@ export function observeCardResizes(root: HTMLElement) {
     card.classList.add('pb-card-resizing');
     const animation = card.animate(
       [{ height: `${from}px` }, { height: `${height}px` }],
-      { duration: languageChange ? LANGUAGE_DURATION : DURATION, easing: languageChange ? 'cubic-bezier(.4,0,.2,1)' : 'cubic-bezier(.22,.78,.22,1)' },
+      {
+        duration: mode === 'language' ? LANGUAGE_DURATION : mode === 'period' ? PERIOD_DURATION : DURATION,
+        easing: mode === 'content' ? 'cubic-bezier(.22,.78,.22,1)' : PERIOD_EASING,
+        fill: mode === 'period' ? 'backwards' : 'none',
+      },
     );
     animation.id = ANIMATION_ID;
-    state.animation = animation; state.languageChange = languageChange;
+    state.animation = animation; state.mode = mode;
     animation.onfinish = () => {
       if (disposed || state.animation !== animation) return;
-      state.animation = null; state.languageChange = false;
+      state.animation = null; state.mode = 'content';
       card.classList.remove('pb-card-resizing');
       if (!card.isConnected || !states.has(card)) return;
       // Content may have changed while resizing. The final height remains auto.
-      update(state);
+      if (mode === 'period') {
+        state.width = card.offsetWidth;
+        state.height = card.offsetHeight;
+      } else update(state);
       if (!state.animation) observe(card);
     };
     animation.oncancel = () => {
       if (disposed || state.animation !== animation) return;
-      state.animation = null; state.languageChange = false;
+      state.animation = null; state.mode = 'content';
       card.classList.remove('pb-card-resizing');
       if (!card.isConnected || !states.has(card)) return;
       state.width = card.offsetWidth; state.height = card.offsetHeight;
@@ -106,7 +118,7 @@ export function observeCardResizes(root: HTMLElement) {
 
   function register(card: HTMLElement) {
     if (states.has(card) || card.closest(EXCLUDED)) return;
-    states.set(card, { element: card, width: card.offsetWidth, height: card.offsetHeight, animation: null, languageChange: false });
+    states.set(card, { element: card, width: card.offsetWidth, height: card.offsetHeight, animation: null, mode: 'content' });
     observe(card);
   }
   function discover(node: Node) {
@@ -121,24 +133,42 @@ export function observeCardResizes(root: HTMLElement) {
     animation.oncancel = null;
     animation.cancel();
     state.animation = null;
-    state.languageChange = false;
+    state.mode = 'content';
     state.element.classList.remove('pb-card-resizing');
   }
 
   root.querySelectorAll<HTMLElement>(CARDS).forEach(register);
   const mutation = new MutationObserver(records => {
-    // Replacing a statement's month is an immediate update. Adopt the new
-    // height before ResizeObserver can animate from the previous month.
+    // A period switch owns one measurement and one motion before paint.
+    // Internal row changes during the transition cannot restart its height.
     for (const record of records) {
       if (record.attributeName !== RESET_ATTRIBUTE || !(record.target instanceof HTMLElement)) continue;
-      for (const card of record.target.querySelectorAll<HTMLElement>(CARDS)) {
+      const section = record.target;
+      const animate = section.hasAttribute('data-pb-resize-transition') && !document.hidden && !reduced.matches;
+      const cards = Array.from(section.querySelectorAll<HTMLElement>(CARDS)).flatMap(card => {
         const state = states.get(card);
-        if (!state) continue;
+        if (!state) return [];
+        const phase = state.animation?.playState;
+        // The effect can have finished painting while its finish callback
+        // is still queued. The natural height already belongs to the new month.
+        const inFlight = phase === 'running' || phase === 'paused';
+        return [{ card, state, from: inFlight ? card.offsetHeight : state.height }];
+      });
+      for (const { card, state } of cards) {
         cancelResize(state);
-        state.width = card.offsetWidth;
-        state.height = card.offsetHeight;
         languageHeights?.delete(card);
-        observe(card);
+      }
+      const targets = cards.map(item => ({ ...item, width: item.card.offsetWidth, height: item.card.offsetHeight }));
+      for (const { card, state, from, width, height } of targets) {
+        if (animate) update(state, from, 'period', { width, height });
+        else { state.width = width; state.height = height; }
+        if (!state.animation) observe(card);
+      }
+      for (const body of section.querySelectorAll<HTMLElement>('[data-pb-period-body]')) {
+        for (const fade of body.getAnimations()) if (fade.id === PERIOD_FADE) fade.cancel();
+        if (!animate) continue;
+        const fade = body.animate([{ opacity: .45 }, { opacity: 1 }], { duration: 220, easing: 'ease-out', fill: 'backwards' });
+        fade.id = PERIOD_FADE;
       }
     }
     // Locale subscribers can commit separately. Never consume the snapshot
@@ -147,7 +177,7 @@ export function observeCardResizes(root: HTMLElement) {
     for (const [card, state] of states) {
       if (!card.isConnected) {
         states.delete(card); resize.unobserve(card); state.animation?.cancel();
-      } else if (state.animation && !state.languageChange && records.some(record => card.contains(record.target))) {
+      } else if (state.animation && state.mode === 'content' && records.some(record => card.contains(record.target))) {
         // A rapid update continues from the visible height, not an old target.
         const currentHeight = card.offsetHeight;
         cancelResize(state);
@@ -172,7 +202,7 @@ export function observeCardResizes(root: HTMLElement) {
         const state = states.get(card);
         return state ? [{ state, from, width: card.offsetWidth, height: card.offsetHeight }] : [];
       });
-      for (const { state, from, width, height } of targets) update(state, from, true, { width, height });
+      for (const { state, from, width, height } of targets) update(state, from, 'language', { width, height });
     }
   };
   mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy', RESET_ATTRIBUTE] });
