@@ -1,6 +1,7 @@
 const CARDS = '.card, [data-slot="card"], .pb-hero, .pb-accounts-tile, .pb-accounts-cc, .pb-settings-tile, .add-goal-tile, .stat-tab';
 const EXCLUDED = '[role="dialog"], .pb-modal-overlay, [aria-busy="true"], [data-pb-resize="off"], .pb-navigation-preview, .pb-page-skeleton, .pb-cached-layout';
 const ANIMATION_ID = 'pb-card-resize';
+const RESET_ATTRIBUTE = 'data-pb-resize-reset';
 const DURATION = 260;
 const LANGUAGE_DURATION = 420;
 const LAYOUT_PROPERTIES = ['height', 'minHeight', 'maxHeight', 'blockSize', 'gridTemplateRows', 'flexBasis'];
@@ -113,8 +114,33 @@ export function observeCardResizes(root: HTMLElement) {
     if (node.matches(CARDS)) register(node);
     node.querySelectorAll<HTMLElement>(CARDS).forEach(register);
   }
+  function cancelResize(state: CardState) {
+    const animation = state.animation;
+    if (!animation) return;
+    animation.onfinish = null;
+    animation.oncancel = null;
+    animation.cancel();
+    state.animation = null;
+    state.languageChange = false;
+    state.element.classList.remove('pb-card-resizing');
+  }
+
   root.querySelectorAll<HTMLElement>(CARDS).forEach(register);
   const mutation = new MutationObserver(records => {
+    // Replacing a statement's month is an immediate update. Adopt the new
+    // height before ResizeObserver can animate from the previous month.
+    for (const record of records) {
+      if (record.attributeName !== RESET_ATTRIBUTE || !(record.target instanceof HTMLElement)) continue;
+      for (const card of record.target.querySelectorAll<HTMLElement>(CARDS)) {
+        const state = states.get(card);
+        if (!state) continue;
+        cancelResize(state);
+        state.width = card.offsetWidth;
+        state.height = card.offsetHeight;
+        languageHeights?.delete(card);
+        observe(card);
+      }
+    }
     // Locale subscribers can commit separately. Never consume the snapshot
     // on an incidental mutation before translated content has committed.
     if (languageHeights) return;
@@ -124,9 +150,7 @@ export function observeCardResizes(root: HTMLElement) {
       } else if (state.animation && !state.languageChange && records.some(record => card.contains(record.target))) {
         // A rapid update continues from the visible height, not an old target.
         const currentHeight = card.offsetHeight;
-        state.animation.onfinish = null; state.animation.oncancel = null;
-        state.animation.cancel(); state.animation = null;
-        card.classList.remove('pb-card-resizing');
+        cancelResize(state);
         update(state, currentHeight);
         if (!state.animation) observe(card);
       }
@@ -151,7 +175,7 @@ export function observeCardResizes(root: HTMLElement) {
       for (const { state, from, width, height } of targets) update(state, from, true, { width, height });
     }
   };
-  mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy'] });
+  mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-busy', RESET_ATTRIBUTE] });
   const settle = () => { languageHeights = null; settleCardResizes(root); };
   window.addEventListener('pebble:before-language-change', beforeLanguage);
   window.addEventListener('pebble:after-language-change', afterLanguage);

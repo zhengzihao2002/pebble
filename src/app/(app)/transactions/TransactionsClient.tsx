@@ -524,7 +524,7 @@ export function TransactionsClient({
 
         {/* Keep the statement mounted as months change. Recreating it replayed
             a fade and sideways slide on the entire card and its glow. */}
-        <div>
+        <div data-pb-resize-reset={monthPrefix}>
           {ghostLens ? null : searching ? (
             <div className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
               <div className="pb-txn-stmt-head">

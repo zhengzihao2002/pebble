@@ -113,6 +113,31 @@ test('ordinary resize measures paired cards before applying either animation', (
   f.stop();
 });
 
+test('replacing a statement month cancels its resize and adopts the new height', () => {
+  const f = fixture();
+  const statement = new f.Element();
+  statement.querySelectorAll = () => [f.card];
+  const monthChanged = { type: 'attributes', attributeName: 'data-pb-resize-reset', target: statement, addedNodes: [] };
+
+  f.card.naturalHeight = 300;
+  f.mutation.callback([monthChanged]);
+  f.resize.emit(f.card);
+  assert.equal(f.card.animations.length, 0);
+
+  f.card.naturalHeight = 350;
+  f.resize.emit(f.card);
+  assert.equal(f.card.active.frames[0].height, '300px');
+
+  f.card.naturalHeight = 160;
+  f.mutation.callback([monthChanged]);
+  f.resize.emit(f.card);
+  assert.equal(f.card.active, null);
+  assert.equal(f.card.offsetHeight, 160);
+  assert.equal(f.card.classes.size, 0);
+  assert.equal(f.card.animations.length, 1);
+  f.stop();
+});
+
 test('settling exposes final geometry for caching; reduced motion and viewport changes do not animate', () => {
   const f = fixture();
   f.card.naturalHeight = 250; f.resize.emit(f.card);
