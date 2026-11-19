@@ -3,8 +3,7 @@
   padding: clamp(1rem, 2.5vw, 1.5rem);
 }
 .pebble-root .pb-partner-card p,
-.pebble-root .pb-partner-modal-head h2,
-.pebble-root .pb-joint-goal h3 { margin: 0; }
+.pebble-root .pb-partner-modal-head h2 { margin: 0; }
 .pebble-root .pb-partner-note { font-size: .83rem; color: var(--ink-soft); overflow-wrap: anywhere; }
 .pebble-root .pb-partner-note:empty { position: absolute; }
 .pebble-root .pb-partner-error { margin: 0; color: var(--wine); font-size: .86rem; overflow-wrap: anywhere; }
@@ -40,23 +39,39 @@
 .pebble-root .pb-partner-permissions {
   border-top: 1px solid var(--line); padding-top: 1.2rem; display: grid; gap: 1rem;
 }
+.pebble-root .pb-partner-permission-panel {
+  min-width: 0; border: 1px solid var(--line); border-radius: .85rem; padding: .45rem;
+}
+.pebble-root .pb-partner-permission-switch {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .3rem;
+  padding: .25rem; border-radius: .6rem; background: var(--paper);
+}
+.pebble-root .pb-partner-permission-switch > button {
+  display: flex; align-items: center; justify-content: center; gap: .45rem; border: 1px solid transparent;
+  color: var(--ink-soft); background: transparent; border-radius: .45rem; padding: .45rem .2rem;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.pebble-root .pb-partner-permission-switch > button[aria-pressed='true'] {
+  color: var(--ink); border-color: var(--line); background: var(--mist);
+}
+.pebble-root .pb-partner-permission-switch > button > span {
+  color: var(--pine); font-size: .75em; font-variant-numeric: tabular-nums;
+}
 .pebble-root .pb-partner-permission-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  align-items: start; gap: 1rem;
+  min-width: 0; margin: 0; padding: .45rem 0 0; border: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .35rem;
+}
+.pebble-root .pb-partner-permission-grid > .pb-partner-toggle {
+  padding: .6rem .65rem; border-radius: .45rem; background: color-mix(in srgb, var(--pine) 4%, transparent);
 }
 .pebble-root .pb-partner-fieldset {
   min-width: 0; margin: 0; padding: .8rem; display: grid; gap: .65rem;
   border: 1px solid var(--line); border-radius: .85rem;
 }
 .pebble-root .pb-partner-fieldset > legend { padding: 0 .35rem; font-weight: 600; }
-.pebble-root .pb-partner-protected > summary { cursor: pointer; font-weight: 600; }
-.pebble-root .pb-partner-protected dl { display: grid; gap: .65rem; margin: .4rem 0 0; }
-.pebble-root .pb-partner-protected dt { font-size: .85rem; font-weight: 600; }
-.pebble-root .pb-partner-protected dd { margin: .15rem 0 0; font-size: .79rem; color: var(--ink-soft); }
 .pebble-root .pb-partner-toggle {
   display: flex; justify-content: space-between; align-items: center; gap: .8rem; min-height: 2.65rem;
 }
-.pebble-root .pb-partner-toggle + .pb-partner-toggle { border-top: 1px solid var(--line); padding-top: .65rem; }
 .pebble-root .pb-partner-toggle > span { display: grid; gap: .2rem; }
 .pebble-root .pb-partner-toggle small { font-size: .79rem; color: var(--ink-soft); }
 .pebble-root .pb-partner-toggle input, .pebble-root .pb-partner-check input {
@@ -126,26 +141,8 @@
 .pebble-root .pb-partner-transaction-notes { white-space: pre-wrap; }
 .pebble-root .pb-partner-transaction .link-btn { font-size: .8rem; }
 
-.pebble-root .pb-joint-goals { display: grid; gap: 1rem; margin-top: 1.5rem; min-width: 0; }
-.pebble-root .pb-joint-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .9rem;
-}
-.pebble-root .pb-joint-total strong { font-size: 1.55rem; color: var(--ink); }
-.pebble-root .pb-joint-total span { font-size: .87rem; color: var(--ink-soft); }
-.pebble-root .pb-joint-meter { display: flex; background: var(--line); height: .5rem; border-radius: 1rem; overflow: hidden; }
-.pebble-root .pb-joint-meter > span:first-child { background: var(--pine); }
-.pebble-root .pb-joint-meter > span:last-child { background: var(--gold); }
-.pebble-root .pb-joint-split { display: flex; flex-wrap: wrap; gap: .5rem 1rem; color: var(--ink-soft); font-size: .84rem; }
-.pebble-root .pb-joint-split strong { color: var(--ink); }
-.pebble-root .pb-joint-split > span::before {
-  content: ''; display: inline-block; width: .5rem; height: .5rem; margin-inline-end: .35rem;
-  border-radius: 50%; background: var(--pine);
-}
-.pebble-root .pb-joint-split > span:last-child::before { background: var(--gold); }
-.pebble-root .pb-joint-history > summary { cursor: pointer; font-weight: 600; }
-.pebble-root .pb-joint-history .pb-joint-grid { margin-top: .8rem; }
-.pebble-root .pb-joint-form { display: flex; flex-direction: column; min-height: 0; }
-.pebble-root .pb-joint-fields { display: grid; gap: .85rem; }
-.pebble-root .pb-joint-fields > label { display: grid; gap: .35rem; font-size: .9rem; }
+.pebble-root .pb-partner-record-form { display: flex; flex-direction: column; min-height: 0; }
+.pebble-root .pb-partner-record-fields { display: grid; gap: .85rem; }
+.pebble-root .pb-partner-record-fields > label { display: grid; gap: .35rem; font-size: .9rem; }
 
 .pebble-root .pb-partner-inline-edit > label { display: grid; gap: .3rem; font-size: .85rem; }

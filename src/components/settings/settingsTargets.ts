@@ -8,6 +8,7 @@ export const SETTING_TARGETS = {
   adjustmentCleanup: 'pb-set-adjustment-cleanup',
   accounts: 'pb-set-accounts',
   partner: 'pb-set-partner',
+  partnerInbox: 'pb-set-partner-inbox',
   categories: 'pb-set-categories',
   transactionTags: 'pb-set-transaction-tags',
   theme: 'pb-set-theme',

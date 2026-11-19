@@ -66,7 +66,8 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
         { expenseSaved: '支出 已保存', incomeSaved: '收入 已保存', saveFailed: '保存 失败', click: '按钮 点击', goalReached: '目标 达成' }[key],
       ],
     })),
-    entry('partner', d.partner.title, d.partner.title, d.partner.subtitle, ['partner pair invite joint goals sharing permissions hide access 伙伴 配对 共享 权限 隐藏 共同目标']),
+    entry('partner', d.partner.title, d.partner.title, d.partner.subtitle, ['partner pair invite guest sharing permissions hide access 伙伴 配对 访客 共享 权限 隐藏']),
+    entry('partnerInbox', d.partner.inbox.title, d.partner.title, d.partner.inbox.hint, ['guest activity notifications mark read 访客 管家 活动 通知 已读']),
     entry('locks', d.safetyLocks.title, account, d.safetyLocks.blurb, ['safety locks prevent deletion 安全锁 删除 保护']),
     ...SAFETY_LOCK_KEYS.map((key): SettingsSearchEntry => ({
       id: `lock-${key}`, label: `${d.safetyLocks.title} · ${d.safetyLocks[key]}`, section: account,

@@ -28,6 +28,7 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { AdjustmentCleanupCard } from '@/components/settings/AdjustmentCleanupCard';
 import type { AdjustmentCleanupGroup, CleanupSource } from '@/lib/adjustmentCleanup';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
+import { PartnerInbox } from '@/components/partner/PartnerInbox';
 import { PartnerSettings } from '@/components/partner/PartnerSettings';
 import { TransactionTagsCard } from '@/components/settings/TransactionTagsCard';
 import type { TransactionTagGroup } from '@/lib/transactionTags';
@@ -229,7 +230,7 @@ export function SettingsClient({
       title: d.partner.title,
       short: d.partner.short,
       hint: d.partner.subtitle,
-      cards: <PartnerSettings />,
+      cards: <><PartnerSettings /><PartnerInbox /></>,
     },
     {
       id: SECTION_IDS.account,

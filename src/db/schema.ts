@@ -27,7 +27,6 @@
  */
 
 import {
-  bigint,
   boolean,
   check,
   date,
@@ -642,29 +641,6 @@ export const partnerInvite = pgTable('pebble_partner_invite', {
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
 });
 
-export const jointGoal = pgTable('pebble_joint_goal', {
-  id: uuid().primaryKey(),
-  pairId: uuid('pair_id').notNull().references(() => partnerPair.id, { onDelete: 'cascade' }),
-  name: text().notNull(),
-  targetCents: bigint('target_cents', { mode: 'number' }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, table => [
-  index('pebble_joint_goal_pair_idx').on(table.pairId),
-  check('pebble_joint_goal_name_check', sql`char_length(${table.name}) BETWEEN 1 AND 80`),
-  check('pebble_joint_goal_target_cents_check', sql`${table.targetCents} BETWEEN 1 AND 99999999999`),
-]);
-
-export const jointContribution = pgTable('pebble_joint_contribution', {
-  id: uuid().primaryKey(),
-  goalId: uuid('goal_id').notNull().references(() => jointGoal.id, { onDelete: 'cascade' }),
-  contributorId: uuid('contributor_id').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
-  cents: bigint({ mode: 'number' }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, table => [
-  index('pebble_joint_contribution_goal_idx').on(table.goalId),
-  check('pebble_joint_contribution_cents_check', sql`${table.cents} BETWEEN 1 AND 99999999999`),
-]);
-
 export const partnerScope = pgView('pebble_partner_scope', {
   viewerId: uuid('viewer_id'),
   ownerId: uuid('owner_id'),
@@ -672,3 +648,20 @@ export const partnerScope = pgView('pebble_partner_scope', {
   sharedCategories: text('shared_categories').array(),
   pairId: uuid('pair_id'),
 }).existing();
+
+export const partnerInbox = pgTable('pebble_partner_inbox', {
+  id: uuid().defaultRandom().primaryKey(),
+  ownerId: uuid('owner_id').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  guestId: uuid('guest_id').references(() => userInNeonAuth.id, { onDelete: 'set null' }),
+  pairId: uuid('pair_id').references(() => partnerPair.id, { onDelete: 'set null' }),
+  operation: text().notNull(),
+  resource: text().notNull(),
+  label: text().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).default(sql`now() + interval '7 days'`).notNull(),
+}, table => [
+  index('pebble_partner_inbox_owner_idx').on(table.ownerId, table.createdAt.desc()),
+  index('pebble_partner_inbox_expiry_idx').on(table.expiresAt),
+  check('pebble_partner_inbox_operation_check', sql`${table.operation} IN ('add', 'edit')`),
+  check('pebble_partner_inbox_resource_check', sql`${table.resource} IN ('transaction', 'goal', 'account', 'budget', 'scheduled')`),
+]);

@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "installCommand": "node scripts/check-dependencies.mjs",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "crons": [
+    {
+      "path": "/api/partner-inbox/prune",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

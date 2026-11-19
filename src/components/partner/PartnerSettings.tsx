@@ -11,7 +11,7 @@ import {
 } from '@/lib/actions/partner';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, type PartnerPermissions, type PartnerSettingsData } from '@/lib/partner';
+import { INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, PARTNER_VIEW_PERMISSIONS, PARTNER_ADD_PERMISSIONS, PARTNER_EDIT_PERMISSIONS, type PartnerPermissions, type PartnerSettingsData } from '@/lib/partner';
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
 import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
 import { partnerError } from './partnerError';
@@ -181,27 +181,37 @@ function SharingPermissions({ settings, busy, save }: {
   const x = d.partner;
   const [permissions, setPermissions] = useState(settings.permissions);
   const [categoryIds, setCategoryIds] = useState(() => new Set(settings.sharedCategories));
+  const [section, setSection] = useState<'view' | 'add' | 'edit'>('view');
+  const groups = {
+    view: { label: x.see, keys: PARTNER_VIEW_PERMISSIONS },
+    add: { label: x.add, keys: PARTNER_ADD_PERMISSIONS },
+    edit: { label: x.act, keys: PARTNER_EDIT_PERMISSIONS },
+  };
   const categories = [...settings.categories, ...INCOME_SHARING_KEYS.map(id => ({ id, name: categoryLabel(d, id.slice(7)) }))];
   const dirty = PARTNER_PERMISSIONS.some(key => Boolean(permissions[key]) !== Boolean(settings.permissions[key]))
     || categoryIds.size !== settings.sharedCategories.length || settings.sharedCategories.some(id => !categoryIds.has(id));
   const locked = busy || settings.viewingPartner;
-  const permissionGroup = (keys: readonly (typeof PARTNER_PERMISSIONS)[number][], label: string) => (
-    <fieldset className="pb-partner-fieldset" disabled={locked}>
-      <legend>{label}</legend>
-      {keys.map(key => <label className="pb-partner-toggle" key={key}>
-        <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
-        <input type="checkbox" checked={permissions[key] === true}
-          onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
-      </label>)}
-    </fieldset>
-  );
   return (
     <form className="pb-partner-permissions" onSubmit={event => { event.preventDefault(); if (!locked) void save(permissions, [...categoryIds]); }}>
       <SectionHeader title={x.privacy} subtitle={x.privacyHelp} icon={Shield} />
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
-      <div className="pb-partner-permission-grid">
-        {permissionGroup(PARTNER_PERMISSIONS.slice(0, 6), x.see)}
-        {permissionGroup(PARTNER_PERMISSIONS.slice(6), x.act)}
+      <div className="pb-partner-permission-panel">
+        <div className="pb-partner-permission-switch" role="group" aria-label={x.privacy}>
+          {(['view', 'add', 'edit'] as const).map(group => {
+            const { label, keys } = groups[group];
+            const enabled = keys.filter(key => permissions[key] === true).length;
+            return <button key={group} type="button" aria-pressed={section === group} onClick={() => setSection(group)}>
+              {label}{enabled > 0 && <span>{enabled}</span>}
+            </button>;
+          })}
+        </div>
+        <fieldset className="pb-partner-permission-grid" aria-label={groups[section].label} disabled={locked}>
+          {groups[section].keys.map(key => <label className="pb-partner-toggle" key={key}>
+            <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
+            <input type="checkbox" checked={permissions[key] === true}
+              onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
+          </label>)}
+        </fieldset>
       </div>
       <fieldset className="pb-partner-fieldset" disabled={locked}>
         <legend>{x.chooseCategories}</legend>
@@ -222,12 +232,6 @@ function SharingPermissions({ settings, busy, save }: {
           </label>)}
         </div>
       </fieldset>
-      <details className="pb-partner-fieldset pb-partner-protected">
-        <summary>{x.protectedTitle}</summary>
-        <dl>{Object.entries(x.protected).map(([key, [label, description]]) => (
-          <div key={key}><dt>{label}</dt><dd>{description}</dd></div>
-        ))}</dl>
-      </details>
       <button type="submit" className="pill active pb-partner-save" disabled={(settings.configured && !dirty) || locked}>
         {settings.configured ? x.savePermissions : x.confirmPermissions}
       </button>
