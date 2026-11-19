@@ -28,6 +28,7 @@ import { ModifyBalanceCard } from '@/components/settings/ModifyBalanceCard';
 import { AdjustmentCleanupCard } from '@/components/settings/AdjustmentCleanupCard';
 import type { AdjustmentCleanupGroup, CleanupSource } from '@/lib/adjustmentCleanup';
 import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
+import { PartnerSettings } from '@/components/partner/PartnerSettings';
 import { TransactionTagsCard } from '@/components/settings/TransactionTagsCard';
 import type { TransactionTagGroup } from '@/lib/transactionTags';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
@@ -75,6 +76,7 @@ const SECTION_IDS = {
   chartsMotion: 'settings-charts-motion',
   language: 'settings-language-region',
   behavior: 'settings-behavior',
+  partner: 'settings-partner',
   account: 'settings-pebble-account',
 } as const;
 
@@ -221,6 +223,13 @@ export function SettingsClient({
           <SoundSettingsCard />
         </>
       ),
+    },
+    {
+      id: SECTION_IDS.partner,
+      title: d.partner.title,
+      short: d.partner.short,
+      hint: d.partner.subtitle,
+      cards: <PartnerSettings />,
     },
     {
       id: SECTION_IDS.account,

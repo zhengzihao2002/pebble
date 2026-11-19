@@ -33,7 +33,7 @@ html[data-pb-ambient] .pebble-root > .pb-card-glows { --pb-card-glow-strength: .
   html[data-pb-ambient] .pebble-root :is(.pb-rep-filters, .pb-rep-main > .card, .pb-rep-results > .card) { --pb-rep-glow-strength: .7; }
   .pebble-root:has(> .pb-card-glows[data-pb-glow-ready]) :is(.pb-rep-filters, .pb-rep-main > .card, .pb-rep-results > .card) {
     box-shadow: var(--shadow),
-      0 0 36px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 30%), transparent),
+      0 0 52px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 30%), transparent),
       0 0 14px color-mix(in srgb, var(--pb-rep-glow-color) calc(var(--pb-rep-glow-strength) * 20%), transparent);
   }
 }

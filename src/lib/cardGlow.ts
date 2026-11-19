@@ -1,5 +1,5 @@
 const NS = 'http://www.w3.org/2000/svg';
-export const CARD_GLOW_PAD = 88;
+export const CARD_GLOW_PAD = 128;
 const CARDS = '.card,[data-slot="card"],.pb-hero,.pb-accounts-tile,.pb-accounts-cc,.add-goal-tile,.stat-tab';
 const EXCLUDED = '[role="dialog"],.pb-modal-overlay,[aria-busy="true"],.pb-layout-skeleton-host,.pb-navigation-preview,.pb-cached-layout';
 const IGNORED = '.pb-card-glows,.pb-ambient-background,.pb-ambient-studio';
@@ -70,7 +70,7 @@ export function mountCardGlows(layer: HTMLDivElement, prefix: string, anchors =
     frame.className = `pb-card-glow-frame${anchors ? ' is-anchored' : ''}`;
     const svg = svgNode('svg', { class: 'pb-card-glow', 'aria-hidden': 'true', focusable: 'false' });
     const defs = svgNode('defs');
-    const filters = [18, 7].map((blur, index) => {
+    const filters = [26, 7].map((blur, index) => {
       const filter = svgNode('filter', { id: `${id}-blur-${index}`, filterUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB' });
       filter.append(svgNode('feGaussianBlur', { stdDeviation: String(blur) }));
       defs.append(filter);

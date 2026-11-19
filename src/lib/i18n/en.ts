@@ -1,3 +1,4 @@
+import { partnerEn } from './sections/partner';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
 import { uxEn } from './sections';
 
@@ -1726,5 +1727,6 @@ export const en = {
     incomeSummary: '{amount} into {account}',
   },
   // The redesign's strings, one section per area (src/lib/i18n/sections).
+  partner: partnerEn,
   ux: uxEn,
 };

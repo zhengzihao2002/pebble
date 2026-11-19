@@ -27,6 +27,7 @@
  */
 
 import {
+  bigint,
   boolean,
   check,
   date,
@@ -37,6 +38,7 @@ import {
   numeric,
   pgSchema,
   pgTable,
+  pgView,
   primaryKey,
   smallint,
   text,
@@ -45,6 +47,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { PartnerPermissions } from '@/lib/partner';
 import type { CreditCardPayoff } from '@/types';
 
 export const neonAuth = pgSchema('neon_auth');
@@ -608,3 +611,64 @@ export const annualBudgetPlanItem = pgTable('annual_budget_plan_item', {
   foreignKey({ columns: [table.userId, table.year], foreignColumns: [annualBudgetPlan.userId, annualBudgetPlan.year] }).onDelete('cascade'),
   check('annual_budget_plan_item_amount_check', sql`${table.annualAmount} >= 0 AND ${table.baseAmount} >= 0`),
 ]);
+
+/** Partner relationships and their contribution history are separate from personal finance rows. */
+export const partnerPair = pgTable('pebble_partner_pair', {
+  id: uuid().primaryKey(),
+  firstUser: uuid('first_user').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  secondUser: uuid('second_user').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  endedAt: timestamp('ended_at', { withTimezone: true, mode: 'string' }),
+}, table => [
+  index('pebble_partner_pair_first_idx').on(table.firstUser),
+  index('pebble_partner_pair_second_idx').on(table.secondUser),
+  check('pebble_partner_pair_check', sql`${table.firstUser} <> ${table.secondUser}`),
+]);
+
+export const partnerMember = pgTable('pebble_partner_member', {
+  userId: uuid('user_id').primaryKey().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  pairId: uuid('pair_id').notNull().references(() => partnerPair.id, { onDelete: 'cascade' }),
+  permissions: jsonb().$type<PartnerPermissions>().default({}).notNull(),
+  sharedCategories: text('shared_categories').array().default(sql`'{}'::text[]`).notNull(),
+  configuredAt: timestamp('configured_at', { withTimezone: true, mode: 'string' }),
+}, table => [
+  index('pebble_partner_member_pair_idx').on(table.pairId),
+  check('pebble_partner_member_permissions_check', sql`jsonb_typeof(${table.permissions}) = 'object'`),
+]);
+
+export const partnerInvite = pgTable('pebble_partner_invite', {
+  ownerId: uuid('owner_id').primaryKey().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  digest: text().unique('pebble_partner_invite_digest_key').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+});
+
+export const jointGoal = pgTable('pebble_joint_goal', {
+  id: uuid().primaryKey(),
+  pairId: uuid('pair_id').notNull().references(() => partnerPair.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  targetCents: bigint('target_cents', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, table => [
+  index('pebble_joint_goal_pair_idx').on(table.pairId),
+  check('pebble_joint_goal_name_check', sql`char_length(${table.name}) BETWEEN 1 AND 80`),
+  check('pebble_joint_goal_target_cents_check', sql`${table.targetCents} BETWEEN 1 AND 99999999999`),
+]);
+
+export const jointContribution = pgTable('pebble_joint_contribution', {
+  id: uuid().primaryKey(),
+  goalId: uuid('goal_id').notNull().references(() => jointGoal.id, { onDelete: 'cascade' }),
+  contributorId: uuid('contributor_id').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  cents: bigint({ mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, table => [
+  index('pebble_joint_contribution_goal_idx').on(table.goalId),
+  check('pebble_joint_contribution_cents_check', sql`${table.cents} BETWEEN 1 AND 99999999999`),
+]);
+
+export const partnerScope = pgView('pebble_partner_scope', {
+  viewerId: uuid('viewer_id'),
+  ownerId: uuid('owner_id'),
+  permissions: jsonb().$type<PartnerPermissions>(),
+  sharedCategories: text('shared_categories').array(),
+  pairId: uuid('pair_id'),
+}).existing();

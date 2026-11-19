@@ -22,6 +22,7 @@ import "@/styles/redesign/sticky-bars.css";
 import "@/styles/redesign/goals.css";
 import "@/styles/redesign/scheduled.css";
 import "@/styles/redesign/settings.css";
+import "@/styles/redesign/partner.css";
 import "@/styles/redesign/offline.css";
 import "@/styles/redesign/loading-feedback.css";
 import "@/styles/redesign/nav-glass.css";

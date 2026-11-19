@@ -5,6 +5,7 @@ import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { GoalsSummary } from '@/components/goals/GoalsSummary';
+import { JointGoals } from '@/components/partner/JointGoals';
 import { GoalsView } from '@/components/goals/GoalsView';
 
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,7 @@ export default async function GoalsPage() {
         allocated={allocated} unallocated={unallocated} overAllocated={overAllocated}
       />
       <GoalsView goals={goals} />
+      <JointGoals />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { partnerZh } from './sections/partner';
 import type { en } from './en';
 import { uxZh } from './sections';
 
@@ -1605,5 +1606,6 @@ export const zh: typeof en = {
     expenseSummary: '从 {account} 支出 {amount}，分类：{category}',
     incomeSummary: '{amount} 已存入 {account}',
   },
+  partner: partnerZh,
   ux: uxZh,
 };

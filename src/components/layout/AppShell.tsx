@@ -424,7 +424,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // palette's own ⌘K / Ctrl+K), or while any dialog is open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
+      if (pathname === '/partner' || e.isComposing || e.keyCode === 229 || e.defaultPrevented || e.repeat) return;
       const root = rootRef.current;
       if (!root) return;
       const dialogOpen = root.querySelector('[role="dialog"]') !== null;
@@ -450,7 +450,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [pathname]);
+
+  if (pathname === '/partner') {
+    return (
+      <div ref={rootRef} className="pebble-root themed-scroll">
+        <AmbientBackground />
+        {children}
+        <CardGlow />
+      </div>
+    );
+  }
 
   return (
     <div ref={rootRef} className="pebble-root themed-scroll">
