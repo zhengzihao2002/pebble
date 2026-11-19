@@ -34,7 +34,7 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
       : [];
     return groupByDay(visible, () => 0, accountId, payoffs).flatMap(({ items }) => items);
   }, [entries, visible, monthPrefix, accountId, query, typeFilter]);
-  return <section className="card pb-txn-ghost-history" aria-labelledby="pb-txn-ghost-heading">
+  return <section className="card pb-txn-ghost-history" aria-labelledby="pb-txn-ghost-heading" data-pb-resize-key={monthPrefix}>
     <header className="pb-txn-ghost-head">
       <span className="pb-txn-ghost-mark"><Ghost size={22} aria-hidden="true" /></span>
       <div><h3 id="pb-txn-ghost-heading">{zh ? '幽灵流水' : 'Ghost activity'}</h3>

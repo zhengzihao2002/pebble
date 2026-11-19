@@ -68,8 +68,13 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
     const track = trackRef.current;
     const on = track?.querySelector<HTMLElement>('[aria-current="true"]');
     if (!track || !on) return;
-    const left = on.offsetLeft - track.clientWidth / 2 + on.offsetWidth / 2;
-    track.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    const viewport = track.getBoundingClientRect();
+    const chip = on.getBoundingClientRect();
+    const left = chip.left < viewport.left ? chip.left - viewport.left : Math.max(0, chip.right - viewport.right);
+    if (left) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      track.scrollBy({ left, behavior: reduce ? 'instant' : 'smooth' });
+    }
   }, [active]);
 
   const jump = (id: string) => {

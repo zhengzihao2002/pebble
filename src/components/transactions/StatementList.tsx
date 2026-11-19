@@ -227,7 +227,8 @@ export function StatementList({
     // overflow: clip, not hidden: it keeps the rounded corners clipping the
     // rows without making the card a scroll container, which would stop the
     // day headers inside it from sticking.
-    <div id={id} className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
+    <div id={id} className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}
+      data-pb-resize-key={monthInfo ? monthBounds(monthInfo.year, monthInfo.month).prefix : undefined}>
       {head}
       {groups.length === 0 ? (
         <EmptyState

@@ -101,6 +101,37 @@ test('rapid content updates continue from the visible height and can reverse dir
   f.stop();
 });
 
+test('a statement period starts resizing in the mutation pass before the next frame', () => {
+  const f = fixture();
+  const record = { type: 'attributes', attributeName: 'data-pb-resize-key', target: f.card, addedNodes: [] };
+  f.card.naturalHeight = 310;
+  f.mutation.callback([record]);
+  assert.equal(f.card.active.frames[0].height, '100px');
+  assert.equal(f.card.active.frames[1].height, '310px');
+  f.card.active.visibleHeight = 180;
+  f.card.naturalHeight = 125;
+  f.mutation.callback([record]);
+  assert.equal(f.card.active.frames[0].height, '180px');
+  assert.equal(f.card.active.frames[1].height, '125px');
+  f.resize.emit(f.card);
+  assert.equal(f.card.animations.length, 2);
+  f.card.active.finish();
+  assert.equal(f.card.offsetHeight, 125);
+  f.stop();
+});
+
+test('ordinary resize measures paired cards before applying either animation', () => {
+  const f = fixture();
+  const peer = new f.Element(); f.cards.push(peer);
+  f.mutation.callback([{ target: f.root, addedNodes: [peer] }]);
+  f.card.naturalHeight = 240;
+  Object.defineProperty(peer, 'offsetHeight', { get: () => f.card.offsetHeight });
+  f.resize.callback([{ target: f.card }, { target: peer }]);
+  assert.equal(f.card.active.frames[1].height, '240px');
+  assert.equal(peer.active.frames[1].height, '240px');
+  f.stop();
+});
+
 test('settling exposes final geometry for caching; reduced motion and viewport changes do not animate', () => {
   const f = fixture();
   f.card.naturalHeight = 250; f.resize.emit(f.card);
