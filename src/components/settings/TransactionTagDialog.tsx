@@ -16,6 +16,7 @@ import { descriptionTitle } from '@/lib/transactionDescription';
 import { MAX_TAG_NAME_LENGTH, normalizeTagSearch, type TaggedTransaction, type TransactionTagGroup } from '@/lib/transactionTags';
 
 const PAGE_SIZE = 40;
+const CLEAR_WAIT_SECONDS = 5;
 type TagFailure = { error: string; kind?: FailureKind; code?: string; params?: Record<string, string | string[]> };
 
 interface Props {
@@ -41,6 +42,13 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<TagFailure | null>(null);
   const [clearedCount, setClearedCount] = useState<number | null>(null);
+  const [clearSeconds, setClearSeconds] = useState(CLEAR_WAIT_SECONDS);
+
+  useEffect(() => {
+    if (mode !== 'clear' || clearSeconds === 0) return;
+    const timer = window.setTimeout(() => setClearSeconds(previous => previous - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [mode, clearSeconds]);
 
   useEffect(() => {
     let active = true;
@@ -63,7 +71,11 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
   const newName = draft.trim();
   const merging = tags.some(tag => tag.name !== name && tag.name === newName);
   const allMatched = matches.length > 0 && matches.every(row => selected.has(row.id));
-  const setEditor = (next: typeof mode) => { setMode(next); setError(null); };
+  const setEditor = (next: typeof mode) => {
+    if (next === 'clear') setClearSeconds(CLEAR_WAIT_SECONDS);
+    setMode(next);
+    setError(null);
+  };
   const toggleRow = (id: string) => {
     setSelected(previous => {
       const next = new Set(previous);
@@ -95,7 +107,7 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
   };
 
   const clear = async (complete: () => void) => {
-    if (busy || selected.size === 0 || !rows) return;
+    if (busy || clearSeconds > 0 || selected.size === 0 || !rows) return;
     setBusy(true);
     setError(null);
     const result = await callAction(() => clearTransactionTagsAction(name, [...selected]));
@@ -198,8 +210,8 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
               <ActionError message={error ? translateActionError(d, locale, error) : null} />
               <div className="pb-settings-tag-actions">
                 <button type="button" className="pill pb-settings-pill" disabled={busy} onClick={() => setEditor('review')}>{labels.cancel}</button>
-                <button type="button" className="pill pb-settings-pill pb-settings-danger" disabled={busy} onClick={() => void clear(complete)}>
-                  {busy ? labels.clearing : labels.confirmClear}
+                <button type="button" className="pill pb-settings-pill pb-settings-danger" disabled={busy || clearSeconds > 0} onClick={() => void clear(complete)}>
+                  {busy ? labels.clearing : clearSeconds > 0 ? t(labels.clearCountdown, { seconds: clearSeconds }) : labels.confirmClear}
                 </button>
               </div>
             </div>
