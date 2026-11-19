@@ -72,7 +72,7 @@ export function SettingsOverview({
     // settings sections, each named by its heading.
     <div className="card pb-settings-ov">
       <div className="pb-settings-ov-id">
-        <div className="pb-settings-avatar is-large pb-profile-avatar" aria-hidden="true">{initials}</div>
+        <div className="pb-settings-avatar is-large pb-profile-avatar" aria-hidden="true"><span>{initials}</span></div>
         <div style={{ minWidth: 0 }}>
           {/* Fixed line heights, so the card does not grow when the name
               arrives after mount. */}

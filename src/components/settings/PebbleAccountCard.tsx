@@ -49,7 +49,7 @@ export function PebbleAccountCard() {
       <div className="pb-settings-me-body">
         <div className="pb-settings-me-grid">
           <div className="pb-settings-me-id">
-            <div className="pb-settings-avatar pb-profile-avatar" aria-hidden="true">{initials}</div>
+            <div className="pb-settings-avatar pb-profile-avatar" aria-hidden="true"><span>{initials}</span></div>
             <div style={{ minWidth: 0 }}>
               <p className="pb-settings-me-name">{name}</p>
               <p className="pb-settings-me-email">{email}</p>

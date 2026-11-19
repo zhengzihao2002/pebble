@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeftRight, Copy, KeyRound, Shield, UsersRound } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { LoadingBlock } from '@/components/shared/Spinner';
@@ -192,6 +192,19 @@ function SharingPermissions({ settings, section, onSection, busy, save }: {
   const [categoryIds, setCategoryIds] = useState(() => new Set(settings.sharedCategories));
   const savedWords = settings.censoredWords ?? [];
   const [wordsDraft, setWordsDraft] = useState(() => savedWords.join('\n'));
+  const viewportRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const panel = viewport?.querySelector<HTMLElement>('[data-open="true"]');
+    if (!viewport || !panel) return;
+
+    const fit = () => { viewport.style.height = `${panel.offsetHeight}px`; };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [section]);
+
   const words = normalizeCensoredWords(wordsDraft.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
   const wordsChanged = words !== null && JSON.stringify(words) !== JSON.stringify(savedWords);
   const groups = {
@@ -207,8 +220,8 @@ function SharingPermissions({ settings, section, onSection, busy, save }: {
     <form className="pb-partner-permissions" onSubmit={event => { event.preventDefault(); if (!locked && words) void save(permissions, [...categoryIds], wordsChanged ? words : undefined); }}>
       <SectionHeader title={x.privacy} subtitle={x.privacyHelp} icon={Shield} />
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
-      <div className="pb-partner-permission-panel">
-        <div className="pb-partner-permission-switch" data-active={section} role="group" aria-label={x.privacy}>
+      <div className="pb-partner-permission-panel" data-active={section}>
+        <div className="pb-partner-permission-switch" role="group" aria-label={x.privacy}>
           <span className="pb-partner-permission-thumb" aria-hidden="true" />
           {PERMISSION_TABS.map(group => {
             const { label, keys } = groups[group];
@@ -218,20 +231,22 @@ function SharingPermissions({ settings, section, onSection, busy, save }: {
             </button>;
           })}
         </div>
-        {PERMISSION_TABS.map(tab => (
-          <div key={tab} className="pb-partner-permission-content" data-open={section === tab}
-            aria-hidden={section !== tab} inert={section !== tab}>
-            <div className="pb-partner-permission-clip">
-              <fieldset className="pb-partner-permission-grid" aria-label={groups[tab].label} disabled={locked}>
-                {groups[tab].keys.map(key => <label className="pb-partner-toggle" key={key}>
-                  <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
-                  <input type="checkbox" checked={permissions[key] === true}
-                    onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
-                </label>)}
-              </fieldset>
-            </div>
+        <div className="pb-partner-permission-viewport" ref={viewportRef}>
+          <div className="pb-partner-permission-track">
+            {PERMISSION_TABS.map(tab => (
+              <div key={tab} className="pb-partner-permission-content" data-open={section === tab}
+                aria-hidden={section !== tab} inert={section !== tab}>
+                <fieldset className="pb-partner-permission-grid" aria-label={groups[tab].label} disabled={locked}>
+                  {groups[tab].keys.map(key => <label className="pb-partner-toggle" key={key}>
+                    <span><strong>{x.permission[key][0]}</strong><small>{x.permission[key][1]}</small></span>
+                    <input type="checkbox" checked={permissions[key] === true}
+                      onChange={event => setPermissions({ ...permissions, [key]: event.target.checked })} />
+                  </label>)}
+                </fieldset>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
       <fieldset className="pb-partner-fieldset" disabled={locked}>
         <legend>{x.chooseCategories}</legend>

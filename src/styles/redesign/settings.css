@@ -360,6 +360,7 @@
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
   font-size: 0.9rem; font-weight: 600;
 }
+.pebble-root .pb-settings-avatar > span { transform: translateY(.07em); }
 .pebble-root .pb-settings-avatar.is-large {
   width: 52px; height: 52px; font-size: 1.05rem;
   box-shadow: 0 0 0 2px var(--mist), 0 0 0 3px color-mix(in srgb, var(--pb-avatar-accent, var(--gold)) 40%, transparent);

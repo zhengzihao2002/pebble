@@ -13,6 +13,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { currentNavItem } from './navItems';
 import { useShortcutLabel } from './useShortcutLabel';
 import { PartnerViewBar } from '@/components/partner/PartnerViewBar';
+import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { OfflineStatus } from '@/components/offline/OfflineStatus';
 import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 
@@ -187,8 +188,13 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
             <span className="pb-shell-title-chip" aria-hidden="true"><PageIcon size={16} strokeWidth={2.1} /></span>
           )}
           <div style={{ minWidth: 0 }}>
-          <h1 className="font-display" style={{ fontSize: '1.4rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.title}</h1>
-          <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.subtitle}</p>
+            <h1 className="font-display pb-shell-page-title">{current.title}</h1>
+            <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span className="pb-shell-page-subtitle">{current.subtitle}</span>
+              {partner && <span className="pb-shell-partner-subtitle">
+                {d.partner.partnerSpace} · {partnerDisplayName(partner.name, d.partner.partnerName)}
+              </span>}
+            </p>
           </div>
         </div>
         {partner && <PartnerViewBar name={partner.name} pathname={pathname} />}

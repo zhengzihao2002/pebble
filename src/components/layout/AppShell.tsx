@@ -194,12 +194,15 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   const partnerRow = partnerData?.transactions.find(row => row.id === selectedPartnerRecord?.id && row.kind === selectedPartnerRecord.type);
   const partnerAdjustment = selectedPartnerRecord?.type === 'adjustment'
     ? partnerData?.adjustments?.find(row => row.id === selectedPartnerRecord.id) : undefined;
-  const canPost = partnerData ? partnerCanPost(partnerData) : false;
+  // Keep shell actions steady while the next partner page streams its records.
+  // A newer server access revision invalidates the last page's controls.
+  const actionData = partnerData ?? (workspace?.data.accessVersion === partnerAccess?.accessVersion ? workspace?.data : undefined);
+  const canPost = actionData ? partnerCanPost(actionData) : false;
   const layoutScope = partnerData?.accessVersion ?? partnerAccess?.accessVersion;
   const partnerActions = {
-    addTransaction: canPost && partnerData?.permissions.addTransactions === true,
-    addSchedule: canPost && partnerData?.permissions.addScheduled === true,
-    addGoal: partnerData?.permissions.addPersonalGoals === true,
+    addTransaction: canPost && actionData?.permissions.addTransactions === true,
+    addSchedule: canPost && actionData?.permissions.addScheduled === true,
+    addGoal: actionData?.permissions.addPersonalGoals === true,
   };
 
   // Loads THIS user's saved preferences (per-user storage - see
