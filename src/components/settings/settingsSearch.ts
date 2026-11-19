@@ -67,6 +67,8 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
       ],
     })),
     entry('partner', d.partner.title, d.partner.title, d.partner.subtitle, ['partner pair invite guest sharing permissions hide access 伙伴 配对 访客 共享 权限 隐藏']),
+    entry('partnerCensoredWords', d.partner.censoredWords, d.partner.title, d.partner.censoredWordsHelp,
+      ['censor mask redact private keywords words phrases hidden titles descriptions 屏蔽词 敏感词 标题 描述']),
     entry('partnerInbox', d.partner.inbox.title, d.partner.title, d.partner.inbox.hint, ['guest activity notifications mark read 访客 管家 活动 通知 已读']),
     entry('locks', d.safetyLocks.title, account, d.safetyLocks.blurb, ['safety locks prevent deletion 安全锁 删除 保护']),
     ...SAFETY_LOCK_KEYS.map((key): SettingsSearchEntry => ({

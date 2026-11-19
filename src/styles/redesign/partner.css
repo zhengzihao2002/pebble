@@ -142,3 +142,9 @@
 .pebble-root .pb-partner-withheld p { margin: 0; }
 .pebble-root .pb-partner-withheld strong { display: block; }
 .pebble-root .pb-hero .pb-partner-withheld { color: var(--pb-hero-fg); }
+
+.pebble-root .pb-partner-censored-words {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+}

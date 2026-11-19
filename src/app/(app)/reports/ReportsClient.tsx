@@ -1,4 +1,5 @@
 'use client';
+import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
@@ -27,7 +28,7 @@ import { categoryMonthlySeries } from '@/components/reports/categorySeries';
 import { buildReportCsv, downloadCsv } from '@/components/reports/ReportExport';
 import { TransactionDetailModal } from '@/components/modals/TransactionDetailModal';
 import type { ExpenseTransaction, Transaction } from '@/types';
-import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField, ReportPeriodGroup } from '@/components/reports/types';
+import type { ReportType, PeriodGroup, CategoryGroupMode, SortDir, SortField, ReportPeriodGroup, ReportFilterPrefs } from '@/components/reports/types';
 import { useTimeZoneOverride } from '@/lib/time/TimeZoneOverrideContext';
 import { resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
@@ -50,6 +51,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // in a dozen closures and `d` for a parsed Date in two more; the obvious
   // names would shadow both and silently change what the code means.
   const partner = usePartnerView();
+  const preferenceScope = partner?.preferenceScope;
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d: dict, t: tr, locale } = useTranslation();
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
@@ -121,6 +123,9 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     ...(types.has('expense') ? expenseCats : []),
     ...(types.has('income') ? incomeCats : []),
   ]));
+  const categoryIds = new Map<string, string>(categories.map(category => [category.name, 'expense:' + category.id]));
+  for (const name of incomeCats) if (name && !categoryIds.has(name)) categoryIds.set(name, 'income:' + name);
+  categoryIds.set('', 'censored');
   const includeExpense = selectedTypes.has('expense');
   const includeIncome = selectedTypes.has('income');
   // Both types showing: totals are NET (income minus expenses, signed). One
@@ -136,8 +141,7 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // set would silently exclude any account created later in the session, and
   // "all" is the default nobody has to opt into.
   //
-  // NOT PERSISTED, matching selectedCategories: a stored selection can name
-  // things that no longer exist, and accounts can be deleted outright.
+  // The shared workspace stores selection IDs, checked against the current permissions on restore.
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
 
   const showTagFilter = includeExpense && selectedCategories.size === 1 && !selectedCategories.has('')
@@ -165,7 +169,8 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
     if (restoreRef.current) return;
     restoreRef.current = true;
 
-    const saved = partner ? null : usePebbleStore.getState().reportFilters;
+    const saved = (preferenceScope === undefined ? usePebbleStore.getState().reportFilters
+      : readPartnerChoice('reports', preferenceScope)) as (Partial<ReportFilterPrefs> & { accountIds?: string[]; categoryIds?: string[] }) | null;
     if (saved) {
       // typeSelection is the source of truth: the explicit set of shown types,
       // where an empty list means nothing is selected. Older prefs carry
@@ -178,14 +183,15 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
         : Array.isArray(saved.reportTypes) ? (onlyKinds(saved.reportTypes).length === 1 ? onlyKinds(saved.reportTypes) : ['expense', 'income'])
         : [saved.reportType === 'income' ? 'income' : 'expense'],
       );
+      if (partner) for (const kind of restoredTypes) if (!allowedTypes.includes(kind)) restoredTypes.delete(kind);
       setSelectedTypes(restoredTypes);
-      setPeriodGroup(saved.periodGroup);
-      setSubYear(saved.subYear);
-      setSubPeriod(saved.subPeriod);
-      setCategoryGroup(saved.categoryGroup);
-      setSortField(saved.sortField);
-      setSortDir(saved.sortDir);
-      setFiltersExpanded(saved.filtersExpanded);
+      if (saved.periodGroup && ['month', 'quarter', 'year', 'all', 'last3', 'last6', 'last12', 'custom'].includes(saved.periodGroup)) setPeriodGroup(saved.periodGroup);
+      if (typeof saved.subYear === 'string') setSubYear(saved.subYear);
+      if (typeof saved.subPeriod === 'string') setSubPeriod(saved.subPeriod);
+      if (saved.categoryGroup === 'category' || saved.categoryGroup === 'none') setCategoryGroup(saved.categoryGroup);
+      if (saved.sortField === 'date' || saved.sortField === 'amount') setSortField(saved.sortField);
+      if (saved.sortDir === 'asc' || saved.sortDir === 'desc') setSortDir(saved.sortDir);
+      setFiltersExpanded(saved.filtersExpanded === true);
       // === true: prefs saved before these existed have neither field.
       setAccountsExpanded(saved.accountsExpanded === true);
       setCategoriesExpanded(saved.categoriesExpanded === true);
@@ -194,14 +200,21 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       setGroupSortExpanded(saved.groupSortExpanded === true);
       setFindExpanded(saved.findExpanded === true);
       setChartHidden(saved.chartHidden === true);
-      setGroupsExpanded(saved.groupsExpanded);
+      setGroupsExpanded(saved.groupsExpanded === true);
       // Validated, not trusted: localStorage can hold anything, and prefs
       // written before custom ranges existed have neither field.
       setCustomStart(sanitizeYmd(saved.customStart));
       setCustomEnd(sanitizeYmd(saved.customEnd));
-      // Category selection is not persisted, so it has to follow the restored
-      // types rather than the all-categories default the state was seeded with.
-      setSelectedCategories(new Set(catsForTypes(restoredTypes)));
+      const allowedCategories = catsForTypes(restoredTypes);
+      const savedCategories = partner && Array.isArray(saved.categoryIds) ? saved.categoryIds : null;
+      const restoredCategories = savedCategories
+        ? allowedCategories.filter(name => savedCategories.includes(categoryIds.get(name) ?? ''))
+        : allowedCategories;
+      setSelectedCategories(new Set(restoredCategories.length || !savedCategories?.length ? restoredCategories : allowedCategories));
+      if (partner && Array.isArray(saved.accountIds)) {
+        const ids = new Set(saved.accountIds);
+        setSelectedAccounts(new Set(accounts.filter(account => ids.has(account.id)).map(account => account.id)));
+      }
     } else {
       // First visit on this device: scope the "which year" filter to the
       // current year. subPeriod is NOT seeded here - it stays at the static
@@ -218,8 +231,8 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
   // Write back on every change, but only after the restore pass - otherwise the
   // static seed values would overwrite the stored ones before they were read.
   useEffect(() => {
-    if (!restored || partner) return;
-    usePebbleStore.getState().setReportFilters({
+    if (!restored) return;
+    const prefs: ReportFilterPrefs = {
       // The legacy single type is still written so an older build keeps working.
       reportType: selectedTypes.size === 1 ? Array.from(selectedTypes)[0] : 'expense',
       typeSelection: Array.from(selectedTypes),
@@ -227,8 +240,16 @@ export function ReportsClient({ transactions, categories, budgets, accounts }: R
       filtersExpanded, groupsExpanded, customStart, customEnd,
       accountsExpanded, categoriesExpanded, periodExpanded, groupSortExpanded, findExpanded, typesExpanded,
       chartHidden,
+    };
+    if (preferenceScope === undefined) usePebbleStore.getState().setReportFilters(prefs);
+    else writePartnerChoice('reports', preferenceScope, {
+      ...prefs, accountIds: Array.from(selectedAccounts),
+      categoryIds: selectedCategories.size === availableCats.length ? undefined
+        : [...selectedCategories].map(name => categoryIds.get(name)).filter(Boolean),
     });
-  }, [partner, restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
+    // The IDs are derived from the current authorized categories.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferenceScope, selectedAccounts, selectedCategories, categories, restored, selectedTypes, periodGroup, subYear, subPeriod, categoryGroup, sortField, sortDir,
       filtersExpanded, groupsExpanded, customStart, customEnd, accountsExpanded, categoriesExpanded,
       periodExpanded, groupSortExpanded, findExpanded, typesExpanded, chartHidden]);
 

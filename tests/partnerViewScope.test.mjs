@@ -12,6 +12,8 @@ const stub = {
 
 const entry = `
   export * from './src/lib/partnerPaths';
+  export * from './src/lib/partnerCensorship';
+  export * from './src/lib/partnerPreferences';
   export { getOwnWorkspaceUser } from './src/lib/partnerView.server';
   export { withSessionUser } from './src/lib/actions/withSessionUser';
   export { canSeePartnerBalances } from './src/lib/partner';
@@ -107,5 +109,37 @@ test('shared balances include individual adjustments only when all inputs are au
     const restricted = { ...permissions, [key]: false };
     assert.equal(scope.canSeePartnerBalances(restricted), false);
     assert.deepEqual(scope.partnerBalanceAdjustments({ ...data, permissions: restricted }), []);
+  }
+});
+
+test('partner word filters support literal phrases and never expose private settings as permissions', () => {
+  const words = scope.normalizeCensoredWords(['  Card Number ', 'CARD NUMBER', '汉字', 'x+y?']);
+  assert.deepEqual(words, ['Card Number', '汉字', 'x+y?']);
+  assert.equal(scope.normalizeCensoredWords(['more\nthan one line']), null);
+  assert.equal(scope.normalizeCensoredWords(['x'.repeat(101)]), null);
+  const redact = scope.redactPartnerText(words);
+  assert.equal(redact('card NUMBER, 汉字 and X+Y?'), '***, *** and ***');
+  assert.equal(redact('xxy'), 'xxy');
+  assert.deepEqual(scope.publicPartnerPermissions({ expenses: true, censoredWords: words, censorshipRevision: 'private' }, ['expenses']), { expenses: true });
+});
+
+test('partner preferences separate the main view, viewers, and pairings', () => {
+  const values = new Map();
+  const previousWindow = globalThis.window;
+  globalThis.window = { localStorage: {
+    getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value),
+  } };
+  try {
+    scope.writeWorkspacePreference(scope.workspacePreferenceKey('reports', undefined), 'main');
+    scope.writePartnerChoice('reports', 'viewer:pair-one', { periodGroup: 'last6' });
+    scope.writePartnerChoice('reports', 'viewer:pair-two', { periodGroup: 'all' });
+    scope.writePartnerChoice('reports', null, { periodGroup: 'custom' });
+    assert.equal(scope.readWorkspacePreference('reports'), 'main');
+    assert.deepEqual(scope.readPartnerChoice('reports', 'viewer:pair-one'), { periodGroup: 'last6' });
+    assert.deepEqual(scope.readPartnerChoice('reports', 'viewer:pair-two'), { periodGroup: 'all' });
+    assert.equal(scope.readPartnerChoice('reports', 'another-viewer:pair-one'), null);
+    assert.equal(scope.readPartnerChoice('reports', null), null);
+  } finally {
+    globalThis.window = previousWindow;
   }
 });

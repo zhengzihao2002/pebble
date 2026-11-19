@@ -1,6 +1,7 @@
 'use client';
 import { canSeePartnerBalances } from '@/lib/partner';
 import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
+import { readWorkspacePreference, workspacePreferenceKey, writeWorkspacePreference } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
@@ -31,12 +32,6 @@ export type DayPoint = AccountDayPoint;
 // so it lives in this browser only; storage that throws or is empty falls
 // back to the 6M default.
 const RANGE_KEY = 'pebble-accounts-range';
-const readRange = (): Range | null => {
-  try {
-    const v = window.localStorage.getItem(RANGE_KEY);
-    return isRange(v) ? v : null;
-  } catch { return null; }
-};
 const noSubscribe = () => () => {};
 const onStorage = (cb: () => void) => {
   window.addEventListener('storage', cb);
@@ -62,7 +57,11 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
   const { d, t, locale } = useTranslation();
   // The server and the hydrating render see no stored range (6M); the
   // stored one applies right after, without a render-time storage read.
-  const storedRange = useSyncExternalStore(onStorage, readRange, () => null);
+  const rangeKey = workspacePreferenceKey(RANGE_KEY, partner?.preferenceScope);
+  const storedRange = useSyncExternalStore(onStorage, () => {
+    const value = readWorkspacePreference(rangeKey);
+    return isRange(value) ? value : null;
+  }, () => null);
   const [picked, setPicked] = useState<Range | null>(null);
   const range: Range = picked ?? storedRange ?? '6m';
   // The credit card being paid off, if any.
@@ -83,8 +82,8 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
 
   const pickRange = useCallback((r: Range) => {
     setPicked(r);
-    try { window.localStorage.setItem(RANGE_KEY, r); } catch { /* not remembered, still applied */ }
-  }, []);
+    writeWorkspacePreference(rangeKey, r);
+  }, [rangeKey]);
 
   // The Transactions page's own ledger walk, oldest first, with each record's date.
   const chrono = useMemo(() => {

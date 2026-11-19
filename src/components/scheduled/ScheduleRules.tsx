@@ -1,8 +1,8 @@
 'use client';
+import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, Ghost, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
@@ -52,7 +52,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
   const partner = usePartnerView();
   const headingId = ghost ? 'pb-sched-ghost-rules-title' : 'pb-sched-rules-title';
   const x = d.ux.scheduled;
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useStoredChoice<Filter>('pebble-scheduled-filter', ['all', 'active', 'paused', 'finished'], 'all', false);
 
   const stateOf = (r: RecurringRule): Exclude<Filter, 'all'> => (isDone(r) ? 'finished' : r.status === 'paused' ? 'paused' : 'active');
   const counts = { all: rules.length, active: 0, paused: 0, finished: 0 };
@@ -261,7 +261,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
           >
             {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
           </button>}
-          {(!partner || partner.data.permissions.editScheduled) && <button
+          {(!partner || (partner.data.permissions.editScheduled && !partner.data.scheduled.find(row => row.id === rule.id)?.titleCensored)) && <button
             type="button" onClick={() => partner ? partner.openEditor({ kind: 'scheduleEdit', id: rule.id, name: title }) : onEdit(rule)}
             className="icon-btn pb-sched-act"
             aria-label={t(d.scheduled.editAria, { description: title })}

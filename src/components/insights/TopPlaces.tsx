@@ -1,4 +1,5 @@
 'use client';
+import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useState } from 'react';
@@ -49,7 +50,7 @@ interface TopPlacesProps {
 export function TopPlaces({ transactions, today, categoryMeta = {}, onOpen }: TopPlacesProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
-  const [range, setRange] = useState<Range>('month');
+  const [range, setRange] = useStoredChoice<Range>('pebble-insights-places-range', ['month', 'quarter'], 'month', false);
   const [open, setOpen] = useState<string | null>(null);
 
   const control = (

@@ -8,6 +8,7 @@ import type { PartnerEditor } from './PartnerCreateDialog';
 
 export interface PartnerView {
   data: PartnerWorkspaceData;
+  preferenceScope: string | null;
   openEditor: (editor: PartnerEditor) => void;
   openTransaction: (transaction: LedgerRecord, entry?: StatementEntry) => void;
 }
@@ -15,7 +16,8 @@ export interface PartnerView {
 export const PartnerViewContext = createContext<PartnerView | null>(null);
 export const usePartnerView = () => useContext(PartnerViewContext);
 
-type PartnerWorkspaceControls = Omit<PartnerView, 'data'> & {
+type PartnerWorkspaceControls = Omit<PartnerView, 'data' | 'preferenceScope'> & {
+  viewerId?: string;
   register: (pathname: string, data: PartnerWorkspaceData) => void;
 };
 
@@ -25,7 +27,7 @@ export const PartnerWorkspaceControlsContext = createContext<PartnerWorkspaceCon
  * Shell dialogs receive the same snapshot once that segment is active. */
 export function PartnerWorkspaceScope({ data, pathname, children }: { data: PartnerWorkspaceData; pathname: string; children: ReactNode }) {
   const controls = useContext(PartnerWorkspaceControlsContext);
-  const value = useMemo(() => controls ? { data, openEditor: controls.openEditor, openTransaction: controls.openTransaction } : null, [controls, data]);
+  const value = useMemo(() => controls ? { data, preferenceScope: controls.viewerId ? controls.viewerId + ':' + data.pairId : null, openEditor: controls.openEditor, openTransaction: controls.openTransaction } : null, [controls, data]);
   useLayoutEffect(() => { controls?.register(pathname, data); }, [controls, pathname, data]);
   return <PartnerViewContext.Provider value={value}>{children}</PartnerViewContext.Provider>;
 }

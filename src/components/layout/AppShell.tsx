@@ -175,11 +175,11 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   const [partnerTransaction, setPartnerTransaction] = useState<{ txn: LedgerRecord; entry?: StatementEntry } | null>(null);
   const openPartnerTransaction = useCallback((txn: LedgerRecord, entry?: StatementEntry) => setPartnerTransaction({ txn, entry }), []);
   const partnerControls = useMemo(() => ({
-    register: registerPartnerWorkspace, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction,
-  }), [registerPartnerWorkspace, openPartnerTransaction]);
+    viewerId, register: registerPartnerWorkspace, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction,
+  }), [viewerId, registerPartnerWorkspace, openPartnerTransaction]);
   const partnerContext = useMemo(() => partnerView && partnerData
-    ? { data: partnerData, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction }
-    : null, [partnerView, partnerData, openPartnerTransaction]);
+    ? { data: partnerData, preferenceScope: viewerId ? viewerId + ':' + partnerData.pairId : null, openEditor: setPartnerEditor, openTransaction: openPartnerTransaction }
+    : null, [partnerView, viewerId, partnerData, openPartnerTransaction]);
   const selectedPartnerRecord = partnerTransaction?.txn;
   const partnerRow = partnerData?.transactions.find(row => row.id === selectedPartnerRecord?.id && row.kind === selectedPartnerRecord.type);
   const partnerAdjustment = selectedPartnerRecord?.type === 'adjustment'

@@ -1,6 +1,7 @@
 'use client';
 import { canSeePartnerBalances } from '@/lib/partner';
 import { PartnerCensored, PartnerCensoredCard } from '@/components/partner/PartnerCensored';
+import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -67,6 +68,7 @@ export function TransactionsClient({
   transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
   const partner = usePartnerView();
+  const preferenceScope = partner?.preferenceScope;
   const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
@@ -117,6 +119,28 @@ export function TransactionsClient({
   // date rather than the server's, and stays correct past midnight.
   const monthOptions = useMemo(() => getLastNMonths(new Date(), 13), []);
   const selectedMonthInfo = monthOptions[selectedMonthIndex];
+  const [restoredSelection, setRestoredSelection] = useState(false);
+  useEffect(() => {
+    if (!partner) return;
+    const saved = readPartnerChoice('transactions', partner.preferenceScope) as { month?: string; type?: string; account?: string } | null;
+    if (saved) {
+      const index = monthOptions.findIndex(month => monthBounds(month.year, month.month).prefix === saved.month);
+      setSelectedMonthIndex(Math.max(0, index));
+      if (saved.type === 'expense' && partner.data.permissions.expenses || saved.type === 'income' && partner.data.permissions.income
+        || saved.type === 'adjustment' && showBalances) setTypeFilter(saved.type);
+      if (saved.account && ordinaryAccounts.some(account => account.id === saved.account)) setAccountFilter(saved.account);
+    }
+    setRestoredSelection(true);
+    // Restore the last selection only on this mounted visit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!restoredSelection || preferenceScope === undefined) return;
+    writePartnerChoice('transactions', preferenceScope, {
+      month: selectedMonthIndex ? monthBounds(selectedMonthInfo.year, selectedMonthInfo.month).prefix : null,
+      type: typeFilter, account: accountFilter,
+    });
+  }, [preferenceScope, restoredSelection, selectedMonthIndex, selectedMonthInfo, typeFilter, accountFilter]);
 
   const recordsById = useMemo(() => {
     const map = new Map<string, LedgerRecord>();

@@ -14,13 +14,16 @@ import {
 import { isClientId } from '@/lib/offline/clientId';
 import { isYmd } from '@/lib/recurring/occurrences';
 import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
-import { composeDescription } from '@/lib/transactionDescription';
+import { composeDescription, parseDescription } from '@/lib/transactionDescription';
+import { normalizeCensoredWords, publicPartnerPermissions, redactPartnerText } from '@/lib/partnerCensorship';
 
 import { PARTNER_VIEW_COOKIE } from '@/lib/partnerPaths';
 import { partnerViewPair } from '@/lib/partnerView.server';
 const INVITE_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const digest = (code: string) => createHash('sha256').update(code).digest('hex');
+type StoredPartnerPermissions = PartnerPermissions & { censoredWords?: string[]; censorshipRevision?: string };
+const censorWords = (stored: unknown) => normalizeCensoredWords((stored as StoredPartnerPermissions | null)?.censoredWords) ?? [];
 const lifecycleLock = () => neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.partner-mode.v1'))`;
 
 type FailureReason = 'unavailable' | 'inboxUnavailable' | 'databasePermission' | 'unexpected' | 'invalid' | 'invite' | 'paired' | 'noPair' | 'denied' | 'settingsOwnOnly' | 'budgetUnavailable' | 'pendingPermissions';
@@ -63,7 +66,8 @@ async function readSettings(userId: string) {
     partnerConfigured: row.partnerConfigured,
     partnerName: row.partnerName,
     inviteExpires: row.inviteExpires ? new Date(row.inviteExpires).toISOString() : null,
-    permissions: row.permissions ?? {},
+    permissions: publicPartnerPermissions(row.permissions, PARTNER_PERMISSIONS),
+    censoredWords: censorWords(row.permissions),
     sharedCategories: row.sharedCategories ?? [],
     categories: categories as SharingCategory[],
     viewingPartner: viewing !== null,
@@ -123,16 +127,22 @@ async function acceptInvite(userId: string, input: string) {
   });
 }
 
-async function savePermissions(userId: string, pairId: string, permitted: PartnerPermissions, categoryIds: string[]) {
+async function savePermissions(userId: string, pairId: string, permitted: PartnerPermissions, categoryIds: string[], censoredWords?: string[]) {
   if (await partnerViewPair(userId)) return failure('settingsOwnOnly');
   if (!validId(pairId) || !permitted || typeof permitted !== 'object' || !Array.isArray(categoryIds)
     || categoryIds.some(id => typeof id !== 'string' || id.includes('\0'))) return failure('invalid');
-  const permissions: PartnerPermissions = {};
+  const words = censoredWords === undefined ? undefined : normalizeCensoredWords(censoredWords);
+  if (words === null) return failure('invalid');
+  const permissions: StoredPartnerPermissions = {};
+  if (words !== undefined) {
+    permissions.censoredWords = words;
+    permissions.censorshipRevision = randomUUID();
+  }
   for (const permission of PARTNER_PERMISSIONS) permissions[permission] = permitted[permission] === true;
   return run(async () => {
     const [, rows] = await neonSql.transaction([
       lifecycleLock(),
-      neonSql`UPDATE public.pebble_partner_member SET permissions = ${JSON.stringify(permissions)}::jsonb,
+      neonSql`UPDATE public.pebble_partner_member SET permissions = permissions || ${JSON.stringify(permissions)}::jsonb,
           configured_at = coalesce(configured_at, now()),
           shared_categories = ARRAY(
             SELECT id FROM public.category WHERE user_id = ${userId}::uuid AND id = ANY(${categoryIds}::text[])
@@ -189,9 +199,10 @@ function queryWorkspaceAccess(userId: string, pairId: string) {
 }
 
 function workspaceAccess(row: Record<string, unknown>) {
-  return {
-    name: row.name as string, permissions: row.permissions as PartnerPermissions,
-    accessVersion: digest(JSON.stringify([row.pairId, row.permissions, row.categories])),
+  const permissions = publicPartnerPermissions(row.permissions, PARTNER_PERMISSIONS);
+  const revision = (row.permissions as StoredPartnerPermissions | null)?.censorshipRevision;
+  return { name: row.name as string, permissions,
+    accessVersion: digest(JSON.stringify([row.pairId, permissions, row.categories, revision])),
   };
 }
 
@@ -357,17 +368,32 @@ async function readWorkspace(userId: string) {
   ], { isolationLevel: 'RepeatableRead', readOnly: true });
   if (!people.length) return failure('noPair');
   const sharedBudget = budgetSummary[0];
+  const redact = redactPartnerText(censorWords(people[0].permissions));
   const data: PartnerWorkspaceData = { ...workspaceAccess(people[0]), pairId: people[0].pairId,
-    transactions: transactions as SharedTransaction[], accounts: accounts as PartnerWorkspaceData['accounts'],
-    goals: goals as PartnerWorkspaceData['goals'], entryAccounts: entryAccounts as PartnerWorkspaceData['entryAccounts'],
+    transactions: (transactions as SharedTransaction[]).map(row => {
+      const title = redact(row.title);
+      const notes = row.notes === null ? null : redact(row.notes);
+      const titleCensored = title !== row.title;
+      const notesCensored = notes !== row.notes;
+      return titleCensored || notesCensored ? { ...row, title, notes, titleCensored, notesCensored } : row;
+    }),
+    accounts: accounts as PartnerWorkspaceData['accounts'],
+    goals: (goals as PartnerWorkspaceData['goals']).map(row => {
+      const name = redact(row.name);
+      return name !== row.name ? { ...row, name, nameCensored: true } : row;
+    }), entryAccounts: entryAccounts as PartnerWorkspaceData['entryAccounts'],
     entryCategories: entryCategories as SharingCategory[], budgetCategories: budgetCategories as SharingCategory[],
     categories: categories as PartnerWorkspaceData['categories'],
-    adjustments: adjustments as PartnerWorkspaceData['adjustments'],
+    adjustments: (adjustments as PartnerWorkspaceData['adjustments']).map(row => ({ ...row, description: redact(row.description) })),
     budgetToday: sharedBudget?.today ?? null,
     censoredBudget: sharedBudget ? { amount: sharedBudget.amount, budgetedSpending: sharedBudget.budgetedSpending,
       unbudgetedSpending: sharedBudget.unbudgetedSpending } : null,
     canEstimateBudgetIncome: sharedBudget?.canEstimateBudgetIncome === true,
-    budgets: budgets as PartnerWorkspaceData['budgets'], scheduled: scheduled as PartnerWorkspaceData['scheduled'],
+    budgets: budgets as PartnerWorkspaceData['budgets'],
+    scheduled: (scheduled as PartnerWorkspaceData['scheduled']).map(row => {
+      const title = redact(row.title);
+      return title !== row.title ? { ...row, title, titleCensored: true } : row;
+    }),
     entryIncome: (people[0].permissions.addTransactions === true || people[0].permissions.addScheduled === true) && people[0].permissions.accounts === true
       ? INCOME_SHARING_KEYS.filter(key => people[0].categories.includes(key)).map(key => key.slice(7)) : [],
   };
@@ -380,13 +406,13 @@ async function changeSharedTransaction(userId: string, id: string, type: SharedT
   if (typeof id !== 'string' || !id || id.includes('\0') || (type !== 'expense' && type !== 'income')
     || !change || !['tag', 'edit'].includes(change.kind)) return failure('invalid');
   const tag = change.kind === 'tag' && typeof change.tag === 'string' ? change.tag.trim() : '';
-  const title = change.kind === 'edit' && typeof change.title === 'string' ? change.title.trim() : '';
+  const title = change.kind === 'edit' && typeof change.title === 'string' ? change.title.trim() : undefined;
   const date = change.kind === 'edit' ? change.date : null;
   const notes = change.kind === 'edit' ? change.notes : undefined;
   if (change.kind === 'tag' && (type !== 'expense' || typeof change.tag !== 'string' || tag.length > MAX_TAG_NAME_LENGTH || tag.includes('\0'))) {
     return failure('invalid');
   }
-  if (change.kind === 'edit' && (!title || title.length > 300 || /[\0\r\n]/.test(title)
+  if (change.kind === 'edit' && ((change.title !== undefined && (!title || title.length > 300 || /[\0\r\n]/.test(title)))
     || typeof date !== 'string' || !isYmd(date)
     || (notes !== undefined && (typeof notes !== 'string' || notes.length > 4000 || notes.includes('\0'))))) {
     return failure('invalid');
@@ -402,25 +428,37 @@ async function changeSharedTransaction(userId: string, id: string, type: SharedT
       ${type === 'expense' ? 'AND tx.credit_card_payoff IS NULL' : ''}`;
     const source = 'public.pebble_partner_scope s, public.account a';
     const values: (string | null)[] = [userId, pairId, id, type === 'expense' ? 'expenses' : 'income', permission];
+    const scope = `s.viewer_id = $1::uuid AND s.pair_id = $2::uuid AND tx.user_id = s.owner_id AND tx.id = $3
+        AND s.permissions->($4::text) = 'true'::jsonb AND s.permissions->($5::text) = 'true'::jsonb
+        AND a.user_id = tx.user_id AND a.id = tx.account_id AND NOT a.is_ghost AND ${categoryScope}
+        ${mutable}`;
     let command: string;
+    let unchanged = '';
     if (change.kind === 'tag') {
       command = `UPDATE ${table} tx SET tag = $6 FROM ${source}`;
       values.push(tag);
     } else {
       command = `UPDATE ${table} tx SET transaction_date = $6::date,
-        description = $7::text || CASE
+        description = coalesce($7::text, split_part(tx.description,chr(10),1)) || CASE
           WHEN $8::text IS NOT NULL THEN CASE WHEN $8 = '' THEN '' ELSE chr(10) || $8 END
-          WHEN strpos(tx.description, chr(10)) > 0 THEN substr(tx.description, strpos(tx.description, chr(10)))
+          WHEN strpos(tx.description,chr(10)) > 0 THEN substr(tx.description, strpos(tx.description,chr(10)))
           ELSE '' END
         FROM ${source}`;
-      values.push(date, title, notes ?? null);
+      values.push(date, title ?? null, notes ?? null);
+      if (title !== undefined || notes !== undefined) {
+        const [current] = await neonSql.query(`SELECT tx.description, s.permissions FROM ${table} tx, ${source} WHERE ${scope}`, values.slice(0, 5));
+        if (!current) return failure('denied');
+        const original = parseDescription(current.description);
+        const redact = redactPartnerText(censorWords(current.permissions));
+        if ((title !== undefined && redact(original.title) !== original.title)
+          || (notes !== undefined && redact(original.description) !== original.description)) return failure('denied');
+        // Recheck against changes made to the record or the sharing settings
+        // since this read, including a word added just before the save.
+        unchanged = 'AND tx.description = $9 AND s.permissions = $10::jsonb';
+        values.push(current.description, JSON.stringify(current.permissions));
+      }
     }
-    const statement = neonSql.query(`${command}
-      WHERE s.viewer_id = $1::uuid AND s.pair_id = $2::uuid AND tx.user_id = s.owner_id AND tx.id = $3
-        AND s.permissions->($4::text) = 'true'::jsonb AND s.permissions->($5::text) = 'true'::jsonb
-        AND a.user_id = tx.user_id AND a.id = tx.account_id AND NOT a.is_ghost AND ${categoryScope}
-        ${mutable}
-      RETURNING tx.id`, values);
+    const statement = neonSql.query(`${command} WHERE ${scope} ${unchanged} RETURNING tx.id`, values);
     const [, , , rows] = await neonSql.transaction([
       lifecycleLock(),
       neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.user-write'), hashtext(owner_id::text))
@@ -495,16 +533,26 @@ async function createSharedRecord(userId: string, input: PartnerCreation) {
             AND i.transaction_date=${input.date}::date AND i.gross_amount=${gross / 100} AND i.net_amount=${input.amount / 100}`;
       }
     } else if (input.kind === 'goal') {
-      if (!(input.edit ? validTextId(input.id) : validId(input.id)) || !validName(input.name, 80)
+      if (!(input.edit ? validTextId(input.id) : validId(input.id))
+        || (!input.edit || input.name !== undefined) && !validName(input.name, 80)
         || (!input.edit || input.target !== undefined) && !validCents(input.target ?? 0)
         || typeof input.date !== 'string' || !isYmd(input.date)) return failure('invalid');
-      const name = input.name.trim();
+      const name = input.name?.trim() ?? null;
       const target = input.target === undefined ? null : input.target / 100;
+      const [current] = input.edit && name !== null ? await neonSql`SELECT g.name,s.permissions
+        FROM public.pebble_partner_scope s JOIN public.goal g ON g.user_id=s.owner_id
+        WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND g.id=${input.id}
+          AND s.permissions @> '{"personalGoals":true,"editPersonalGoals":true}'::jsonb` : [];
+      if (input.edit && name !== null && (!current || redactPartnerText(censorWords(current.permissions))(current.name) !== current.name)) {
+        return failure('denied');
+      }
       statement = input.edit ? neonSql`UPDATE public.goal g
-        SET name=${name},target_amount=coalesce(${target}::numeric,g.target_amount),target_date=${input.date}
+        SET name=coalesce(${name}::text,g.name),target_amount=coalesce(${target}::numeric,g.target_amount),target_date=${input.date}
         FROM public.pebble_partner_scope s
         WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND g.user_id=s.owner_id
-          AND g.id=${input.id} AND s.permissions @> '{"personalGoals":true,"editPersonalGoals":true}'::jsonb RETURNING g.id`
+          AND g.id=${input.id} AND s.permissions @> '{"personalGoals":true,"editPersonalGoals":true}'::jsonb
+          AND (${name}::text IS NULL OR (g.name=${current?.name ?? null} AND s.permissions=${JSON.stringify(current?.permissions ?? null)}::jsonb))
+        RETURNING g.id`
         : neonSql`WITH allowed AS (
           SELECT owner_id FROM public.pebble_partner_scope WHERE viewer_id=${userId}::uuid AND pair_id=${pairId}::uuid
             AND permissions @> '{"addPersonalGoals":true}'::jsonb
@@ -605,10 +653,21 @@ async function createSharedRecord(userId: string, input: PartnerCreation) {
           AND r.frequency=${input.frequency} AND r.start_date=${input.date}::date`;
     } else if (input.kind === 'scheduleEdit') {
       if (!validTextId(input.id) || !validName(input.title, 300)) return failure('invalid');
+      const [current] = await neonSql`SELECT r.description, s.permissions
+        FROM public.pebble_partner_scope s JOIN public.recurring_rule r ON r.user_id=s.owner_id
+        JOIN public.account a ON a.id=r.account_id AND a.user_id=r.user_id AND NOT a.is_ghost
+        WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND r.id=${input.id}
+          AND r.status <> 'deleted' AND s.permissions @> '{"scheduled":true,"editScheduled":true}'::jsonb
+          AND ((r.kind='expense' AND EXISTS (SELECT 1 FROM public.category c WHERE c.user_id=s.owner_id AND c.name=r.category
+            AND c.id=ANY(s.shared_categories))) OR (r.kind='income' AND ('income:' || r.category)=ANY(s.shared_categories)))`;
+      if (!current) return failure('denied');
+      const { title } = parseDescription(current.description);
+      if (redactPartnerText(censorWords(current.permissions))(title) !== title) return failure('denied');
       statement = neonSql`UPDATE public.recurring_rule r SET description=${input.title.trim()}::text || CASE
         WHEN strpos(r.description,chr(10))>0 THEN substr(r.description,strpos(r.description,chr(10))) ELSE '' END,updated_at=now()
         FROM public.pebble_partner_scope s,public.account a
         WHERE s.viewer_id=${userId}::uuid AND s.pair_id=${pairId}::uuid AND r.user_id=s.owner_id AND r.id=${input.id}
+          AND r.description=${current.description} AND s.permissions=${JSON.stringify(current.permissions)}::jsonb
           AND r.status <> 'deleted' AND a.id=r.account_id AND a.user_id=r.user_id AND NOT a.is_ghost
           AND s.permissions @> '{"scheduled":true,"editScheduled":true}'::jsonb
           AND ((r.kind='expense' AND EXISTS (SELECT 1 FROM public.category c WHERE c.user_id=s.owner_id AND c.name=r.category

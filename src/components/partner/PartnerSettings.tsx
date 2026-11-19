@@ -11,6 +11,7 @@ import {
 } from '@/lib/actions/partner';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { normalizeCensoredWords } from '@/lib/partnerCensorship';
 import { INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, PARTNER_VIEW_PERMISSIONS, PARTNER_ADD_PERMISSIONS, PARTNER_EDIT_PERMISSIONS, type PartnerPermissions, type PartnerSettingsData } from '@/lib/partner';
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
 import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
@@ -125,9 +126,9 @@ export function PartnerSettings() {
             </button>
             <button type="button" className="pill" disabled={busy} onClick={() => setDisconnect(true)}>{x.unpair}</button>
           </div>
-          <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories])} settings={settings}
-            busy={busy} save={async (permissions, categoryIds) => {
-              if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds))) {
+          <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories, settings.censoredWords])} settings={settings}
+            busy={busy} save={async (permissions, categoryIds, words) => {
+              if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds, words))) {
                 setStatus(x.saved);
                 await reload(true);
               }
@@ -176,12 +177,16 @@ export function PartnerSettings() {
 function SharingPermissions({ settings, busy, save }: {
   settings: PartnerSettingsData;
   busy: boolean;
-  save: (permissions: PartnerPermissions, categoryIds: string[]) => Promise<void>;
+  save: (permissions: PartnerPermissions, categoryIds: string[], words?: string[]) => Promise<void>;
 }) {
   const { d } = useTranslation();
   const x = d.partner;
   const [permissions, setPermissions] = useState(settings.permissions);
   const [categoryIds, setCategoryIds] = useState(() => new Set(settings.sharedCategories));
+  const savedWords = settings.censoredWords ?? [];
+  const [wordsDraft, setWordsDraft] = useState(() => savedWords.join('\n'));
+  const words = normalizeCensoredWords(wordsDraft.split(/\r?\n/).map(line => line.trim()).filter(Boolean));
+  const wordsChanged = words !== null && JSON.stringify(words) !== JSON.stringify(savedWords);
   const [section, setSection] = useState<'view' | 'add' | 'edit'>('view');
   const groups = {
     view: { label: x.see, keys: PARTNER_VIEW_PERMISSIONS },
@@ -189,11 +194,11 @@ function SharingPermissions({ settings, busy, save }: {
     edit: { label: x.act, keys: PARTNER_EDIT_PERMISSIONS },
   };
   const categories = [...settings.categories, ...INCOME_SHARING_KEYS.map(id => ({ id, name: categoryLabel(d, id.slice(7)) }))];
-  const dirty = PARTNER_PERMISSIONS.some(key => Boolean(permissions[key]) !== Boolean(settings.permissions[key]))
+  const dirty = wordsChanged || PARTNER_PERMISSIONS.some(key => Boolean(permissions[key]) !== Boolean(settings.permissions[key]))
     || categoryIds.size !== settings.sharedCategories.length || settings.sharedCategories.some(id => !categoryIds.has(id));
   const locked = busy || settings.viewingPartner;
   return (
-    <form className="pb-partner-permissions" onSubmit={event => { event.preventDefault(); if (!locked) void save(permissions, [...categoryIds]); }}>
+    <form className="pb-partner-permissions" onSubmit={event => { event.preventDefault(); if (!locked && words) void save(permissions, [...categoryIds], wordsChanged ? words : undefined); }}>
       <SectionHeader title={x.privacy} subtitle={x.privacyHelp} icon={Shield} />
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
       <div className="pb-partner-permission-panel">
@@ -233,7 +238,16 @@ function SharingPermissions({ settings, busy, save }: {
           </label>)}
         </div>
       </fieldset>
-      <button type="submit" className="pill active pb-partner-save" disabled={(settings.configured && !dirty) || locked}>
+      <fieldset id={SETTING_TARGETS.partnerCensoredWords} className="pb-partner-fieldset pb-settings-target" disabled={locked}>
+        <legend>{x.censoredWords}</legend>
+        <p className="pb-partner-note" id="pb-partner-censored-words-help">{x.censoredWordsHelp}</p>
+        <textarea className="pb-partner-input pb-partner-censored-words" aria-label={x.censoredWords}
+          aria-describedby={words ? 'pb-partner-censored-words-help' : 'pb-partner-censored-words-help pb-partner-censored-words-error'}
+          aria-invalid={words === null} rows={3} value={wordsDraft} placeholder={x.censoredWordsPlaceholder}
+          spellCheck={false} onChange={event => setWordsDraft(event.target.value)} />
+        {words === null && <p className="pb-partner-error" id="pb-partner-censored-words-error">{x.censoredWordsLimit}</p>}
+      </fieldset>
+      <button type="submit" className="pill active pb-partner-save" disabled={(settings.configured && !dirty) || locked || words === null}>
         {settings.configured ? x.savePermissions : x.confirmPermissions}
       </button>
     </form>

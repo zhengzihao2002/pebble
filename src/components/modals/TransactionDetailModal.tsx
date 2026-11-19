@@ -164,6 +164,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const hidden = sharedRow?.hidden === true;
   const showAmount = !sharedRow || sharedRow.amount !== null;
   const showGross = !sharedRow || sharedRow.grossAmount !== null;
+  const titleCensored = sharedRow?.titleCensored === true;
+  const notesCensored = sharedRow?.notesCensored === true;
   const canReadNotes = !sharedRow || (!hidden && sharedRow.notesVisible);
   const canEdit = !shared || (!hidden && sharedRow?.canEdit);
   const canEditTag = !hidden && sharedRow?.canEditTag;
@@ -401,13 +403,13 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   const handleSave = async () => {
     if (busy || txn.type === 'adjustment') return;
     if (shared) {
-      if (!sharedRow || (mode === 'tag' ? !canEditTag : !canEdit || !title.trim())) return;
+      if (!sharedRow || (mode === 'tag' ? !canEditTag : !canEdit || (!titleCensored && !title.trim()))) return;
       setBusy(true);
       setError(null);
       setErrorKind(undefined);
       const change = mode === 'tag'
         ? { kind: 'tag' as const, tag }
-        : { kind: 'edit' as const, title, date, notes: canReadNotes || replaceNotes ? description : undefined };
+        : { kind: 'edit' as const, title: titleCensored ? undefined : title, date, notes: !notesCensored && (canReadNotes || replaceNotes) ? description : undefined };
       const result = await callAction(() => changeSharedTransactionAction(sharedRow.id, sharedRow.kind, change));
       setBusy(false);
       if (!result.ok) { setError(partnerError(d, result)); return; }
@@ -708,7 +710,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                     </label>
                   ) : <>
                     <label className="pb-span-2" style={labelStyle}>{d.partner.transactionTitle}
-                      <input style={inputStyle} required maxLength={300} value={title} onChange={e => setTitle(e.target.value)} />
+                      <input style={inputStyle} required={!titleCensored} readOnly={titleCensored} maxLength={300} value={title} onChange={e => setTitle(e.target.value)} />
                     </label>
                     <label style={labelStyle}>{d.txnDetail.rowDate}
                       <input style={inputStyle} required type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -718,8 +720,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                     </label>}
                     {replaceNotes && <p className="pb-partner-note pb-span-2">{d.partner.replaceHiddenNotesHint}</p>}
                     {(canReadNotes || replaceNotes) && <label className="pb-span-2" style={labelStyle}>{d.partner.transactionNotes}
-                      <textarea style={inputStyle} maxLength={4000} value={description} onChange={e => setDescription(e.target.value)} />
+                      <textarea style={inputStyle} readOnly={notesCensored} maxLength={4000} value={description} onChange={e => setDescription(e.target.value)} />
                     </label>}
+                    {(titleCensored || notesCensored) && <p className="pb-partner-note pb-span-2">{d.partner.censoredTextReadOnly}</p>}
                   </>}
                 </form>
               )}
@@ -928,7 +931,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                   <button type="button" onClick={() => { setMode('view'); setError(null); }} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.txnDetail.cancel}</button>
                   <button
                     type="submit" form={FORM_ID}
-                    disabled={busy || (shared ? mode === 'edit' && !title.trim() : netExceedsGross || !hasChanges || titleMissing)}
+                    disabled={busy || (shared ? mode === 'edit' && !titleCensored && !title.trim() : netExceedsGross || !hasChanges || titleMissing)}
                     className="btn-primary"
                     style={{ flex: 1, padding: '0.6rem', opacity: busy || netExceedsGross || !hasChanges || titleMissing ? 0.6 : 1 }}
                   >

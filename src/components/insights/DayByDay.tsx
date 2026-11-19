@@ -1,4 +1,5 @@
 'use client';
+import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -54,7 +55,7 @@ export function DayByDay({ transactions, categoryMeta, today, onOpen }: DayByDay
   const coarse = useCoarsePointer();
   const [offset, setOffset] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
-  const [view, setView] = useState<View>('month');
+  const [view, setView] = useStoredChoice<View>('pebble-insights-calendar-view', ['month', 'year'], 'month', false);
   // The day holding the calendar's one Tab stop, once one has been chosen.
   const [focusDay, setFocusDay] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,7 @@
 'use client';
 import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { canSeePartnerBalances } from '@/lib/partner';
+import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -84,6 +85,7 @@ const DEDUCTION_VIEWS = ['rate', 'paycheck'] as const;
  */
 export function AnalysisClient({ transactions, categories, budgets, rules, totalBalance }: AnalysisClientProps) {
   const partner = usePartnerView();
+  const preferenceScope = partner?.preferenceScope;
   const showIncome = !partner || partner.data.permissions.amounts === true && partner.data.permissions.income === true;
   const showSpending = !partner || partner.data.permissions.amounts === true && partner.data.permissions.expenses === true;
   const showCashFlow = showIncome && showSpending;
@@ -119,18 +121,19 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       /* zone unavailable - date-dependent metrics skip */
     }
 
-    const saved = usePebbleStore.getState().analysisPrefs;
-    if (saved && isAnalysisWindowKey(saved.window)) setWindowKey(saved.window);
+    const saved = preferenceScope === undefined ? usePebbleStore.getState().analysisPrefs?.window : readPartnerChoice('analysis-window', preferenceScope);
+    if (isAnalysisWindowKey(saved)) setWindowKey(saved);
 
     // Set LAST: the persist effect is gated on it, so flipping it early would
     // write the static default over the stored preference on first paint.
     setRestored(true);
-  }, []);
+  }, [preferenceScope, timeZoneOverride]);
 
   useEffect(() => {
     if (!restored) return;
-    usePebbleStore.getState().setAnalysisPrefs({ window: windowKey });
-  }, [restored, windowKey]);
+    if (preferenceScope === undefined) usePebbleStore.getState().setAnalysisPrefs({ window: windowKey });
+    else writePartnerChoice('analysis-window', preferenceScope, windowKey);
+  }, [preferenceScope, restored, windowKey]);
 
   const earliest = useMemo(() => earliestDate(transactions), [transactions]);
 

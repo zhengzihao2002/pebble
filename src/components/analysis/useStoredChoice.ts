@@ -1,5 +1,7 @@
 'use client';
 
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { readWorkspacePreference, workspacePreferenceKey, writeWorkspacePreference } from '@/lib/partnerPreferences';
 import { useState, useSyncExternalStore } from 'react';
 
 function noSubscribe(): () => void {
@@ -14,21 +16,21 @@ function noSubscribe(): () => void {
  * mode) just keeps the default. A value that is not one of `allowed` is
  * ignored, so a stale or hand-edited entry cannot break the chart.
  */
-export function useStoredChoice<T extends string>(key: string, allowed: readonly T[], fallback: T): [T, (v: T) => void] {
+export function useStoredChoice<T extends string>(key: string, allowed: readonly T[], fallback: T, rememberMain = true): [T, (v: T) => void] {
+  const scope = usePartnerView()?.preferenceScope;
+  const storageKey = scope === undefined && !rememberMain ? null : workspacePreferenceKey(key, scope);
   const stored = useSyncExternalStore(
     noSubscribe,
     () => {
-      try {
-        const v = window.localStorage.getItem(key);
-        return v !== null && (allowed as readonly string[]).includes(v) ? (v as T) : null;
-      } catch { return null; }
+      const v = readWorkspacePreference(storageKey);
+      return v !== null && (allowed as readonly string[]).includes(v) ? (v as T) : null;
     },
     () => null,
   );
   const [picked, setPicked] = useState<T | null>(null);
   const choose = (v: T) => {
     setPicked(v);
-    try { window.localStorage.setItem(key, v); } catch { /* not remembered */ }
+    writeWorkspacePreference(storageKey, v);
   };
   return [picked ?? stored ?? fallback, choose];
 }

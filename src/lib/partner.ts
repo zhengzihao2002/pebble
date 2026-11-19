@@ -23,6 +23,7 @@ export interface PartnerSettingsData {
   inviteExpires: string | null;
   permissions: PartnerPermissions;
   sharedCategories: string[];
+  censoredWords: string[];
   categories: SharingCategory[];
   viewingPartner: boolean;
 }
@@ -43,6 +44,8 @@ export interface SharedTransaction {
   canEditTag: boolean;
   canEdit: boolean;
   notesVisible: boolean;
+  titleCensored?: boolean;
+  notesCensored?: boolean;
   hidden: boolean;
 }
 export interface PartnerWorkspaceAccess {
@@ -60,10 +63,10 @@ export interface PartnerWorkspaceData extends PartnerWorkspaceAccess {
   censoredBudget: { amount: number; budgetedSpending: number; unbudgetedSpending: number } | null;
   canEstimateBudgetIncome: boolean;
   accounts: { id: string; name: string; kind: 'bank' | 'cash' | 'credit'; status: 'active' | 'hibernated'; editable: boolean }[];
-  goals: { id: string; name: string; target: number | null; current: number | null; date: string; iconKey: string; color: string }[];
+  goals: { id: string; name: string; target: number | null; current: number | null; nameCensored?: boolean; date: string; iconKey: string; color: string }[];
   categories: { id: string; name: string; iconKey: string; color: string; isSystem: boolean; sortOrder: number }[];
   budgets: { id: string; name: string; amount: number }[];
-  scheduled: { id: string; kind: 'expense' | 'income'; title: string; date: string; amount: number | null; frequency: RecurringFrequency; paused: boolean; category: string; accountId: string | null;
+  scheduled: { id: string; kind: 'expense' | 'income'; title: string; titleCensored?: boolean; date: string; amount: number | null; frequency: RecurringFrequency; paused: boolean; category: string; accountId: string | null;
     accountName: string | null; endMode: 'never' | 'after' | 'on'; endCount: number | null; endDate: string | null; materializedThrough: string | null }[];
   entryAccounts: { id: string; name: string }[];
   entryCategories: SharingCategory[];
@@ -72,7 +75,7 @@ export interface PartnerWorkspaceData extends PartnerWorkspaceAccess {
 }
 export type SharedTransactionChange =
   | { kind: 'tag'; tag: string }
-  | { kind: 'edit'; title: string; date: string; notes?: string };
+  | { kind: 'edit'; title?: string; date: string; notes?: string };
 
 type LedgerEntryFields = { id: string; type: 'expense' | 'income'; accountId: string; categoryId: string;
   title: string; date: string; amount: number; gross: number; notes?: string };
@@ -80,7 +83,7 @@ type LedgerEntryFields = { id: string; type: 'expense' | 'income'; accountId: st
 export type PartnerCreation =
   | ({ kind: 'transaction' } & LedgerEntryFields)
   | ({ kind: 'schedule'; frequency: RecurringFrequency } & LedgerEntryFields)
-  | { kind: 'goal'; id: string; name: string; target?: number; date: string; edit?: boolean }
+  | { kind: 'goal'; id: string; name?: string; target?: number; date: string; edit?: boolean }
   | { kind: 'account'; id: string; name: string; accountKind: 'bank' | 'cash'; last4?: string; edit?: boolean }
   | { kind: 'budget'; categoryId: string; target: number; edit?: boolean }
   | { kind: 'scheduleEdit'; id: string; title: string };

@@ -13,7 +13,7 @@ import { partnerError } from './partnerError';
 
 const cents = (value: string) => /^\d{1,9}(\.\d{1,2})?$/.test(value) ? Math.round(Number(value) * 100) : 0;
 
-export type PartnerEditor = { kind: PartnerCreation['kind']; id?: string; categoryId?: string; name?: string; date?: string;
+export type PartnerEditor = { kind: PartnerCreation['kind']; id?: string; categoryId?: string; name?: string; nameCensored?: boolean; date?: string;
   amount?: number | null; accountKind?: 'bank' | 'cash' };
 
 export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
@@ -56,7 +56,7 @@ export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
     retry.current = { fingerprint, id };
     let entry: PartnerCreation;
     if (kind === 'budget') entry = { kind, categoryId: category, target, edit: !!editor.id };
-    else if (kind === 'goal') entry = { kind, id, name: value('title'), date: value('date'), target: rawAmount ? target : undefined, edit: !!editor.id };
+    else if (kind === 'goal') entry = { kind, id, name: editor.nameCensored ? undefined : value('title'), date: value('date'), target: rawAmount ? target : undefined, edit: !!editor.id };
     else if (kind === 'account') entry = { kind, id, name: value('title'), accountKind, last4: value('last4'), edit: !!editor.id };
     else if (kind === 'scheduleEdit') entry = { kind, id, title: value('title') };
     else {
@@ -106,7 +106,8 @@ export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
             {kind === 'budget' && editor.name && <p>{editor.name}</p>}
             {kind !== 'budget' && <label>{kind === 'goal' ? c.goalName : kind === 'account' ? c.accountName : x.transactionTitle}
               <input className="pb-partner-input" name="title" defaultValue={editor.name}
-                maxLength={ledger || kind === 'scheduleEdit' ? 300 : kind === 'account' ? 40 : 80} required disabled={busy} />
+                maxLength={ledger || kind === 'scheduleEdit' ? 300 : kind === 'account' ? 40 : 80}
+                required={!editor.nameCensored} disabled={busy} readOnly={editor.nameCensored} />
             </label>}
             {(ledger || kind === 'goal') && <label>{kind === 'goal' ? c.targetDate : x.transactionDate}
               <input type="date" className="pb-partner-input" name="date" defaultValue={editor.date} required disabled={busy} />

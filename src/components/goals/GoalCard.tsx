@@ -40,7 +40,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const canEdit = !partner || partner.data.permissions.editPersonalGoals === true;
   const edit = () => partner
-    ? partner.openEditor({ kind: 'goal', id: goal.id, name: goal.name, date: goal.date, amount: showAmounts ? goal.target : null })
+    ? partner.openEditor({ kind: 'goal', id: goal.id, name: goal.name, nameCensored: partner.data.goals.find(row => row.id === goal.id)?.nameCensored, date: goal.date, amount: showAmounts ? goal.target : null })
     : setEditing(true);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);

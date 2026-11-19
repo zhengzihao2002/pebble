@@ -4,6 +4,7 @@ import { PageSkeleton } from '@/components/loading/PageSkeleton';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { canSeePartnerBalances } from '@/lib/partner';
 import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
+import { readPartnerChoice, writePartnerChoice } from '@/lib/partnerPreferences';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import type { BalanceAdjustment, Goal, RecurringRule, Transaction } from '@/types';
@@ -62,6 +63,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   const { d, locale } = useTranslation();
   // Strict true: a non-boolean stored by any other build means off.
   const partner = usePartnerView();
+  const preferenceScope = partner?.preferenceScope;
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const showSpending = showAmounts && (!partner || partner.data.permissions.expenses);
@@ -135,8 +137,9 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   useEffect(() => {
     if (statsRestoreRef.current) return;
     statsRestoreRef.current = true;
-    const saved = usePebbleStore.getState().dashboardPrefs;
-    const mode = saved?.statsMode ?? 'month';
+    const saved = (preferenceScope === undefined ? usePebbleStore.getState().dashboardPrefs
+      : readPartnerChoice('dashboard', preferenceScope)) as { statsMode?: unknown; statsPeriod?: string } | null;
+    const mode = STATS_MODES.find(option => option.value === saved?.statsMode)?.value ?? 'month';
     const avail = periodsForStatsMode(mode);
     const savedPeriod = saved?.statsPeriod ?? null;
     setStatsMode(mode);
@@ -149,8 +152,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // the stored ones before they were read.
   useEffect(() => {
     if (!statsRestored) return;
-    usePebbleStore.getState().setDashboardPrefs({ statsMode, statsPeriod });
-  }, [statsRestored, statsMode, statsPeriod]);
+    const prefs = { statsMode, statsPeriod };
+    if (preferenceScope === undefined) usePebbleStore.getState().setDashboardPrefs(prefs);
+    else writePartnerChoice('dashboard', preferenceScope, prefs);
+  }, [preferenceScope, statsRestored, statsMode, statsPeriod]);
 
   // today ?? undefined: see the effect above for what null means here. Both
   // calls MUST receive the identical `today` value (see the comment on
