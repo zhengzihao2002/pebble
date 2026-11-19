@@ -50,6 +50,10 @@
   border: 1px solid var(--line); border-radius: .85rem;
 }
 .pebble-root .pb-partner-fieldset > legend { padding: 0 .35rem; font-weight: 600; }
+.pebble-root .pb-partner-protected > summary { cursor: pointer; font-weight: 600; }
+.pebble-root .pb-partner-protected dl { display: grid; gap: .65rem; margin: .4rem 0 0; }
+.pebble-root .pb-partner-protected dt { font-size: .85rem; font-weight: 600; }
+.pebble-root .pb-partner-protected dd { margin: .15rem 0 0; font-size: .79rem; color: var(--ink-soft); }
 .pebble-root .pb-partner-toggle {
   display: flex; justify-content: space-between; align-items: center; gap: .8rem; min-height: 2.65rem;
 }

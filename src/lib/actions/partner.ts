@@ -17,7 +17,7 @@ const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const digest = (code: string) => createHash('sha256').update(code).digest('hex');
 const lifecycleLock = () => neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.partner-mode.v1'))`;
 
-type FailureReason = 'unavailable' | 'databasePermission' | 'unexpected' | 'invalid' | 'invite' | 'paired' | 'noPair' | 'denied' | 'ownOnly' | 'contribution' | 'pendingPermissions';
+type FailureReason = 'unavailable' | 'databasePermission' | 'unexpected' | 'invalid' | 'invite' | 'paired' | 'noPair' | 'denied' | 'ownOnly' | 'settingsOwnOnly' | 'contribution' | 'pendingPermissions';
 const failure = (reason: FailureReason) => ({ ok: false as const, reason, error: 'Partner Mode action failed.' });
 const success = { ok: true as const };
 
@@ -122,6 +122,7 @@ async function acceptInvite(userId: string, input: string) {
 }
 
 async function savePermissions(userId: string, pairId: string, permitted: PartnerPermissions, categoryIds: string[]) {
+  if (await partnerViewPair(userId)) return failure('settingsOwnOnly');
   if (!validId(pairId) || !permitted || typeof permitted !== 'object' || !Array.isArray(categoryIds)
     || categoryIds.some(id => typeof id !== 'string' || id.includes('\0'))) return failure('invalid');
   const permissions: PartnerPermissions = {};
