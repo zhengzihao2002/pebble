@@ -667,6 +667,11 @@
 .pebble-root .pb-tag-dialog-amount { font-size: .84rem; white-space: nowrap; }
 .pebble-root .pb-tag-dialog-body > button { margin-top: .65rem; }
 .pebble-root .pb-tag-dialog-foot { display: grid; gap: .6rem; }
+.pebble-root .pb-tag-dialog-foot .pb-settings-danger:disabled {
+  color: #737373; border-color: color-mix(in srgb, currentColor 45%, transparent);
+  background: transparent; cursor: default;
+}
+.pebble-dark .pebble-root .pb-tag-dialog-foot .pb-settings-danger:disabled { color: #a3a3a3; }
 .pebble-root .pb-tag-dialog-foot .pb-settings-tag-editor { padding: 0; border: none; }
 .pebble-root .pb-tag-dialog-review { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .65rem; }
 .pebble-root .pb-tag-dialog-selection { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; color: var(--ink-soft); font-size: .82rem; }
