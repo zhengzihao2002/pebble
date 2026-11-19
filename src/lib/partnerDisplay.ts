@@ -1,10 +1,9 @@
 import type { Account } from '@/lib/data/mappers';
-import type { PartnerWorkspaceData } from '@/lib/partner';
-import type { Goal, IncomeTransaction, RecurringRule, Transaction } from '@/types';
+import { canSeePartnerBalances, type PartnerWorkspaceData } from '@/lib/partner';
+import type { BalanceAdjustment, Goal, IncomeTransaction, RecurringRule, Transaction } from '@/types';
 
 export function partnerDisplayName(name: string | null, fallback: string) {
-  const trimmed = name?.trim();
-  return trimmed && !/^(guest|访客)$/i.test(trimmed) ? trimmed : fallback;
+  return name?.trim() || fallback;
 }
 
 /** Adapt only the already-scoped fields. Missing amounts are rendered as
@@ -17,7 +16,7 @@ export function partnerTransactions(data: PartnerWorkspaceData, maskedTitle: str
       accountId: row.accountId ?? '', paymentMethod: row.accountName ?? '',
       amount: row.amount ?? 0,
     };
-    if (row.kind === 'expense') return { ...common, type: 'expense', category: row.category, tag: row.tag };
+    if (row.kind === 'expense') return { ...common, type: 'expense', category: row.category, tag: row.tag, creditCardPayoff: row.creditCardPayoff ?? undefined };
     return {
       ...common, type: 'income', category: row.category as IncomeTransaction['category'],
       grossAmount: row.grossAmount ?? common.amount, netAmount: common.amount,
@@ -28,6 +27,14 @@ export function partnerTransactions(data: PartnerWorkspaceData, maskedTitle: str
 export function partnerAccounts(data: PartnerWorkspaceData): Account[] {
   return data.accounts.map((account, sortOrder) => ({
     ...account, last4: null, isDefault: false, isPreferred: false, sortOrder, creditLimit: null, dueDay: null,
+  }));
+}
+
+export function partnerBalanceAdjustments(data: PartnerWorkspaceData): BalanceAdjustment[] {
+  if (!canSeePartnerBalances(data.permissions)) return [];
+  return (data.dailyBalanceAdjustments ?? []).map(({ accountId, date, amount }) => ({
+    id: `partner-balance-${date}-${accountId}`, type: 'adjustment', accountId, date, amount,
+    description: '', paymentMethod: '', transferGroupId: null,
   }));
 }
 

@@ -1,5 +1,9 @@
 'use client';
 
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { canSeePartnerBalances } from '@/lib/partner';
+
 import { GhostBadge } from './GhostAccountMode';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useState } from 'react';
@@ -92,6 +96,10 @@ export function AccountDetailSheet({
 }) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.accounts;
+  const partner = usePartnerView();
+  const censored = !!partner && !canSeePartnerBalances(partner.data.permissions);
+  const editable = account.kind !== 'credit' && partner?.data.permissions.editAccounts
+    && partner.data.accounts.some(row => row.id === account.id && row.editable);
   const credit = account.kind === 'credit';
   const Icon = account.kind === 'bank' ? Landmark : account.kind === 'cash' ? Coins : CreditCard;
   const kindLabel = account.kind === 'bank' ? d.accounts.kindBank : account.kind === 'cash' ? d.accounts.kindCash : d.accounts.kindCredit;
@@ -112,6 +120,9 @@ export function AccountDetailSheet({
     () => records.filter((r) => r.kind !== 'expense' || !r.fundedPayoff),
     [records],
   );
+  const visibleRecords = partner
+    ? activityRecords.filter(row => row.kind === 'expense' || row.kind === 'income')
+    : activityRecords;
   const latestActivity = credit ? records.find((r) => r.date <= today)?.date : lastActivity;
   const from = days[0]?.date ?? today;
   const inRange = activityRecords.filter((r) => r.date >= from && r.date <= today);
@@ -188,7 +199,7 @@ export function AccountDetailSheet({
 
           <div className="pb-modal-body themed-scroll">
             {account.isGhost && <p className="pb-ghost-detail-note">{locale === 'zh' ? '此账户的记录与余额不计入日常财务计算。报表仍按其账户筛选独立计算。' : 'This account’s records and balance stay outside normal financial calculations. Reports follows its own account filters.'}</p>}
-            <div className="pb-accounts-detail-grid">
+            {censored ? <PartnerCensored balances /> : <div className="pb-accounts-detail-grid">
               <div className="pb-accounts-detail-main">
                 <div>
                   <p className="pb-accounts-detail-label">{credit ? x.owedLabel : x.balanceLabel}</p>
@@ -274,12 +285,12 @@ export function AccountDetailSheet({
                 </dl>
 
                 <p className="pb-accounts-detail-cap">{x.recentActivity}</p>
-                {activityRecords.length === 0 ? (
+                {visibleRecords.length === 0 ? (
                   <EmptyState compact icon={Icon} title={x.noRecordsHere} />
                 ) : (
                   <>
                     <ul className="pb-accounts-detail-list">
-                      {activityRecords.slice(0, shownCount).map((r) => {
+                      {visibleRecords.slice(0, shownCount).map((r) => {
                         const RowIcon = r.kind === 'transfer' ? ArrowRightLeft : r.kind === 'correction' ? SlidersHorizontal : r.amount > 0 ? ArrowDownLeft : ArrowUpRight;
                         return (
                           <li key={r.id}>
@@ -300,20 +311,23 @@ export function AccountDetailSheet({
                         );
                       })}
                     </ul>
-                    {activityRecords.length > shownCount && (
+                    {visibleRecords.length > shownCount && (
                       <button type="button" className="pill pb-accounts-detail-more" onClick={() => setShownCount((c) => c + PAGE)}>{x.showMore}</button>
                     )}
                   </>
                 )}
                 {latestActivity && <p className="pb-accounts-detail-quiet">{t(d.accountsPage.lastActivity, { date: formatDate(latestActivity, locale) })}</p>}
               </div>
-            </div>
+            </div>}
           </div>
 
-          <div className="pb-modal-foot pb-accounts-detail-foot">
-            <Link href="/settings#settings-money" prefetch={false} className="pb-accounts-manage" onClick={close}>
+          {(!partner || editable) && <div className="pb-modal-foot pb-accounts-detail-foot">
+            {partner ? <button className="pill" type="button" onClick={() => {
+              onClose();
+              partner.openEditor({ kind: 'account', id: account.id, name: account.name, accountKind: account.kind === 'cash' ? 'cash' : 'bank' });
+            }}>{d.partner.creation.editAccount}</button> : <Link href="/settings#settings-money" prefetch={false} className="pb-accounts-manage" onClick={close}>
               {x.manageInSettings}<ChevronRight size={14} aria-hidden="true" />
-            </Link>
+            </Link>}
             <div className="pb-accounts-detail-actions">
               {credit && onPayOff && (
                 <button type="button" className="btn-primary" onClick={() => onPayOff(account)} disabled={!f?.owes}>{d.accounts.payOffAction}</button>
@@ -324,7 +338,7 @@ export function AccountDetailSheet({
                 </button>
               )}
             </div>
-          </div>
+          </div>}
         </>
       )}
     </ModalFrame>

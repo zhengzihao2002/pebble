@@ -1,4 +1,6 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensored, PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
@@ -42,6 +44,8 @@ import { usePaneCardShadows } from '@/components/transactions/usePaneCardShadows
 interface TransactionsClientProps {
   transactions: Transaction[];
   adjustments: BalanceAdjustment[];
+  /** Daily totals allowed into balance calculations only, never into the ledger rows. */
+  partnerDailyAdjustments?: BalanceAdjustment[];
   ledger: LedgerEntry[];
   categories: CategoryItem[];
   budgets: Record<string, number>;
@@ -56,15 +60,17 @@ interface TransactionsClientProps {
 
 // Not '' - a category can never be named this, and '' is what SelectField's
 // plain mode treats as "nothing chosen".
+const NO_DAILY_ADJUSTMENTS: BalanceAdjustment[] = [];
 const ALL_ACCOUNTS = '__all__';
 // today only needs reading, not watching: a page left open past midnight
 // picks the new date up on its next render, like the month list does.
 const noSubscribe = () => () => {};
 
 export function TransactionsClient({
-  transactions, adjustments, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
+  transactions, adjustments, partnerDailyAdjustments = NO_DAILY_ADJUSTMENTS, ledger, categories, budgets, accountOpeningTotal, currentBalance, accounts, balancesByAccount,
 }: TransactionsClientProps) {
   const partner = usePartnerView();
+  const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const x = d.ux.transactions;
@@ -119,8 +125,9 @@ export function TransactionsClient({
     const map = new Map<string, LedgerRecord>();
     transactions.forEach((t) => map.set(t.id, t));
     adjustments.forEach((a) => map.set(a.id, a));
+    partnerDailyAdjustments.forEach((a) => map.set(a.id, a));
     return map;
-  }, [transactions, adjustments]);
+  }, [transactions, adjustments, partnerDailyAdjustments]);
 
   // ledger entries are lightweight - resolve each back to its full record here.
   const allEntriesWithRecords = useMemo(() => {
@@ -130,7 +137,10 @@ export function TransactionsClient({
       return acc;
     }, []);
   }, [ledger, recordsById]);
-  const entriesWithRecords = useMemo(() => allEntriesWithRecords.filter(entry => !ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
+  const balanceEntries = useMemo(() => allEntriesWithRecords.filter(entry => !ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
+  const entriesWithRecords = useMemo(() => partner
+    ? balanceEntries.filter(entry => entry.record.type !== 'adjustment')
+    : balanceEntries, [partner, balanceEntries]);
   const ghostEntries = useMemo(() => allEntriesWithRecords.filter(entry => ghostIds.has(entry.record.accountId)), [allEntriesWithRecords, ghostIds]);
   const entriesById = useMemo(() => new Map(allEntriesWithRecords.map((e) => [e.record.id, e])), [allEntriesWithRecords]);
   const openDetail = useCallback((txn: LedgerRecord) => {
@@ -200,8 +210,8 @@ export function TransactionsClient({
   const statementTotals = useMemo(() => statementFlows(statementTransactions), [statementTransactions]);
 
   const fig = useMemo(
-    () => monthFigures(entriesWithRecords, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
-    [entriesWithRecords, selectedMonthInfo, accountOpeningTotal, lensId],
+    () => monthFigures(balanceEntries, selectedMonthInfo.year, selectedMonthInfo.month, accountOpeningTotal, lensId),
+    [balanceEntries, selectedMonthInfo, accountOpeningTotal, lensId],
   );
   const { opening: openingBalance, closing: closingBalance, deposits: totalDeposits, withdrawals: totalWithdrawals, adjustments: totalAdjustments } = fig;
 
@@ -245,9 +255,9 @@ export function TransactionsClient({
 
   // ---- Month strip -----------------------------------------------------------
   const monthChips: MonthChip[] = useMemo(() => {
-    const sums = summarizeMonths(entriesWithRecords, monthOptions, accountOpeningTotal, lensId);
+    const sums = summarizeMonths(balanceEntries, monthOptions, accountOpeningTotal, lensId);
     return sums.map((m, index) => ({ ...m, index })).reverse();
-  }, [entriesWithRecords, monthOptions, accountOpeningTotal, lensId]);
+  }, [balanceEntries, monthOptions, accountOpeningTotal, lensId]);
 
   // ---- Balance chart ---------------------------------------------------------
   const chartPoints = useMemo(() => {
@@ -256,7 +266,7 @@ export function TransactionsClient({
     const { start, next, prefix } = monthBounds(year, month);
     // The month in progress stops at today: the chart never projects.
     const lastDay = today.startsWith(prefix) ? Number(today.slice(8, 10)) : daysInMonth(year, month);
-    const allInMonth = entriesWithRecords.filter((e) => e.record.date >= start && e.record.date < next);
+    const allInMonth = balanceEntries.filter((e) => e.record.date >= start && e.record.date < next);
     // A card lens plots what is OWED (the negated balance), the convention
     // every other figure under the lens uses, so the line rises with the debt
     // and matches the red '+' change above it.
@@ -264,7 +274,7 @@ export function TransactionsClient({
     return lensIsCard
       ? daySeries(statementTransactions, allInMonth, year, month, lastDay, -fig.opening, (e) => -read(e))
       : daySeries(statementTransactions, allInMonth, year, month, lastDay, fig.opening, read);
-  }, [today, selectedMonthInfo, entriesWithRecords, statementTransactions, fig.opening, lensId, lensIsCard]);
+  }, [today, selectedMonthInfo, balanceEntries, statementTransactions, fig.opening, lensId, lensIsCard]);
 
   // Picking a day on the chart scrolls the statement to that day's group
   // (scroll-margin keeps it clear of the sticky header and search bar) and
@@ -419,10 +429,11 @@ export function TransactionsClient({
             onNewer={() => goToMonth(selectedMonthIndex - 1)}
             months={monthChips}
             selectedIndex={selectedMonthIndex}
+            amountsCensored={!showAmounts}
             onSelect={goToMonth}
             controls="pb-txn-statement-col"
             eyebrow={lensAccount ? t(x.lensEyebrow, { account: lensAccount.name }) : x.thisMonth}
-            aside={!partner ? (
+            aside={showBalances ? (
               <span className="pb-txn-delta">
                 {renderTemplate(x.deltaThisMonth, {
                   amount: <DeltaChip delta={delta} text={deltaText} good={lensIsCard ? 'down' : 'up'} money />,
@@ -431,7 +442,7 @@ export function TransactionsClient({
             ) : undefined}
           />
 
-          {!partner && <><BalanceBridge
+          {showBalances ? <><BalanceBridge
             opening={openingBalance}
             deposits={totalDeposits}
             withdrawals={totalWithdrawals}
@@ -449,20 +460,20 @@ export function TransactionsClient({
             <StatTab
               icon={SlidersHorizontal} label={d.transactions.adjustments} value={adjustmentText} color={adjustmentColor} valueColor={adjustmentColor}
               info={lensAccount ? <InfoTooltip label={x.lensAdjInfoLabel}>{x.lensAdjInfo}</InfoTooltip> : undefined}
-              valueAction={{ label: x.showAdjustmentRows, onClick: toggleAdjustmentFilter, pressed: typeFilter === 'adjustment', controls: 'pb-txn-statement-col' }}
+              valueAction={partner ? undefined : { label: x.showAdjustmentRows, onClick: toggleAdjustmentFilter, pressed: typeFilter === 'adjustment', controls: 'pb-txn-statement-col' }}
             />
           </div>
-          </>}
+          </> : <PartnerCensored balances />}
         </section>
 
-        {!partner && <MonthBalanceChart
+        {showBalances ? <MonthBalanceChart
           points={chartPoints}
           opening={lensIsCard ? -openingBalance : openingBalance}
           owed={lensIsCard}
           hasActivity={statementCount > 0 || fig.entries.length > 0}
           onPickDay={pickDay}
           subtitle={lensAccount ? `${monthLabel} · ${lensAccount.name}` : monthLabel}
-        />}
+        /> : <PartnerCensoredCard title={x.balanceChart} className="pb-txn-chart" />}
       </div>
       <div className="pb-txn-scroll-hint">
         <button type="button" className="pb-txn-more-button" onClick={scrollSummaryDown}

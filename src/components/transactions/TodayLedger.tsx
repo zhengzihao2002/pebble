@@ -1,4 +1,6 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -29,6 +31,7 @@ interface TodayLedgerProps {
  */
 export function TodayLedger({ currentBalance, accounts, balancesByAccount, selectedAccountId, onPickAccount }: TodayLedgerProps) {
   const partner = usePartnerView();
+  const censored = !!partner && !canSeePartnerBalances(partner.data.permissions);
   const { d, locale } = useTranslation();
   const total = splitCents(formatCurrency(currentBalance));
 
@@ -96,7 +99,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
         <div className="pb-txn-total" style={{ minWidth: 0 }}>
           <p style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginBottom: 4 }}>{d.transactions.totalBalanceToday}</p>
           <p className="font-display pb-money pb-txn-total-amount" style={{ fontWeight: 600 }}>
-            {partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount headline value={total.whole + total.cents} fractionClassName="pb-txn-cents" />}
+            {censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount headline value={total.whole + total.cents} fractionClassName="pb-txn-cents" />}
           </p>
         </div>
         {/* Each account's balance as a quiet ledger: one row each, figures
@@ -151,8 +154,8 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
                   </span>
                   {/* Only the figure blurs in privacy mode; "owed" stays readable. */}
                   <span data-acc-amount="" className="pb-txn-acc-fig">
-                    <span className="font-mono-tab">{partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(owed !== null ? owed : value)} />}</span>
-                    {!partner && owed !== null && <span className="pb-txn-acc-owed">{d.accountsPage.cardOwed}</span>}
+                    <span className="font-mono-tab">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(owed !== null ? owed : value)} />}</span>
+                    {!censored && owed !== null && <span className="pb-txn-acc-owed">{d.accountsPage.cardOwed}</span>}
                   </span>
                   <span className="pb-txn-sr">{d.ux.transactions.showStatement}</span>
                 </button>
@@ -161,6 +164,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
           })}
         </ul>
       </div>
+      {censored && <PartnerCensored balances />}
     </section>
   );
 }

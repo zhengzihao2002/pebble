@@ -1,4 +1,6 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -44,6 +46,7 @@ const MAX_ROWS = 5;
  */
 export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocated = 0, trend = null }: BalanceHeroProps) {
   const partner = usePartnerView();
+  const censored = !!partner && !canSeePartnerBalances(partner.data.permissions);
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const { whole, cents } = splitCents(formatCurrency(totalBalance));
@@ -98,17 +101,17 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
         <p className="font-display hero-balance" style={{
           '--pb-balance-fit': `${100 / (whole.length * .67 + cents.length * .34 + .1)}cqi`,
         } as CSSProperties}>
-          {partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />}
+          {censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount headline value={whole + cents} fractionClassName="pb-hero-cents" />}
         </p>
         {/* Reserved line: blank until today resolves, so nothing shifts. */}
-        <p className="pb-dash-hero-change">
+        {!censored && <p className="pb-dash-hero-change">
           {change && !flat && change.pct !== null && (
             <DeltaChip delta={change.change} text={`${Math.abs(change.pct).toFixed(1)}%`} good="neutral" />
           )}
-          <span>{partner ? d.partner.balancesRestricted : changeText ?? ' '}</span>
-        </p>
+          <span>{changeText ?? ' '}</span>
+        </p>}
 
-        {allocated > 0 && (
+        {!censored && allocated > 0 && (
           <div className="pb-dash-hero-alloc">
             {/* A proportion of money: blurred with the figures in privacy mode. */}
             <div className="pb-dash-alloc-bar pb-chart-fill" role="img" aria-label={d.ux.dashboard.allocationLabel}>
@@ -131,7 +134,8 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
       </div>
 
       <div className="pb-dash-hero-trend">
-        {trend && trend.length > 1 && (
+        {censored && <PartnerCensored balances />}
+        {!censored && trend && trend.length > 1 && (
           <Link href="/accounts" prefetch={false} className="pb-dash-hero-trend-link"
             aria-label={t(ux.balanceHistoryLink, { period })}
           >
@@ -158,6 +162,7 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
         )}
       </div>
 
+      {partner && !partner.data.permissions.accounts && <div className="pb-hero-accounts"><PartnerCensored /></div>}
       {showAccounts && (
         <ul className="pb-hero-accounts" aria-label={d.dashboard.byAccount}>
           {shown.map((r) => (
@@ -165,8 +170,8 @@ export function BalanceHero({ totalBalance, accounts, balancesByAccount, allocat
               <span className="pb-hero-account-name">
                 {r.label}
               </span>
-              <span className="pb-hero-account-amount font-mono-tab">{partner ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(r.balance)} />}</span>
-              {positive > 0 && r.balance > 0 && (
+              <span className="pb-hero-account-amount font-mono-tab">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(r.balance)} />}</span>
+              {!censored && positive > 0 && r.balance > 0 && (
                 <span className="pb-dash-hero-share pb-chart-fill" aria-hidden="true" style={{ width: `${(r.balance / positive) * 100}%` }} />
               )}
             </li>

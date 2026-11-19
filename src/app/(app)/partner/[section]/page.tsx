@@ -2,15 +2,18 @@ import { notFound } from 'next/navigation';
 import { LockKeyhole } from 'lucide-react';
 import { loadPartnerSnapshot } from '@/lib/partnerSnapshot.server';
 import { isPartnerSection } from '@/lib/partnerPaths';
-import { partnerAccounts, partnerGoals, partnerRules, partnerTransactions } from '@/lib/partnerDisplay';
+import { partnerAccounts, partnerBalanceAdjustments, partnerGoals, partnerRules, partnerTransactions } from '@/lib/partnerDisplay';
 import { getDictionary } from '@/lib/i18n';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { todayInZone } from '@/lib/recurring/occurrences';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
-import { mergeTransactions } from '@/lib/stats';
+import { computeCurrentBalances, computeRecentTransactions, mergeTransactions } from '@/lib/stats';
 import { SectionHeader } from '@/components/kit/SectionHeader';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
+import { GoalsSummary } from '@/components/goals/GoalsSummary';
 import { GoalsView } from '@/components/goals/GoalsView';
 import { DashboardClient } from '../../dashboard/DashboardClient';
 import { TransactionsClient } from '../../transactions/TransactionsClient';
@@ -44,34 +47,41 @@ export default async function PartnerSectionPage({ params }: { params: Promise<{
   const ledger = mergeTransactions(expenses, income);
   const accounts = partnerAccounts(data);
   const goals = partnerGoals(data);
+  const adjustments = partnerBalanceAdjustments(data);
+  const showBalances = canSeePartnerBalances(data.permissions);
+  const balances = showBalances ? computeCurrentBalances(ledger, accounts, adjustments) : { total: 0, byAccount: {} };
+  const allocated = goals.reduce((sum, goal) => sum + goal.current, 0);
   const rules = partnerRules(data);
   const categories = data.categories;
   const budgets = Object.fromEntries(data.budgets.map(row => [row.name, row.amount]));
-  const canAnalyze = data.permissions.amounts && (data.permissions.income || data.permissions.expenses);
 
   switch (section) {
     case 'dashboard':
       return <DashboardClient transactions={ledger} categories={categories} budgets={budgets} accounts={accounts}
-        balancesByAccount={{}} totalBalance={0} allocated={0} catchUp={NO_CATCH_UP} goals={goals} rules={rules} />;
+        balancesByAccount={balances.byAccount} totalBalance={balances.total} allocated={allocated} adjustments={adjustments} catchUp={NO_CATCH_UP} goals={goals} rules={rules} />;
     case 'transactions':
       return <TransactionsClient transactions={ledger} adjustments={[]}
-        ledger={ledger.map(row => ({ transId: row.id, balancesAfter: {}, totalBalanceAfter: 0 }))}
+        partnerDailyAdjustments={adjustments}
+        ledger={showBalances ? computeRecentTransactions(expenses, income, accounts, adjustments)
+          : ledger.map(row => ({ transId: row.id, balancesAfter: {}, totalBalanceAfter: 0 }))}
         categories={categories} budgets={budgets} accounts={accounts}
-        accountOpeningTotal={0} currentBalance={0} balancesByAccount={{}} />;
+        accountOpeningTotal={0} currentBalance={balances.total} balancesByAccount={balances.byAccount} />;
     case 'accounts':
-      return <AccountsClient accounts={accounts} expenses={expenses} income={income} adjustments={[]} />;
+      return <AccountsClient accounts={accounts} expenses={expenses} income={income} adjustments={adjustments} />;
     case 'goals':
-      return <div className="pb-goals"><GoalsView goals={goals} /></div>;
+      return <div className="pb-goals">
+        {showBalances && data.permissions.personalGoals
+          ? <GoalsSummary d={d} goals={goals} total={balances.total} allocated={allocated}
+              unallocated={balances.total - allocated} overAllocated={allocated > balances.total} />
+          : <PartnerCensoredCard title={d.goals.allocatedTitle} className="pb-goals-hero" />}
+        <GoalsView goals={goals} />
+      </div>;
     case 'reports':
       return <ReportsClient transactions={ledger} categories={categories} budgets={budgets} accounts={accounts} />;
     case 'analysis':
-      return canAnalyze
-        ? <AnalysisClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} totalBalance={0} />
-        : <Restricted title={d.nav.analysis} body={d.partner.amountsRestricted} />;
+      return <AnalysisClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} totalBalance={balances.total} />;
     case 'insights':
-      return canAnalyze
-        ? <InsightsClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} goals={goals} accounts={accounts} />
-        : <Restricted title={d.nav.insights} body={d.partner.amountsRestricted} />;
+      return <InsightsClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} goals={goals} accounts={accounts} />;
     case 'budgets':
     case 'scheduled': {
       const userId = await getSessionUserIdOrRedirect();

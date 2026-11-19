@@ -6,6 +6,7 @@ import { CheckCircle2, ChevronDown, Lightbulb, Sparkles, X } from 'lucide-react'
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { Skeleton } from '@/components/kit/Skeleton';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useElementSize } from './hooks';
 import type { Insight } from './insightRules';
@@ -41,6 +42,7 @@ interface NoteProps {
  */
 export function Note({ item: i, extra = false, pending, onHide, onUndo }: NoteProps) {
   const { d, t } = useTranslation();
+  const partner = usePartnerView();
   const ux = d.ux.insights;
   const undoRef = useRef<HTMLButtonElement>(null);
   const xRef = useRef<HTMLButtonElement>(null);
@@ -104,12 +106,12 @@ export function Note({ item: i, extra = false, pending, onHide, onUndo }: NotePr
         )}
       </span>
       {/* 30px to the eye, a 44px target (insights.css) - it was 30x30. */}
-      <button
+      {!partner && <button
         ref={xRef} type="button" className="icon-btn pb-ins-note-x" onClick={() => onHide(i.id)}
         aria-label={d.insights.dismiss} title={d.insights.dismiss}
       >
         <X size={15} />
-      </button>
+      </button>}
     </li>
   );
 }

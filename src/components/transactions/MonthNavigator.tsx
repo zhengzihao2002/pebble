@@ -19,6 +19,7 @@ export interface MonthChip {
 }
 
 interface MonthNavigatorProps {
+  amountsCensored?: boolean;
   label: string;
   canGoOlder: boolean;
   canGoNewer: boolean;
@@ -99,7 +100,7 @@ function ChevronNavigator({ label, canGoOlder, canGoNewer, onOlder, onNewer }: M
  * the page.
  */
 function MonthStripNavigator({
-  label, canGoOlder, canGoNewer, onOlder, onNewer, months, selectedIndex, onSelect, eyebrow, aside, controls,
+  label, canGoOlder, canGoNewer, onOlder, onNewer, months, selectedIndex, onSelect, eyebrow, aside, controls, amountsCensored,
 }: MonthNavigatorProps & { months: MonthChip[]; selectedIndex: number; onSelect: (index: number) => void }) {
   const { d, locale } = useTranslation();
   const stripRef = useRef<HTMLDivElement>(null);
@@ -217,8 +218,8 @@ function MonthStripNavigator({
                 >
                   <span className="pb-txn-chip-year pb-tnum" aria-hidden="true">{showYear ? fmt(m, { year: 'numeric' }) : ''}</span>
                   <span className="pb-txn-chip-glyph pb-chart-fill" aria-hidden="true">
-                    <span className="pb-txn-chip-in" style={{ transform: `scaleY(${empty || m.deposits === 0 ? 0 : scale(m.deposits)})` }} />
-                    <span className="pb-txn-chip-out" style={{ transform: `scaleY(${empty || m.withdrawals === 0 ? 0 : scale(m.withdrawals)})` }} />
+                    {!amountsCensored && <><span className="pb-txn-chip-in" style={{ transform: `scaleY(${empty || m.deposits === 0 ? 0 : scale(m.deposits)})` }} />
+                    <span className="pb-txn-chip-out" style={{ transform: `scaleY(${empty || m.withdrawals === 0 ? 0 : scale(m.withdrawals)})` }} /></>}
                   </span>
                   <span className="pb-txn-chip-month" aria-hidden="true">{fmt(m, { month: 'short' })}</span>
                 </button>

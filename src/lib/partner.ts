@@ -1,4 +1,4 @@
-import type { RecurringFrequency } from '@/types';
+import type { CreditCardPayoff, RecurringFrequency } from '@/types';
 
 export const PARTNER_VIEW_PERMISSIONS = ['expenses', 'income', 'amounts', 'notes', 'accounts', 'personalGoals', 'budgets', 'scheduled'] as const;
 export const PARTNER_ADD_PERMISSIONS = ['addTransactions', 'addPersonalGoals', 'addAccounts', 'addBudgets', 'addScheduled'] as const;
@@ -6,6 +6,12 @@ export const PARTNER_EDIT_PERMISSIONS = ['editTransactions', 'editTags', 'editPe
 export const PARTNER_PERMISSIONS = [...PARTNER_VIEW_PERMISSIONS, ...PARTNER_ADD_PERMISSIONS, ...PARTNER_EDIT_PERMISSIONS] as const;
 export type PartnerPermission = (typeof PARTNER_PERMISSIONS)[number];
 export type PartnerPermissions = Partial<Record<PartnerPermission, boolean>>;
+// A running balance would reveal withheld income or spending by subtraction.
+export const PARTNER_BALANCE_PERMISSIONS = { accounts: true, expenses: true, income: true, amounts: true } as const;
+export function canSeePartnerBalances(permissions: PartnerPermissions) {
+  return Object.keys(PARTNER_BALANCE_PERMISSIONS).every(key => permissions[key as PartnerPermission] === true);
+}
+
 export const INCOME_SHARING_KEYS = ['income:Standard Income', 'income:Side Cash'] as const;
 
 export interface SharingCategory { id: string; name: string }
@@ -33,6 +39,7 @@ export interface SharedTransaction {
   accountName: string | null;
   accountId: string | null;
   grossAmount: number | null;
+  creditCardPayoff?: CreditCardPayoff | null;
   canEditTag: boolean;
   canEdit: boolean;
   notesVisible: boolean;
@@ -44,6 +51,7 @@ export interface PartnerWorkspaceData {
   name: string;
   permissions: PartnerPermissions;
   transactions: SharedTransaction[];
+  dailyBalanceAdjustments: { accountId: string; date: string; amount: number }[];
   accounts: { id: string; name: string; kind: 'bank' | 'cash' | 'credit'; status: 'active' | 'hibernated'; editable: boolean }[];
   goals: { id: string; name: string; target: number | null; current: number | null; date: string; iconKey: string; color: string }[];
   categories: { id: string; name: string; iconKey: string; color: string; isSystem: boolean; sortOrder: number }[];

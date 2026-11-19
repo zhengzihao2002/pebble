@@ -1,4 +1,6 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
@@ -50,6 +52,7 @@ export function AccountsHero({
   onReviewSelf: () => void;
 }) {
   const partner = usePartnerView();
+  const censored = !!partner && !canSeePartnerBalances(partner.data.permissions);
   const { d, t, locale } = useTranslation();
   const x = d.ux.accounts;
   const [scrub, setScrub] = useState<number | null>(null);
@@ -82,12 +85,6 @@ export function AccountsHero({
 
   const onPick = useCallback((r: Range) => { setScrub(null); onRange(r); }, [onRange]);
 
-  if (partner) return <section className="card pb-accounts-hero">
-    <h2 className="pb-accounts-hero-label">{d.transactions.totalBalanceToday}</h2>
-    <p className="font-display pb-accounts-hero-figure pb-partner-censored" aria-label={d.partner.censored}>—</p>
-    <p className="pb-partner-note">{d.partner.balancesRestricted}</p>
-  </section>;
-
   return (
     <section className="card pb-accounts-hero pb-rise" aria-labelledby="pb-accounts-total" style={{ ['--pb-i' as string]: 0 }}>
       {selfCount > 0 && (
@@ -106,7 +103,9 @@ export function AccountsHero({
             <p id="pb-accounts-total">{d.accountsPage.totalLabel}</p>
             <p aria-hidden="true" className="pb-tnum">{i !== null && days ? formatLongDate(days[i].date, locale) : ' '}</p>
           </div>
-          {ready ? (
+          {censored ? (
+            <p className="font-display hero-balance pb-accounts-hero-figure" aria-label={d.partner.censored}>—</p>
+          ) : ready ? (
             // No aria-live: the text changes back to today's total whenever a
             // scrub ends, which would announce it after every hover.
             <p className="font-display hero-balance pb-money pb-accounts-hero-figure">
@@ -119,7 +118,7 @@ export function AccountsHero({
           )}
           <p className="pb-accounts-hero-change">
             {/* With no accounts there is no change to describe. */}
-            {ready && !hasAccounts ? null : !ready ? (
+            {censored || ready && !hasAccounts ? null : !ready ? (
               <Skeleton width="16rem" height="0.9rem" style={{ maxWidth: '100%' }} />
             ) : part ? (
               <>
@@ -139,15 +138,17 @@ export function AccountsHero({
             to its id. */}
         <div
           role="group" id="pb-accounts-range" aria-label={d.accountsPage.rangeLabel}
-          className={`pb-accounts-range${ready && !hasAccounts ? ' is-idle' : ''}`}
-          aria-hidden={ready && !hasAccounts ? true : undefined} inert={ready && !hasAccounts}
+          className={`pb-accounts-range${censored || ready && !hasAccounts ? ' is-idle' : ''}`}
+          aria-hidden={censored || ready && !hasAccounts ? true : undefined} inert={censored || ready && !hasAccounts}
         >
           <PeriodDot />
           <SegmentedControl options={options} value={range} onChange={onPick} ariaLabel={d.accountsPage.rangeLabel} size="sm" className="pb-accounts-seg" />
         </div>
       </div>
 
-      {!days ? (
+      {censored ? (
+        <div className="pb-accounts-chart-empty"><PartnerCensored balances /></div>
+      ) : !days ? (
         <div className="pb-accounts-chart pb-accounts-chart-skel" aria-hidden="true">
           <Skeleton height="100%" radius="0.75rem" />
         </div>
@@ -155,11 +156,11 @@ export function AccountsHero({
         <div className="pb-accounts-chart-empty">
           <EmptyState
             icon={Wallet} title={x.emptyNoAccountsTitle} body={x.emptyNoAccountsBody}
-            action={(
+            action={!partner ? (
               <Link href="/settings#settings-money" prefetch={false} className="btn-primary pb-accounts-cta">
                 <Plus size={15} aria-hidden="true" />{d.noAccounts.action}
               </Link>
-            )}
+            ) : undefined}
           />
         </div>
       ) : !hasRecords ? (
@@ -167,14 +168,14 @@ export function AccountsHero({
           {/* Same message as before ("No records yet."), now with the way out. */}
           <EmptyState
             icon={ReceiptText} title={x.emptyNoRecordsTitle} body={x.emptyNoRecordsBody}
-            action={(
+            action={!partner ? (
               <>
                 <button type="button" className="btn-primary pb-accounts-cta" onClick={() => requestShell('addTransaction')}>
                   <Plus size={15} aria-hidden="true" />{d.header.addTransaction}
                 </button>
                 <span className="pb-accounts-keyhint" aria-hidden="true">{x.pressN}</span>
               </>
-            )}
+            ) : undefined}
           />
         </div>
       ) : (
@@ -182,17 +183,17 @@ export function AccountsHero({
       )}
 
       <div className="pb-accounts-hero-foot">
-        {ready && hasRecords && <p className="pb-accounts-hint">{x.scrubHint}</p>}
+        {!censored && ready && hasRecords && <p className="pb-accounts-hint">{x.scrubHint}</p>}
         <div className="pb-accounts-hero-actions">
-          {hasAccounts && (
+          {!partner && hasAccounts && (
             <button type="button" className="pill pb-accounts-transfer" onClick={() => requestShell('transfer')}>
               <ArrowRightLeft size={14} aria-hidden="true" />{d.transfer.title}
             </button>
           )}
           {/* Lands on the accounts section of Settings, not the top of the page. */}
-          <Link href="/settings#settings-money" prefetch={false} className="pb-accounts-manage">
+          {!partner && <Link href="/settings#settings-money" prefetch={false} className="pb-accounts-manage">
             {d.accountsPage.manage}<ChevronRight size={14} aria-hidden="true" />
-          </Link>
+          </Link>}
         </div>
       </div>
     </section>

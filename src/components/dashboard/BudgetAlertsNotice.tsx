@@ -1,5 +1,7 @@
 'use client';
 
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
+
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useRef } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -35,12 +37,13 @@ const barColor = (pct: number) => (pct >= 100 ? 'var(--expense)' : pct >= 80 ? '
 export function BudgetAlertsNotice({ transactions, categoryMeta, today }: BudgetAlertsNoticeProps) {
   const { d, t } = useTranslation();
   const ux = d.ux.dashboard;
+  const partner = usePartnerView();
   const dismissed = usePebbleStore((s) => s.insightsDismissed);
   const dismiss = usePebbleStore((s) => s.dismissInsight);
   const year = today ? today.getFullYear() : null;
   const alerts = useMemo(
-    () => (year === null ? [] : budgetAlerts(transactions, categoryMeta, year, dismissed ?? [])),
-    [transactions, categoryMeta, year, dismissed],
+    () => (year === null ? [] : budgetAlerts(transactions, categoryMeta, year, partner ? [] : dismissed ?? [])),
+    [transactions, categoryMeta, year, dismissed, partner],
   );
 
   // A dismissed row takes its button with it: focus goes to the next row's
@@ -91,9 +94,9 @@ export function BudgetAlertsNotice({ transactions, categoryMeta, today }: Budget
               <Link href="/budgets" prefetch={false} className="link-btn" aria-label={t(ux.budgetAlertViewAria, { name: a.category })}>
                 {ux.budgetAlertView} <ChevronRight size={14} aria-hidden="true" />
               </Link>
-              <button type="button" className="pb-dash-quiet-btn" aria-label={t(ux.budgetAlertDismissAria, { name: a.category })} onClick={() => onDismiss(a)}>
+              {!partner && <button type="button" className="pb-dash-quiet-btn" aria-label={t(ux.budgetAlertDismissAria, { name: a.category })} onClick={() => onDismiss(a)}>
                 {ux.budgetAlertDismiss}
-              </button>
+              </button>}
             </div>
           </li>
         ))}

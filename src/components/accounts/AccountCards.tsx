@@ -1,9 +1,11 @@
 'use client';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
+import { canSeePartnerBalances } from '@/lib/partner';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Coins, CreditCard, Landmark, BedDouble, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Coins, CreditCard, Landmark, BedDouble, Plus } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate, splitCents } from '@/lib/format';
@@ -102,41 +104,22 @@ export function AccountCards({
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
   })();
-  if (partner) {
-    const render = (group: Account[], kind: 'bank' | 'cards' | 'sleeping', label: string) => group.length > 0 && (
-      <Group id={kind} icon={kind === 'cards' ? CreditCard : kind === 'sleeping' ? BedDouble : Landmark}
-        title={label} count={String(group.length)} subtotal="—">
-        <div className="pb-accounts-grid">
-          {group.map(account => {
-            const access = partner.data.accounts.find(row => row.id === account.id);
-            const edit = access?.editable && partner.data.permissions.editAccounts && access.kind !== 'credit';
-            return <article key={account.id} className={`card pb-accounts-tile is-${account.kind}`}>
-              <div className="pb-accounts-tile-head">
-                <NameLine a={account} badge={account.status === 'hibernated'} />
-                {edit && <button type="button" className="icon-btn" aria-label={d.partner.creation.editAccount}
-                  onClick={() => partner.openEditor({ kind: 'account', id: account.id, name: account.name, accountKind: access.kind === 'cash' ? 'cash' : 'bank' })}>
-                  <Pencil size={15} aria-hidden="true" />
-                </button>}
-              </div>
-              <p className="font-display pb-accounts-tile-bal pb-partner-censored" aria-label={d.partner.censored}>—</p>
-            </article>;
-          })}
-        </div>
-      </Group>
-    );
-    return <section aria-labelledby="pb-your-accounts" className="pb-accounts-wallet" ref={ref}>
-      <div className="pb-accounts-wallet-head">
-        <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
-        {partner.data.permissions.addAccounts && <button type="button" className="pill" onClick={() => partner.openEditor({ kind: 'account' })}>
-          <Plus size={15} aria-hidden="true" /> {d.partner.creation.newAccount}</button>}
-      </div>
-      {accounts.length === 0 && <p className="card pb-partner-card pb-partner-note">{d.partner.noShared}</p>}
-      {render(accounts.filter(account => account.status === 'active' && account.kind !== 'credit'), 'bank', x.sectionBankCash)}
-      {render(accounts.filter(account => account.status === 'active' && account.kind === 'credit'), 'cards', x.sectionCards)}
-      {render(accounts.filter(account => account.status === 'hibernated'), 'sleeping', d.accounts.hibernated)}
-    </section>;
-  }
-  if (!groups || groups.count === 0) return null;
+  const censored = !!partner && !canSeePartnerBalances(partner.data.permissions);
+  const heading = (
+    <div className="pb-accounts-wallet-head">
+      <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
+      {!censored && periodChip}
+      {partner?.data.permissions.addAccounts && <button type="button" className="pill" onClick={() => partner.openEditor({ kind: 'account' })}>
+        <Plus size={15} aria-hidden="true" /> {d.partner.creation.newAccount}
+      </button>}
+    </div>
+  );
+  if (!groups || groups.count === 0) return partner ? (
+    <section aria-labelledby="pb-your-accounts" className="pb-accounts-wallet" ref={ref}>
+      {heading}
+      {!partner.data.permissions.accounts ? <PartnerCensored /> : <p className="card pb-partner-card pb-partner-note">{d.partner.noShared}</p>}
+    </section>
+  ) : null;
 
   const words = { changeOver: changeOver ?? t(d.accountsPage.changeOver, { period }), sparkLabel: sparkLabel ?? ((name: string) => t(d.accountsPage.sparkLabel, { name, period })) };
   const countText = (n: number) => (n === 1 ? x.countOne : t(x.countMany, { count: n }));
@@ -145,20 +128,20 @@ export function AccountCards({
   const renderBank = (list: Item[]) => compact ? (
     <ul className="card pb-accounts-rows pb-rise" style={{ ['--pb-i' as string]: rise++ }}>
       {list.map((i) => (
-        <BankRow key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} />
+        <BankRow key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} censored={censored} />
       ))}
     </ul>
   ) : (
     <div className="pb-accounts-grid">
       {list.map((i) => (
-        <BankTile key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} index={rise++} />
+        <BankTile key={i.a.id} item={i} days={days} total={total} seen={lastActivity.get(i.a.id)} words={words} onOpen={onOpen} censored={censored} index={rise++} />
       ))}
     </div>
   );
   const renderCards = (list: Item[]) => (
     <div className="pb-accounts-cc-grid">
       {list.map((i) => (
-        <CreditCardTile key={i.a.id} a={i.a} now={i.now} expenses={expenses} today={dayToday} onPayOff={onPayOff} onOpen={onOpen} index={rise++} />
+        <CreditCardTile key={i.a.id} a={i.a} now={i.now} expenses={expenses} today={dayToday} onPayOff={onPayOff} onOpen={onOpen} censored={censored} index={rise++} />
       ))}
     </div>
   );
@@ -171,23 +154,20 @@ export function AccountCards({
 
   return (
     <section aria-labelledby="pb-your-accounts" className="pb-accounts-wallet" ref={ref}>
-      <div className="pb-accounts-wallet-head">
-        <h3 id="pb-your-accounts">{d.accountsPage.yourAccounts}</h3>
-        {periodChip}
-      </div>
+      {heading}
 
       {groups.bank.length > 0 && (
-        <Group id="bank" icon={Landmark} title={x.sectionBankCash} count={countText(groups.bank.length)} subtotal={formatCurrency(bankSum)}>
+        <Group id="bank" icon={Landmark} title={x.sectionBankCash} count={countText(groups.bank.length)} subtotal={censored ? '—' : formatCurrency(bankSum)}>
           {renderBank(groups.bank)}
         </Group>
       )}
       {groups.cards.length > 0 && (
-        <Group id="cards" icon={CreditCard} title={x.sectionCards} count={countText(groups.cards.length)} subtotal={formatCurrency(owedSum)} subtotalNote={d.accountsPage.cardOwed}>
+        <Group id="cards" icon={CreditCard} title={x.sectionCards} count={countText(groups.cards.length)} subtotal={censored ? '—' : formatCurrency(owedSum)} subtotalNote={censored ? d.partner.censored : d.accountsPage.cardOwed}>
           {renderCards(groups.cards)}
         </Group>
       )}
       {groups.sleeping.length > 0 && (
-        <Group id="sleeping" icon={BedDouble} title={d.accounts.hibernated} count={countText(groups.sleeping.length)} subtotal={formatCurrency(sleepSum)} quiet>
+        <Group id="sleeping" icon={BedDouble} title={d.accounts.hibernated} count={countText(groups.sleeping.length)} subtotal={censored ? '—' : formatCurrency(sleepSum)} quiet>
           {sleepingBank.length > 0 && renderBank(sleepingBank)}
           {sleepingCards.length > 0 && renderCards(sleepingCards)}
         </Group>
@@ -292,8 +272,8 @@ function AccountSpark({ data, tone, gradId, label, height }: { data: { date: str
   );
 }
 
-function BankTile({ item, days, total, seen, words, onOpen, index }: {
-  item: Item; days: DayPointLite[]; total: number; seen?: string; words: Words; onOpen?: (a: Account) => void; index: number;
+function BankTile({ item, days, total, seen, words, onOpen, index, censored }: {
+  item: Item; days: DayPointLite[]; total: number; seen?: string; words: Words; onOpen?: (a: Account) => void; index: number; censored: boolean;
 }) {
   const { d, t, locale } = useTranslation();
   const { a, now } = item;
@@ -318,17 +298,17 @@ function BankTile({ item, days, total, seen, words, onOpen, index }: {
       </div>
       <div>
         <div className="pb-accounts-tile-balrow">
-          <p className="font-display pb-money pb-accounts-tile-bal"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
+          <p className="font-display pb-money pb-accounts-tile-bal">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" />}</p>
           {a.status === 'hibernated' && <SleepingBadge />}
         </div>
-        <p className="font-mono-tab pb-accounts-change" style={{ color: f.tone }}>
+        {!censored && <p className="font-mono-tab pb-accounts-change" style={{ color: f.tone }}>
           <span className="pb-accounts-change-label">{words.changeOver} · </span>{f.changeText}
-        </p>
+        </p>}
       </div>
-      <AccountSpark data={f.data} tone={f.tone} gradId={f.gradId} label={words.sparkLabel(a.name)} height={64} />
+      {censored ? <PartnerCensored balances /> : <AccountSpark data={f.data} tone={f.tone} gradId={f.gradId} label={words.sparkLabel(a.name)} height={64} />}
       <p className="pb-accounts-tile-foot">
         <span>{seen ? t(d.accountsPage.lastActivity, { date: formatDate(seen, locale) }) : d.accountsPage.noActivity}</span>
-        {f.share !== null && <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span>}
+        {!censored && f.share !== null && <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span>}
       </p>
     </article>
   );
@@ -340,8 +320,8 @@ function BankTile({ item, days, total, seen, words, onOpen, index }: {
  * period's change and the share, plus a way into the account. The expanded
  * part mounts on first open, so a long list does not build every chart.
  */
-function BankRow({ item, days, total, seen, words, onOpen }: {
-  item: Item; days: DayPointLite[]; total: number; seen?: string; words: Words; onOpen?: (a: Account) => void;
+function BankRow({ item, days, total, seen, words, onOpen, censored }: {
+  item: Item; days: DayPointLite[]; total: number; seen?: string; words: Words; onOpen?: (a: Account) => void; censored: boolean;
 }) {
   const { d, t, locale } = useTranslation();
   const x = d.ux.accounts;
@@ -364,15 +344,15 @@ function BankRow({ item, days, total, seen, words, onOpen }: {
           </span>
         </span>
         <span className="pb-accounts-row-trend" aria-hidden="true">
-          <Sparkline values={f.data.map((p) => p.v)} height={28} color={f.tone} area endDot={false} />
+          {!censored && <Sparkline values={f.data.map((p) => p.v)} height={28} color={f.tone} area endDot={false} />}
         </span>
         <span className="pb-accounts-row-fig">
-          <span className="font-mono-tab pb-accounts-row-bal"><RollingAmount value={formatCurrency(now)} /></span>
+          <span className="font-mono-tab pb-accounts-row-bal">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(now)} />}</span>
           {/* The percent gives way first on a very narrow row; the open
               panel below still shows the full change. */}
-          <span className="font-mono-tab pb-accounts-row-change" style={{ color: f.tone }}>
+          {!censored && <span className="font-mono-tab pb-accounts-row-change" style={{ color: f.tone }}>
             {f.changeAmount}{f.changePct && <span className="pb-accounts-row-pct">{f.changePct}</span>}
-          </span>
+          </span>}
         </span>
         <ChevronDown size={16} aria-hidden="true" className="pb-accounts-row-chev" />
       </button>
@@ -380,12 +360,14 @@ function BankRow({ item, days, total, seen, words, onOpen }: {
         <div className="collapsible-rows-inner">
           {built && (
             <div className="pb-accounts-row-panel">
-              <AccountSpark data={f.data} tone={f.tone} gradId={f.gradId} label={words.sparkLabel(a.name)} height={56} />
-              <p className="font-mono-tab pb-accounts-change" style={{ color: f.tone }}>
-                <span className="pb-accounts-change-label">{words.changeOver} · </span>{f.changeText}
-              </p>
+              {censored ? <PartnerCensored balances /> : <>
+                <AccountSpark data={f.data} tone={f.tone} gradId={f.gradId} label={words.sparkLabel(a.name)} height={56} />
+                <p className="font-mono-tab pb-accounts-change" style={{ color: f.tone }}>
+                  <span className="pb-accounts-change-label">{words.changeOver} · </span>{f.changeText}
+                </p>
+              </>}
               <div className="pb-accounts-row-panel-foot">
-                {f.share !== null ? <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span> : <span />}
+                {!censored && f.share !== null ? <span className="font-mono-tab"><RollingAmount value={t(d.accountsPage.shareOfTotal, { pct: `${f.share}%` })} /></span> : <span />}
                 {onOpen && (
                   <button type="button" className="pill pb-accounts-details" onClick={() => onOpen(a)} aria-label={t(x.showDetails, { name: a.name })}>
                     {x.details}<ChevronRight size={14} aria-hidden="true" />

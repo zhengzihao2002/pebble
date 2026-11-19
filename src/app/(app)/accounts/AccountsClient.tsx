@@ -1,4 +1,6 @@
 'use client';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
@@ -50,6 +52,7 @@ interface AccountsClientProps {
 
 export function AccountsClient({ expenses: allExpenses, income: allIncome, adjustments: allAdjustments, accounts: allAccounts }: AccountsClientProps) {
   const partner = usePartnerView();
+  const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const accounts = useMemo(() => allAccounts.filter(account => !account.isGhost), [allAccounts]);
   const ghostAccounts = useMemo(() => allAccounts.filter(account => account.isGhost), [allAccounts]);
   const ghostIds = useMemo(() => new Set(ghostAccounts.map(account => account.id)), [ghostAccounts]);
@@ -154,12 +157,6 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
 
   const periodChip = <PeriodLink label={words.cardsPeriod} control="accounts" />;
 
-  if (partner) return <div className="pb-accounts">
-    <AccountsHero days={[]} hasRecords={false} hasAccounts={accounts.length > 0} range={range} onRange={pickRange}
-      words={words} selfCount={0} onReviewSelf={() => {}} />
-    <AccountCards accounts={accounts} days={[]} total={0} lastActivity={lastActivity} period={words.period} />
-  </div>;
-
   if (!days) return <PageSkeleton pathname="/accounts"/>;
 
   return (
@@ -167,20 +164,21 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
       <AccountsHero
         days={days} hasRecords={chrono.length > 0} hasAccounts={accounts.length > 0}
         range={range} onRange={pickRange} words={words}
-        selfCount={selfPairs.length} onReviewSelf={() => setSelfOpen(true)}
+        selfCount={partner ? 0 : selfPairs.length} onReviewSelf={() => setSelfOpen(true)}
       />
 
       <>
-          {current !== null && <MoneyMixCard items={items} total={current} />}
+          {!showBalances ? <PartnerCensoredCard title={d.ux.accounts.mixTitle} className="pb-accounts-mix" />
+            : current !== null && <MoneyMixCard items={items} total={current} />}
           {current !== null && today && (
             <AccountCards
               accounts={accounts} days={days} total={current} lastActivity={lastActivity}
-              period={words.period} onPayOff={setPayOffCard} expenses={expenses}
+              period={words.period} onPayOff={partner ? undefined : setPayOffCard} expenses={expenses}
               today={today} onOpen={setDetail} changeOver={words.changeOver} sparkLabel={words.sparkLabel}
               periodChip={periodChip}
             />
           )}
-          {today && chrono.length > 0 && (
+          {!showBalances ? <PartnerCensoredCard title={d.ux.accounts.flowTitle} className="pb-accounts-flow" /> : today && chrono.length > 0 && (
             <FlowCalendar key={range} days={days} expenses={expenses} income={income} today={today} periodChip={periodChip} />
           )}
       </>
@@ -193,8 +191,8 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
           expenses={detail.isGhost ? allExpenses : expenses} income={detail.isGhost ? allIncome : income} adjustments={detail.isGhost ? allAdjustments : adjustments}
           today={today} lastActivity={lastActivity.get(detail.id)} rangeLabel={words.changeOver}
           onClose={() => setDetail(null)}
-          onTransfer={(a) => setTransferFrom(a.id)}
-          onPayOff={setPayOffCard}
+          onTransfer={partner ? undefined : (a) => setTransferFrom(a.id)}
+          onPayOff={partner ? undefined : setPayOffCard}
         />
       )}
       {transferFrom && (

@@ -128,24 +128,18 @@
 .pebble-root .pb-partner-view-bar > button { min-height: 2rem; padding: .3rem .55rem; }
 .pebble-root .pb-partner-censored { color: var(--ink-soft); font-weight: 500; }
 
-/* Keep the usual card spacing when a partner has shared only a few sections. */
-.pebble-root .pb-dash.pb-dash-partner {
-  grid-template-areas: none;
-  grid-template-columns: minmax(0, 1fr);
+.pebble-root .pb-partner-withheld {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 3.75rem;
+  padding: .7rem .85rem;
+  border: 1px solid currentColor;
+  border-radius: .7rem;
+  color: var(--ink-soft);
+  font-size: .83rem;
 }
-.pebble-root .pb-dash.pb-dash-partner > * { grid-area: auto; }
-@container content (min-width: 640px) {
-  .pebble-root .pb-dash.pb-dash-partner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pebble-root .pb-dash.pb-dash-partner > :is(.pb-dash-area-top, .pb-dash-area-recent, .pb-dash-area-yoy) { grid-column: 1 / -1; }
-}
-.pebble-root .pb-dash.pb-dash-partner .pb-dash-hero {
-  grid-template-areas: "main";
-  grid-template-columns: minmax(0, 1fr);
-}
-.pebble-root .pb-dash.pb-dash-partner .pb-dash-hero:has(.pb-hero-accounts) { grid-template-areas: "main" "acct"; }
-@container content (min-width: 640px) {
-  .pebble-root .pb-dash.pb-dash-partner .pb-dash-hero:has(.pb-hero-accounts) {
-    grid-template-areas: "main acct";
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+.pebble-root .pb-partner-withheld > svg { flex: none; }
+.pebble-root .pb-partner-withheld p { margin: 0; }
+.pebble-root .pb-partner-withheld strong { display: block; }
+.pebble-root .pb-hero .pb-partner-withheld { color: var(--pb-hero-fg); }

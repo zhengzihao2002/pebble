@@ -1,4 +1,5 @@
 'use client';
+import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
@@ -59,6 +60,10 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
   const partner = usePartnerView();
+  const showMoney = !partner || partner.data.permissions.amounts === true;
+  const showSpending = showMoney && (!partner || partner.data.permissions.expenses === true);
+  const showCashFlow = showSpending && (!partner || partner.data.permissions.income === true);
+  const showNotes = showCashFlow && (!partner || partner.data.permissions.personalGoals && partner.data.permissions.scheduled);
   const categoryMeta = useMemo(() => buildCategoryMeta(categories, budgets), [categories, budgets]);
 
   // Zone-aware 'YYYY-MM-DD', resolved in the browser like the other pages.
@@ -79,11 +84,12 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
   const dismiss = usePebbleStore((s) => s.dismissInsight);
   const notes = useDismissQueue(dismiss);
 
-  const items = useMemo(() => (today === null ? null : partner ? [] : buildInsights({
+  const items = useMemo(() => (today === null ? null : !showNotes ? [] : buildInsights({
     transactions, rules, goals, accounts, today, d, t, locale,
-    onOpen: setSelected, onCreateSchedule: setPrefill, onPayOff: setPayOff,
-  })), [today, transactions, rules, goals, accounts, d, t, locale, partner]);
-  const shown = items === null ? null : items.filter((i) => !(dismissed ?? []).includes(i.id));
+    onOpen: openTransaction, onCreateSchedule: setPrefill, onPayOff: setPayOff,
+  }).map(item => partner ? { ...item, action: undefined } : item)),
+  [today, transactions, rules, goals, accounts, d, t, locale, showNotes, openTransaction, partner]);
+  const shown = items === null ? null : items.filter((i) => partner || !(dismissed ?? []).includes(i.id));
   const attention = shown === null ? null : shown.filter((i) => i.group !== 'good');
   const good = shown === null ? [] : shown.filter((i) => i.group === 'good');
   const attentionCount = attention === null ? 0 : attention.filter((i) => !notes.pending.includes(i.id)).length;
@@ -96,7 +102,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
     { id: SECTION_IDS.trends, label: ux.sectionTrends },
     { id: SECTION_IDS.places, label: ux.sectionPlaces },
     { id: SECTION_IDS.good, label: ux.sectionGood },
-  ].filter(item => !partner || (item.id !== SECTION_IDS.attention && item.id !== SECTION_IDS.good));
+  ];
 
   if (!today) return <PageSkeleton pathname="/insights"/>;
 
@@ -105,29 +111,29 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
       <JumpBar items={jumps} />
       <div className="pb-ins-grid">
         <div className="pb-ins-area pb-ins-area-hero pb-rise" style={rise(0)}>
-          <SavingsHeadline transactions={transactions} today={today} />
+          {showCashFlow ? <SavingsHeadline transactions={transactions} today={today} /> : <PartnerCensoredCard title={ux.heroNeedsHeader} className="pb-ins-card" />}
         </div>
-        {!partner && <div id={SECTION_IDS.attention} className="pb-ins-area pb-ins-area-rail pb-rise" style={rise(1)}>
-          <WorthKnowing items={attention} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
-        </div>}
+        <div id={SECTION_IDS.attention} className="pb-ins-area pb-ins-area-rail pb-rise" style={rise(1)}>
+          {showNotes ? <WorthKnowing items={attention} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} /> : <PartnerCensoredCard title={d.insights.wkTitle} className="pb-ins-card" />}
+        </div>
         <div id={SECTION_IDS.calendar} className="pb-ins-area pb-ins-area-cal pb-rise" style={rise(2)}>
-          <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={openTransaction} />
+          {showCashFlow ? <DayByDay transactions={transactions} categoryMeta={categoryMeta} today={today} onOpen={openTransaction} /> : <PartnerCensoredCard title={d.insights.dayTitle} className="pb-ins-card" />}
         </div>
         <div id={SECTION_IDS.week} className="pb-ins-area pb-ins-area-week pb-rise" style={rise(3)}>
-          <YourWeek transactions={transactions} today={today} />
+          {showSpending ? <YourWeek transactions={transactions} today={today} /> : <PartnerCensoredCard title={d.insights.yourWeekTitle} className="pb-ins-card" />}
         </div>
         <div id={SECTION_IDS.pace} className="pb-ins-area pb-ins-area-pace pb-rise" style={rise(4)}>
-          <MonthPace transactions={transactions} rules={rules} categoryMeta={categoryMeta} today={today} />
+          {showSpending ? <MonthPace transactions={transactions} rules={rules} categoryMeta={categoryMeta} today={today} /> : <PartnerCensoredCard title={ux.paceTitle} className="pb-ins-card" />}
         </div>
         <div id={SECTION_IDS.trends} className="pb-ins-area pb-ins-area-trends pb-rise" style={rise(5)}>
-          <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} />
+          {showSpending ? <CategoryTrends transactions={transactions} categoryMeta={categoryMeta} today={today} /> : <PartnerCensoredCard title={d.insights.trendsTitle} className="pb-ins-card" />}
         </div>
         <div id={SECTION_IDS.places} className="pb-ins-area pb-ins-area-places pb-rise" style={rise(6)}>
-          <TopPlaces transactions={transactions} today={today} categoryMeta={categoryMeta} onOpen={openTransaction} />
+          {showSpending ? <TopPlaces transactions={transactions} today={today} categoryMeta={categoryMeta} onOpen={openTransaction} /> : <PartnerCensoredCard title={d.insights.placesTitle} className="pb-ins-card" />}
         </div>
-        {!partner && <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
-          <GoodNews items={good} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} />
-        </div>}
+        <div id={SECTION_IDS.good} className="pb-ins-area pb-ins-area-good pb-rise" style={rise(7)}>
+          {showNotes ? <GoodNews items={good} pending={notes.pending} onHide={notes.hide} onUndo={notes.undo} /> : <PartnerCensoredCard title={ux.goodNews} className="pb-ins-card" />}
+        </div>
       </div>
       {!partner && selected && (
         <TransactionDetailModal txn={selected} categoryMeta={categoryMeta} accounts={accounts} onClose={() => setSelected(null)} />

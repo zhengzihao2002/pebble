@@ -1,5 +1,7 @@
 'use client';
 
+import { PartnerCensored } from '@/components/partner/PartnerCensored';
+import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { RollingAmount } from '@/components/shared/RollingAmount';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronRight, CreditCard } from 'lucide-react';
@@ -229,7 +231,7 @@ export function StatementTrack({ card, charges, today, st }: {
  * phone. Still no balance graph: paying off moves charges to a bank account
  * with their dates, so a card's history only ever shows what is unpaid.
  */
-export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, index = 0 }: {
+export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, index = 0, censored = false }: {
   a: Account;
   now: number;
   /** Expense rows, for each card's due and overdue amounts. */
@@ -239,9 +241,11 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
   onPayOff?: (a: Account) => void;
   onOpen?: (a: Account) => void;
   index?: number;
+  censored?: boolean;
 }) {
   const { d, t } = useTranslation();
   const x = d.ux.accounts;
+  const partner = usePartnerView();
   const hibernated = a.status === 'hibernated';
   const f = creditFacts(a, now, expenses, today);
   const charges = useMemo(() => expenses.filter((c) => c.accountId === a.id), [expenses, a.id]);
@@ -274,8 +278,8 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
           )}
         </div>
         <div className="pb-accounts-cc-owed">
-          <p className="font-display pb-money"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
-          <p className="pb-accounts-cc-owed-word">{f.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>
+          <p className="font-display pb-money">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" />}</p>
+          <p className="pb-accounts-cc-owed-word">{censored || f.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>
         </div>
         <div className="pb-accounts-cc-row is-bottom">
           {a.last4 ? <span className="font-mono-tab pb-accounts-cc-num">····&nbsp;{a.last4}</span> : <span />}
@@ -284,6 +288,7 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
       </div>
 
       <div className="pb-accounts-cc-body">
+        {partner && <PartnerCensored balances={censored} />}
         {f.limit > 0 && <LimitMeter owed={f.owed} limit={f.limit} over={f.over} />}
         {f.st && <StatementTrack card={a} charges={charges} today={today} st={f.st} />}
         {f.st && <DueLine st={f.st} owes={f.owes} isOverdue={f.isOverdue} dueSoon={f.dueSoon} />}

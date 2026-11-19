@@ -2,6 +2,8 @@
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { canSeePartnerBalances } from '@/lib/partner';
+import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import type { BalanceAdjustment, Goal, RecurringRule, Transaction } from '@/types';
@@ -61,6 +63,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // Strict true: a non-boolean stored by any other build means off.
   const partner = usePartnerView();
   const showAmounts = !partner || partner.data.permissions.amounts === true;
+  const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
+  const showSpending = showAmounts && (!partner || partner.data.permissions.expenses);
+  const showCashFlow = showSpending && (!partner || partner.data.permissions.income);
+  const showGoals = showBalances && (!partner || partner.data.permissions.personalGoals);
   const showHealthBar = usePebbleStore((s) => s.showHealthBar) === true;
 
   // STATS_MODES lives in @/data/seed and carries an English label. Looked up
@@ -202,10 +208,10 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // The hero's 90-day line, walked back from the server's total (see
   // src/lib/balanceHistory.ts), so it always ends at the figure above it.
   const balanceTrend = useMemo(() => {
-    if (!today) return null;
+    if (!today || !showBalances) return null;
     const records = [...transactions, ...adjustments].map((r) => ({ date: r.date, amount: r.amount, accountId: r.accountId }));
     return buildBalanceHistory(records, accounts.map((a) => a.id), totalBalance, ymdOf(today), 90);
-  }, [today, transactions, adjustments, accounts, totalBalance]);
+  }, [today, transactions, adjustments, accounts, totalBalance, showBalances]);
 
   // [ and ] step the period, older and newer - only where the stepper shows
   // and with exactly AppShell's single-key guards: not while typing (the
@@ -243,14 +249,14 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
   // cap here: the shell already caps .pebble-main.
   return (
     <>
-    <div className={partner ? "pb-dash pb-dash-partner" : "pb-dash"}>
+    <div className="pb-dash">
       {/* The notices sit inside the top area, so when they render nothing
           (the common case) they leave no empty grid row and no stray gap. */}
       <section className="pb-dash-area-top">
         {/* All of these render nothing in the common case. */}
         <CatchUpNotice {...catchUp} />
-        {!partner && <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />}
-        <BalanceHero totalBalance={totalBalance} accounts={heroAccounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={partner ? null : balanceTrend} />
+        {showGoals && <GoalOverspendNotice totalBalance={totalBalance} allocated={allocated} />}
+        <BalanceHero totalBalance={totalBalance} accounts={heroAccounts} balancesByAccount={balancesByAccount} allocated={allocated} trend={balanceTrend} />
         {/* Under the hero, not above it: on a phone up to six rows of notices would
             push the balance off the first screen. */}
         {showAmounts && <BudgetAlertsNotice transactions={transactions} categoryMeta={categoryMeta} today={today} />}
@@ -274,49 +280,45 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
           compareLabel={compareLabel}
         />
         {/* The same income and rate as the card above - never recomputed. */}
-        {!partner && showHealthBar && (
+        {showCashFlow && showHealthBar && (
           <HealthStatusBar income={periodStats.income} savingsRate={periodStats.savingsRate} />
         )}
       </section>
 
-      {/* Every chart card follows the This period controls above. */}
-      {(showAmounts && (!partner || partner.data.permissions.expenses)) && (
       <div className="pb-dash-area-pace">
-        <SpendingPaceCard timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+        {showSpending
+          ? <SpendingPaceCard timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.ux.dashboard.paceTitle} />}
       </div>
-      )}
-      {(showAmounts && (!partner || partner.data.permissions.scheduled)) && (
       <div className="pb-dash-area-upcoming">
-        <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
+        {showAmounts && (!partner || partner.data.permissions.scheduled)
+          ? <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.upcomingCard.title} />}
       </div>
-      )}
-      {(showAmounts && (!partner || partner.data.permissions.expenses)) && (
       <div className="pb-dash-area-where">
-        <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+        {showSpending
+          ? <CategoryDonutChart timeFrame={timeFrame} transactions={transactions} categoryMeta={categoryMeta} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.donutChart.title} />}
       </div>
-      )}
-      {(showAmounts && (!partner || partner.data.permissions.expenses && partner.data.permissions.income)) && (
       <div className="pb-dash-area-flow">
-        <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+        {showCashFlow
+          ? <IncomeSpendingChart timeFrame={timeFrame} transactions={transactions} mode={statsMode} periodKey={statsPeriod} today={today} ready={statsRestored} inProgress={statsWindow.inProgress} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.trendChart.title} />}
       </div>
-      )}
-      {/* Only when a year back has data: no wrapper at all otherwise, and the
-          grid drops its row (dashboard.css), so there is no hole. */}
-      {showAmounts && (!partner || partner.data.permissions.expenses && partner.data.permissions.income) && yearOverYear && today && (
+      {showCashFlow && yearOverYear && today && (
         <div className="pb-dash-area-yoy">
           <YearOverYearCard data={yearOverYear} categoryMeta={categoryMeta} today={today} inProgress={statsWindow.inProgress} />
         </div>
       )}
-      {(!partner) && (
       <div className="pb-dash-area-attention">
-        <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
+        {showSpending && (!partner || partner.data.permissions.budgets)
+          ? <NeedsAttentionCard transactions={transactions} categoryMeta={categoryMeta} today={today} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.needsAttention.title} />}
       </div>
-      )}
-      {(!partner) && (
       <div className="pb-dash-area-goals">
-        <GoalsGlance goals={goals} allocated={allocated} totalBalance={totalBalance} />
+        {showGoals ? <GoalsGlance goals={goals} allocated={allocated} totalBalance={totalBalance} />
+          : <PartnerCensoredCard className="pb-dash-card" title={d.nav.goals} />}
       </div>
-      )}
       <div className="pb-dash-area-recent">
         <RecentActivityCard transactions={transactions} categoryMeta={categoryMeta} today={today} accounts={accounts} />
       </div>

@@ -14,7 +14,9 @@ const entry = `
   export * from './src/lib/partnerPaths';
   export { getOwnWorkspaceUser } from './src/lib/partnerView.server';
   export { withSessionUser } from './src/lib/actions/withSessionUser';
-  export { partnerDisplayName, partnerTransactions } from './src/lib/partnerDisplay';
+  export { canSeePartnerBalances } from './src/lib/partner';
+  export { computeCurrentBalances } from './src/lib/stats';
+  export { partnerDisplayName, partnerTransactions, partnerBalanceAdjustments } from './src/lib/partnerDisplay';
 `;
 const sources = {
   'server-only': '',
@@ -67,8 +69,10 @@ test('a partner cookie suspends ordinary actions, and is scoped to the signed-in
   assert.equal(await ownerAction(), viewer);
 });
 
-test('the placeholder profile and censored ledger fields are presented safely', () => {
-  assert.equal(scope.partnerDisplayName('Guest', 'Partner'), 'Partner');
+test('saved partner names are preserved and restricted ledger fields are censored', () => {
+  assert.equal(scope.partnerDisplayName('Guest', 'Partner'), 'Guest');
+  assert.equal(scope.partnerDisplayName('   ', 'Partner'), 'Partner');
+  assert.equal(scope.partnerDisplayName(null, 'Partner'), 'Partner');
   assert.equal(scope.partnerDisplayName('Morgan', 'Partner'), 'Morgan');
   const data = { transactions: [{ id: 'x', kind: 'expense', date: '2026-11-19', hidden: true,
     title: '', category: '', tag: '', accountId: null, accountName: null, amount: null, notes: 'Shared notes' }] };
@@ -77,4 +81,27 @@ test('the placeholder profile and censored ledger fields are presented safely', 
   assert.equal(row.category, '');
   assert.equal(row.accountId, '');
   assert.equal(row.tag, '');
+});
+
+test('a shared balance includes daily corrections only with all of its inputs authorized', () => {
+  const permissions = { accounts: true, expenses: true, income: true, amounts: true };
+  const data = {
+    permissions,
+    dailyBalanceAdjustments: [{ accountId: 'checking', date: '2026-11-03', amount: 400 }],
+    transactions: [
+      { id: 'masked', kind: 'expense', date: '2026-11-18', hidden: true, amount: -50, accountId: 'checking' },
+    ],
+  };
+  assert.equal(scope.canSeePartnerBalances(permissions), true);
+  const withdrawals = scope.partnerTransactions(data, 'Hidden Transaction');
+  const adjustments = scope.partnerBalanceAdjustments(data);
+  assert.equal(adjustments[0].description, '');
+  assert.equal(adjustments[0].transferGroupId, null);
+  const current = scope.computeCurrentBalances(withdrawals, [{ id: 'checking' }], adjustments);
+  assert.deepEqual(current, { total: 350, byAccount: { checking: 350 } });
+  for (const key of Object.keys(permissions)) {
+    const restricted = { ...permissions, [key]: false };
+    assert.equal(scope.canSeePartnerBalances(restricted), false);
+    assert.deepEqual(scope.partnerBalanceAdjustments({ ...data, permissions: restricted }), []);
+  }
 });

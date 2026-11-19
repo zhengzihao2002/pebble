@@ -1,4 +1,6 @@
 'use client';
+import { PartnerCensoredCard } from '@/components/partner/PartnerCensored';
+import { canSeePartnerBalances } from '@/lib/partner';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -82,6 +84,10 @@ const DEDUCTION_VIEWS = ['rate', 'paycheck'] as const;
  */
 export function AnalysisClient({ transactions, categories, budgets, rules, totalBalance }: AnalysisClientProps) {
   const partner = usePartnerView();
+  const showIncome = !partner || partner.data.permissions.amounts === true && partner.data.permissions.income === true;
+  const showSpending = !partner || partner.data.permissions.amounts === true && partner.data.permissions.expenses === true;
+  const showCashFlow = showIncome && showSpending;
+  const showBalances = !partner || canSeePartnerBalances(partner.data.permissions);
   const { d, t, locale } = useTranslation();
   const x = d.ux.analysis;
   const timeZoneOverride = useTimeZoneOverride();
@@ -184,8 +190,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
     [transactions, today, earliest, totalBalance, locale],
   );
   const projection = useMemo(
-    () => (!partner && today && cashflow ? computeProjection(transactions, today, totalBalance, cashflow.avgMonthlyNet) : null),
-    [partner, transactions, today, totalBalance, cashflow],
+    () => (showBalances && today && cashflow ? computeProjection(transactions, today, totalBalance, cashflow.avgMonthlyNet) : null),
+    [showBalances, transactions, today, totalBalance, cashflow],
   );
   const variance = useMemo(() => {
     if (!today) return [];
@@ -259,12 +265,12 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {analysisWindow && (
         <section id="pb-ana-overview" className="pb-ana-section" aria-label={x.overview}>
           <div className="pb-ana-grid">
-            {hasComplete && cashflow ? (
+            {!showCashFlow ? <PartnerCensoredCard className="pb-ana-card pb-ana-span-hero" title={x.atAGlance} /> : hasComplete && cashflow ? (
               <div className="pb-ana-span-hero"><AnalysisHero cashflow={cashflow} range={range} /></div>
             ) : (
               <div className="pb-ana-span-hero"><NeedsCard need={needHistory} card="glance" title={x.atAGlance} icon={<Gauge size={15} />} /></div>
             )}
-            {current && (
+            {showCashFlow && current && (
               <div className="pb-ana-span-now">
                 <CurrentMonthCard current={current} daily={currentDaily} typical={hasComplete ? spending?.monthlyAverage ?? null : null} />
               </div>
@@ -277,7 +283,12 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {analysisWindow && (
         <section id="pb-ana-income" className="pb-ana-section" aria-labelledby="pb-ana-income-title">
           <SectionHeader as="h2" id="pb-ana-income-title" icon={Wallet} title={d.analysis.income.title} actions={range ? <PeriodChip range={range} /> : undefined} />
-          {incomeNeed !== null || !incomeSummary ? (
+          {!showIncome ? (
+            <div className="pb-ana-grid">
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-5" title={x.incomeFigures} />
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-7" title={d.analysis.income.deductionsChartTitle} />
+            </div>
+          ) : incomeNeed !== null || !incomeSummary ? (
             <div className="pb-ana-grid">
               <NeedsCard className="pb-ana-span-5" need={incomeNeed ?? needHistory} card="incomeFigures" title={x.incomeFigures} icon={<Wallet size={15} />} />
               <NeedsCard className="pb-ana-span-7" need={incomeNeed ?? needHistory} card="deductions" title={d.analysis.income.deductionsChartTitle} icon={<Receipt size={15} />} />
@@ -363,7 +374,13 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {analysisWindow && (
         <section id="pb-ana-spending" className="pb-ana-section" aria-labelledby="pb-ana-spending-title">
           <SectionHeader as="h2" id="pb-ana-spending-title" icon={Receipt} title={d.analysis.spending.title} actions={range ? <PeriodChip range={range} /> : undefined} />
-          {spendingNeed !== null || !spending ? (
+          {!showSpending ? (
+            <div className="pb-ana-grid">
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-12" title={x.spendingFigures} />
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-7" title={d.analysis.spending.monthlyChartTitle} />
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-5" title={d.analysis.spending.topCategoriesTitle} />
+            </div>
+          ) : spendingNeed !== null || !spending ? (
             <div className="pb-ana-grid">
               <NeedsCard className="pb-ana-span-12" need={spendingNeed ?? needHistory} card="spendingFigures" title={x.spendingFigures} icon={<Receipt size={15} />} />
               <NeedsCard className="pb-ana-span-7" need={spendingNeed ?? needHistory} card="monthly" title={d.analysis.spending.monthlyChartTitle} icon={<BarChart3 size={15} />} />
@@ -440,7 +457,12 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
       {analysisWindow && (
         <section id="pb-ana-cashflow" className="pb-ana-section" aria-labelledby="pb-ana-cashflow-title">
           <SectionHeader as="h2" id="pb-ana-cashflow-title" icon={ArrowLeftRight} title={d.analysis.cashflow.title} actions={range ? <PeriodChip range={range} /> : undefined} />
-          {!hasComplete || !cashflow ? (
+          {!showCashFlow ? (
+            <div className="pb-ana-grid">
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-8" title={d.analysis.cashflow.chartTitle} />
+              <PartnerCensoredCard className="pb-ana-card pb-ana-span-4" title={x.cushion} />
+            </div>
+          ) : !hasComplete || !cashflow ? (
             <div className="pb-ana-grid">
               <NeedsCard className="pb-ana-span-8" need={needHistory} card="flow" title={d.analysis.cashflow.chartTitle} icon={<TrendingUp size={15} />} />
               <div className="pb-ana-span-4 pb-ana-stack">
@@ -488,7 +510,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
             </section>
 
             <div className="pb-ana-span-4 pb-ana-stack">
-              {!partner && <CushionCard cashflow={cashflow} range={range} />}
+              {showBalances ? <CushionCard cashflow={cashflow} range={range} /> : <PartnerCensoredCard title={x.cushion} className="pb-ana-card" />}
               <CommitmentsCard commitments={commitments} monthlyAverage={spending?.monthlyAverage ?? null} />
             </div>
           </div>
@@ -501,7 +523,7 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
         <section id="pb-ana-outlook" className="pb-ana-section" aria-labelledby="pb-ana-outlook-title">
           <SectionHeader as="h2" id="pb-ana-outlook-title" icon={Telescope} title={d.analysis.outlook.title} />
           <div className="pb-ana-grid">
-            {yoy.length === 0 ? (
+            {!showCashFlow ? <PartnerCensoredCard className="pb-ana-card pb-ana-span-7" title={d.analysis.outlook.yoyTitle} /> : yoy.length === 0 ? (
               <NeedsCard className="pb-ana-span-7" need="noData" card="yoy" title={d.analysis.outlook.yoyTitle} icon={<BarChart3 size={15} />} />
             ) : (
               <section className="card pb-ana-card pb-ana-span-7" aria-labelledby="pb-ana-yoy-title">
@@ -552,13 +574,13 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
                 stacked - both about how the year runs. */}
             {(
               <div className="pb-ana-stack pb-ana-span-5">
-                {allMonths.length > 0 && current ? (
+                {!showCashFlow ? <PartnerCensoredCard className="pb-ana-card" title={x.heatTitle} /> : allMonths.length > 0 && current ? (
                   <SeasonalityHeatmap months={allMonths} today={today} currentLabel={current.label} />
                 ) : (
                   <NeedsCard need={needHistory} card="heat" title={x.heatTitle} icon={<CalendarRange size={15} />} />
                 )}
 
-                {!projection ? (
+                {!showBalances ? <PartnerCensoredCard className="pb-ana-card" title={d.analysis.outlook.projectionTitle} /> : !projection ? (
                   <NeedsCard need={needHistory} card="projection" title={d.analysis.outlook.projectionTitle} icon={<Gauge size={15} />} />
                 ) : (
                   <section className="card pb-ana-card" aria-labelledby="pb-ana-proj-title">
@@ -591,7 +613,8 @@ export function AnalysisClient({ transactions, categories, budgets, rules, total
               </div>
             )}
 
-            {variance.length === 0 || pace === null ? (
+            {!showSpending || (partner && !partner.data.permissions.budgets)
+              ? <PartnerCensoredCard className="pb-ana-card pb-ana-span-12" title={d.analysis.outlook.paceTitle} /> : variance.length === 0 || pace === null ? (
               <NeedsCard className="pb-ana-span-12" need="noBudget" title={d.analysis.outlook.paceTitle} icon={<Gauge size={15} />} />
             ) : (
               <section className="card pb-ana-card pb-ana-span-12" aria-labelledby="pb-ana-pace-title">
