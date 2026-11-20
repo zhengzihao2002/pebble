@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useRef, type ComponentProps } from 'react';
 import { beginNavigation, finishNavigation } from './navigation';
 import { usePathname } from 'next/navigation';
 import { isPartnerPath, partnerSectionPath } from '@/lib/partnerPaths';
+import { navigateQuietly } from '@/lib/offline/quietSync';
 
 function PendingStatus({ pathname }: { pathname: string }) {
   const { pending } = useLinkStatus();
@@ -23,7 +24,8 @@ const PendingLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Link>>(f
   return <Link {...props} href={target} prefetch={partnerView ? false : props.prefetch} ref={ref} onNavigate={event => {
     let cancelled = false;
     onNavigate?.({ preventDefault: () => { cancelled = true; event.preventDefault(); } });
-    if (!cancelled) beginNavigation(path);
+    if (!cancelled && navigateQuietly(path)) event.preventDefault();
+    else if (!cancelled) beginNavigation(path);
   }}><PendingStatus pathname={path.split(/[?#]/)[0]}/>{children}</Link>;
 });
 export default PendingLink;

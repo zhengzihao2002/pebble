@@ -66,6 +66,35 @@ export const offlineEn = {
   signOutCancel: 'Stay signed in',
   signOutKeep: 'Keep them and sign out',
   signOutDiscard: 'Discard them and sign out',
+  quietSync: {
+    title: 'Quiet Sync',
+    beta: 'Beta',
+    settingHint: 'Browse saved pages on this device. Pebble syncs about every eight hours while you use it. Use the header to sync now or stay online.',
+    status: {
+      paused: 'Sync paused',
+      preparing: 'Preparing',
+      syncing: 'Syncing',
+      live: 'Online',
+      offline: 'Offline',
+    },
+    detail: {
+      paused: 'You’re viewing data saved on this device. Pebble connects when it needs to sync or save a change.',
+      preparing: 'Pebble is saving pages for local browsing.',
+      syncing: 'Pebble is updating the data saved on this device.',
+      live: 'Pages use the latest data while Pebble is online.',
+      offline: 'Pebble will sync when you’re connected and a sync is due.',
+    },
+    syncNow: 'Sync now',
+    stayOnline: 'Stay online for 20 min',
+    lastSynced: 'Last synced {time}',
+    onlineUntil: 'Online until {time}',
+    needsSync: 'Sync now or stay online to load this section.',
+    needsLive: 'Stay online to load this section.',
+    problem: {
+      unavailable: 'Local browsing is unavailable in this browser. Please try again.',
+      incomplete: 'Some pages couldn’t finish syncing. Try syncing again.',
+    },
+  },
 };
 
 export const offlineZh: typeof offlineEn = {
@@ -116,4 +145,33 @@ export const offlineZh: typeof offlineEn = {
   signOutCancel: '保持登录',
   signOutKeep: '保留交易并退出',
   signOutDiscard: '丢弃交易并退出',
+  quietSync: {
+    title: '轻量同步',
+    beta: '测试版',
+    settingHint: '浏览保存在当前设备上的页面。使用 Pebble 时，约每八小时同步一次。也可以在顶部栏立即同步或暂时保持在线。',
+    status: {
+      paused: '同步已暂停',
+      preparing: '正在准备',
+      syncing: '正在同步',
+      live: '在线',
+      offline: '离线',
+    },
+    detail: {
+      paused: '正在查看保存在此设备上的数据。同步或保存更改时，Pebble 会连接服务器。',
+      preparing: 'Pebble 正在保存页面，以便之后直接打开。',
+      syncing: 'Pebble 正在更新保存在此设备上的数据。',
+      live: 'Pebble 在线时，页面会使用最新数据。',
+      offline: '网络恢复后，Pebble 会在需要时同步。',
+    },
+    syncNow: '立即同步',
+    stayOnline: '保持在线 20 分钟',
+    lastSynced: '上次同步：{time}',
+    onlineUntil: '在线至 {time}',
+    needsSync: '立即同步或暂时保持在线，即可加载此部分。',
+    needsLive: '暂时保持在线，即可加载此部分。',
+    problem: {
+      unavailable: '此浏览器暂时无法浏览本地页面，请重试。',
+      incomplete: '部分页面未完成同步，请重试。',
+    },
+  },
 };

@@ -1,5 +1,6 @@
 'use client';
 import { allowsPartnerSearch } from '@/lib/partnerCensorship';
+import { navigateQuietly, quietSyncIsPaused } from '@/lib/offline/quietSync';
 
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
@@ -153,6 +154,7 @@ export function CommandPalette({
       setSearchState('ready');
       return;
     }
+    if (quietSyncIsPaused()) return;
     setSearchState('loading');
     void callAction(getSearchTransactionsAction, d.palette.searchFailed).then((result) => {
       if (!aliveRef.current) return;
@@ -167,6 +169,12 @@ export function CommandPalette({
     });
   };
 
+  const navigate = (href: string, options?: { scroll: boolean }) => {
+    if (navigateQuietly(href)) return;
+    beginNavigation(href);
+    router.push(href, options);
+  };
+
   // Settings owns its exact-row jump and arrival highlight. A hash survives a
   // cold navigation; an event handles repeat jumps while already on that page.
   const goToSection = (id: string) => {
@@ -175,8 +183,7 @@ export function CommandPalette({
       return;
     }
     const href = `/settings#${id}`;
-    beginNavigation(href);
-    router.push(href, { scroll: false });
+    navigate(href, { scroll: false });
   };
 
   const commands: Command[] = [
@@ -190,14 +197,14 @@ export function CommandPalette({
     },
     ...navItems.map((item): Command => ({
       id: item.href, label: d.nav[item.labelKey], icon: item.icon, group: 'pages',
-      run: () => { const href = partner ? partnerSectionPath(item.href) : item.href; beginNavigation(href); router.push(href); },
+      run: () => navigate(partner ? partnerSectionPath(item.href) : item.href),
     })),
     { id: 's-money', label: d.settingsSections.money, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-money') },
     { id: 's-appearance', label: d.settingsSections.appearance, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-appearance') },
     { id: 's-language', label: d.settingsSections.languageRegion, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-language-region') },
     { id: 's-behavior', label: d.settingsSections.behavior, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-behavior') },
     { id: 's-account', label: d.account.title, icon: SettingsIcon, group: 'settings', run: () => goToSection('settings-pebble-account') },
-    { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => { beginNavigation('/account/security'); router.push('/account/security'); } },
+    { id: 's-sessions', label: d.sessions.title, icon: SettingsIcon, group: 'settings', run: () => navigate('/account/security') },
   ];
 
   const visibleCommands = partner ? commands.filter(command => {
@@ -219,7 +226,7 @@ export function CommandPalette({
       id: `setting-${setting.id}`, label: setting.label,
       description: `${setting.section} · ${setting.hint}`, icon: SettingsIcon,
       group: 'settings', run: () => {
-        if (setting.href) { beginNavigation(setting.href); router.push(setting.href); }
+        if (setting.href) navigate(setting.href);
         else goToSection(setting.target);
       },
     })),
@@ -432,7 +439,9 @@ export function CommandPalette({
               )}
               {rows.length === 0 && searchState !== 'loading' && searchState !== 'error' && (
                 <div className="pb-shell-pal-empty">
-                  <EmptyState compact icon={SearchX} title={d.palette.empty} body={d.ux.shell.emptyHint} />
+                  <EmptyState compact icon={SearchX} title={d.palette.empty}
+                    body={q && !partner && quietSyncIsPaused() && searchState === 'idle'
+                      ? d.ux.offline.quietSync.needsLive : d.ux.shell.emptyHint} />
                 </div>
               )}
               </div>

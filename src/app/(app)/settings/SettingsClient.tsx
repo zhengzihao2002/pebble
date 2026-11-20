@@ -21,6 +21,7 @@ import { LanguageControl } from '@/components/settings/LanguageControl';
 import { SelectModeControl } from '@/components/settings/SelectModeControl';
 import { PrivacyControl } from '@/components/settings/PrivacyControl';
 import { TextSelectControl } from '@/components/settings/TextSelectControl';
+import { QuietSyncControl } from '@/components/settings/QuietSyncControl';
 import { TimeZoneCard } from '@/components/settings/TimeZoneCard';
 import { AccountsCard } from '@/components/settings/AccountsCard';
 import type { Account } from '@/lib/data/mappers';
@@ -220,6 +221,7 @@ export function SettingsClient({
             <SelectModeControl selectMode={selectMode} onChange={setSelectMode} />
             <PrivacyControl />
             <TextSelectControl />
+            <QuietSyncControl />
           </div>
           <SoundSettingsCard />
         </>

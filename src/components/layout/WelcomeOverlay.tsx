@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
-import { authClient } from '@/lib/auth/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PebbleMark } from '@/components/brand/PebbleMark';
 
@@ -23,13 +22,11 @@ const NEW_ACCOUNT_WINDOW_MS = 30 * 60 * 1000;
  */
 export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
   const { d, t } = useTranslation();
-  const { name } = useCurrentUser();
+  const { name, createdAt } = useCurrentUser();
   const first = name.trim().split(/\s+/)[0] ?? '';
   // The account's creation time, from the session - exact, unlike guessing
   // from which auth page the user came through (sign-up passes through
   // verification, and possibly sign-in, on its way here).
-  const { data: session } = authClient.useSession();
-  const createdAt = session?.user?.createdAt;
   const isNew = createdAt ? Date.now() - new Date(createdAt).getTime() < NEW_ACCOUNT_WINDOW_MS : false;
 
   useEffect(() => {

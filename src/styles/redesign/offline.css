@@ -160,3 +160,70 @@
 .pebble-root .pb-off-btn { min-height: 44px; padding: 0.6rem 1rem; font-size: 0.85rem; justify-content: center; }
 .pebble-root .pill.pb-off-btn { display: inline-flex; align-items: center; font-weight: 600; }
 .pebble-root .pb-off-card { max-width: 540px; }
+
+.pebble-root .pb-quiet-status {
+  --pb-quiet-tint: var(--pine);
+  flex: none; position: relative;
+}
+.pebble-root .pb-quiet-status[data-status="paused"] { --pb-quiet-tint: var(--ink-soft); }
+.pebble-root .pb-quiet-status[data-status="offline"] { --pb-quiet-tint: var(--gold); }
+.pebble-root .pb-quiet-status[data-status="live"] { --pb-quiet-tint: var(--income); }
+.pebble-root .pb-quiet-trigger {
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  inline-size: 7.2rem; min-block-size: 38px; padding: 0 .6rem;
+  border: 1px solid var(--line); border-radius: var(--pb-radius-pill);
+  background: color-mix(in srgb, var(--mist) 78%, transparent);
+  color: var(--pb-quiet-tint); font: inherit; font-size: .78rem; font-weight: 600; white-space: nowrap;
+  transition: border-color var(--pb-dur-micro) var(--pb-ease-out), background var(--pb-dur-micro) var(--pb-ease-out);
+}
+.pebble-root .pb-quiet-trigger:hover, .pebble-root .pb-quiet-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--pb-quiet-tint) 42%, var(--line));
+  background: color-mix(in srgb, var(--pb-quiet-tint) 9%, var(--mist));
+}
+.pebble-root .pb-quiet-trigger:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-quiet-status-icon { flex: none; }
+.pebble-root .pb-quiet-status[data-status="syncing"] .pb-quiet-status-icon { animation: pb-quiet-turn 900ms linear infinite; }
+@keyframes pb-quiet-turn { to { transform: rotate(1turn); } }
+
+.pebble-root .pb-quiet-panel {
+  position: absolute; z-index: 2; inset-inline-end: 0; inset-block-start: calc(100% + .6rem);
+  inline-size: min(20rem, calc(100vw - 2rem));
+  display: grid; gap: .55rem; padding: .9rem;
+  border: 1px solid var(--line); border-radius: 1rem; background: var(--mist); box-shadow: var(--shadow-float);
+  color: var(--ink);
+}
+.pebble-root .pb-quiet-panel-title {
+  display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .25rem .6rem;
+  margin: 0; font-size: .93rem; font-weight: 600;
+}
+.pebble-root .pb-quiet-panel-state { color: var(--pb-quiet-tint); font-size: .76rem; }
+.pebble-root .pb-quiet-panel-detail, .pebble-root .pb-quiet-panel-meta, .pebble-root .pb-quiet-problem {
+  margin: 0; font-size: .78rem; line-height: 1.45;
+}
+.pebble-root .pb-quiet-panel-detail { color: var(--ink-soft); }
+.pebble-root .pb-quiet-panel-meta { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.pebble-root .pb-quiet-problem { display: block; margin-block-start: .18rem; color: var(--gold); }
+.pebble-root .pb-quiet-actions {
+  display: flex; flex-wrap: wrap; gap: .45rem; padding-block-start: .55rem; border-block-start: 1px solid var(--line);
+}
+.pebble-root .pb-quiet-actions > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  flex: 1 1 auto; min-height: 44px; padding: .45rem .65rem; font-size: .78rem;
+}
+.pebble-root .pb-quiet-actions > button:disabled { opacity: .55; cursor: not-allowed; }
+.pebble-root .pb-quiet-beta {
+  display: inline-block; margin-inline-start: .2rem; padding: .08rem .35rem; border-radius: .3rem;
+  background: var(--pine-soft); color: var(--pine); font-size: .68em; line-height: 1.5; vertical-align: .08em;
+}
+@container content (max-width: 960px) {
+  .pebble-root .pb-quiet-trigger { inline-size: 38px; padding: 0; }
+  .pebble-root .pb-quiet-trigger > span { display: none; }
+}
+@container content (max-width: 460px) {
+  .pebble-root .pb-shell-head-row:has(.pb-quiet-status) { gap: .5rem; }
+  .pebble-root .pb-shell-head-row:has(.pb-quiet-status) .pb-shell-controls { gap: .36rem; }
+  .pebble-root .pb-shell-head-row:has(.pb-quiet-status) .pb-shell-title-chip { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pebble-root .pb-quiet-status[data-status="syncing"] .pb-quiet-status-icon { animation: none; }
+}

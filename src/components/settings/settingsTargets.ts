@@ -35,6 +35,7 @@ export const SETTING_TARGETS = {
   dropdowns: 'pb-set-dropdowns',
   privacy: 'pb-set-privacy',
   textSelection: 'pb-set-text-selection',
+  quietSync: 'pb-set-quiet-sync',
   sounds: 'pb-set-sounds',
   locks: 'pb-set-locks',
   pebbleAccount: 'pb-set-pebble-account',

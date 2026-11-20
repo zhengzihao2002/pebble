@@ -11,6 +11,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
+import { quietSyncIsEnabled } from '@/lib/offline/quietSync';
 
 export function GhostBadge() {
   const { locale } = useTranslation();
@@ -39,7 +40,7 @@ export function GhostAccountMode({ account, disabled = false }: { account: Accou
     if (!result.ok) { setError(translateActionError(d, locale, result)); return; }
     close();
     notifyAccountScopeChanged(account.id, !ghost);
-    router.refresh();
+    if (!quietSyncIsEnabled()) router.refresh();
   };
   return <>
     <button type="button" className={`pill pb-ghost-mode-button${ghost ? ' is-active' : ''}`} disabled={disabled} onClick={() => { setError(null); setOpenMode(account.isGhost === true); setOpen(true); }} aria-label={`${label} · ${account.name}`}>

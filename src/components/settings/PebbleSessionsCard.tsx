@@ -6,6 +6,8 @@ import { authClient } from '@/lib/auth/client';
 import { isInvalidPassword, requiresFreshSignIn } from '@/lib/auth/sessionErrors';
 import { getSessionLocationsAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import type { SessionLocation } from '@/lib/data/sessionLocation';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock } from '@/components/shared/Spinner';
@@ -30,6 +32,18 @@ interface ListedSession {
  * persisted or logged by this component.
  */
 export function PebbleSessionsCard() {
+  const { enabled, status } = useQuietSync();
+  const { d } = useTranslation();
+  if (enabled && status !== 'live') return (
+    <div className="card" style={{ padding: '1.5rem' }}>
+      <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.sessions.title}</h3>
+      <p className="pb-settings-quiet">{d.ux.offline.quietSync.needsLive}</p>
+    </div>
+  );
+  return <ActiveSessionsCard />;
+}
+
+function ActiveSessionsCard() {
   const { d, t, locale } = useTranslation();
   const { data: current, refetch } = authClient.useSession();
   const currentId = current?.session?.id;
@@ -44,6 +58,7 @@ export function PebbleSessionsCard() {
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (quietSyncIsPaused()) return;
     try {
       // Refresh both Neon’s independent memory cache and the React hook.
       // This also makes a retry after successful confirmation use the new ID.

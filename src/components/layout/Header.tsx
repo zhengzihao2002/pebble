@@ -15,6 +15,7 @@ import { useShortcutLabel } from './useShortcutLabel';
 import { PartnerViewBar } from '@/components/partner/PartnerViewBar';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { OfflineStatus } from '@/components/offline/OfflineStatus';
+import { QuietSyncStatus } from '@/components/offline/QuietSyncStatus';
 import { useBudgetPlanNavigation } from '@/components/budgets/BudgetPlanNavigation';
 
 interface HeaderProps {
@@ -303,7 +304,8 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
               )}
             </div>
           )}
-                  </div>
+          {!partner && <QuietSyncStatus key={pathname} />}
+        </div>
       </div>
       {/* Only present while offline or while transactions wait to upload. */}
       <OfflineStatus />

@@ -5,6 +5,8 @@ import { ArrowLeftRight, Copy, KeyRound, Shield, UsersRound } from 'lucide-react
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { LoadingBlock } from '@/components/shared/Spinner';
 import { callAction } from '@/lib/actions/callAction';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import {
   acceptPartnerInviteAction, createPartnerInviteAction, enterPartnerViewAction, leavePartnerViewAction, readPartnerSettingsAction,
   revokePartnerInviteAction, savePartnerPermissionsAction,
@@ -25,6 +27,8 @@ type PermissionTab = (typeof PERMISSION_TABS)[number];
 export function PartnerSettings() {
   const { d, t, locale } = useTranslation();
   const x = d.partner;
+  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
+  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
   const [settings, setSettings] = useState<PartnerSettingsData | null>(null);
   const [invite, setInvite] = useState<{ code: string; expires: string } | null>(null);
   const [enteredCode, setEnteredCode] = useState('');
@@ -42,8 +46,8 @@ export function PartnerSettings() {
   }), []);
 
   useEffect(() => {
-    void reload(true);
-  }, [reload]);
+    if (!readsPaused && !quietSyncIsPaused()) void reload(true);
+  }, [reload, readsPaused]);
 
   const displayedInvite = invite?.expires ?? settings?.inviteExpires;
   useEffect(() => {
@@ -59,7 +63,7 @@ export function PartnerSettings() {
   const awaitingInvite = !!displayedInvite && !settings?.pairId;
   useEffect(() => {
     if (!waitingForPartner && !awaitingInvite) return;
-    const check = () => { if (document.visibilityState === 'visible') void reload(); };
+    const check = () => { if (document.visibilityState === 'visible' && !quietSyncIsPaused()) void reload(); };
     document.addEventListener('visibilitychange', check);
     return () => document.removeEventListener('visibilitychange', check);
   }, [waitingForPartner, awaitingInvite, reload]);
@@ -92,6 +96,7 @@ export function PartnerSettings() {
   };
 
   const switchView = async (leave: boolean) => {
+    if (!leave && quietSyncIsPaused()) return;
     if (await run(leave ? leavePartnerViewAction : () => enterPartnerViewAction(settings?.pairId ?? ''))) {
       // Drop the previous workspace's client state at the mode boundary.
       window.location.assign(new URL(leave ? '/settings#settings-partner' : '/partner/dashboard', window.location.origin));
@@ -113,7 +118,10 @@ export function PartnerSettings() {
   return (
     <section id={SETTING_TARGETS.partner} className="card pb-partner-card">
       {settings === null ? (
-        error ? <><p role="alert">{partnerError(d, error)}</p><button type="button" className="pill" onClick={() => void reload(true)}>{x.refresh}</button></> : <LoadingBlock minHeight={90} />
+        readsPaused ? <>
+          <SectionHeader icon={UsersRound} title={x.title} />
+          <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>
+        </> : error ? <><p role="alert">{partnerError(d, error)}</p><button type="button" className="pill" onClick={() => void reload(true)}>{x.refresh}</button></> : <LoadingBlock minHeight={90} />
       ) : partnerName ? (
         <>
           <SectionHeader icon={UsersRound} title={t(x.pairedWith, { name: partnerName })} subtitle={x.ownSpace} />
@@ -127,13 +135,14 @@ export function PartnerSettings() {
             </div>
           )}
           <div className="pb-partner-actions">
-            <button type="button" disabled={busy || (!settings.viewingPartner && (!settings.configured || !settings.partnerConfigured))}
+            <button type="button" disabled={busy || (!settings.viewingPartner && (readsPaused || !settings.configured || !settings.partnerConfigured))}
               className="pill active" onClick={() => void switchView(settings.viewingPartner)}>
               <ArrowLeftRight size={16} aria-hidden="true" />{settings.viewingPartner ? x.returnOwn : x.viewPartner}
             </button>
             <button type="button" className="pill" disabled={busy} onClick={() => setDisconnect(true)}>{x.unpair}</button>
             {waitingForPartner && <button type="button" className="link-btn" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
           </div>
+          {readsPaused && !settings.viewingPartner && <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>}
           <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories, settings.censoredWords])} settings={settings}
             section={permissionTab} onSection={setPermissionTab} busy={busy} save={async (permissions, categoryIds, words) => {
               if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds, words))) {

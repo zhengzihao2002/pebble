@@ -2,7 +2,7 @@
 
 import { SETTING_TARGETS } from './settingsTargets';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Pencil, Plus, Search, Shapes, Trash2, X } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import {
@@ -11,6 +11,9 @@ import {
   updateCategoryAction,
 } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -120,6 +123,9 @@ export function CategoryManagerCard() {
   // to createCategoryAction/updateCategoryAction pass through untranslated.
   // iconKey and color are looked-up values, never labels.
   const { d, t, locale } = useTranslation();
+  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
+  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
+  const { readReference } = useOfflineQueue();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -132,7 +138,7 @@ export function CategoryManagerCard() {
   // After the first successful load, refreshes happen in the background: the
   // list stays on screen and updates in place, instead of being swapped for
   // the loading block (which made the card flash and jump after every save).
-  const loadedOnce = useRef(false);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>({ name: '', iconKey: 'Shapes', color: CATEGORY_COLOR_OPTIONS[0] });
@@ -151,8 +157,7 @@ export function CategoryManagerCard() {
   // Returns the fresh list (or null on failure) so submit() can find a newly
   // added row. A failed background refresh keeps the list already shown.
   const load = async (): Promise<CategoryItem[] | null> => {
-    const silent = loadedOnce.current;
-    if (!silent) setLoading(true);
+    if (!loadedOnce) setLoading(true);
     const result = await callAction(getCategoriesAction, d.categoryManager.loadFailed);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));
@@ -165,11 +170,32 @@ export function CategoryManagerCard() {
     setError(null);
     setLoadFailed(false);
     setLoading(false);
-    loadedOnce.current = true;
+    setLoadedOnce(true);
     return result.categories;
   };
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!readsPaused && !quietSyncIsPaused()) {
+      void load();
+      return;
+    }
+    if (loadedOnce) return;
+    let cancelled = false;
+    void readReference().then(reference => {
+      if (cancelled) return;
+      if (reference) {
+        setCategories(reference.categories);
+        setError(null);
+        setErrorKind(undefined);
+        setLoadFailed(false);
+        setLoadedOnce(true);
+      }
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+    // Keep translation changes from issuing network requests.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readReference, readsPaused]);
 
   // One timer for the check; a new save or unmounting clears it.
   useEffect(() => {
@@ -273,8 +299,9 @@ export function CategoryManagerCard() {
     );
   };
 
+  const needsSync = readsPaused && !loading && !loadedOnce;
   return (
-    <div id={SETTING_TARGETS.categories} className="card pb-settings-target pb-settings-card" aria-busy={loading} style={{ position: 'relative' }}>
+    <div id={SETTING_TARGETS.categories} className="card pb-settings-target pb-settings-card" aria-busy={loading && !needsSync} style={{ position: 'relative' }}>
       {busy && <LoadingOverlay label={d.common.saving} />}
       {/* Announces a confirmed save; the visible check is aria-hidden. */}
       <span role="status" style={srOnly}>{savedId ? d.categoryManager.saved : ''}</span>
@@ -285,9 +312,10 @@ export function CategoryManagerCard() {
           : undefined}
       />
 
-      {loading && <LoadingBlock label={d.categoryManager.loading} />}
+      {needsSync && <p className="pb-settings-quiet">{d.ux.offline.quietSync.needsSync}</p>}
+      {loading && !needsSync && <LoadingBlock label={d.categoryManager.loading} />}
 
-      {!loading && (
+      {!loading && !needsSync && (
         <>
           {showFilter && (
             <label className="pb-settings-filter">

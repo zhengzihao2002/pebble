@@ -1,6 +1,7 @@
 'use client';
 
 import { readOffline } from '@/lib/offline/connectivity';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { calendarYear, nextBudgetYearBoundary } from '@/lib/budgets/calendar';
@@ -16,7 +17,7 @@ export function BudgetCalendarRefresh({ year, timeZone }: { year: number; timeZo
       const now = new Date();
       if (calendarYear(now, timeZone) !== year) {
         // Retry after offline/sleep or an interrupted RSC request, without a loop.
-        if (!readOffline() && now.getTime() - lastRequest > 5_000) {
+        if (!readOffline() && !quietSyncIsPaused() && now.getTime() - lastRequest > 5_000) {
           lastRequest = now.getTime();
           router.refresh();
         }

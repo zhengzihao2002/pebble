@@ -95,7 +95,7 @@ export const settingsEn = {
   loadingSpinner: 'Traditional spinner',
   loadingCached: 'Cached cards',
   languageHint: 'Language and the timezone dates follow',
-  behaviorHint: 'Dropdowns, privacy, text selection and sounds',
+  behaviorHint: 'Dropdowns, privacy, text selection, sync and sounds',
   accountHint: 'Safety locks, sign-in and your data',
   // Accounts card.
   acrossAccounts: 'Across {count} accounts',
@@ -203,7 +203,7 @@ export const settingsZh: typeof settingsEn = {
   loadingSpinner: '传统转圈',
   loadingCached: '缓存卡片',
   languageHint: '界面语言与日期所用的时区',
-  behaviorHint: '下拉列表、隐私、文字选择与声音',
+  behaviorHint: '下拉列表、隐私、文字选择、同步与声音',
   accountHint: '安全锁、登录与你的数据',
   acrossAccounts: '共 {count} 个账户',
   acrossOne: '共 1 个账户',

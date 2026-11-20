@@ -6,6 +6,8 @@ import type { SharedTransaction } from '@/lib/partner';
 import { partnerError } from '@/components/partner/partnerError';
 import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 import { readOffline } from '@/lib/offline/connectivity';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 import { useUndoDelete } from '@/components/shared/UndoDelete';
@@ -117,7 +119,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, () => { detailAccountGeneration++; detailAccountsMemo = null; });
   // Not offline: the request cannot succeed, and the first dialog will ask
   // again by itself once it is open.
-  const warm = () => { if (!readOffline() && !isPartnerPath(window.location.pathname)) void fetchDetailAccounts(); };
+  const warm = () => { if (!readOffline() && !quietSyncIsPaused() && !isPartnerPath(window.location.pathname)) void fetchDetailAccounts(); };
   // Safari has no requestIdleCallback.
   if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warm, { timeout: 4000 });
   else window.setTimeout(warm, 2000);
@@ -156,6 +158,7 @@ function BalanceSlope({ before, after, tone }: { before: number; after: number; 
  * a different transaction, so one record's draft never bleeds into another.
  */
 function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, accounts: accountsProp, shared }: TransactionDetailModalProps & { txn: LedgerRecord }) {
+  const { readReference } = useOfflineQueue();
   const deleteLocked = useSafetyLock('deleteTransactions');
   const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
@@ -230,6 +233,15 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
   useEffect(() => {
     if (shared) return;
     let cancelled = false;
+    if (quietSyncIsPaused()) {
+      if (!accountsProp) void readReference().then(reference => {
+        if (cancelled) return;
+        setAccountsLoaded(true);
+        if (reference) setAccounts(reference.accounts);
+        else if (!detailAccountsMemo) setAccountError(d.ux.offline.quietSync.needsSync);
+      });
+      return () => { cancelled = true; };
+    }
     callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
       if (cancelled) return;
       setAccountsLoaded(true);

@@ -37,24 +37,24 @@ function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * Resolves the current session's user id, or null if there is no session.
+ * Resolves the current session's user, or null if there is no session.
  * Not exported: callers must use one of the strict wrappers below so that
  * a missing user id can never be coalesced into a fallback value.
  */
-async function resolveSessionUserId(): Promise<string | null> {
+async function resolveSessionUser() {
   const result = await auth.getSession();
 
   if (result.error) {
     throw new AuthUnavailableError(extractErrorMessage(result.error));
   }
 
-  const userId = result.data?.user?.id;
+  const user = result.data?.user;
 
-  if (typeof userId !== 'string' || userId.length === 0) {
+  if (typeof user?.id !== 'string' || user.id.length === 0) {
     return null;
   }
 
-  return userId;
+  return user;
 }
 
 /**
@@ -67,13 +67,13 @@ async function resolveSessionUserId(): Promise<string | null> {
  * Never accepts a user id from the client. Never returns a fallback.
  */
 export async function getSessionUserId(): Promise<string> {
-  const userId = await resolveSessionUserId();
+  const user = await resolveSessionUser();
 
-  if (userId === null) {
+  if (user === null) {
     throw new AuthRequiredError();
   }
 
-  return userId;
+  return user.id;
 }
 
 /**
@@ -86,11 +86,13 @@ export async function getSessionUserId(): Promise<string> {
  * Any component calling this must set `export const dynamic = 'force-dynamic'`.
  */
 export async function getSessionUserIdOrRedirect(): Promise<string> {
-  const userId = await resolveSessionUserId();
+  return (await getSessionUserOrRedirect()).id;
+}
 
-  if (userId === null) {
+export async function getSessionUserOrRedirect() {
+  const user = await resolveSessionUser();
+  if (user === null) {
     redirect('/auth/sign-in');
   }
-
-  return userId;
+  return user;
 }

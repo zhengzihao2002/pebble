@@ -5,6 +5,8 @@ import { Inbox } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
 import { callAction } from '@/lib/actions/callAction';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { readPartnerInboxAction, readPartnerInboxItemAction } from '@/lib/actions/partner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PartnerInboxItem } from '@/lib/partner';
@@ -14,6 +16,8 @@ import { partnerError } from './partnerError';
 export function PartnerInbox() {
   const { d, t, locale } = useTranslation();
   const x = d.partner.inbox;
+  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
+  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
   const [items, setItems] = useState<PartnerInboxItem[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -27,13 +31,14 @@ export function PartnerInbox() {
   }, [d]);
 
   useEffect(() => {
-    const initialLoad = window.setTimeout(reload, 0);
-    window.addEventListener('focus', reload);
+    const refreshOnline = () => { if (!readsPaused && !quietSyncIsPaused()) void reload(); };
+    const initialLoad = window.setTimeout(refreshOnline, 0);
+    window.addEventListener('focus', refreshOnline);
     return () => {
       window.clearTimeout(initialLoad);
-      window.removeEventListener('focus', reload);
+      window.removeEventListener('focus', refreshOnline);
     };
-  }, [reload]);
+  }, [reload, readsPaused]);
 
   useEffect(() => {
     if (!items?.length) return;
@@ -57,7 +62,8 @@ export function PartnerInbox() {
   return <section id={SETTING_TARGETS.partnerInbox} className="card pb-partner-card">
     <SectionHeader title={x.title} subtitle={x.hint} icon={Inbox}
       actions={items?.length ? <span className="pill">{items.length}</span> : undefined} />
-    {error && (
+    {items === null && readsPaused && <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>}
+    {error && !readsPaused && (
       <div className="pb-partner-actions">
         <p className="pb-partner-error" role="alert">{error}</p>
         <button className="pill" type="button" disabled={busy !== null} onClick={() => void reload()}>{d.partner.refresh}</button>

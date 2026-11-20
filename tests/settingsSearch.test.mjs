@@ -17,6 +17,15 @@ const compiled = { exports: {} };
 vm.runInNewContext(source, { module: compiled, exports: compiled.exports, require: createRequire(import.meta.url), console });
 const { searchSettings, isSettingTarget, en, zh } = compiled.exports;
 
+test('Quiet Sync is searchable by its beta name and offline terminology', () => {
+  for (const [dictionary, query] of [[en, 'smart mode'], [en, 'database sync'], [zh, '轻量同步'], [zh, '离线 同步']]) {
+    const result = searchSettings(dictionary, query).find(entry => entry.id === 'quietSync');
+    assert.equal(result?.target, 'pb-set-quiet-sync');
+    assert.equal(result?.section, dictionary.settingsSections.behavior);
+    assert.ok(isSettingTarget(result.target));
+  }
+});
+
 test('individual settings stay hidden until a nonempty query', () => {
   for (const dictionary of [en, zh]) {
     assert.equal(searchSettings(dictionary, '').length, 0);

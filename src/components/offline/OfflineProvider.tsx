@@ -16,6 +16,8 @@ import { ACCOUNT_SCOPE_CHANGED_EVENT, type AccountScopeChangedDetail } from '@/l
 import { clearLayoutCache } from '@/components/loading/layoutCache';
 import { BUILD_ID } from '@/lib/offline/buildId';
 import { PendingUploadsDialog } from './PendingUploadsDialog';
+import { quietSyncIsEnabled, quietSyncIsPaused, quietWorkerCommand } from '@/lib/offline/quietSync';
+import { useQuietSync } from './QuietSyncProvider';
 
 /**
  * Everything about working without a connection, in one provider mounted by
@@ -113,6 +115,7 @@ interface OfflineProviderProps {
 
 export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, children }: OfflineProviderProps) {
   const router = useRouter();
+  const { refreshAfterWrite } = useQuietSync();
   const [items, setItems] = useState<QueuedTransaction[]>([]);
   const [ready, setReady] = useState(false);
   // A subscription, not state set from an effect: the server and the first
@@ -248,12 +251,12 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
   // On each online load: keep the snapshot fresh so the dialog is complete the
   // first time it is opened without a connection.
   useEffect(() => {
-    if (!userId || readOffline()) return;
+    if (!userId || readOffline() || quietSyncIsPaused()) return;
     let cancelled = false;
     const generation = referenceGeneration.current;
     void (async () => {
       const existing = await readReference();
-      if (existing && Date.now() - existing.savedAt < SNAPSHOT_FRESH_MS) return;
+      if (quietSyncIsPaused() || existing && Date.now() - existing.savedAt < SNAPSHOT_FRESH_MS) return;
       const [accounts, categories] = await Promise.all([callAction(getAccountsAction), callAction(getCategoriesAction)]);
       if (cancelled || generation !== referenceGeneration.current || !accounts.ok || !categories.ok) return;
       rememberReference(accounts.accounts, categories.categories);
@@ -268,10 +271,16 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       const owner = userRef.current;
       const generation = ++referenceGeneration.current;
       clearLayoutCache();
-      void clearOfflineCaches();
+      const quiet = quietSyncIsEnabled();
+      if (!quiet) void clearOfflineCaches();
       void (async () => {
         const saved = await readReference();
         if (saved && owner === userRef.current) await saveSnapshot({ ...saved, savedAt: 0, accounts: saved.accounts.map(account => account.id === detail.accountId ? { ...account, isGhost: detail.isGhost, isPreferred: detail.isGhost ? false : account.isPreferred } : account) });
+        if (quiet) {
+          await quietWorkerCommand({ type: 'QUIET_INVALIDATE', user: owner });
+          if (!readOffline()) refreshAfterWrite(true);
+          return;
+        }
         if (readOffline()) return;
         const [accounts, categories] = await Promise.all([callAction(getAccountsAction), callAction(getCategoriesAction)]);
         if (owner === userRef.current && generation === referenceGeneration.current && accounts.ok && categories.ok) rememberReference(accounts.accounts, categories.categories);
@@ -279,7 +288,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
     };
     window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
     return () => window.removeEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
-  }, [readReference, rememberReference]);
+  }, [readReference, rememberReference, refreshAfterWrite]);
 
   // ---- safe refresh ------------------------------------------------------
   const refresh = useCallback((): boolean => {
@@ -287,9 +296,13 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
     // fall back to a full navigation - exactly what must not happen to an
     // installed app with no network.
     if (readOffline()) return false;
+    if (quietSyncIsPaused()) {
+      refreshAfterWrite();
+      return true;
+    }
     startTransition(() => router.refresh());
     return true;
-  }, [router]);
+  }, [router, refreshAfterWrite]);
 
   // ---- the upload run ----------------------------------------------------
   const setStatus = useCallback((clientId: string, state: ItemUpload) => {
@@ -311,7 +324,9 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       // The SAME client id every time: if an earlier attempt committed but its
       // answer was lost, the server recognises it and reports success instead
       // of inserting a second copy.
-      const outcome = await callAction(() => addTransactionAction({ ...item.payload, clientId: item.clientId } as AddTransactionActionInput));
+      const outcome = await callAction(() => addTransactionAction({
+        ...item.payload, clientId: item.clientId, deferPageRefresh: quietSyncIsPaused(),
+      } as AddTransactionActionInput));
       if (outcome.ok) {
         done += 1;
         setStatus(item.clientId, { status: 'done' });

@@ -1,10 +1,12 @@
 import { AppShell } from '@/components/layout/AppShell';
 import { LocaleProvider } from '@/lib/i18n/LocaleProvider';
 import { resolveUserLocale } from '@/lib/i18n/serverLocale';
-import { getSessionUserIdOrRedirect } from '@/lib/auth/getSessionUser';
+import { getSessionUserOrRedirect } from '@/lib/auth/getSessionUser';
+import { CurrentUserProvider } from '@/lib/auth/useCurrentUser';
 import { getUserTimeZoneOverride } from '@/lib/data/queries';
 import { TimeZoneOverrideProvider } from '@/lib/time/TimeZoneOverrideContext';
 import { OfflineProvider } from '@/components/offline/OfflineProvider';
+import { QuietSyncProvider } from '@/components/offline/QuietSyncProvider';
 import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNavigation';
 import { loadPartnerWorkspaceAccess } from '@/lib/partnerSnapshot.server';
 import { partnerViewPair } from '@/lib/partnerView.server';
@@ -29,13 +31,12 @@ import { BUILD_ID } from '@/lib/offline/buildId';
  * and redirecting an unauthenticated user one layer higher is strictly
  * earlier, never later, than the existing per-page check.
  *
- * The user id also goes to OfflineProvider (the offline queue is keyed by it,
- * and the auth client that could tell the browser the same thing needs the
- * network). Server-resolved, so it rides in the saved page and an offline
- * start knows whose waiting transactions to open.
+ * A saved page carries its owner's display profile and queue identity.
+ * The shell can render both without making a separate session request.
  */
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
-  const userId = await getSessionUserIdOrRedirect();
+  const user = await getSessionUserOrRedirect();
+  const userId = user.id;
   const [locale, timeZoneOverride, partnerPair] = await Promise.all([
     resolveUserLocale(),
     getUserTimeZoneOverride(userId),
@@ -45,23 +46,29 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   const access = partnerPair ? await loadPartnerWorkspaceAccess() : null;
 
   return (
-    <LocaleProvider locale={locale}>
-      <TimeZoneOverrideProvider timeZoneOverride={timeZoneOverride}>
-        {/* Who and which build this page was rendered for. public/sw.js reads
-            it to keep saved pages apart per person and per deploy, and stores
-            no page without it. Not a secret: the same id is in the page data. */}
-        {partnerPair
-          ? <BudgetPlanNavigationProvider>
-              <AppShell key={partnerPair}
-                partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
-            </BudgetPlanNavigationProvider>
-          : <>
-            <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
-            <OfflineProvider userId={userId}>
-              <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>
-            </OfflineProvider>
-          </>}
-      </TimeZoneOverrideProvider>
-    </LocaleProvider>
+    <CurrentUserProvider profile={{
+      id: userId, name: user.name, email: user.email, image: user.image ?? null,
+      createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : null,
+    }}>
+      <LocaleProvider locale={locale}>
+        <TimeZoneOverrideProvider timeZoneOverride={timeZoneOverride}>
+          {/* Only the owner workspace carries the user and build marker
+              that allows the service worker to save this document. */}
+          {partnerPair
+            ? <BudgetPlanNavigationProvider>
+                <AppShell key={partnerPair}
+                  partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
+              </BudgetPlanNavigationProvider>
+            : <>
+              <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
+              <QuietSyncProvider userId={userId}>
+                <OfflineProvider userId={userId}>
+                  <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>
+                </OfflineProvider>
+              </QuietSyncProvider>
+            </>}
+        </TimeZoneOverrideProvider>
+      </LocaleProvider>
+    </CurrentUserProvider>
   );
 }

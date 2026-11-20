@@ -9,6 +9,7 @@
  * Registering an off build also removes a worker an earlier build left behind.
  */
 import { readOffline } from '@/lib/offline/connectivity';
+import { quietSyncIsEnabled } from '@/lib/offline/quietSync';
 
 export function serviceWorkerWanted(): boolean {
   const flag = process.env.NEXT_PUBLIC_PB_SW;
@@ -80,7 +81,7 @@ export async function tellWorkerWho(userId: string): Promise<void> {
  * The tag ("who + which build") decides the first of those.
  */
 export async function warmServiceWorker(pages: string[], userId: string, buildId: string): Promise<void> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || readOffline()) return;
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator) || readOffline() || quietSyncIsEnabled()) return;
   try {
     const registration = await navigator.serviceWorker.ready;
     const worker = registration.active;

@@ -53,7 +53,10 @@ var META = 'pebble-meta-' + VERSION;
 var KNOWN = [PAGES, STATIC, META];
 
 var OFFLINE_URL = '/offline.html';
-var PRECACHE = [OFFLINE_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
+var QUIET_URL = '/quiet-sync.html';
+var PRECACHE = [OFFLINE_URL, QUIET_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
+var QUIET_LIVE_MS = 20 * 60 * 1000;
+var QUIET_PRIMARY = ['/dashboard', '/accounts', '/transactions', '/reports', '/analysis', '/insights', '/budgets', '/goals', '/scheduled', '/settings'];
 
 // How long a visited page waits for the network before the saved copy is
 // shown (the network response still updates the saved copy afterwards).
@@ -106,6 +109,44 @@ function withMeta(work) {
   });
   metaChain = next.catch(function () {});
   return next;
+}
+
+function readMeta() {
+  return metaChain.then(function () { return caches.open(META); }).then(function (cache) {
+    return cache.match('/__meta');
+  }).then(function (res) { return res ? res.json() : {}; }).catch(function () { return {}; });
+}
+
+function quietPaused(meta) {
+  return !!(meta.user && meta.quiet && meta.quiet.enabled && !(meta.quiet.liveUntil > Date.now()));
+}
+
+function quietStatus(meta, user) {
+  var valid = !!user && user === meta.user;
+  var quiet = valid && meta.quiet;
+  return {
+    ok: valid,
+    enabled: !!(quiet && quiet.enabled),
+    liveUntil: quiet && quiet.liveUntil > Date.now() ? quiet.liveUntil : null,
+    lastSyncedAt: quiet && quiet.lastSyncedAt || null,
+    build: valid && meta.build || null,
+    available: valid ? Object.keys(meta.pages || {}).map(function (key) {
+      var url = new URL(key);
+      return url.pathname + url.search;
+    }) : [],
+  };
+}
+
+function setQuietPolicy(data) {
+  return withMeta(function (meta) {
+    if (meta.user !== data.user) return;
+    meta.quiet = {
+      enabled: data.enabled === true,
+      liveUntil: typeof data.liveUntil === 'number' && data.liveUntil > Date.now()
+        ? Math.min(data.liveUntil, Date.now() + QUIET_LIVE_MS) : null,
+      lastSyncedAt: meta.quiet && meta.quiet.lastSyncedAt || null,
+    };
+  }).then(readMeta).then(function (meta) { return quietStatus(meta, data.user); });
 }
 
 // Evicts the oldest entries until both limits hold. `keep` is the entry just
@@ -164,12 +205,16 @@ function storePage(key, res, started) {
     headers.set('content-type', res.headers.get('content-type') || 'text/html; charset=utf-8');
     return withMeta(function (meta) {
       if (started !== epoch) return; // cleared while this was in flight
+      // A live navigation after a deploy must not replace a complete quiet
+      // snapshot with one page. A verified refresh promotes the new build.
+      if (meta.user === ctx.user && meta.build && meta.build !== ctx.build && meta.quiet?.enabled) return;
       var changed = (meta.user && meta.user !== ctx.user) || (meta.build && meta.build !== ctx.build);
       return (changed ? caches.delete(PAGES).then(function () { meta.pages = {}; }) : Promise.resolve()).then(function () {
         return caches.open(PAGES);
       }).then(function (cache) {
         return cache.put(key, new Response(buf, { status: 200, headers: headers }));
       }).then(function () {
+        if (meta.user && meta.user !== ctx.user) delete meta.quiet;
         meta.user = ctx.user;
         meta.build = ctx.build;
         meta.pages[key] = { size: buf.byteLength, at: Date.now() };
@@ -210,6 +255,25 @@ function offlinePage() {
   }).then(function (res) {
     return res || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain' } });
   });
+}
+
+function quietPage() {
+  return caches.open(STATIC).then(function (cache) { return cache.match(QUIET_URL); }).then(function (saved) {
+    if (!saved) return new Response('Quiet Sync paused. Return to a saved page to sync.', { status: 503 });
+    return new Response(saved.body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+  });
+}
+
+function quietNavigation(url) {
+  if (url.pathname === '/') return Promise.resolve(Response.redirect(self.location.origin + '/dashboard', 302));
+  var key = pageKey(url);
+  if (!key) return quietPage();
+  return caches.open(PAGES).then(function (cache) {
+    return cache.match(key, { ignoreVary: true }).then(function (saved) {
+      if (saved || !url.search) return saved;
+      return cache.match(pageKey(new URL(url.pathname, url.origin)), { ignoreVary: true });
+    });
+  }).then(function (saved) { return saved || quietPage(); }, quietPage);
 }
 
 function handleNavigation(event) {
@@ -343,6 +407,7 @@ function clearPrivate() {
     meta.pages = {};
     delete meta.user;
     delete meta.build;
+    delete meta.quiet;
     return caches.delete(PAGES);
   });
 }
@@ -354,6 +419,7 @@ function adoptUser(user) {
       epoch += 1;
       meta.pages = {};
       delete meta.build;
+      delete meta.quiet;
       meta.user = user;
       return caches.delete(PAGES);
     }
@@ -412,8 +478,164 @@ function warm(data) {
   var assets = (data.assets || []).slice(0, 400);
   var pages = (data.pages || []).slice(0, 12);
   return Promise.all(assets.map(warmAsset)).then(function () {
-    return pages.reduce(function (chain, p) { return chain.then(function () { return warmPage(p); }); }, Promise.resolve());
+    return pages.reduce(function (chain, p) {
+      return chain.then(readMeta).then(function (meta) { if (!quietPaused(meta)) return warmPage(p); });
+    }, Promise.resolve());
   });
+}
+
+/* ---- explicit Quiet Sync --------------------------------------------------- */
+
+var quietRefreshChain = Promise.resolve();
+var quietFull = new Map();
+
+function quietPageURLs(paths) {
+  var urls = {};
+  var list = Array.isArray(paths) ? paths : [];
+  list.slice(0, MAX_PAGE_ENTRIES).forEach(function (path) {
+    if (typeof path !== 'string' || !path.startsWith('/')) return;
+    try {
+      var url = new URL(path, self.location.origin);
+      var key = url.origin === self.location.origin && pageKey(url);
+      if (key) urls[key] = url.href.split('#')[0];
+    } catch { /* Invalid route. */ }
+  });
+  return urls;
+}
+
+function readQuietDocument(url, key, user) {
+  var controller = new AbortController();
+  var timeout = setTimeout(function () { controller.abort(); }, 10000);
+  return fetch(url, {
+    headers: { accept: 'text/html' }, cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
+  }).then(function (res) {
+    if (res.redirected && res.url && /^\/auth(?:\/|$)/.test(new URL(res.url).pathname)) return { authExpired: true };
+    if (!isCacheablePage(res)) return null;
+    return res.arrayBuffer().then(function (buf) {
+      var ctx = buf.byteLength <= MAX_ONE_PAGE_BYTES && readContext(buf);
+      if (!ctx || ctx.user !== user) return null;
+      return { key: key, context: ctx, buf: buf, contentType: res.headers.get('content-type') || 'text/html; charset=utf-8' };
+    });
+  }).catch(function () { return null; }).finally(function () { clearTimeout(timeout); });
+}
+
+function refreshQuiet(data) {
+  var started = epoch;
+  return readMeta().then(async function (before) {
+    if (before.user !== data.user || started !== epoch) return quietStatus({}, data.user);
+    var urls = quietPageURLs(data.pages);
+    var keys = Object.keys(urls);
+    var required = Object.keys(quietPageURLs(data.required || data.pages));
+    if (!keys.length || !required.length) return Object.assign(quietStatus(before, data.user), { ok: false });
+    var docs = new Map();
+    var total = 0;
+    var build;
+    // Wake the origin only once per page and avoid a burst of database reads.
+    for (var key of keys) {
+      if (started !== epoch) return quietStatus({}, data.user);
+      var doc = await readQuietDocument(urls[key], key, data.user);
+      if (doc && doc.authExpired) {
+        await withMeta(function (meta) {
+          if (meta.user !== data.user || started !== epoch) return;
+          epoch += 1;
+          meta.pages = {};
+          delete meta.user;
+          delete meta.build;
+          delete meta.quiet;
+          return caches.delete(PAGES);
+        });
+        return Object.assign(quietStatus({}, data.user), { authExpired: true });
+      }
+      if (required.includes(key)) {
+        if (!doc || build && doc.context.build !== build) {
+          return Object.assign(quietStatus(before, data.user), { ok: false });
+        }
+        build = doc.context.build;
+      } else if (!doc) continue;
+      if (total + doc.buf.byteLength > MAX_PAGES_BYTES && required.includes(key)) {
+        for (var [optional, previousDoc] of docs) {
+          if (required.includes(optional)) continue;
+          total -= previousDoc.buf.byteLength;
+          docs.delete(optional);
+          if (total + doc.buf.byteLength <= MAX_PAGES_BYTES) break;
+        }
+      }
+      if (total + doc.buf.byteLength <= MAX_PAGES_BYTES) {
+        docs.set(key, doc);
+        total += doc.buf.byteLength;
+      }
+    }
+    var complete = required.every(function (key) { return docs.get(key)?.context.build === build && !!build; });
+    if (!complete) return Object.assign(quietStatus(before, data.user), { ok: false });
+    if (data.partial && before.build && before.build !== build) {
+      // Keep the existing build intact until the same refresh can populate
+      // the full set of primary pages from the new deployment.
+      var base = DEV ? '/pb-preview' : '';
+      var primary = QUIET_PRIMARY.map(function (path) { return base + path; });
+      return refreshQuiet({
+        user: data.user, pages: [...new Set([...(data.pages || []), ...primary])], required: primary,
+      });
+    }
+    var matching = Array.from(docs.values()).filter(function (doc) { return doc.context.build === build; });
+
+    var saved = false;
+    await withMeta(async function (meta) {
+      if (meta.user !== data.user || started !== epoch) return;
+      if (meta.build !== build) {
+        await caches.delete(PAGES);
+        meta.pages = {};
+        meta.build = build;
+      }
+      var cache = await caches.open(PAGES);
+      // Keep requested pages ahead of old entries, and the required pages
+      // ahead of optional ones, when the cache reaches its size limit.
+      var ordered = matching.sort(function (a, b) { return Number(required.includes(a.key)) - Number(required.includes(b.key)); });
+      var at = Date.now();
+      for (var doc of ordered) {
+        await cache.put(doc.key, new Response(doc.buf, { headers: { 'content-type': doc.contentType } }));
+        meta.pages[doc.key] = { size: doc.buf.byteLength, at: at++ };
+      }
+      await trim(PAGES, meta.pages, MAX_PAGE_ENTRIES, MAX_PAGES_BYTES, required[0]);
+      saved = required.every(function (key) { return key in meta.pages; });
+      if (saved && !data.partial) {
+        meta.quiet = meta.quiet || { enabled: false };
+        meta.quiet.lastSyncedAt = Date.now();
+      }
+    });
+    if (saved) {
+      var assets = new Set();
+      for (var doc of matching) assetsIn(new TextDecoder().decode(doc.buf)).forEach(function (path) { assets.add(path); });
+      for (var asset of assets) await warmAsset(asset);
+    }
+    var current = await readMeta();
+    return Object.assign(quietStatus(current, data.user), {
+      ok: saved && current.user === data.user && current.build === build && started === epoch,
+      refreshed: matching.map(function (doc) { return doc.key; }).filter(function (key) { return key in (current.pages || {}); }),
+    });
+  });
+}
+
+function enqueueQuietRefresh(data) {
+  if (!data.partial && quietFull.has(data.user)) {
+    var existing = quietFull.get(data.user);
+    // A different tab may be on an optional page the current batch did
+    // not request. Follow with its own refresh only if a required route
+    // was not covered by the shared run.
+    return existing.then(function (result) {
+      var required = Object.keys(quietPageURLs(data.required || data.pages));
+      if (!result.ok || required.every(function (key) { return result.refreshed.includes(key); })) return result;
+      return enqueueQuietRefresh(data);
+    });
+  }
+  var result = quietRefreshChain.then(function () { return refreshQuiet(data); }).catch(function () {
+    return readMeta().then(function (meta) { return Object.assign(quietStatus(meta, data.user), { ok: false }); });
+  });
+  quietRefreshChain = result.then(function () {});
+  if (!data.partial) {
+    quietFull.set(data.user, result);
+    void result.finally(function () { if (quietFull.get(data.user) === result) quietFull.delete(data.user); });
+  }
+  return result;
 }
 
 /* ---- lifecycle -------------------------------------------------------------- */
@@ -437,6 +659,10 @@ self.addEventListener('activate', function (event) {
 
 self.addEventListener('message', function (event) {
   var data = event.data || {};
+  var reply = function (result) {
+    if (event.ports && event.ports[0]) event.ports[0].postMessage(result);
+    else if (event.source && event.source.postMessage) event.source.postMessage(result);
+  };
   if (data.type === 'CLEAR_CACHES') {
     event.waitUntil(clearAll().then(function () {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'CLEARED' });
@@ -447,6 +673,36 @@ self.addEventListener('message', function (event) {
     event.waitUntil(warm(data).then(function () {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'WARMED' });
     }));
+  } else if (data.type === 'QUIET_STATUS') {
+    event.waitUntil(readMeta().then(function (meta) { reply(quietStatus(meta, data.user)); }));
+  } else if (data.type === 'QUIET_POLICY') {
+    event.waitUntil(setQuietPolicy(data).then(reply, function () { reply({ ok: false }); }));
+  } else if (data.type === 'QUIET_INVALIDATE') {
+    event.waitUntil(withMeta(function (meta) {
+      if (meta.user !== data.user || !meta.quiet?.enabled) return;
+      epoch += 1;
+      meta.pages = {};
+      meta.quiet.lastSyncedAt = null;
+      return caches.delete(PAGES);
+    }).then(readMeta).then(function (meta) { reply(quietStatus(meta, data.user)); }, function () { reply({ ok: false }); }));
+  } else if (data.type === 'QUIET_REFRESH') {
+    event.waitUntil(enqueueQuietRefresh(data).then(reply));
+  } else if (data.type === 'QUIET_SYNC_FALLBACK') {
+    event.waitUntil(readMeta().then(function (meta) {
+      if (!meta.user || !meta.quiet?.enabled || !event.source?.url) return { ok: false };
+      var url = new URL(event.source.url);
+      if (url.origin !== self.location.origin || !pageKey(url)) return { ok: false };
+      var base = DEV ? '/pb-preview' : '';
+      var pages = [...new Set([url.pathname + url.search, ...QUIET_PRIMARY.map(function (path) { return base + path; })])];
+      return enqueueQuietRefresh({ user: meta.user, pages: pages, required: pages });
+    }).then(reply, function () { reply({ ok: false }); }));
+  } else if (data.type === 'QUIET_RESUME_FALLBACK') {
+    var changed = false;
+    event.waitUntil(withMeta(function (meta) {
+      if (!meta.user || !meta.quiet?.enabled) return;
+      meta.quiet.liveUntil = Date.now() + QUIET_LIVE_MS;
+      changed = true;
+    }).then(function () { reply({ ok: changed }); }, function () { reply({ ok: false }); }));
   }
 });
 
@@ -457,19 +713,36 @@ self.addEventListener('fetch', function (event) {
   if (url.origin !== self.location.origin) return;
   var path = url.pathname;
 
-  // Never intercepted: the worker itself, the reachability probe (it must see
-  // the real network), API and auth endpoints, Server Actions.
+  // These files never reach the database. Signed-in GETs are checked before
+  // anything can hit the network, including Next's RSC/prefetch requests.
   if (path === '/sw.js' || path === '/ping.txt') return;
-  if (path.indexOf('/api/') === 0 || request.headers.has('next-action')) return;
-
-  if (request.mode === 'navigate') {
+  if (path.indexOf('/_next/static/') === 0 || path.indexOf('/icons/') === 0 || path === '/manifest.json'
+    || path === '/favicon.ico' || path.indexOf('/sounds/') === 0 || path.indexOf('/cursors/') === 0
+    || path === QUIET_URL || path === OFFLINE_URL) {
+    event.respondWith(cacheFirst(event, url));
+    return;
+  }
+  if (request.mode === 'navigate' && /^\/auth(?:\/|$)/.test(path)) {
     event.respondWith(handleNavigation(event));
     return;
   }
+  if (request.mode === 'navigate' && path.indexOf('/api/auth/callback/') === 0) return;
 
-  if (path.indexOf('/_next/static/') === 0 || path.indexOf('/icons/') === 0 || path === '/manifest.json' || path === '/favicon.ico' || path.indexOf('/sounds/') === 0) {
-    event.respondWith(cacheFirst(event, url));
-  }
-  // Everything else - client-navigation (RSC) requests, prefetches, data -
-  // goes straight to the network.
+  event.respondWith(readMeta().then(function (meta) {
+    if (!quietPaused(meta)) {
+      return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event) : fetch(request);
+    }
+    if (request.mode === 'navigate') return quietNavigation(url);
+    if (path.indexOf('/api/auth/') === 0 && event.clientId) {
+      return self.clients.get(event.clientId).then(function (client) {
+        // Sign-in pages can complete their own session flow. An app page
+        // waiting on a session hook cannot bypass its deliberate pause.
+        if (client && /^\/auth(?:\/|$)/.test(new URL(client.url).pathname)) return fetch(request);
+        return new Response(null, { status: 503 });
+      });
+    }
+    // The router handles a failed Flight request by navigating to the
+    // document. Serving HTML as Flight would poison its client cache.
+    return Response.error();
+  }));
 });

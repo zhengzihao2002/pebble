@@ -1,6 +1,7 @@
 'use client';
 
 import { readOffline } from '@/lib/offline/connectivity';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Briefcase, Coins } from 'lucide-react';
@@ -120,9 +121,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       applyCategories(snap.categories);
       return true;
     };
-    if (readOffline()) {
+    const quiet = quietSyncIsPaused();
+    if (readOffline() || quiet) {
       void fromSnapshot().then((used) => {
-        if (active && !used) setCategoryError(d.ux.offline.needsConnection);
+        if (active && !used) setCategoryError(quiet ? d.ux.offline.quietSync.needsSync : d.ux.offline.needsConnection);
       });
       return () => { active = false; };
     }
@@ -154,17 +156,17 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   //     across StrictMode's double mount). With a saved answer the tiles on
   //     screen are NOT reshuffled - the new answer is stored for the next open;
   //     with none, the tiles wait for it (a failure means the default set);
-  //   - offline: never ask.
+  //   - offline or with Quiet Sync paused: never ask.
   const picksUserId = offlineQueue.userId;
   const [savedPicks] = useState(() => {
     if (!picksUserId) return { names: null as string[] | null, ask: false };
     const saved = readQuickPicks(picksUserId);
-    const offline = readOffline();
+    const offline = readOffline() || quietSyncIsPaused();
     return { names: saved ? saved.expense : null, ask: !offline && isQuickPicksStale(saved) };
   });
   const [fetchedPicks, setFetchedPicks] = useState<string[] | null>(null);
   useEffect(() => {
-    if (!picksUserId || !savedPicks.ask) return;
+    if (!picksUserId || !savedPicks.ask || quietSyncIsPaused()) return;
     let active = true;
     void refreshQuickPicks(picksUserId, async () => {
       const result = await callAction(getFrequentCategoriesAction);
@@ -195,9 +197,10 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
       applyAccounts(snap.accounts.filter((a) => a.status === 'active'));
       return true;
     };
-    if (readOffline()) {
+    const quiet = quietSyncIsPaused();
+    if (readOffline() || quiet) {
       void fromSnapshot().then((used) => {
-        if (active && !used) setAccountError(d.ux.offline.needsConnection);
+        if (active && !used) setAccountError(quiet ? d.ux.offline.quietSync.needsSync : d.ux.offline.needsConnection);
       });
       return () => { active = false; };
     }
@@ -331,7 +334,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
         ? { ok: true as const }
         : { ok: false as const, error: d.ux.offline.storageUnavailable, kind: 'network' as const };
     } else {
-      result = await callAction(() => addTransactionAction({ ...payload, clientId }));
+      result = await callAction(() => addTransactionAction({ ...payload, clientId, deferPageRefresh: quietSyncIsPaused() }));
       // A NETWORK-class failure - the request never got an answer - is the one
       // case that is not an error to show: keep the entry on the device and
       // say so. Validation, database and session failures are real answers and
@@ -403,9 +406,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     // Fetched here rather than when the modal opened so the figures cannot go
     // stale between opening the form and submitting it.
     //
-    // Skipped offline: it needs the server, and it is advisory anyway (the
-    // entry is queued and uploaded later with no shortfall prompt).
-    if (type === 'expense' && !accounts.find(a => a.id === accountId)?.isGhost && !readOffline()) {
+    // The shortfall prompt is advisory. Skip its extra request when saving
+    // from a local snapshot or queuing a transaction offline.
+    if (type === 'expense' && !accounts.find(a => a.id === accountId)?.isGhost && !readOffline() && !quietSyncIsPaused()) {
       setSaving(true);
       setSaveError(null);
       const summary = await callAction(getAllocationSummaryAction);
@@ -463,10 +466,16 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   // dialog opens) or the first picks answer. The block holds its place with
   // shimmering placeholders instead of popping in a moment later.
   const quickPending = quickCategories.length <= 1 && !categoryError
-    && (categories.length === 0 || (!!picksUserId && savedPicks.names === null && fetchedPicks === null && savedPicks.ask));
+    && (categories.length === 0 || (!!picksUserId && savedPicks.names === null && fetchedPicks === null
+      && savedPicks.ask && !quietSyncIsPaused()));
+
+  const closeForm = () => {
+    onClose();
+    if (success && !success.queued && quietSyncIsPaused()) offlineQueue.refresh();
+  };
 
   return (
-    <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
+    <ModalFrame keyboardResize={false} followPan={false} onClose={closeForm} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}

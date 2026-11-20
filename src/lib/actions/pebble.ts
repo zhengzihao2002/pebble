@@ -231,7 +231,10 @@ export interface AddIncomeActionInput {
  * makes the insert idempotent - see addTransaction. Without it nothing
  * changes: the server generates the id as it always has.
  */
-export type AddTransactionActionInput = AddExpenseActionInput | AddIncomeActionInput;
+export type AddTransactionActionInput = (AddExpenseActionInput | AddIncomeActionInput) & {
+  /** Quiet Sync refreshes the saved document after the write has resolved. */
+  deferPageRefresh?: boolean;
+};
 
 /* ------------------------------------------------------------------------
  * Credit cards
@@ -444,7 +447,7 @@ async function addTransaction(
       }
     }
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('addTransactionAction', error);

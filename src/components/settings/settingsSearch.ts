@@ -58,6 +58,8 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
     entry('dropdowns', d.selectMode.title, behavior, d.selectMode.hint, [d.selectMode.searchable, d.selectMode.plain, 'dropdown picker search simple 下拉 列表 搜索 简单']),
     entry('privacy', d.privacyMode.title, behavior, d.privacyMode.hint, ['privacy blur hide show amounts launch 隐私 模糊 隐藏 显示 金额 启动']),
     entry('textSelection', d.selectMode.textSelectTitle, behavior, d.selectMode.textSelectHint, ['text selection copy highlight 文字 选择 复制']),
+    entry('quietSync', d.ux.offline.quietSync.title, behavior, d.ux.offline.quietSync.settingHint,
+      ['smart mode quiet sync offline online pause refresh connection database 缓存 同步 离线 在线 暂停 刷新 连接']),
     entry('sounds', d.sounds.title, behavior, d.sounds.blurb, ['sounds audio feedback mute volume 声音 提示音 静音 音量']),
     ...SOUND_EVENTS.map(({ key }): SettingsSearchEntry => ({
       id: `sound-${key}`, label: `${d.sounds.title} · ${d.sounds.events[key]}`, section: behavior,

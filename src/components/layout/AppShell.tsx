@@ -6,7 +6,8 @@ import { isServerReachable, readOffline, subscribeConnectivity } from '@/lib/off
 import { TIME_ZONE_COOKIE, resolveBrowserTimeZone } from '@/lib/time/timeZone';
 import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
-import { authClient } from '@/lib/auth/client';
+import { useCurrentUser } from '@/lib/auth/useCurrentUser';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { playEventSound } from '@/lib/sound/useSound';
 import { NavigationContent } from '@/components/loading/NavigationContent';
@@ -208,8 +209,7 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   // Loads THIS user's saved preferences (per-user storage - see
   // switchPebbleUser). Until the session resolves, the most recent user's are
   // shown, which on a single-user device is the same person.
-  const { data: sessionData } = authClient.useSession();
-  const sessionUserId = sessionData?.user?.id;
+  const { id: sessionUserId } = useCurrentUser();
   useEffect(() => {
     if (sessionUserId) void switchPebbleUser(sessionUserId);
   }, [sessionUserId]);
@@ -316,13 +316,14 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   // once when the connection returns. Online behaviour is unchanged.
   const refreshOnReconnect = useRef(false);
   const refreshSoon = useCallback(() => {
+    if (quietSyncIsPaused()) return;
     if (readOffline()) {
       refreshOnReconnect.current = true;
       return;
     }
     refreshOnReconnect.current = true;
     void isServerReachable().then(ok => {
-      if (ok && refreshOnReconnect.current) {
+      if (ok && refreshOnReconnect.current && !quietSyncIsPaused()) {
         refreshOnReconnect.current = false;
         router.refresh();
       }
@@ -330,7 +331,7 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   }, [router]);
   useEffect(() => {
     const onOnline = () => {
-      if (!refreshOnReconnect.current || readOffline()) return;
+      if (!refreshOnReconnect.current || readOffline() || quietSyncIsPaused()) return;
       refreshOnReconnect.current = false;
       router.refresh();
     };
