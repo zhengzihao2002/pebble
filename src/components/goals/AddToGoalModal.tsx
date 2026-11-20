@@ -6,6 +6,7 @@ import type { Goal } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { resolveGoalIcon } from '@/lib/data/icons';
 import { addToGoalAction, getAllocationSummaryAction } from '@/lib/actions/pebble';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -45,6 +46,7 @@ function parseAmountCents(raw: string): number | null {
  */
 export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshGoalViews } = useQuietSync();
   const Icon = resolveGoalIcon(goal.iconKey);
 
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
     setSaving(true);
     setError(null);
     const result = await callAction(() => addToGoalAction({ id: goal.id, amount: amountCents / 100 }));
+    if (result.ok) await refreshGoalViews();
     setSaving(false);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));

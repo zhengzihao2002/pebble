@@ -13,6 +13,7 @@ import { ProgressRing } from '@/components/kit/ProgressRing';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { GoalModal } from '@/components/modals/GoalModal';
 import { AddToGoalModal } from './AddToGoalModal';
+import { GoalDismissButton } from './GoalDismissButton';
 import { daysBetween, isGoalDate, isReached, monthlyPace, progressOf, timeToTarget } from './goalMath';
 
 // Horizontal layout constants (px). A marker is its ring plus a label beside
@@ -50,7 +51,11 @@ function addDaysYmd(ymd: string, days: number): string {
  * Rings are ratios of money, so they blur in privacy mode (pb-chart-fill);
  * every amount wears .font-mono-tab. Goal names are user data.
  */
-export function GoalTimeline({ goals, today }: { goals: Goal[]; today: string | null }) {
+export function GoalTimeline({ goals, today, onDismiss }: {
+  goals: Goal[];
+  today: string | null;
+  onDismiss: (goal: Goal) => void;
+}) {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [adding, setAdding] = useState<Goal | null>(null);
 
@@ -64,8 +69,8 @@ export function GoalTimeline({ goals, today }: { goals: Goal[]; today: string | 
 
   return (
     <>
-      <TimelineWide goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} />
-      <TimelineNarrow goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} />
+      <TimelineWide goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
+      <TimelineNarrow goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
       {editing && <GoalModal goal={editing} onClose={() => setEditing(null)} />}
       {adding && <AddToGoalModal goal={adding} onClose={() => setAdding(null)} />}
     </>
@@ -77,6 +82,7 @@ interface PartProps {
   today: string;
   onEdit: (g: Goal) => void;
   onAdd: (g: Goal) => void;
+  onDismiss: (g: Goal) => void;
 }
 
 // blur: wrap the ring in pb-chart-fill so privacy mode blurs it. Off for
@@ -95,7 +101,7 @@ function GoalRing({ goal, size, blur = true }: { goal: Goal; size: number; blur?
   );
 }
 
-function TimelineWide({ goals, today, onEdit, onAdd }: PartProps) {
+function TimelineWide({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const plotRef = useRef<HTMLDivElement>(null);
@@ -234,7 +240,10 @@ function TimelineWide({ goals, today, onEdit, onAdd }: PartProps) {
               <Pencil size={14} aria-hidden="true" />{ux.edit}
             </button>
             {isReached(selected) ? (
-              <span className="pb-goal-done"><Check size={15} aria-hidden="true" />{d.goalCard.goalReached}</span>
+              <>
+                <span className="pb-goal-done"><Check size={15} aria-hidden="true" />{d.goalCard.goalReached}</span>
+                <GoalDismissButton name={selected.name} onClick={() => onDismiss(selected)} />
+              </>
             ) : (
               <button type="button" className="btn-primary pb-goals-tl-action" onClick={() => onAdd(selected)}>
                 <Plus size={15} aria-hidden="true" />{d.goalCard.addAmount}
@@ -288,7 +297,7 @@ function GoalFacts({ goal, today, compact = false }: { goal: Goal; today: string
   );
 }
 
-function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
+function TimelineNarrow({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const sorted = goals.slice().sort((a, b) => {
@@ -347,7 +356,7 @@ function TimelineNarrow({ goals, today, onEdit, onAdd }: PartProps) {
                       <GoalFacts goal={g} today={today} compact />
                       <ChevronRight size={16} className="pb-goals-tl-chev" aria-hidden="true" />
                     </button>
-                    {!reached && (
+                    {reached ? <GoalDismissButton name={g.name} onClick={() => onDismiss(g)} compact /> : (
                       <button
                         type="button" className="icon-btn pb-goals-tl-add"
                         aria-label={t(ux.addAmountTo, { name: g.name })}

@@ -13,8 +13,10 @@ function workerFixture() {
   const requests = [];
   let workerUser = 'user-a';
   let build = 'build-a';
+  let revision = 'snapshot-before-write';
   let expired = false;
   let blockedPath;
+  let hold;
   let now = 10_000_000;
   const caches = {
     async open(name) {
@@ -47,7 +49,14 @@ function workerFixture() {
         if (expired) return Object.defineProperties(basic('Sign in'), {
           redirected: { value: true }, url: { value: new URL('/auth/sign-in', origin).href },
         });
-        return basic(`<meta name="pebble-session" content="${workerUser}|${build}"><main>${url.pathname} ${build}</main>`);
+        const response = basic(`<meta name="pebble-session" content="${workerUser}|${build}"><main>${url.pathname} ${build} ${revision}</main>`);
+        if (hold?.path === url.pathname) {
+          const next = hold;
+          hold = undefined;
+          next.started();
+          await next.released;
+        }
+        return response;
       },
       self: {
         location: workerURL,
@@ -63,7 +72,7 @@ function workerFixture() {
       const event = {
         waitUntil(value) { waits.push(value); },
         respondWith(value) { response = Promise.resolve(value); },
-        ports: [{ postMessage(value) { reply = value; } }],
+        ports: [{ postMessage(value) { reply = value; args.onMessage?.(value); } }],
         ...args,
       };
       handles.get(type)(event);
@@ -78,11 +87,19 @@ function workerFixture() {
     boot() { fire = boot(); },
     advance(ms) { now += ms; },
     useBuild(next) { build = next; },
+    useRevision(next) { revision = next; },
     useUser(next) { workerUser = next; },
     expire() { expired = true; },
     block(path) { blockedPath = path; },
+    holdNext(path) {
+      let started, release;
+      const ready = new Promise(resolve => { started = resolve; });
+      const released = new Promise(resolve => { release = resolve; });
+      hold = { path, started, released };
+      return { ready, release };
+    },
     install() { return fire('install'); },
-    message(data) { return fire('message', { data }); },
+    message(data, onMessage) { return fire('message', { data, onMessage }); },
     fetch(path, { mode = 'navigate', method = 'GET' } = {}) {
       return fire('fetch', { request: { url: new URL(path, origin).href, mode, method, headers: new Headers() }, clientId: 'tab' });
     },
@@ -169,6 +186,67 @@ test('refreshes are shared, only complete batches update their timestamp, and pa
   assert.equal(ready.build, 'build-b');
   assert.match(await (await worker.fetch('/dashboard')).text(), /build-b/);
   assert.match(await (await worker.fetch('/reports')).text(), /build-b/);
+});
+
+test('a write refresh waits behind a pre-write sync, gates affected reads, and replaces stale query variants', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  await worker.message({ type: 'QUIET_REFRESH', user, pages: ['/reports?period=month'], partial: true });
+  worker.requests.length = 0;
+
+  const hold = worker.holdNext('/reports');
+  const preWrite = worker.message({ type: 'QUIET_REFRESH', user, pages: ['/reports'] });
+  await hold.ready;
+  worker.useRevision('confirmed-edit');
+  let queued;
+  const ack = new Promise(resolve => { queued = resolve; });
+  const afterWrite = worker.message({ type: 'QUIET_REFRESH', user, pages: ['/reports'], afterWrite: true }, result => {
+    if (result.queued) queued();
+  });
+  await ack;
+  let settled = false;
+  const report = worker.fetch('/reports?period=month').then(response => { settled = true; return response.text(); });
+
+  assert.match(await (await worker.fetch('/dashboard')).text(), /snapshot-before-write/);
+  assert.equal(settled, false);
+  hold.release();
+  assert.equal((await preWrite).ok, true);
+  const saved = await afterWrite;
+  assert.equal(saved.ok, true);
+  assert.equal(saved.available.includes('/reports?period=month'), false);
+  assert.match(await report, /confirmed-edit/);
+  assert.deepEqual(worker.requests, ['/reports', '/reports']);
+});
+
+test('a cached page waits for successive writes on its path and resumes when a write refresh fails', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  worker.requests.length = 0;
+
+  const write = { type: 'QUIET_REFRESH', user, pages: ['/reports'], afterWrite: true, partial: true };
+  worker.useRevision('first-edit');
+  const firstHeld = worker.holdNext('/reports');
+  const first = worker.message(write);
+  await firstHeld.ready;
+  worker.useRevision('second-edit');
+  const secondHeld = worker.holdNext('/reports');
+  const second = worker.message(write);
+  let settled = false;
+  const report = worker.fetch('/reports').then(response => { settled = true; return response.text(); });
+  firstHeld.release();
+  await secondHeld.ready;
+  assert.equal(settled, false);
+  secondHeld.release();
+  assert.equal((await first).ok, true);
+  assert.equal((await second).ok, true);
+  assert.match(await report, /second-edit/);
+
+  worker.block('/reports');
+  const failed = worker.message(write);
+  const browser = worker.fetch('/reports');
+  assert.equal((await failed).ok, false);
+  assert.match(await (await browser).text(), /second-edit/);
+  assert.deepEqual(worker.requests, ['/reports', '/reports', '/reports']);
 });
 
 test('different accounts and expired authentication clear saved pages and the pause', async () => {

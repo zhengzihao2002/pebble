@@ -93,6 +93,10 @@
 .pebble-root .pb-ins-bar-track {
   display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
 }
+/* The auto margins center the stuck chips when there is free space. They
+   resolve to zero on overflow, keeping the first chip reachable on mobile. */
+.pebble-root .pb-ins-bar[data-stuck="true"] .pb-ins-bar-track > :first-child { margin-inline-start: auto; }
+.pebble-root .pb-ins-bar[data-stuck="true"] .pb-ins-bar-track > :last-child { margin-inline-end: auto; }
 .pebble-root .pb-ins-bar-track::-webkit-scrollbar { display: none; }
 .pebble-root .pb-ins-chip {
   position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.4rem;

@@ -22,6 +22,7 @@ import { renderTemplate } from '@/lib/i18n/RichText';
 import { ProgressRing } from '@/components/kit/ProgressRing';
 import { timeToTarget } from '@/components/goals/goalMath';
 import { useGoalsToday } from '@/components/goals/useGoalsToday';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import type { Goal } from '@/types';
 
 interface GoalModalProps {
@@ -41,6 +42,7 @@ type Mode = 'form' | 'confirmDelete';
  */
 export function GoalModal({ onClose, goal }: GoalModalProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshGoalViews } = useQuietSync();
   const isEdit = goal !== undefined;
 
   const [mode, setMode] = useState<Mode>('form');
@@ -93,6 +95,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       ? await callAction(() => updateGoalAction({ ...payload, id: goal.id }))
       : await callAction(() => addGoalAction(payload));
 
+    if (result.ok) await refreshGoalViews();
     setSaving(false);
     if (!result.ok) {
       setSaveError(translateActionError(d, locale, result));
@@ -121,6 +124,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     setSaving(true);
     setSaveError(null);
     const result = await callAction(() => deleteGoalAction({ id: goal.id }));
+    if (result.ok) await refreshGoalViews();
     setSaving(false);
     if (!result.ok) { setSaveError(translateActionError(d, locale, result)); setSaveErrorKind(result.kind); return; }
     // Quiet: no confirmation for a delete. The dialog closes from the next

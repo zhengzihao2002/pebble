@@ -9,7 +9,7 @@
  * Registering an off build also removes a worker an earlier build left behind.
  */
 import { readOffline } from '@/lib/offline/connectivity';
-import { quietSyncIsEnabled } from '@/lib/offline/quietSync';
+import { activeQuietWorker, quietSyncIsEnabled } from '@/lib/offline/quietSync';
 
 export function serviceWorkerWanted(): boolean {
   const flag = process.env.NEXT_PUBLIC_PB_SW;
@@ -64,8 +64,8 @@ async function savedPagePaths(): Promise<Set<string>> {
 export async function tellWorkerWho(userId: string): Promise<void> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   try {
-    const registration = await navigator.serviceWorker.ready;
-    registration.active?.postMessage({ type: 'SESSION', user: userId });
+    const worker = await activeQuietWorker(navigator.serviceWorker);
+    worker?.postMessage({ type: 'SESSION', user: userId });
   } catch { /* offline support is a bonus */ }
 }
 

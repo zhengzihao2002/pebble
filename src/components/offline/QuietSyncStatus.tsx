@@ -13,10 +13,11 @@ const statusIcons = {
   live: Wifi,
   offline: WifiOff,
 } as const;
+const startupStatuses = ['paused', 'live', 'offline'] as const;
 
 export function QuietSyncStatus() {
   const { d, t, locale } = useTranslation();
-  const { enabled, status, syncNow, goOnline, liveUntil, lastSyncedAt, problem } = useQuietSync();
+  const { enabled, preferenceReady, status, syncNow, goOnline, liveUntil, lastSyncedAt, problem } = useQuietSync();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -40,8 +41,24 @@ export function QuietSyncStatus() {
     };
   }, [enabled, open]);
 
-  if (!enabled) return null;
   const q = d.ux.offline.quietSync;
+  if (!enabled) {
+    if (preferenceReady) return null;
+    return startupStatuses.map(startupStatus => {
+      const Icon = statusIcons[startupStatus];
+      return (
+        <div
+          key={startupStatus} className="pb-quiet-status pb-quiet-status-startup"
+          data-status={startupStatus} aria-hidden="true"
+        >
+          <span className="pb-quiet-trigger">
+            <Icon className="pb-quiet-status-icon" size={16} />
+            <span>{q.status[startupStatus]}</span>
+          </span>
+        </div>
+      );
+    });
+  }
   const label = `${q.title} · ${q.status[status]}`;
   const StatusIcon = statusIcons[status];
   const offline = status === 'offline';

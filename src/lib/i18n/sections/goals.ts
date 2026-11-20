@@ -30,6 +30,12 @@ export const goalsEn = {
   viewLabel: 'Show goals as',
   viewCards: 'Cards',
   viewTimeline: 'Timeline',
+  dismiss: 'Dismiss',
+  dismissGoal: 'Dismiss {name}',
+  dismissedGoals: 'Dismissed goals',
+  dismissedHint: 'These goals are hidden from Cards and Timeline. Their savings are still set aside.',
+  restore: 'Restore',
+  restoreGoal: 'Restore {name}',
 
   // Time to target. {n} is a plain number.
   dueToday: 'due today',
@@ -77,6 +83,12 @@ export const goalsZh: typeof goalsEn = {
   viewLabel: '目标显示方式',
   viewCards: '卡片',
   viewTimeline: '时间线',
+  dismiss: '收起',
+  dismissGoal: '收起「{name}」',
+  dismissedGoals: '已收起的目标',
+  dismissedHint: '这些目标已从卡片和时间线收起，原先预留的金额仍然保留。',
+  restore: '恢复',
+  restoreGoal: '恢复「{name}」',
 
   dueToday: '今天到期',
   dueTomorrow: '明天到期',

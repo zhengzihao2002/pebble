@@ -12,7 +12,8 @@ import { AddToGoalModal } from '@/components/goals/AddToGoalModal';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { ProgressRing } from '@/components/kit/ProgressRing';
-import { monthlyPace, timeToTarget } from './goalMath';
+import { GoalDismissButton } from './GoalDismissButton';
+import { isReached, monthlyPace, timeToTarget } from './goalMath';
 
 interface GoalCardProps {
   goal: Goal;
@@ -21,6 +22,7 @@ interface GoalCardProps {
   today?: string | null;
   /** Stagger index for the entrance. */
   index?: number;
+  onDismiss?: (goal: Goal) => void;
 }
 
 // A client component so each card can own its own edit modal. The goals page
@@ -33,7 +35,7 @@ interface GoalCardProps {
 // how long until the target date and, while the goal is unfinished, roughly
 // what a month it needs to make it. A reached goal gets a soft wash of its
 // colour and a quiet success chip instead of a dimmed pill.
-export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
+export function GoalCard({ goal, today = null, index = 0, onDismiss }: GoalCardProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const partner = usePartnerView();
@@ -45,7 +47,7 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   // A filled goal takes no more - the server refuses it too.
-  const reached = showAmounts && goal.current >= goal.target;
+  const reached = showAmounts && isReached(goal);
   const pct = (goal.current / goal.target) * 100;
   const when = timeToTarget(d, today, goal.date);
   const pace = monthlyPace(goal, today);
@@ -114,14 +116,16 @@ export function GoalCard({ goal, today = null, index = 0 }: GoalCardProps) {
         )}
       </ul>
 
-      {!partner && <button
-        type="button"
-        onClick={() => setAdding(true)}
-        disabled={reached}
-        className={reached ? 'pb-goal-done' : 'btn-primary pb-goal-add'}
-      >
-        {reached ? <><Check size={15} />{d.goalCard.goalReached}</> : <><Plus size={15} />{d.goalCard.addAmount}</>}
-      </button>}
+      {!partner && (reached ? (
+        <div className="pb-goal-complete">
+          <span className="pb-goal-done"><Check size={15} aria-hidden="true" />{d.goalCard.goalReached}</span>
+          {onDismiss && <GoalDismissButton name={goal.name} onClick={() => onDismiss(goal)} />}
+        </div>
+      ) : (
+        <button type="button" onClick={() => setAdding(true)} className="btn-primary pb-goal-add">
+          <Plus size={15} aria-hidden="true" />{d.goalCard.addAmount}
+        </button>
+      ))}
 
     </article>
     {/* The dialogs sit OUTSIDE the article: its entrance animation (a

@@ -11,6 +11,7 @@ import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNav
 import { loadPartnerWorkspaceAccess } from '@/lib/partnerSnapshot.server';
 import { partnerViewPair } from '@/lib/partnerView.server';
 import { BUILD_ID } from '@/lib/offline/buildId';
+import { QUIET_SYNC_HEADER_PREINIT } from '@/lib/offline/quietSync';
 
 /**
  * Reads the pebble-lang cookie so the SERVER renders the whole app in the
@@ -61,6 +62,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
               </BudgetPlanNavigationProvider>
             : <>
               <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
+              <script data-pb-quiet-owner={userId} dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT }} />
               <QuietSyncProvider userId={userId}>
                 <OfflineProvider userId={userId}>
                   <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>

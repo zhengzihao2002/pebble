@@ -16,6 +16,10 @@ const DEFAULT: QuietPreference = { enabled: false, liveUntil: 0, attemptedAt: 0 
 const prefix = 'pebble-quiet-sync:v1:';
 const changeEvent = 'pebble:quiet-sync-change';
 
+/** Runs in the cached HTML before the header is parsed. The script element
+ * carries the authenticated document owner, so preferences never cross accounts. */
+export const QUIET_SYNC_HEADER_PREINIT = `try{var owner=document.currentScript.getAttribute('data-pb-quiet-owner');var prefs=owner&&JSON.parse(localStorage.getItem(${JSON.stringify(prefix)}+owner)||'null');if(prefs&&prefs.enabled===true){var status=navigator.onLine===false?'offline':prefs.liveUntil>Date.now()?'live':'paused';document.documentElement.setAttribute('data-pb-quiet-startup',status);}}catch(err){}`;
+
 function readOwner() {
   if (typeof document === 'undefined') return undefined;
   return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"]')?.content.split('|')[0];
@@ -87,12 +91,29 @@ type QuietCommand = { user: string } & (
   | { type: 'QUIET_STATUS' }
   | { type: 'QUIET_INVALIDATE' }
   | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: number }
-  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean }
+  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean }
 );
 
-export async function quietWorkerCommand(command: QuietCommand): Promise<QuietWorkerStatus | null> {
+export function activeQuietWorker(services: ServiceWorkerContainer): Promise<ServiceWorker | null> {
+  if (services.controller) return Promise.resolve(services.controller);
+  // A hard reload can bypass interception for this document while leaving an
+  // active registration that can still answer messages and serve the next page.
+  return new Promise(resolve => {
+    const timeout = window.setTimeout(() => resolve(null), 6000);
+    const receive = (registration: ServiceWorkerRegistration | undefined) => {
+      if (!registration?.active) return;
+      clearTimeout(timeout);
+      resolve(registration.active);
+    };
+    void services.getRegistration().then(receive, () => {});
+    void services.ready.then(receive, () => {});
+  });
+}
+
+export async function quietWorkerCommand(command: QuietCommand, onQueued?: () => void): Promise<QuietWorkerStatus | null> {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) return null;
-  const worker = navigator.serviceWorker.controller;
+  const services = navigator.serviceWorker;
+  const worker = services.controller ?? await activeQuietWorker(services);
   if (!worker) return null;
   return new Promise(resolve => {
     const channel = new MessageChannel();
@@ -102,7 +123,10 @@ export async function quietWorkerCommand(command: QuietCommand): Promise<QuietWo
       resolve(result);
     };
     const timeout = window.setTimeout(() => finish(null), command.type === 'QUIET_REFRESH' ? 120_000 : 6000);
-    channel.port1.onmessage = event => finish(event.data && typeof event.data.ok === 'boolean' ? event.data : null);
+    channel.port1.onmessage = event => {
+      if (event.data?.queued === true) onQueued?.();
+      else finish(event.data && typeof event.data.ok === 'boolean' ? event.data : null);
+    };
     try { worker.postMessage(command, [channel.port2]); }
     catch { finish(null); }
   });
