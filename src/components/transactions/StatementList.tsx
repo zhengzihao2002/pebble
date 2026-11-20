@@ -229,8 +229,8 @@ export function StatementList({
     // day headers inside it from sticking.
     <div id={id} className="card pb-txn-stmt" style={{ padding: 0, overflow: 'clip' }}>
       {head}
-      <div data-pb-period-body>
-        {groups.length === 0 ? (
+      {groups.length === 0 ? (
+        <div data-pb-period-body>
           <EmptyState
             icon={CalendarX2}
             title={d.transactions.noActivity}
@@ -240,28 +240,30 @@ export function StatementList({
               amount: <BalanceFigure value={openingBalance} owed={owed} />,
             }) : undefined}
           />
-        ) : (
-          <>
-            <LedgerHead lensAccount={lensAccount} />
-            {bookends && (
-              <div className="pb-txn-bookend">
-                <span>{t(d.ux.transactions.closingOn, { date: formatDate(bookends.closingDate, locale) })}</span>
-                <span><BalanceFigure value={closingBalance ?? 0} owed={owed} /></span>
-              </div>
-            )}
+        </div>
+      ) : (
+        <div>
+          <LedgerHead lensAccount={lensAccount} />
+          {bookends && (
+            <div className="pb-txn-bookend">
+              <span>{t(d.ux.transactions.closingOn, { date: formatDate(bookends.closingDate, locale) })}</span>
+              <span><BalanceFigure value={closingBalance ?? 0} owed={owed} /></span>
+            </div>
+          )}
+          <div data-pb-period-body>
             <DayGroups
               groups={groups} mode="statement" accounts={accounts} categoryMeta={categoryMeta}
               onOpenDetail={onOpenDetail} today={today} lensAccountId={lensAccountId}
             />
-            {bookends && (
-              <div className="pb-txn-bookend pb-txn-bookend-foot">
-                <span>{t(d.ux.transactions.openingOn, { date: formatDate(bookends.openingDate, locale) })}</span>
-                <span><BalanceFigure value={openingBalance} owed={owed} /></span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          </div>
+          {bookends && (
+            <div className="pb-txn-bookend pb-txn-bookend-foot">
+              <span>{t(d.ux.transactions.openingOn, { date: formatDate(bookends.openingDate, locale) })}</span>
+              <span><BalanceFigure value={openingBalance} owed={owed} /></span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

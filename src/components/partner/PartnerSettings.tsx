@@ -16,6 +16,7 @@ import { INCOME_SHARING_KEYS, PARTNER_PERMISSIONS, PARTNER_VIEW_PERMISSIONS, PAR
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
 import { PartnerDisconnectDialog } from './PartnerDisconnectDialog';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
+import { PARTNER_LEGACY_CODE_LENGTH, parsePartnerMatchCode } from '@/lib/partnerMatchCode';
 import { partnerError } from './partnerError';
 
 const PERMISSION_TABS = ['view', 'add', 'edit'] as const;
@@ -27,6 +28,7 @@ export function PartnerSettings() {
   const [settings, setSettings] = useState<PartnerSettingsData | null>(null);
   const [invite, setInvite] = useState<{ code: string; expires: string } | null>(null);
   const [enteredCode, setEnteredCode] = useState('');
+  const matchCode = parsePartnerMatchCode(enteredCode);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [disconnect, setDisconnect] = useState(false);
@@ -81,7 +83,8 @@ export function PartnerSettings() {
   };
 
   const accept = async () => {
-    if (await run(() => acceptPartnerInviteAction(enteredCode))) {
+    if (!matchCode || busy) return;
+    if (await run(() => acceptPartnerInviteAction(matchCode.code))) {
       setEnteredCode('');
       setInvite(null);
       await reload(true);
@@ -165,8 +168,9 @@ export function PartnerSettings() {
           </div>
           <form className="pb-partner-invite-code" onSubmit={event => { event.preventDefault(); void accept(); }}>
             <input className="pb-partner-input pb-partner-code" value={enteredCode} onChange={event => setEnteredCode(event.target.value)}
-              placeholder={x.enterCode} aria-label={x.enterCode} maxLength={32} required autoComplete="off" autoCapitalize="none" spellCheck={false} />
-            <button type="submit" className="pill active" disabled={busy || enteredCode.trim().length !== 22}>{x.pair}</button>
+              placeholder={x.enterCode} aria-label={x.enterCode} maxLength={PARTNER_LEGACY_CODE_LENGTH}
+              required autoComplete="off" autoCapitalize="none" spellCheck={false} />
+            <button type="submit" className="pill active" disabled={busy || !matchCode}>{x.pair}</button>
           </form>
           <button type="button" className="link-btn pb-partner-refresh" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>
         </>

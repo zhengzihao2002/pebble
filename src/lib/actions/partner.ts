@@ -4,7 +4,7 @@ import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { rankTopPlaces, shareTopPlaces } from '@/lib/topPlaces';
 import { FALLBACK_TIME_ZONE, isValidTimeZone } from '@/lib/time/timeZone';
 
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomInt, randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { neonSql } from '@/db';
@@ -21,9 +21,12 @@ import { normalizeCensoredWords, publicPartnerPermissions, redactPartnerText } f
 
 import { PARTNER_VIEW_COOKIE } from '@/lib/partnerPaths';
 import { partnerViewPair } from '@/lib/partnerView.server';
-const INVITE_PATTERN = /^[A-Za-z0-9_-]{22}$/;
+import { PARTNER_MATCH_CODE_ALPHABET, PARTNER_MATCH_CODE_LENGTH, parsePartnerMatchCode } from '@/lib/partnerMatchCode';
+
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const digest = (code: string) => createHash('sha256').update(code).digest('hex');
+const matchCodeDigest = (code: string) => createHmac('sha256', process.env.NEON_AUTH_COOKIE_SECRET!)
+  .update('pebble.partner-match.v1\0').update(code).digest('hex');
 type StoredPartnerPermissions = PartnerPermissions & { censoredWords?: string[]; censorshipRevision?: string };
 const censorWords = (stored: unknown) => normalizeCensoredWords((stored as StoredPartnerPermissions | null)?.censoredWords) ?? [];
 const lifecycleLock = () => neonSql`SELECT pg_advisory_xact_lock(hashtext('pebble.partner-mode.v1'))`;
@@ -79,17 +82,29 @@ async function readSettings(userId: string) {
 
 async function createInvite(userId: string) {
   return run(async () => {
-    const code = randomBytes(16).toString('base64url');
-    const [, rows] = await neonSql.transaction([
-      lifecycleLock(),
-      neonSql`INSERT INTO public.pebble_partner_invite (owner_id, digest, expires_at)
-        SELECT ${userId}::uuid, ${digest(code)}, now() + interval '15 minutes'
-        WHERE NOT EXISTS (SELECT 1 FROM public.pebble_partner_member WHERE user_id = ${userId}::uuid)
-        ON CONFLICT (owner_id) DO UPDATE SET digest = excluded.digest, expires_at = excluded.expires_at
-        RETURNING expires_at`,
-    ]);
-    if (!rows.length) return failure('paired');
-    return { ...success, code, expires: new Date(rows[0].expires_at).toISOString() };
+    for (let attempt = 0; ; attempt++) {
+      let code: string;
+      do {
+        code = Array.from({ length: PARTNER_MATCH_CODE_LENGTH },
+          () => PARTNER_MATCH_CODE_ALPHABET[randomInt(PARTNER_MATCH_CODE_ALPHABET.length)]).join('');
+      } while (!parsePartnerMatchCode(code));
+
+      try {
+        const [, rows] = await neonSql.transaction([
+          lifecycleLock(),
+          neonSql`INSERT INTO public.pebble_partner_invite (owner_id, digest, expires_at)
+            SELECT ${userId}::uuid, ${matchCodeDigest(code)}, now() + interval '15 minutes'
+            WHERE NOT EXISTS (SELECT 1 FROM public.pebble_partner_member WHERE user_id = ${userId}::uuid)
+            ON CONFLICT (owner_id) DO UPDATE SET digest = excluded.digest, expires_at = excluded.expires_at
+            RETURNING expires_at`,
+        ]);
+        if (!rows.length) return failure('paired');
+        return { ...success, code, expires: new Date(rows[0].expires_at).toISOString() };
+      } catch (error) {
+        // The digest is unique across accounts. Draw another code on collision.
+        if (attempt >= 2 || typeof error !== 'object' || error === null || !('code' in error) || error.code !== '23505') throw error;
+      }
+    }
   });
 }
 
@@ -102,14 +117,14 @@ async function revokeInvite(userId: string) {
 }
 
 async function acceptInvite(userId: string, input: string) {
-  const code = typeof input === 'string' ? input.trim() : '';
-  if (!INVITE_PATTERN.test(code)) return failure('invite');
+  const invite = parsePartnerMatchCode(input);
+  if (!invite) return failure('invite');
   return run(async () => {
     const [, rows] = await neonSql.transaction([
       lifecycleLock(),
       neonSql`WITH claimed AS (
         DELETE FROM public.pebble_partner_invite invite
-        WHERE digest = ${digest(code)} AND expires_at > now() AND owner_id <> ${userId}::uuid
+        WHERE digest = ${invite.legacy ? digest(invite.code) : matchCodeDigest(invite.code)} AND expires_at > now() AND owner_id <> ${userId}::uuid
           AND NOT EXISTS (SELECT 1 FROM public.pebble_partner_member
             WHERE user_id IN (invite.owner_id, ${userId}::uuid))
         RETURNING owner_id

@@ -12,6 +12,7 @@ const stub = {
 
 const entry = `
   export * from './src/lib/partnerPaths';
+  export * from './src/lib/partnerMatchCode';
   export * from './src/lib/partnerCensorship';
   export * from './src/lib/partnerPreferences';
   export * from './src/lib/topPlaces';
@@ -43,6 +44,14 @@ const compiled = (await build({
 const cjs = { exports: {} };
 new Function('module', 'exports', 'require', 'stub', compiled)(cjs, cjs.exports, createRequire(import.meta.url), stub);
 const scope = cjs.exports;
+
+test('Partner Mode accepts six case-sensitive characters with both letters and digits', () => {
+  assert.deepEqual(scope.parsePartnerMatchCode(' aL4B7x '), { code: 'aL4B7x', legacy: false });
+  for (const input of ['ABCDEF', '123456', 'aB7x9', 'aB7x901', 'aB7-x9', 'aB7 x9', 123456]) {
+    assert.equal(scope.parsePartnerMatchCode(input), null);
+  }
+  assert.equal(scope.parsePartnerMatchCode('abcdefghijklmnopqrst-_')?.legacy, true);
+});
 
 test('partner navigation resolves the original page and keeps owner-only routes private', () => {
   for (const section of scope.PARTNER_SECTIONS) {
