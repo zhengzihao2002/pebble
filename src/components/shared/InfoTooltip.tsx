@@ -22,13 +22,14 @@ interface InfoTooltipProps {
   /** Accessible name for the trigger, e.g. 'How average monthly spend is calculated'. */
   label: string;
   children: React.ReactNode;
+  pressOnly?: boolean;
 }
 
 const WIDTH = 264;
 const GAP = 8;
 const EDGE = 8;
 
-export function InfoTooltip({ label, children }: InfoTooltipProps) {
+export function InfoTooltip({ label, children, pressOnly = false }: InfoTooltipProps) {
   const [open, setOpen] = useState(false);
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const [hoverCapable, setHoverCapable] = useState(false);
@@ -57,7 +58,7 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
     // Flip above when there is not room below and there IS room above.
     const below = r.bottom + GAP;
     const flip = h > 0 && below + h > window.innerHeight - EDGE && r.top - GAP - h > EDGE;
-    const top = flip ? r.top - GAP - h : below;
+    const top = flip ? r.top - GAP - h : Math.max(EDGE, Math.min(below, window.innerHeight - EDGE - h));
 
     // Guarded so the post-measure pass cannot loop.
     setPos((p) => (p && p.top === top && p.left === left ? p : { top, left }));
@@ -67,7 +68,7 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
   // the second corrects using its real height.
   useLayoutEffect(() => {
     if (open) reposition();
-  }, [open, reposition]);
+  }, [open, pos, reposition]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,7 +104,7 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
     };
   }, [open]);
 
-  const hoverProps = hoverCapable
+  const hoverProps = hoverCapable && !pressOnly
     ? { onMouseEnter: () => setOpen(true), onMouseLeave: () => setOpen(false) }
     : {};
 
@@ -118,6 +119,8 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
         left: pos.left,
         width: WIDTH,
         maxWidth: `calc(100vw - ${EDGE * 2}px)`,
+        maxHeight: `calc(100dvh - ${EDGE * 2}px)`,
+        overflowY: 'auto',
         zIndex: 60,
         backgroundColor: 'var(--mist)',
         color: 'var(--ink)',
@@ -142,7 +145,7 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
         aria-expanded={open}
         aria-describedby={open ? id : undefined}
         onClick={() => setOpen((v) => !v)}
-        onFocus={() => setOpen(true)}
+        onFocus={pressOnly ? undefined : () => setOpen(true)}
         {...hoverProps}
         style={{
           display: 'inline-flex',
@@ -151,6 +154,8 @@ export function InfoTooltip({ label, children }: InfoTooltipProps) {
           background: 'none',
           border: 'none',
           padding: 2,
+          minWidth: pressOnly ? 28 : undefined,
+          minHeight: pressOnly ? 26 : undefined,
           marginLeft: 4,
           color: 'var(--ink-soft)',
           verticalAlign: 'middle',

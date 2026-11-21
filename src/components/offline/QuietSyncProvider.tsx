@@ -8,7 +8,7 @@ import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnecti
 import { tellWorkerWho } from '@/lib/offline/serviceWorker';
 import { saveSnapshot } from '@/lib/offline/queueStore';
 import {
-  QUIET_SYNC_PAGES, isQuietSyncLaunch, readQuietRestoreSignals, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
+  QUIET_SYNC_PAGES, isQuietSyncDue, isQuietSyncLaunch, readQuietRestoreSignals, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
 } from '@/lib/offline/quietSync';
 
 type SaveKind = 'goal' | 'schedule' | 'transaction' | 'budget';
@@ -39,6 +39,12 @@ function activeRoute() {
 }
 
 const savedView = { goal: '/goals', schedule: '/scheduled', transaction: '/transactions', budget: '/budgets' } as const;
+const catchUpRetryDelay = 5 * 60 * 1000;
+const scrollKeys = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' ']);
+
+function isSavedView(pathname: string) {
+  return QUIET_SYNC_PAGES.includes(pathname) || pathname === '/budgets/plan';
+}
 
 export function QuietSyncProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const [enabled, setEnabledState] = useState(false);
@@ -47,6 +53,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   const [syncing, setSyncing] = useState(false);
   const [saveSyncs, setSaveSyncs] = useState(0);
   const checkedLaunch = useRef(false);
+  const nextCatchUpAttempt = useRef(0);
   const [preparing, setPreparing] = useState(false);
   const [writePending, setWritePending] = useState(false);
   const [problem, setProblem] = useState<QuietSyncApi['problem']>(null);
@@ -130,8 +137,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   const download = useCallback(async ({ refreshView = false, afterWrite = false } = {}) => {
     if (!(await isServerReachable())) return false;
     await tellWorkerWho(userId);
-    const pathname = location.pathname;
-    const onSavedView = QUIET_SYNC_PAGES.includes(pathname) || pathname === '/budgets/plan';
+    const onSavedView = isSavedView(location.pathname);
     const required = [...new Set([...(onSavedView ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
     const [result, viewResult] = await Promise.all([
       quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
@@ -191,12 +197,48 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   useEffect(() => {
     if (checkedLaunch.current || !preferenceReady) return;
     checkedLaunch.current = true;
-    if (!takeQuietNavigationMarker(activeRoute()) && enabled && !readOffline() && QUIET_SYNC_PAGES.includes(location.pathname) &&
+    if (!takeQuietNavigationMarker(activeRoute()) && enabled && !readOffline() && isSavedView(location.pathname) &&
         isQuietSyncLaunch(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined,
           document.referrer, location.origin, readQuietRestoreSignals())) {
       void sync();
     }
   }, [enabled, preferenceReady, sync]);
+
+  const canCatchUp = enabled && !offline && !syncing && saveSyncs === 0;
+  useEffect(() => {
+    if (!canCatchUp || !isSavedView(location.pathname)) return;
+    let listening = true;
+    const catchUp = async (event: Event) => {
+      const now = Date.now();
+      if (now < nextCatchUpAttempt.current || !isQuietSyncDue(lastSyncedAt, now)) return;
+      if (!event.isTrusted || document.hidden || busy.current) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (event instanceof KeyboardEvent) {
+        if (!scrollKeys.has(event.key) || event.altKey || event.ctrlKey || event.metaKey ||
+            target.closest('button, a, input, textarea, select, [contenteditable], [role="dialog"], [role="tablist"]') ||
+            (target !== document.body && !target.closest('main'))) return;
+      } else if (!target.closest('main') || target.closest('[role="dialog"], nav')) return;
+
+      // Only a scroll gesture can trigger this check. Ask the worker first so
+      // a recent sync in another tab can satisfy it without a server request.
+      nextCatchUpAttempt.current = now + catchUpRetryDelay;
+      const state = await quietWorkerCommand({ type: 'QUIET_STATUS', user: userId, onDemand: true });
+      if (!listening || !state?.ok || !state.enabled || document.hidden || readOffline() || !readQuietPreference(userId).enabled) return;
+      receiveStatus(state);
+      if (isQuietSyncDue(state.lastSyncedAt, Date.now())) await sync();
+      else nextCatchUpAttempt.current = 0;
+    };
+    document.addEventListener('wheel', catchUp, { passive: true });
+    document.addEventListener('touchmove', catchUp, { passive: true });
+    document.addEventListener('keydown', catchUp);
+    return () => {
+      listening = false;
+      document.removeEventListener('wheel', catchUp);
+      document.removeEventListener('touchmove', catchUp);
+      document.removeEventListener('keydown', catchUp);
+    };
+  }, [canCatchUp, lastSyncedAt, receiveStatus, sync, userId]);
 
   const refreshAfterWrite = useCallback(() => {
     setWritePending(true);

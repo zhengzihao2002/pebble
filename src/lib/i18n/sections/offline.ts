@@ -69,7 +69,11 @@ export const offlineEn = {
   quietSync: {
     title: 'Quiet Sync',
     beta: 'Beta',
-    settingHint: 'Browse saved pages on this device. Pebble syncs when you open it for a new visit and after supported saves.',
+    settingHint: 'Browse saved pages and connect only when needed.',
+    aboutLabel: 'How Quiet Sync works',
+    aboutSync: 'A fresh visit starts syncing right away. Supported saves and Sync now in the header also sync. If {hours} hours have passed since the last successful sync, scrolling a saved page while online starts one. Data updates in place.',
+    aboutBrowsing: 'Page switches and normal browser reloads use saved data. Idle tabs stay paused. A hard reload can reach the database.',
+    aboutOffline: 'Offline transactions still use the upload queue. This setting is off by default and applies only to this device. Turn it off to restore live browsing.',
     status: {
       paused: 'Sync paused',
       preparing: 'Preparing',
@@ -150,7 +154,11 @@ export const offlineZh: typeof offlineEn = {
   quietSync: {
     title: '轻量同步',
     beta: '测试版',
-    settingHint: '浏览保存在当前设备上的页面。每次重新打开 Pebble 或完成受支持的保存操作时，都会同步。',
+    settingHint: '浏览本机保存的页面，仅在需要时联网。',
+    aboutLabel: '轻量同步如何运作',
+    aboutSync: '重新打开 Pebble 时立即同步。完成支持同步的保存操作，或点击顶部的「立即同步」，也会触发同步。距上次成功同步满 {hours} 小时后，在线滚动已保存的页面即可同步。数据会在原页面更新。',
+    aboutBrowsing: '切换页面或普通刷新会使用本机数据。闲置时暂停同步。强制刷新可能会访问数据库。',
+    aboutOffline: '离线交易仍会进入上传队列。此设置默认关闭，仅在本机生效。关闭后恢复实时浏览。',
     status: {
       paused: '同步已暂停',
       preparing: '正在准备',
