@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { CalendarDays, Check, Trash2 } from 'lucide-react';
 import { addGoalAction, deleteGoalAction, updateGoalAction, type ActionResult } from '@/lib/actions/pebble';
@@ -193,6 +194,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   {saving ? d.goalModal.deleting : d.goalModal.delete}
                 </button>
               </div>
+              <QuietSyncActionNote />
             </div>
           </>
         ) : (
@@ -334,6 +336,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
                   {saving ? d.common.saving : isEdit ? d.goalModal.saveChanges : d.goalModal.titleAdd}
                 </button>
               </div>
+              <QuietSyncActionNote />
             </div>
           </>
         )}

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useId, useState } from 'react';
 import { Layers, ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -209,6 +210,7 @@ function CleanupReview({ group, accountName, locked, manual, busy, onBusy, onClo
         <button type="button" className="btn-primary" onClick={() => void submit()} disabled={!canApply}>
           {busy ? d.common.saving : removesAll ? x.remove : x.combine}
         </button>
+        <QuietSyncActionNote kind="connection" />
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { readOffline } from '@/lib/offline/connectivity';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { AmountInput } from '@/components/shared/AmountInput';
@@ -777,6 +778,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
               </button>
             )}
+            {!offlineQueue.offline && <QuietSyncActionNote />}
           </div>
         )}
       </>

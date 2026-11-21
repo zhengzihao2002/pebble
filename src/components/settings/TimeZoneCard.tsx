@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useState } from 'react';
 import { Globe, Globe2 } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
@@ -99,6 +100,7 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
         </button>
       </div>
 
+      <QuietSyncActionNote kind="connection" />
       <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginTop: '0.75rem' }} />
       {saved && !dirty && (
         <p className="pb-settings-saved" role="status">{d.settings.timeZone.saved}</p>

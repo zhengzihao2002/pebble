@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { SETTING_TARGETS } from './settingsTargets';
 
 import { GhostAccountMode, GhostBadge } from '@/components/accounts/GhostAccountMode';
@@ -457,6 +458,8 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
               </div>
 
+              {editingCard !== a.id && <QuietSyncActionNote kind="connection" />}
+
               {rowErrorId === a.id && error && (
                 <ActionError message={error} kind={errorKind} busy={saving} />
               )}
@@ -479,6 +482,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                       {d.accounts.cardSave}
                     </button>
                   </div>
+                  <QuietSyncActionNote kind="connection" />
                 </div>
               )}
             </div>
@@ -549,6 +553,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               {saving ? d.common.saving : d.accounts.create}
             </button>
           </div>
+          <QuietSyncActionNote kind="connection" />
         </div>
       ) : (
         <>

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useState } from 'react';
@@ -66,6 +67,7 @@ export function InlineBudgetEditor({ name, initial, onClose }: { name: string; i
         <button type="button" className="icon-btn" onClick={() => void save()} disabled={saving} aria-label={d.budgetEdit.save} title={d.budgetEdit.save} style={{ ...budgetIconBtn, color: 'var(--pine)' }}><Check size={18} /></button>
         <button type="button" className="icon-btn" onClick={cancel} disabled={saving} aria-label={d.budgetEdit.cancel} title={d.budgetEdit.cancel} style={budgetIconBtn}><X size={18} /></button>
       </span>
+      <QuietSyncActionNote />
       {Number.isFinite(amount) && amount > 0 && (
         <span className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
           {t(d.budgetModal.estMonthlyLabel, { amount: formatCurrency(amount / 12) })}

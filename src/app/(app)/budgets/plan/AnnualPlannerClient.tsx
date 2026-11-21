@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -176,11 +177,11 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
         })}
       </fieldset>
       <div className="pb-annual-feedback" aria-live="polite">{error && <p className="pb-annual-error" role="alert">{error}</p>}{notice && <p className="pb-annual-success"><Check size={16} />{notice}</p>}{reloadNeeded && <button type="button" className="pill" onClick={() => window.location.reload()}>{x.reload}</button>}</div>
-      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{x.cancelTitle}</h3><p>{x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void cancel()}>{saving ? x.saving : x.confirmCancel}</button></div></div></section>}
+      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{x.cancelTitle}</h3><p>{x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void cancel()}>{saving ? x.saving : x.confirmCancel}</button></div><QuietSyncActionNote kind="connection" /></div></section>}
       <footer className="pb-annual-footer"><div><span>{dirty ? x.unsaved : savedPlan ? t(savedPlan.state === 'scheduled' ? x.scheduled : x.draft, { year: String(year) }) : t(x.starts, { year: String(year) })}</span><small>{t(x.saveHint, { year: String(year) })}</small></div><div className="pb-annual-footer-actions">
         {savedPlan?.state === 'scheduled' && <button type="button" className="pill" disabled={saving || reloadNeeded || !data.available} onClick={() => { setReview('cancel'); setError(null); }}>{x.cancelSchedule}</button>}
         <button type="button" className="btn-primary" disabled={saving || reloadNeeded || !data.available || categories.length === 0 || (savedPlan?.state === 'scheduled' && !dirty)} onClick={() => void save()}>{saving ? x.saving : x.savePlan}</button>
-      </div></footer>
+      </div><QuietSyncActionNote kind="connection" /></footer>
     </div>
   );
 }

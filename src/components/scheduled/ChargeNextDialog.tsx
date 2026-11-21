@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDownRight, ArrowUpRight, CalendarCheck } from 'lucide-react';
@@ -166,6 +167,7 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
                 {saving ? x.chargeCharging : x.chargeConfirm}
               </button>
             </div>
+            <QuietSyncActionNote />
           </div>
         </>
       )}

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { isPartnerPath } from '@/lib/partnerPaths';
 import { changeSharedTransactionAction } from '@/lib/actions/partner';
 import type { SharedTransaction } from '@/lib/partner';
@@ -984,6 +985,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                 </div>
               </>
             )}
+            {!shared && (mode === 'edit' || mode === 'confirmOverspend') && <QuietSyncActionNote />}
+            {mode === 'confirmDelete' && <QuietSyncActionNote kind="undo" />}
           </div>
         )}
 

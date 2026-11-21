@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -267,6 +268,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
                 {paying ? d.accounts.payOffPaying : t(d.accounts.payOffButton, { amount: formatCurrency(total) })}
               </button>
             </div>
+            <QuietSyncActionNote />
           </div>
         )}
       </>

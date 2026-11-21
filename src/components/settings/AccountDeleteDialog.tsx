@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, ArrowRightLeft, Trash2 } from 'lucide-react';
 import {
@@ -326,6 +327,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
                 </button>
               </div>
             )}
+            {step !== 'choose' && <QuietSyncActionNote kind="connection" />}
           </div>
         )}
       </>

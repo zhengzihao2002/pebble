@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -256,6 +257,7 @@ export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: Acc
                 {moving ? d.accounts.moving : d.accounts.moveConfirm}
               </button>
             </div>
+            <QuietSyncActionNote kind="connection" />
           </div>
         )}
       </>

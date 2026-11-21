@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Ghost, Eye, ShieldCheck } from 'lucide-react';
@@ -61,7 +62,7 @@ export function GhostAccountMode({ account, disabled = false }: { account: Accou
           {!ghost && <p className="pb-ghost-dialog-note">{zh ? '现有计划付款仍会按原规则记入此账户。幽灵模式不等于暂停或删除。现有预算与目标预留保持不变，可能需要重新检查。' : 'Existing scheduled payments continue recording to this account. Ghost mode does not pause or delete them. Existing budgets and goal allocations stay as they are; you may need to review them.'}</p>}
           {error && <p role="alert" className="pb-ghost-error">{error}</p>}
         </div>
-        <div className="pb-modal-foot"><button type="button" className="pill" onClick={close} disabled={busy}>{zh ? '取消' : 'Cancel'}</button><button type="button" className="btn-primary" disabled={busy} onClick={() => void save(complete)}>{busy ? d.common.saving : ghost ? (zh ? '恢复计入' : 'Include account') : (zh ? '启用幽灵模式' : 'Enable ghost mode')}</button></div>
+        <div className="pb-modal-foot"><button type="button" className="pill" onClick={close} disabled={busy}>{zh ? '取消' : 'Cancel'}</button><button type="button" className="btn-primary" disabled={busy} onClick={() => void save(complete)}>{busy ? d.common.saving : ghost ? (zh ? '恢复计入' : 'Include account') : (zh ? '启用幽灵模式' : 'Enable ghost mode')}</button><QuietSyncActionNote /></div>
       </>}
     </ModalFrame>}
   </>;

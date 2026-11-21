@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -157,6 +158,7 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
                 {picked.length === 1 ? d.accountsPage.selfDeleteOne : t(d.accountsPage.selfDelete, { count: picked.length })}
               </button>
             </div>
+            <QuietSyncActionNote kind="connection" />
           </div>
         )}
       </>

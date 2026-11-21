@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
@@ -138,6 +139,7 @@ export function DeletePebbleAccountDialog({ onClose }: { onClose: () => void }) 
                 {secondsLeft > 0 ? t(d.deleteMe.countdown, { seconds: secondsLeft }) : d.deleteMe.confirm}
               </button>
             </div>
+            <QuietSyncActionNote kind="connection" />
           </div>
         )}
       </div>

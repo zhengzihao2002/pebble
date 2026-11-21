@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { SETTING_TARGETS } from './settingsTargets';
 
 import { useEffect, useState } from 'react';
@@ -294,6 +295,7 @@ export function CategoryManagerCard() {
             </button>
           </div>
         )}
+        <QuietSyncActionNote kind="connection" />
       </div>
     );
   };

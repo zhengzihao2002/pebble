@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { SETTING_TARGETS } from './settingsTargets';
@@ -247,6 +248,7 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
             {saving ? d.common.saving : d.modifyBalance.record}
           </button>
         </div>
+        <QuietSyncActionNote />
       </div>
 
       {confirm && (

@@ -5,6 +5,7 @@ import { ArrowDownToLine, Pause, RefreshCw, WifiOff } from 'lucide-react';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useQuietSync } from './QuietSyncProvider';
+import { QuietSyncActionNote } from './QuietSyncActionNote';
 
 const statusIcons = {
   paused: Pause,
@@ -98,6 +99,7 @@ export function QuietSyncStatus() {
               <RefreshCw size={15} aria-hidden="true" />{q.syncNow}
             </button>
           </div>
+          {!offline && <QuietSyncActionNote />}
         </div>
       )}
     </div>

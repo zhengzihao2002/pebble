@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { Goal } from '@/types';
@@ -254,6 +255,7 @@ export function AddToGoalModal({ goal, onClose, unallocated }: AddToGoalModalPro
                   {t(d.addToGoal.confirm, { amount: money(amountCents) })}
                 </button>
               </div>
+              <QuietSyncActionNote />
             </div>
           )}
 

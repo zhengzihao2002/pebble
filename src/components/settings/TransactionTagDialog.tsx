@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { ActionError } from '@/components/shared/ActionError';
@@ -202,6 +203,7 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
                   {busy ? labels.saving : labels.renameAll}
                 </button>
               </div>
+              <QuietSyncActionNote kind="connection" />
             </form>
           )}
           {mode === 'clear' && (
@@ -214,6 +216,7 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
                   {busy ? labels.clearing : clearSeconds > 0 ? t(labels.clearCountdown, { seconds: clearSeconds }) : labels.confirmClear}
                 </button>
               </div>
+              <QuietSyncActionNote kind="connection" />
             </div>
           )}
         </div>}

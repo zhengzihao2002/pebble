@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -266,6 +267,7 @@ export function CategoryDeleteDialog({
               {deleting ? d.recurring.deleting : d.categoryDelete.confirm}
             </button>
           </div>
+          <QuietSyncActionNote kind="connection" />
         </div>
 
         {deleted && <CloseSoon close={close} />}

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowDownRight, ArrowUpRight, Sparkles, Trash2 } from 'lucide-react';
 import {
@@ -472,6 +473,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   {saving ? d.recurring.deleting : d.recurring.delete}
                 </button>
               </div>
+              <QuietSyncActionNote />
             </div>
           </>
         ) : (
@@ -695,6 +697,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   {saving ? d.common.saving : isEdit ? d.recurring.saveChanges : isIncome ? d.recurring.addIncomeSchedule : d.recurring.addPaymentSchedule}
                 </button>
               </div>
+              <QuietSyncActionNote />
             </div>
           </>
         )}

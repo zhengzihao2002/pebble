@@ -1,5 +1,6 @@
 'use client';
 
+import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
@@ -322,6 +323,7 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
             >
               {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.transfer.submit}
             </button>
+            <QuietSyncActionNote />
           </div>
         )}
       </>
