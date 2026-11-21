@@ -8,7 +8,7 @@ import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnecti
 import { tellWorkerWho } from '@/lib/offline/serviceWorker';
 import { saveSnapshot } from '@/lib/offline/queueStore';
 import {
-  QUIET_SYNC_PAGES, isQuietSyncLaunch, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
+  QUIET_SYNC_PAGES, isQuietSyncLaunch, readQuietRestoreSignals, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
 } from '@/lib/offline/quietSync';
 
 type SaveKind = 'goal' | 'schedule' | 'transaction' | 'budget';
@@ -192,7 +192,8 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     if (checkedLaunch.current || !preferenceReady) return;
     checkedLaunch.current = true;
     if (!takeQuietNavigationMarker(activeRoute()) && enabled && !readOffline() && QUIET_SYNC_PAGES.includes(location.pathname) &&
-        isQuietSyncLaunch(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined, document.referrer, location.origin)) {
+        isQuietSyncLaunch(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined,
+          document.referrer, location.origin, readQuietRestoreSignals())) {
       void sync(true);
     }
   }, [enabled, preferenceReady, sync]);

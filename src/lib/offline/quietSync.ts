@@ -66,7 +66,24 @@ export function navigateQuietly(href: string) {
   return true;
 }
 
-export function isQuietSyncLaunch(navigation: Pick<PerformanceNavigationTiming, 'type'> | undefined, referrer: string, origin: string) {
+interface RestoreSignals {
+  wasDiscarded?: boolean;
+  activation?: { navigationType: string; from: object | null } | null;
+}
+
+export function readQuietRestoreSignals(): RestoreSignals {
+  const browser = window as Window & { navigation?: Pick<RestoreSignals, 'activation'> };
+  const page = document as Document & Pick<RestoreSignals, 'wasDiscarded'>;
+  return { activation: browser.navigation?.activation, wasDiscarded: page.wasDiscarded };
+}
+
+export function isQuietSyncLaunch(navigation: Pick<PerformanceNavigationTiming, 'type'> | undefined, referrer: string, origin: string, restore?: RestoreSignals) {
+  if (restore?.wasDiscarded) return true;
+  // Chromium restores a session as a history traversal without a previously
+  // active entry. Ordinary Back/Forward has a previous entry inside Pebble.
+  if (navigation?.type === 'back_forward' && restore?.activation?.navigationType === 'traverse' && restore.activation.from === null) {
+    return true;
+  }
   if (navigation?.type !== 'navigate') return false;
   try {
     if (referrer && new URL(referrer).origin === origin) {

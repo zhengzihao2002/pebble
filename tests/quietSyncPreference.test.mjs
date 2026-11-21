@@ -104,5 +104,8 @@ test('automatic sync is confined to a fresh launch and sign-in', () => {
   assert.equal(detect({ type: 'navigate' }, origin + '/goals', origin), false);
   assert.equal(detect({ type: 'reload' }, '', origin), false);
   assert.equal(detect({ type: 'back_forward' }, '', origin), false);
+  assert.equal(detect({ type: 'back_forward' }, '', origin, { activation: { navigationType: 'traverse', from: {} } }), false);
+  assert.equal(detect({ type: 'back_forward' }, origin + '/reports', origin, { activation: { navigationType: 'traverse', from: null } }), true);
+  assert.equal(detect({ type: 'reload' }, '', origin, { wasDiscarded: true }), true);
   assert.equal(detect(undefined, '', origin), false);
 });
