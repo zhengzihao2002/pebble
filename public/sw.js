@@ -56,7 +56,7 @@ var OFFLINE_URL = '/offline.html';
 var QUIET_URL = '/quiet-sync.html';
 var PRECACHE = [OFFLINE_URL, QUIET_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 var QUIET_LIVE_MS = 20 * 60 * 1000;
-var QUIET_SAVE_MS = 5 * 60 * 1000;
+var QUIET_SAVE_MS = 2 * 60 * 1000;
 var QUIET_PRIMARY = ['/dashboard', '/accounts', '/transactions', '/reports', '/analysis', '/insights', '/budgets', '/goals', '/scheduled', '/settings'];
 
 // How long a visited page waits for the network before the saved copy is
@@ -144,14 +144,16 @@ function setQuietPolicy(data) {
     var now = Date.now();
     if (data.afterSave === true) {
       if (!meta.quiet?.enabled) return;
-      // A save may extend a lease, but it must not shorten an existing one.
       meta.quiet.liveUntil = Math.max(meta.quiet.liveUntil || 0, now + QUIET_SAVE_MS);
       return;
     }
+    if (data.keepLonger === true && !meta.quiet?.enabled) return;
+    var enabled = data.enabled === true;
+    var requested = enabled && typeof data.liveUntil === 'number' && data.liveUntil > now ? Math.min(data.liveUntil, now + QUIET_LIVE_MS) : 0;
+    var existing = enabled && data.keepLonger === true && meta.quiet?.enabled && meta.quiet.liveUntil > now ? meta.quiet.liveUntil : 0;
     meta.quiet = {
-      enabled: data.enabled === true,
-      liveUntil: typeof data.liveUntil === 'number' && data.liveUntil > now
-        ? Math.min(data.liveUntil, now + QUIET_LIVE_MS) : null,
+      enabled: enabled,
+      liveUntil: Math.max(requested, existing) || null,
       lastSyncedAt: meta.quiet && meta.quiet.lastSyncedAt || null,
     };
   }).then(readMeta).then(function (meta) { return quietStatus(meta, data.user); });
@@ -750,9 +752,17 @@ self.addEventListener('message', function (event) {
       return caches.delete(PAGES);
     }).then(readMeta).then(function (meta) { reply(quietStatus(meta, data.user)); }, function () { reply({ ok: false }); }));
   } else if (data.type === 'QUIET_REFRESH') {
-    var refresh = enqueueQuietRefresh(data);
-    if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
-    event.waitUntil(refresh.then(reply));
+    // Cached 4.52 pages confirm writes with a partial refresh alone. Open
+    // their save window too so the next reload can load the current app.
+    var legacySave = data.afterWrite === true && data.partial === true && data.saveWindowStarted !== true;
+    var refreshPages = function () {
+      var refresh = enqueueQuietRefresh(data);
+      if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
+      return refresh.then(reply);
+    };
+    event.waitUntil(legacySave
+      ? setQuietPolicy({ user: data.user, afterSave: true }).then(refreshPages, function () { reply({ ok: false }); })
+      : refreshPages());
   } else if (data.type === 'QUIET_SYNC_FALLBACK') {
     event.waitUntil(readMeta().then(function (meta) {
       if (!meta.user || !meta.quiet?.enabled || !event.source?.url) return { ok: false };

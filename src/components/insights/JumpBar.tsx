@@ -87,7 +87,7 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
   };
 
   return (
-    <nav ref={ref} className="pb-ins-bar pb-sticky-shelf" data-stuck={stuck} aria-label={d.ux.insights.jumpTo}>
+    <nav ref={ref} className="pb-ins-bar" data-stuck={stuck} aria-label={d.ux.insights.jumpTo}>
       <div ref={trackRef} className="pb-ins-bar-track">
         <div className="pb-ins-bar-chips">
           {items.map((i) => (

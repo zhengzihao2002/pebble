@@ -97,15 +97,15 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       ? await callAction(() => updateGoalAction({ ...payload, id: goal.id }))
       : await callAction(() => addGoalAction(payload));
 
-    if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh });
-    setSaving(false);
     if (!result.ok) {
+      setSaving(false);
       setSaveError(translateActionError(d, locale, result));
       setSaveErrorKind(result.kind);
       playEventSound('saveFailed');
       return;
     }
 
+    const refresh = refreshAfterSave('goal', { refreshCurrent: deferPageRefresh });
     // Fires on the CROSSING, not the state: checking only whether the goal is
     // now complete would replay the sound on every later edit of an already
     // finished goal. A new goal created already at target counts - the
@@ -116,6 +116,13 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     // Only the crossing makes a sound. An ordinary goal save is silent.
     if (wasIncomplete && nowComplete) playEventSound('goalReached');
     setSaved({ name: payload.name, target: payload.target });
+    // Show the confirmed save while Quiet Sync prepares live navigation.
+    // Keep the form protected from dismissal until the handoff settles.
+    try {
+      await refresh;
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Set once a delete succeeds; the dialog then closes itself.
@@ -142,7 +149,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       {(close) => (
       <>
         {deleted && !saving && <CloseSoon close={close} />}
-        {saving && <LoadingOverlay label={mode === 'confirmDelete' ? d.goalModal.deletingOverlay : d.goalModal.saving} />}
+        {saving && !saved && <LoadingOverlay label={mode === 'confirmDelete' ? d.goalModal.deletingOverlay : d.goalModal.saving} />}
 
         <div className="pb-modal-head">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -158,6 +165,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
             <SaveSuccess
               title={isEdit ? d.goalModal.savedTitleEdit : d.goalModal.savedTitleAdd}
               body={`${saved.name} · ${formatCurrency(saved.target)}`}
+              holdMs={saving ? null : isEdit ? undefined : 800}
               color={color}
               onDone={close}
             />

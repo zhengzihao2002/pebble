@@ -1,6 +1,6 @@
 export const QUIET_SYNC_INTERVAL = 8 * 60 * 60 * 1000;
 export const QUIET_SYNC_LIVE_PERIOD = 20 * 60 * 1000;
-export const QUIET_SYNC_SAVE_PERIOD = 5 * 60 * 1000;
+export const QUIET_SYNC_SAVE_PERIOD = 2 * 60 * 1000;
 export const QUIET_SYNC_RETRY_INTERVAL = 30 * 60 * 1000;
 export const QUIET_SYNC_PAGES = [
   '/dashboard', '/accounts', '/transactions', '/reports', '/analysis',
@@ -91,8 +91,8 @@ export interface QuietWorkerStatus {
 type QuietCommand = { user: string } & (
   | { type: 'QUIET_STATUS' }
   | { type: 'QUIET_INVALIDATE' }
-  | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: number; afterSave?: boolean }
-  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean }
+  | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: number; keepLonger?: boolean }
+  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean; saveWindowStarted?: boolean }
 );
 
 export function activeQuietWorker(services: ServiceWorkerContainer): Promise<ServiceWorker | null> {

@@ -94,8 +94,14 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
       if (state?.enabled) {
         receiveStatus(state);
         setProblem(previous => previous === 'unavailable' ? null : previous);
-        if ((state.liveUntil ?? 0) !== preference.liveUntil) {
-          writeQuietPreference(userId, { liveUntil: state.liveUntil ?? 0 });
+        const workerUntil = state.liveUntil ?? 0;
+        if (preference.liveUntil > Date.now() && preference.liveUntil > workerUntil) {
+          // A renewed worker may have lost a lease already confirmed to this browser.
+          const restored = await quietWorkerCommand({ type: 'QUIET_POLICY', user: userId, enabled: true, liveUntil: preference.liveUntil, keepLonger: true });
+          if (!isCurrent() || !receiveStatus(restored)) return;
+          writeQuietPreference(userId, { liveUntil: restored?.liveUntil ?? workerUntil });
+        } else if (workerUntil !== preference.liveUntil) {
+          writeQuietPreference(userId, { liveUntil: workerUntil });
         }
       } else if (state) {
         await tellWorkerWho(userId);
@@ -259,7 +265,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     const route = activeRoute();
     const requestedUntil = Math.max(preference.liveUntil, Date.now() + QUIET_SYNC_SAVE_PERIOD);
     const state = await quietWorkerCommand({
-      type: 'QUIET_POLICY', user: userId, enabled: true, liveUntil: requestedUntil, afterSave: true,
+      type: 'QUIET_POLICY', user: userId, enabled: true, liveUntil: requestedUntil, keepLonger: true,
     });
     const current = readQuietPreference(userId);
     if (!current.enabled || !receiveStatus(state) || !state?.enabled || !state.liveUntil) return;
@@ -281,7 +287,9 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     ])];
     // Live reads can proceed now. Save a fresh local copy for the next pause.
     // A slow related page must not stop us from updating the saved records list.
-    void quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required: [primary], build: BUILD_ID, partial: true, afterWrite: true }).then(result => {
+    void quietWorkerCommand({
+      type: 'QUIET_REFRESH', user: userId, pages, required: [primary], build: BUILD_ID, partial: true, afterWrite: true, saveWindowStarted: true,
+    }).then(result => {
       if (!readQuietPreference(userId).enabled) return;
       if (receiveStatus(result)) setProblem(previous => previous === 'incomplete' ? null : previous);
       else if (result && !result.authExpired) setProblem('incomplete');

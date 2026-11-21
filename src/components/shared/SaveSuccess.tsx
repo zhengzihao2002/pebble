@@ -13,6 +13,8 @@ interface SaveSuccessProps {
   body?: string;
   /** Called after the hold. Pass ModalFrame's close() so the exit plays. */
   onDone: () => void;
+  /** Pass null to show the confirmation while waiting to start its close timer. */
+  holdMs?: number | null;
   /** Badge colour. Defaults to pine; Add to goal passes the goal's own colour. */
   color?: string;
 }
@@ -29,16 +31,17 @@ const HOLD_MS = 1600;
  * never appear for a write that did not land. It replaces the dialog's form
  * in place; the header, with its close button, stays above it.
  */
-export function SaveSuccess({ title, body, onDone, color = 'var(--pine)' }: SaveSuccessProps) {
+export function SaveSuccess({ title, body, onDone, holdMs = HOLD_MS, color = 'var(--pine)' }: SaveSuccessProps) {
   // A ref, not the prop: the page hands a new onClose on every re-render,
   // which would keep restarting the timer (the same reason AddToGoalModal
   // uses one).
   const onDoneRef = useRef(onDone);
   useEffect(() => { onDoneRef.current = onDone; });
   useEffect(() => {
-    const id = window.setTimeout(() => onDoneRef.current(), HOLD_MS);
+    if (holdMs === null) return;
+    const id = window.setTimeout(() => onDoneRef.current(), holdMs);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [holdMs]);
 
   return (
     <div className="goal-step" role="status" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem', padding: '1.5rem 0', textAlign: 'center' }}>

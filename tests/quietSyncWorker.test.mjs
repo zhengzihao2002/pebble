@@ -158,29 +158,52 @@ test('the online window expires and the pause resumes without changing the prefe
   assert.deepEqual(worker.requests, ['/reports', '/dashboard']);
 });
 
-test('a confirmed save opens a rolling five-minute window without shortening Stay online', async () => {
+test('a confirmed save opens a rolling two-minute window without shortening Stay online', async () => {
   const worker = workerFixture();
   await save(worker);
-  const afterSave = { type: 'QUIET_POLICY', user, enabled: true, afterSave: true };
   const minute = 60_000;
-  const first = await worker.message(afterSave);
-  assert.equal(first.liveUntil, 10_000_000 + 5 * minute);
-  worker.advance(4 * minute);
-  const second = await worker.message(afterSave);
-  assert.equal(second.liveUntil, first.liveUntil + 4 * minute);
+  const saveWindow = { type: 'QUIET_POLICY', user, enabled: true, keepLonger: true };
+  const deadline = 10_000_000 + 2 * minute;
+  const first = await worker.message({ ...saveWindow, liveUntil: deadline });
+  assert.equal(first.liveUntil, deadline);
+  worker.advance(minute);
+  const second = await worker.message({ ...saveWindow, liveUntil: deadline + minute });
+  assert.equal(second.liveUntil, first.liveUntil + minute);
   assert.equal((await worker.fetch('/reports', { mode: 'cors' })).status, 200);
 
   await worker.message({ type: 'QUIET_RESUME_FALLBACK' });
   const manual = await worker.message({ type: 'QUIET_STATUS', user });
-  assert.equal((await worker.message(afterSave)).liveUntil, manual.liveUntil);
-  assert.equal((await worker.message({ ...afterSave, user: 'user-b' })).enabled, false);
+  assert.equal((await worker.message({ ...saveWindow, liveUntil: second.liveUntil })).liveUntil, manual.liveUntil);
+  assert.equal((await worker.message({ ...saveWindow, user: 'user-b', liveUntil: second.liveUntil })).enabled, false);
 
   worker.advance(20 * minute + 1);
   worker.boot();
   assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).liveUntil, null);
   assert.equal((await worker.fetch('/reports', { mode: 'cors' })).type, 'error');
   await worker.message({ type: 'QUIET_POLICY', user, enabled: false });
-  assert.equal((await worker.message(afterSave)).enabled, false);
+  assert.equal((await worker.message({ ...saveWindow, liveUntil: manual.liveUntil + 120_000 })).enabled, false);
+  assert.equal((await worker.message({ type: 'QUIET_POLICY', user, afterSave: true })).enabled, false);
+});
+
+test('a cached client refresh after a confirmed write opens the save window before navigation', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  worker.useRevision('saved-from-old-client');
+  let queued;
+  const ready = new Promise(resolve => { queued = resolve; });
+  const refresh = worker.message({ type: 'QUIET_REFRESH', user, pages: ['/goals'], partial: true, afterWrite: true }, result => {
+    if (result.queued) queued();
+  });
+  await ready;
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).liveUntil, 10_000_000 + 120_000);
+  assert.match(await (await worker.fetch('/goals')).text(), /saved-from-old-client/);
+  assert.equal((await refresh).ok, true);
+  worker.advance(120_001);
+  worker.boot();
+  const before = worker.requests.length;
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).liveUntil, null);
+  assert.match(await (await worker.fetch('/goals')).text(), /saved-from-old-client/);
+  assert.equal(worker.requests.length, before);
 });
 
 test('a saved goal becomes available in local browsing even if a related Insights refresh fails', async () => {
@@ -190,10 +213,10 @@ test('a saved goal becomes available in local browsing even if a related Insight
   worker.useRevision('confirmed-goal');
   worker.block('/insights');
   const fresh = await worker.message({
-    type: 'QUIET_REFRESH', user, pages: ['/goals', '/insights'], required: ['/goals'], partial: true, afterWrite: true,
+    type: 'QUIET_REFRESH', user, pages: ['/goals', '/insights'], required: ['/goals'], partial: true, afterWrite: true, saveWindowStarted: true,
   });
   assert.equal(fresh.ok, true);
-  worker.advance(5 * 60_000 + 1);
+  worker.advance(120_001);
   worker.requests.length = 0;
   assert.match(await (await worker.fetch('/goals')).text(), /confirmed-goal/);
   assert.deepEqual(worker.requests, []);
@@ -264,7 +287,7 @@ test('a cached page waits for successive writes on its path and resumes when a w
   await save(worker);
   worker.requests.length = 0;
 
-  const write = { type: 'QUIET_REFRESH', user, pages: ['/reports'], afterWrite: true, partial: true };
+  const write = { type: 'QUIET_REFRESH', user, pages: ['/reports'], afterWrite: true, partial: true, saveWindowStarted: true };
   worker.useRevision('first-edit');
   const firstHeld = worker.holdNext('/reports');
   const first = worker.message(write);
