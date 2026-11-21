@@ -89,16 +89,18 @@ export function JumpBar({ items }: { items: JumpItem[] }) {
   return (
     <nav ref={ref} className="pb-ins-bar pb-sticky-shelf" data-stuck={stuck} aria-label={d.ux.insights.jumpTo}>
       <div ref={trackRef} className="pb-ins-bar-track">
-        {items.map((i) => (
-          <button
-            key={i.id} type="button" className="pb-ins-chip"
-            aria-current={active === i.id ? 'true' : undefined}
-            onClick={() => jump(i.id)}
-          >
-            {i.label}
-            {i.count !== undefined && i.count > 0 && <span className="pb-ins-chip-count pb-tnum">{i.count}</span>}
-          </button>
-        ))}
+        <div className="pb-ins-bar-chips">
+          {items.map((i) => (
+            <button
+              key={i.id} type="button" className="pb-ins-chip"
+              aria-current={active === i.id ? 'true' : undefined}
+              onClick={() => jump(i.id)}
+            >
+              {i.label}
+              {i.count !== undefined && i.count > 0 && <span className="pb-ins-chip-count pb-tnum">{i.count}</span>}
+            </button>
+          ))}
+        </div>
       </div>
     </nav>
   );

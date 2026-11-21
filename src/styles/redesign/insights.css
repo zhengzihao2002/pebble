@@ -91,13 +91,15 @@
   .pebble-root .pb-ins-bar::before { background-color: var(--mist); }
 }
 .pebble-root .pb-ins-bar-track {
-  display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
 }
-/* The auto margins center the stuck chips when there is free space. They
-   resolve to zero on overflow, keeping the first chip reachable on mobile. */
-.pebble-root .pb-ins-bar[data-stuck="true"] .pb-ins-bar-track > :first-child { margin-inline-start: auto; }
-.pebble-root .pb-ins-bar[data-stuck="true"] .pb-ins-bar-track > :last-child { margin-inline-end: auto; }
 .pebble-root .pb-ins-bar-track::-webkit-scrollbar { display: none; }
+/* Center across the entire shelf as it widens. On narrow screens the group
+   grows to the width of the chips, so both ends can scroll into view. */
+.pebble-root .pb-ins-bar-chips {
+  display: flex; justify-content: center; gap: 0.25rem;
+  inline-size: max-content; min-inline-size: 100%;
+}
 .pebble-root .pb-ins-chip {
   position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.4rem;
   padding: 0.36rem 0.85rem; border: 0; border-radius: 999px; background: transparent;

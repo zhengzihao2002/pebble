@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, startTransition, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { getAccountsAction, getCategoriesAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import { BUILD_ID } from '@/lib/offline/buildId';
@@ -8,9 +9,11 @@ import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnecti
 import { tellWorkerWho } from '@/lib/offline/serviceWorker';
 import { saveSnapshot } from '@/lib/offline/queueStore';
 import {
-  QUIET_SYNC_INTERVAL, QUIET_SYNC_LIVE_PERIOD, QUIET_SYNC_PAGES, QUIET_SYNC_RETRY_INTERVAL,
-  quietSyncDue, quietSyncIsPaused, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
+  QUIET_SYNC_INTERVAL, QUIET_SYNC_LIVE_PERIOD, QUIET_SYNC_PAGES, QUIET_SYNC_RETRY_INTERVAL, QUIET_SYNC_SAVE_PERIOD,
+  quietSyncDue, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
 } from '@/lib/offline/quietSync';
+
+type SaveKind = 'goal' | 'schedule' | 'transaction';
 
 export interface QuietSyncApi {
   enabled: boolean;
@@ -22,13 +25,13 @@ export interface QuietSyncApi {
   setEnabled(enabled: boolean): void;
   syncNow(): void;
   goOnline(): void;
-  refreshAfterWrite(full?: boolean): void;
-  refreshGoalViews(): Promise<void>;
+  refreshAfterWrite(): void;
+  refreshAfterSave(kind: SaveKind, options?: { refreshCurrent: boolean }): Promise<void>;
 }
 
 const QuietSyncContext = createContext<QuietSyncApi>({
   enabled: false, preferenceReady: true, status: 'live', problem: null, liveUntil: null, lastSyncedAt: null,
-  setEnabled() {}, syncNow() {}, goOnline() {}, refreshAfterWrite() {}, async refreshGoalViews() {},
+  setEnabled() {}, syncNow() {}, goOnline() {}, refreshAfterWrite() {}, async refreshAfterSave() {},
 });
 
 export function useQuietSync() {
@@ -39,16 +42,18 @@ function activeRoute() {
   return location.pathname + location.search;
 }
 
-const goalViews = ['/goals', '/dashboard', '/insights'];
+const savedView = { goal: '/goals', schedule: '/scheduled', transaction: '/transactions' } as const;
+const goalViews = [savedView.goal, '/dashboard', '/insights'];
 
 export function QuietSyncProvider({ userId, children }: { userId: string; children: ReactNode }) {
+  const router = useRouter();
   const [enabled, setEnabledState] = useState(false);
   const [preferenceReady, setPreferenceReady] = useState(false);
   const [liveUntil, setLiveUntil] = useState<number | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [writePending, setWritePending] = useState<'partial' | 'full' | null>(null);
+  const [writePending, setWritePending] = useState(false);
   const [problem, setProblem] = useState<QuietSyncApi['problem']>(null);
   const offline = useSyncExternalStore(subscribeConnectivity, readOffline, onlineServerSnapshot);
   const busy = useRef(false);
@@ -130,15 +135,14 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     };
   }, [liveUntil, showPreference]);
 
-  const download = useCallback(async (partial: boolean, afterWrite = false) => {
+  const download = useCallback(async (afterWrite = false) => {
     if (!(await isServerReachable())) return false;
     const hasPrimaryRoute = QUIET_SYNC_PAGES.includes(location.pathname);
-    const pages = partial ? ['/dashboard', '/transactions', '/accounts'] : QUIET_SYNC_PAGES;
-    const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...pages])];
-    if (!partial) writeQuietPreference(userId, { attemptedAt: Date.now() });
+    const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
+    writeQuietPreference(userId, { attemptedAt: Date.now() });
     // The transaction form shares the ordinary offline reference snapshot.
     // Refresh it only as part of an intentional Quiet Sync.
-    const reference = partial ? Promise.resolve() : Promise.all([
+    const reference = Promise.all([
       callAction(getAccountsAction), callAction(getCategoriesAction),
     ]).then(([accounts, categories]) =>
       accounts.ok && categories.ok
@@ -146,7 +150,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
         : undefined,
     );
     const [result] = await Promise.all([
-      quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, partial, afterWrite }),
+      quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
       reference,
     ]);
     if (receiveStatus(result)) return true;
@@ -154,14 +158,14 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     return false;
   }, [receiveStatus, userId]);
 
-  const sync = useCallback(async (reload: boolean, partial = false, afterWrite = false) => {
+  const sync = useCallback(async (reload: boolean, afterWrite = false) => {
     if (busy.current) return;
     const route = activeRoute();
     busy.current = true;
     setSyncing(true);
     setProblem(null);
     try {
-      if (await download(partial, afterWrite) && reload && route === activeRoute() && QUIET_SYNC_PAGES.includes(location.pathname)) location.reload();
+      if (await download(afterWrite) && reload && route === activeRoute() && QUIET_SYNC_PAGES.includes(location.pathname)) location.reload();
     } finally {
       setSyncing(false);
       busy.current = false;
@@ -178,7 +182,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
         if (!await quietWorkerCommand({ type: 'QUIET_STATUS', user: userId })) { setProblem('unavailable'); return; }
         await tellWorkerWho(userId);
         // An incomplete first snapshot leaves ordinary navigation available.
-        if (!await download(false)) return;
+        if (!await download()) return;
       }
       const state = await quietWorkerCommand({ type: 'QUIET_POLICY', user: userId, enabled: next, liveUntil: 0 });
       if (!receiveStatus(state)) { setProblem('unavailable'); return; }
@@ -210,8 +214,8 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
 
   useEffect(() => {
     if (!writePending || busy.current) return;
-    setWritePending(null);
-    if (enabled && (writePending === 'full' || quietSyncIsPaused())) void sync(true, writePending === 'partial', true);
+    setWritePending(false);
+    if (enabled) void sync(true, true);
   }, [enabled, preparing, sync, syncing, writePending]);
 
   useEffect(() => {
@@ -245,26 +249,44 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     };
   }, [enabled, lastSyncedAt, liveUntil, offline, problem, receiveStatus, sync, syncing, userId]);
 
-  const refreshAfterWrite = useCallback((full?: boolean) => {
-    setWritePending(previous => full || previous === 'full' ? 'full' : 'partial');
+  const refreshAfterWrite = useCallback(() => {
+    setWritePending(true);
   }, []);
 
-  const refreshGoalViews = useCallback(async () => {
-    if (!readQuietPreference(userId).enabled) return;
-    const pages = [...new Set([
-      ...goalViews,
-      ...(goalViews.includes(location.pathname) ? [activeRoute()] : []),
-    ])];
-    // Once the worker has registered the affected routes, any navigation to
-    // them can wait for the fresh copy even if this document goes away.
-    await new Promise<void>(queued => {
-      void quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required: pages, build: BUILD_ID, partial: true, afterWrite: true }, queued).then(result => {
-        queued();
-        if (receiveStatus(result)) setProblem(previous => previous === 'incomplete' || previous === 'unavailable' ? null : previous);
-        else if (result && !result.authExpired) setProblem('incomplete');
-      });
+  const refreshAfterSave = useCallback<QuietSyncApi['refreshAfterSave']>(async (kind, options) => {
+    const preference = readQuietPreference(userId);
+    if (!preference.enabled) return;
+    const route = activeRoute();
+    const requestedUntil = Math.max(preference.liveUntil, Date.now() + QUIET_SYNC_SAVE_PERIOD);
+    const state = await quietWorkerCommand({
+      type: 'QUIET_POLICY', user: userId, enabled: true, liveUntil: requestedUntil, afterSave: true,
     });
-  }, [receiveStatus, userId]);
+    const current = readQuietPreference(userId);
+    if (!current.enabled || !receiveStatus(state) || !state?.enabled || !state.liveUntil) return;
+    if (state.liveUntil > current.liveUntil) writeQuietPreference(userId, { liveUntil: state.liveUntil });
+    setProblem(null);
+
+    const refreshCurrent = options?.refreshCurrent ?? preference.liveUntil <= Date.now();
+    if (!readOffline() && refreshCurrent && route === activeRoute()) {
+      startTransition(() => router.refresh());
+    }
+
+    const primary = savedView[kind];
+    const budgetPlan = kind !== 'goal' && (location.pathname === '/budgets/plan' || state.available.includes('/budgets/plan'));
+    const pages = [...new Set([
+      primary,
+      ...(QUIET_SYNC_PAGES.includes(location.pathname) ? [activeRoute()] : []),
+      ...(kind === 'goal' ? goalViews : QUIET_SYNC_PAGES),
+      ...(budgetPlan ? ['/budgets/plan'] : []),
+    ])];
+    // Live reads can proceed now. Save a fresh local copy for the next pause.
+    // A slow related page must not stop us from updating the saved records list.
+    void quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required: [primary], build: BUILD_ID, partial: true, afterWrite: true }).then(result => {
+      if (!readQuietPreference(userId).enabled) return;
+      if (receiveStatus(result)) setProblem(previous => previous === 'incomplete' ? null : previous);
+      else if (result && !result.authExpired) setProblem('incomplete');
+    });
+  }, [receiveStatus, router, userId]);
 
   const status = offline ? 'offline' : preparing ? 'preparing'
     : syncing ? 'syncing' : enabled && !liveUntil && problem !== 'unavailable' ? 'paused' : 'live';
@@ -275,7 +297,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
       syncNow: () => { void sync(true); },
       goOnline: () => { void goOnline(); },
       refreshAfterWrite,
-      refreshGoalViews,
+      refreshAfterSave,
     }}>
       {children}
     </QuietSyncContext.Provider>

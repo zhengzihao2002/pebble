@@ -158,6 +158,47 @@ test('the online window expires and the pause resumes without changing the prefe
   assert.deepEqual(worker.requests, ['/reports', '/dashboard']);
 });
 
+test('a confirmed save opens a rolling five-minute window without shortening Stay online', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  const afterSave = { type: 'QUIET_POLICY', user, enabled: true, afterSave: true };
+  const minute = 60_000;
+  const first = await worker.message(afterSave);
+  assert.equal(first.liveUntil, 10_000_000 + 5 * minute);
+  worker.advance(4 * minute);
+  const second = await worker.message(afterSave);
+  assert.equal(second.liveUntil, first.liveUntil + 4 * minute);
+  assert.equal((await worker.fetch('/reports', { mode: 'cors' })).status, 200);
+
+  await worker.message({ type: 'QUIET_RESUME_FALLBACK' });
+  const manual = await worker.message({ type: 'QUIET_STATUS', user });
+  assert.equal((await worker.message(afterSave)).liveUntil, manual.liveUntil);
+  assert.equal((await worker.message({ ...afterSave, user: 'user-b' })).enabled, false);
+
+  worker.advance(20 * minute + 1);
+  worker.boot();
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).liveUntil, null);
+  assert.equal((await worker.fetch('/reports', { mode: 'cors' })).type, 'error');
+  await worker.message({ type: 'QUIET_POLICY', user, enabled: false });
+  assert.equal((await worker.message(afterSave)).enabled, false);
+});
+
+test('a saved goal becomes available in local browsing even if a related Insights refresh fails', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  await worker.message({ type: 'QUIET_POLICY', user, enabled: true, afterSave: true });
+  worker.useRevision('confirmed-goal');
+  worker.block('/insights');
+  const fresh = await worker.message({
+    type: 'QUIET_REFRESH', user, pages: ['/goals', '/insights'], required: ['/goals'], partial: true, afterWrite: true,
+  });
+  assert.equal(fresh.ok, true);
+  worker.advance(5 * 60_000 + 1);
+  worker.requests.length = 0;
+  assert.match(await (await worker.fetch('/goals')).text(), /confirmed-goal/);
+  assert.deepEqual(worker.requests, []);
+});
+
 test('refreshes are shared, only complete batches update their timestamp, and partial batches leave it alone', async () => {
   const worker = workerFixture();
   const first = await save(worker);

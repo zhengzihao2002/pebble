@@ -56,6 +56,7 @@ var OFFLINE_URL = '/offline.html';
 var QUIET_URL = '/quiet-sync.html';
 var PRECACHE = [OFFLINE_URL, QUIET_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 var QUIET_LIVE_MS = 20 * 60 * 1000;
+var QUIET_SAVE_MS = 5 * 60 * 1000;
 var QUIET_PRIMARY = ['/dashboard', '/accounts', '/transactions', '/reports', '/analysis', '/insights', '/budgets', '/goals', '/scheduled', '/settings'];
 
 // How long a visited page waits for the network before the saved copy is
@@ -140,10 +141,17 @@ function quietStatus(meta, user) {
 function setQuietPolicy(data) {
   return withMeta(function (meta) {
     if (meta.user !== data.user) return;
+    var now = Date.now();
+    if (data.afterSave === true) {
+      if (!meta.quiet?.enabled) return;
+      // A save may extend a lease, but it must not shorten an existing one.
+      meta.quiet.liveUntil = Math.max(meta.quiet.liveUntil || 0, now + QUIET_SAVE_MS);
+      return;
+    }
     meta.quiet = {
       enabled: data.enabled === true,
-      liveUntil: typeof data.liveUntil === 'number' && data.liveUntil > Date.now()
-        ? Math.min(data.liveUntil, Date.now() + QUIET_LIVE_MS) : null,
+      liveUntil: typeof data.liveUntil === 'number' && data.liveUntil > now
+        ? Math.min(data.liveUntil, now + QUIET_LIVE_MS) : null,
       lastSyncedAt: meta.quiet && meta.quiet.lastSyncedAt || null,
     };
   }).then(readMeta).then(function (meta) { return quietStatus(meta, data.user); });
@@ -284,7 +292,7 @@ function quietNavigation(url, user) {
   });
 }
 
-function handleNavigation(event) {
+function handleNavigation(event, stayOnline) {
   var request = event.request;
   var url = new URL(request.url);
 
@@ -320,8 +328,14 @@ function handleNavigation(event) {
     return cache.match(key, { ignoreVary: true });
   }).then(function (saved) {
     if (!saved) return network.catch(offlinePage);
-    var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(null); }, NAV_TIMEOUT_MS); });
-    return Promise.race([network, timeout]).then(function (res) {
+    // During an online window, a slow response can still contain a change
+    // just saved on the server. Prefer it over an older local copy.
+    var preferred = network;
+    if (!stayOnline) {
+      var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(null); }, NAV_TIMEOUT_MS); });
+      preferred = Promise.race([network, timeout]);
+    }
+    return preferred.then(function (res) {
       // Slow: show the saved copy; the network response still refreshes it.
       if (!res) return saved;
       // The server is failing: the saved copy beats an error page.
@@ -782,7 +796,7 @@ self.addEventListener('fetch', function (event) {
 
   event.respondWith(readMeta().then(function (meta) {
     if (!quietPaused(meta)) {
-      return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event) : fetch(request);
+      return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event, meta.quiet?.enabled) : fetch(request);
     }
     if (request.mode === 'navigate') return quietNavigation(url, meta.user);
     if (path.indexOf('/api/auth/') === 0 && event.clientId) {

@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { setRecurringRuleStatusAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { ActionError } from '@/components/shared/ActionError';
 import { RecurringRuleModal } from '@/components/modals/RecurringRuleModal';
 import { CatchUpNotice } from '@/components/shared/CatchUpNotice';
@@ -45,6 +47,7 @@ interface ScheduledClientProps {
  */
 export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upcoming, previewDays, catchUp }: ScheduledClientProps) {
   const partner = usePartnerView();
+  const { refreshAfterSave } = useQuietSync();
   const showAmounts = !partner || partner.data.permissions.amounts === true;
   const { d, t, locale } = useTranslation();
   const x = d.ux.scheduled;
@@ -70,18 +73,20 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
   const [jumpSeq, setJumpSeq] = useState(0);
   const pulseTimer = useRef(0);
 
-  // No local state update and no router.refresh(): the action calls
-  // revalidatePath(route, 'layout'), which re-renders this route's server
-  // component and streams fresh props in.
+  // The action revalidates the current route. Quiet Sync also updates the
+  // saved views used after the online window ends.
   const toggleStatus = async (rule: RecurringRule) => {
     if (busyId) return;
     setBusyId(rule.id);
     setError(null);
     setFailedRule(null);
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => setRecurringRuleStatusAction({
       id: rule.id,
       status: rule.status === 'active' ? 'paused' : 'active',
+      deferPageRefresh,
     }));
+    if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setBusyId(null);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));

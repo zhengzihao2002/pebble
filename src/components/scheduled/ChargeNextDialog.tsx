@@ -6,6 +6,8 @@ import { ArrowDownRight, ArrowUpRight, CalendarCheck } from 'lucide-react';
 import { chargeNextRecurringAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { ActionError } from '@/components/shared/ActionError';
 import { CloseSoon } from '@/components/shared/CloseSoon';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -49,6 +51,7 @@ interface ChargeNextDialogProps {
 export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextDialogProps) {
   const { d, t, locale } = useTranslation();
   const router = useRouter();
+  const { refreshAfterSave } = useQuietSync();
   const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
   const [textDateBasis, setTextDateBasis] = useState<'processed' | 'scheduled' | null>(null);
   const needsTextDateChoice = plan.early && expandScheduledText(rule.description, plan.transactionDate) !== rule.description;
@@ -66,10 +69,18 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
     if (saving || done || (needsTextDateChoice && !textDateBasis)) return;
     setSaving(true);
     setError(null);
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(
-      () => chargeNextRecurringAction({ id: rule.id, expectedOccurrence: plan.occurrenceDate, textDateBasis: textDateBasis ?? 'processed', expectedTransactionDate: plan.transactionDate }),
+      () => chargeNextRecurringAction({
+        id: rule.id,
+        expectedOccurrence: plan.occurrenceDate,
+        textDateBasis: textDateBasis ?? 'processed',
+        expectedTransactionDate: plan.transactionDate,
+        deferPageRefresh,
+      }),
       x.chargeFailed,
     );
+    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
       // The server's "schedule changed" refusal carries no code (the

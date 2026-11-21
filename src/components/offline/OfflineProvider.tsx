@@ -82,8 +82,6 @@ export interface OfflineApi {
   rememberReference: (accounts: Account[], categories: CategoryItem[]) => void;
   /** Removes this user's waiting items and snapshot from the device. */
   discardAll: () => Promise<void>;
-  /** In-app refresh of the page's data. False (and does nothing) offline. */
-  refresh: () => boolean;
 }
 
 // Used when no provider is mounted (an auth page, a test harness): inert, so
@@ -97,7 +95,6 @@ const INERT: OfflineApi = {
   readReference: async () => null,
   rememberReference: () => {},
   discardAll: async () => {},
-  refresh: () => false,
 };
 
 const OfflineContext = createContext<OfflineApi>(INERT);
@@ -115,7 +112,7 @@ interface OfflineProviderProps {
 
 export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, children }: OfflineProviderProps) {
   const router = useRouter();
-  const { refreshAfterWrite } = useQuietSync();
+  const { refreshAfterSave, refreshAfterWrite } = useQuietSync();
   const [items, setItems] = useState<QueuedTransaction[]>([]);
   const [ready, setReady] = useState(false);
   // A subscription, not state set from an effect: the server and the first
@@ -278,7 +275,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
         if (saved && owner === userRef.current) await saveSnapshot({ ...saved, savedAt: 0, accounts: saved.accounts.map(account => account.id === detail.accountId ? { ...account, isGhost: detail.isGhost, isPreferred: detail.isGhost ? false : account.isPreferred } : account) });
         if (quiet) {
           await quietWorkerCommand({ type: 'QUIET_INVALIDATE', user: owner });
-          if (!readOffline()) refreshAfterWrite(true);
+          if (!readOffline()) refreshAfterWrite();
           return;
         }
         if (readOffline()) return;
@@ -289,20 +286,6 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
     window.addEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
     return () => window.removeEventListener(ACCOUNT_SCOPE_CHANGED_EVENT, invalidate);
   }, [readReference, rememberReference, refreshAfterWrite]);
-
-  // ---- safe refresh ------------------------------------------------------
-  const refresh = useCallback((): boolean => {
-    // Offline there is nothing new to fetch, and a failed refresh makes Next
-    // fall back to a full navigation - exactly what must not happen to an
-    // installed app with no network.
-    if (readOffline()) return false;
-    if (quietSyncIsPaused()) {
-      refreshAfterWrite();
-      return true;
-    }
-    startTransition(() => router.refresh());
-    return true;
-  }, [router, refreshAfterWrite]);
 
   // ---- the upload run ----------------------------------------------------
   const setStatus = useCallback((clientId: string, state: ItemUpload) => {
@@ -318,6 +301,9 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
     let done = 0;
     let failed = 0;
     let stopped: RunBanner = null;
+    // Quiet Sync refreshes once for the entire batch, including uploads that
+    // were already committed when the previous connection dropped.
+    const deferPageRefresh = quietSyncIsEnabled();
 
     for (const item of wanted) {
       setStatus(item.clientId, { status: 'uploading' });
@@ -325,7 +311,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       // answer was lost, the server recognises it and reports success instead
       // of inserting a second copy.
       const outcome = await callAction(() => addTransactionAction({
-        ...item.payload, clientId: item.clientId, deferPageRefresh: quietSyncIsPaused(),
+        ...item.payload, clientId: item.clientId, deferPageRefresh,
       } as AddTransactionActionInput));
       if (outcome.ok) {
         done += 1;
@@ -353,15 +339,17 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       setStatus(item.clientId, { status: 'failed', reason: refusal.error, code: refusal.code, params: refusal.params });
     }
 
-    runningRef.current = false;
-    setRunning(false);
     setBanner(stopped);
     await reload();
     if (done > 0) {
-      refresh();
+      const canRefresh = stopped !== 'connectionLost' && !readOffline();
+      if (quietSyncIsEnabled()) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh && canRefresh });
+      else if (canRefresh) startTransition(() => router.refresh());
       setResult({ done, failed });
     }
-  }, [reload, refresh, setStatus]);
+    runningRef.current = false;
+    setRunning(false);
+  }, [refreshAfterSave, reload, router, setStatus]);
 
   const uploadAll = useCallback(() => {
     if (readOffline()) return;
@@ -405,8 +393,8 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
 
   const api = useMemo<OfflineApi>(() => ({
     userId, items, ready, offline, uploads, running, banner, result, dialogOpen,
-    openList, closeList, uploadAll, uploadOne, removeItem, queueTransaction, readReference, rememberReference, discardAll, refresh,
-  }), [userId, items, ready, offline, uploads, running, banner, result, dialogOpen, openList, closeList, uploadAll, uploadOne, removeItem, queueTransaction, readReference, rememberReference, discardAll, refresh]);
+    openList, closeList, uploadAll, uploadOne, removeItem, queueTransaction, readReference, rememberReference, discardAll,
+  }), [userId, items, ready, offline, uploads, running, banner, result, dialogOpen, openList, closeList, uploadAll, uploadOne, removeItem, queueTransaction, readReference, rememberReference, discardAll]);
 
   return (
     <OfflineContext.Provider value={api}>

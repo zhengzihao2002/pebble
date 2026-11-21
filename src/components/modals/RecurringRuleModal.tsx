@@ -11,6 +11,10 @@ import {
 } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { readOffline } from '@/lib/offline/connectivity';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { ActionError } from '@/components/shared/ActionError';
 import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
 import { TitleDescriptionFields } from '@/components/shared/TitleDescriptionFields';
@@ -89,6 +93,8 @@ function subscribeToday(onChange: () => void) {
 export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: RecurringRuleModalProps) {
   const prefill = rule ? undefined : rawPrefill;
   const { d, t, locale } = useTranslation();
+  const { readReference } = useOfflineQueue();
+  const { refreshAfterSave } = useQuietSync();
   const x = d.ux.scheduled;
   const isEdit = rule !== undefined;
   const timeZoneOverride = useTimeZoneOverride();
@@ -138,35 +144,50 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
 
   useEffect(() => {
     let cancelled = false;
-    callAction(getCategoriesAction, d.addTxn.categoriesFailed).then((result) => {
-      if (cancelled) return;
-      if (!result.ok) { setCategoryError(translateActionError(d, locale, result)); return; }
-      setCategories(result.categories);
+    const applyCategories = (list: CategoryItem[]) => {
+      setCategories(list);
       setCategoryError(null);
       // Only default the picker when adding - never overwrite an edited rule's
       // category, and never clobber a choice the user has already made.
-      setCategory((current) => current || result.categories[0]?.name || '');
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
-      if (cancelled) return;
-      if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
-      setAccounts(result.accounts);
+      setCategory((current) => current || list[0]?.name || '');
+    };
+    const applyAccounts = (list: Account[]) => {
+      setAccounts(list);
       setAccountError(null);
       setAccountsLoaded(true);
       // ⚠️ CREATE ONLY. An existing rule keeps the account it was saved with,
       // always.
       if (!isEdit) {
-        const regular = result.accounts.filter(a => !a.isGhost);
+        const regular = list.filter(a => !a.isGhost);
         const preferred = regular.find((a) => a.isPreferred);
         setAccountId((current) => regular.some(a => a.id === current) ? current : preferred?.id || regular[0]?.id || '');
       }
-    });
+    };
+    const quiet = quietSyncIsPaused();
+    if (quiet || readOffline()) {
+      void readReference().then((snapshot) => {
+        if (cancelled) return;
+        if (snapshot) {
+          applyCategories(snapshot.categories);
+          applyAccounts(snapshot.accounts.filter(account => account.status === 'active'));
+        } else {
+          const message = quiet ? d.ux.offline.quietSync.needsSync : d.ux.offline.needsConnection;
+          setCategoryError(message);
+          setAccountError(message);
+        }
+      });
+    } else {
+      void callAction(getCategoriesAction, d.addTxn.categoriesFailed).then((result) => {
+        if (cancelled) return;
+        if (result.ok) applyCategories(result.categories);
+        else setCategoryError(translateActionError(d, locale, result));
+      });
+      void callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
+        if (cancelled) return;
+        if (result.ok) applyAccounts(result.accounts);
+        else setAccountError(translateActionError(d, locale, result));
+      });
+    }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -310,6 +331,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     if (saving || !title.trim() || !accountId) return;
     setSaving(true);
     setSaveError(null);
+    const deferPageRefresh = quietSyncIsPaused();
 
     // Every value below is the stored English literal, taken straight from
     // state. No label ever reaches this payload.
@@ -326,12 +348,14 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
       endMode,
       endCount: endMode === 'after' ? Number(endCount) : null,
       endDate: endMode === 'on' ? endDate : null,
+      deferPageRefresh,
     };
 
     const result = rule
       ? await callAction(() => updateRecurringRuleAction({ ...payload, id: rule.id, ...(nextPaymentOverride ? { nextPaymentDate: nextPaymentOverride } : {}) }))
       : await callAction(() => createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill }));
 
+    if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
       setSaveError(translateActionError(d, locale, result));
@@ -348,7 +372,9 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     if (!rule || saving) return;
     setSaving(true);
     setSaveError(null);
-    const result = await callAction(() => deleteRecurringRuleAction({ id: rule.id }));
+    const deferPageRefresh = quietSyncIsPaused();
+    const result = await callAction(() => deleteRecurringRuleAction({ id: rule.id, deferPageRefresh }));
+    if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
       setSaveError(translateActionError(d, locale, result));

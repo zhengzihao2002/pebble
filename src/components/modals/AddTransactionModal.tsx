@@ -29,6 +29,7 @@ import { GhostAccountChoice, ghostAccountLabel } from '@/components/shared/Ghost
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { makeClientId } from '@/lib/offline/clientId';
 
 interface AddTransactionModalProps {
@@ -62,6 +63,7 @@ const FORM_ID = 'add-txn-form';
 export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
   const { d, t, locale } = useTranslation();
   const offlineQueue = useOfflineQueue();
+  const { refreshAfterSave } = useQuietSync();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
@@ -334,7 +336,9 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
         ? { ok: true as const }
         : { ok: false as const, error: d.ux.offline.storageUnavailable, kind: 'network' as const };
     } else {
-      result = await callAction(() => addTransactionAction({ ...payload, clientId, deferPageRefresh: quietSyncIsPaused() }));
+      const deferPageRefresh = quietSyncIsPaused();
+      result = await callAction(() => addTransactionAction({ ...payload, clientId, deferPageRefresh }));
+      if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
       // A NETWORK-class failure - the request never got an answer - is the one
       // case that is not an error to show: keep the entry on the device and
       // say so. Validation, database and session failures are real answers and
@@ -469,13 +473,8 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
     && (categories.length === 0 || (!!picksUserId && savedPicks.names === null && fetchedPicks === null
       && savedPicks.ask && !quietSyncIsPaused()));
 
-  const closeForm = () => {
-    onClose();
-    if (success && !success.queued && quietSyncIsPaused()) offlineQueue.refresh();
-  };
-
   return (
-    <ModalFrame keyboardResize={false} followPan={false} onClose={closeForm} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
+    <ModalFrame keyboardResize={false} followPan={false} onClose={onClose} busy={saving} labelledBy="add-txn-title" maxWidth={640} cardClassName="pb-shell-addtxn">
       {(close) => (
       <>
         {saving && <LoadingOverlay label={d.addTxn.saving} />}

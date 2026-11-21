@@ -69,7 +69,7 @@ export const offlineEn = {
   quietSync: {
     title: 'Quiet Sync',
     beta: 'Beta',
-    settingHint: 'Browse saved pages on this device. Pebble syncs about every eight hours while you use it. Use the header to sync now or stay online.',
+    settingHint: 'Browse saved pages on this device. Pebble syncs about every eight hours while you use it. Saving a transaction, goal, or scheduled payment keeps Pebble online for five minutes.',
     status: {
       paused: 'Sync paused',
       preparing: 'Preparing',
@@ -78,7 +78,7 @@ export const offlineEn = {
       offline: 'Offline',
     },
     detail: {
-      paused: 'You’re viewing data saved on this device. Pebble connects when it needs to sync or save a change.',
+      paused: 'You’re viewing data saved on this device. Saving a transaction, goal, or scheduled payment keeps Pebble online for five minutes.',
       preparing: 'Pebble is saving pages for local browsing.',
       syncing: 'Pebble is updating the data saved on this device.',
       live: 'Pages use the latest data while Pebble is online.',
@@ -148,7 +148,7 @@ export const offlineZh: typeof offlineEn = {
   quietSync: {
     title: '轻量同步',
     beta: '测试版',
-    settingHint: '浏览保存在当前设备上的页面。使用 Pebble 时，约每八小时同步一次。也可以在顶部栏立即同步或暂时保持在线。',
+    settingHint: '浏览保存在当前设备上的页面。使用 Pebble 时约每八小时同步一次。保存交易、目标或计划付款后会保持在线五分钟。',
     status: {
       paused: '同步已暂停',
       preparing: '正在准备',
@@ -157,7 +157,7 @@ export const offlineZh: typeof offlineEn = {
       offline: '离线',
     },
     detail: {
-      paused: '正在查看保存在此设备上的数据。同步或保存更改时，Pebble 会连接服务器。',
+      paused: '正在查看保存在此设备上的数据。保存交易、目标或计划付款后，Pebble 会保持在线五分钟。',
       preparing: 'Pebble 正在保存页面，以便之后直接打开。',
       syncing: 'Pebble 正在更新保存在此设备上的数据。',
       live: 'Pebble 在线时，页面会使用最新数据。',

@@ -8,6 +8,7 @@ import { MAX_TAG_NAME_LENGTH } from '@/lib/transactionTags';
 import { readOffline } from '@/lib/offline/connectivity';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { TransactionIcon } from '@/components/shared/TransactionIcon';
 
 import { useUndoDelete } from '@/components/shared/UndoDelete';
@@ -159,6 +160,7 @@ function BalanceSlope({ before, after, tone }: { before: number; after: number; 
  */
 function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, accounts: accountsProp, shared }: TransactionDetailModalProps & { txn: LedgerRecord }) {
   const { readReference } = useOfflineQueue();
+  const { refreshAfterSave } = useQuietSync();
   const deleteLocked = useSafetyLock('deleteTransactions');
   const { scheduleDelete } = useUndoDelete();
   const { d, t, locale } = useTranslation();
@@ -383,6 +385,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     setBusy(true);
     setError(null);
 
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => updateTransactionAction({
       id: txn.id,
       type: txn.type,
@@ -391,6 +394,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
       ...(txn.type === 'expense' ? { tag } : {}),
       date,
       accountId,
+      deferPageRefresh,
       ...(txn.type === 'expense' ? { amount: Number(amount) } : {}),
       ...(txn.type === 'income'
         ? {
@@ -400,6 +404,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
         : {}),
     }));
 
+    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setBusy(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the confirmation only ever follows a write the
@@ -477,10 +482,13 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     const type = txn.type;
     scheduleDelete({
       run: async () => {
+        const deferPageRefresh = quietSyncIsPaused();
         const result = type === 'adjustment'
-          ? await callAction(() => deleteBalanceAdjustmentAction({ id }))
-          : await callAction(() => deleteTransactionAction({ id, type }));
-        return result.ok ? null : translateActionError(d, locale, result);
+          ? await callAction(() => deleteBalanceAdjustmentAction({ id, deferPageRefresh }))
+          : await callAction(() => deleteTransactionAction({ id, type, deferPageRefresh }));
+        if (!result.ok) return translateActionError(d, locale, result);
+        await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
+        return null;
       },
       // Names the record in the undo bar; the bar falls back to its generic
       // line without it.

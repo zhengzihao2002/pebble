@@ -99,7 +99,7 @@ const PAYMENT_METHODS: readonly string[] = ['Cash', 'Checking'];
 const INCOME_CATEGORIES: readonly string[] = ['Standard Income', 'Side Cash'];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const MUTATED_ROUTES = ['/dashboard', '/transactions', '/reports', '/budgets', '/budgets/plan', '/analysis', '/insights', '/goals', '/scheduled', '/settings'];
+const MUTATED_ROUTES = ['/dashboard', '/accounts', '/transactions', '/reports', '/budgets', '/budgets/plan', '/analysis', '/insights', '/goals', '/scheduled', '/settings'];
 
 function revalidateAll(): void {
   for (const route of MUTATED_ROUTES) {
@@ -232,7 +232,7 @@ export interface AddIncomeActionInput {
  * changes: the server generates the id as it always has.
  */
 export type AddTransactionActionInput = (AddExpenseActionInput | AddIncomeActionInput) & {
-  /** Quiet Sync refreshes the saved document after the write has resolved. */
+  /** Quiet Sync refreshes the page after the write and live browsing resume. */
   deferPageRefresh?: boolean;
 };
 
@@ -461,6 +461,7 @@ export interface AddGoalActionInput {
   date: string;
   iconKey: string;
   color: string;
+  deferPageRefresh?: boolean;
 }
 
 async function addGoal(userId: string, input: AddGoalActionInput): Promise<ActionResult> {
@@ -492,7 +493,7 @@ async function addGoal(userId: string, input: AddGoalActionInput): Promise<Actio
       color: input.color,
     });
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('addGoalAction', error);
@@ -552,7 +553,7 @@ async function updateGoal(userId: string, input: UpdateGoalActionInput): Promise
       color: input.color,
     }).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('updateGoalAction', error);
@@ -566,7 +567,7 @@ async function updateGoal(userId: string, input: UpdateGoalActionInput): Promise
  * a soft claim on the existing balance, so removing it just returns that
  * amount to the unallocated figure.
  */
-async function deleteGoal(userId: string, input: { id: string }): Promise<ActionResult> {
+async function deleteGoal(userId: string, input: { id: string; deferPageRefresh?: boolean }): Promise<ActionResult> {
   try {
     const rows = await db
       .select({ id: goal.id })
@@ -578,7 +579,7 @@ async function deleteGoal(userId: string, input: { id: string }): Promise<Action
 
     await db.delete(goal).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('deleteGoalAction', error);
@@ -589,6 +590,7 @@ export interface AddToGoalActionInput {
   id: string;
   /** Dollars, at most two decimal places. */
   amount: number;
+  deferPageRefresh?: boolean;
 }
 
 // Matches formatCurrency, which is pinned to en-US: these are real dollars.
@@ -618,7 +620,7 @@ async function addToGoal(userId: string, input: AddToGoalActionInput): Promise<A
 
     const updated = await addToGoalGuarded(userId, input.id, (cents / 100).toFixed(2));
     if (updated) {
-      revalidateAll();
+      if (input.deferPageRefresh !== true) revalidateAll();
       return { ok: true };
     }
 
@@ -1308,6 +1310,7 @@ export interface UpdateTransactionInput {
   amount?: number;
   grossAmount?: number;
   netAmount?: number;
+  deferPageRefresh?: boolean;
 }
 
 async function updateTransaction(
@@ -1481,7 +1484,7 @@ async function updateTransaction(
         .where(and(eq(income.userId, userId), eq(income.id, input.id)));
     }
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('updateTransactionAction', error);
@@ -1503,7 +1506,7 @@ async function updateTransaction(
  */
 async function deleteTransaction(
   userId: string,
-  input: { id: string; type: 'expense' | 'income' },
+  input: { id: string; type: 'expense' | 'income'; deferPageRefresh?: boolean },
 ): Promise<ActionResult> {
   try {
     const table = input.type === 'expense' ? expense : income;
@@ -1537,7 +1540,7 @@ async function deleteTransaction(
     )).returning({ id: table.id });
     if (!deleted) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('deleteTransactionAction', error);
@@ -1610,7 +1613,7 @@ async function createBalanceAdjustment(
 
 async function deleteBalanceAdjustment(
   userId: string,
-  input: { id: string },
+  input: { id: string; deferPageRefresh?: boolean },
 ): Promise<ActionResult> {
   try {
     const rows = await db
@@ -1632,7 +1635,7 @@ async function deleteBalanceAdjustment(
         ? and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.transferGroupId, row.group))
         : and(eq(balanceAdjustment.userId, userId), eq(balanceAdjustment.id, input.id)));
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('deleteBalanceAdjustmentAction', error);
@@ -1657,7 +1660,12 @@ const RECURRING_END_MODES: readonly string[] = ['never', 'after', 'on'];
 /** Guard against a typo like 5000 occurrences of a weekly rule. */
 const MAX_END_COUNT = 1000;
 
-export interface RecurringRuleActionInput {
+interface RecurringWriteOptions {
+  /** A paused client refreshes the page after its worker resumes live reads. */
+  deferPageRefresh?: boolean;
+}
+
+export interface RecurringRuleActionInput extends RecurringWriteOptions {
   kind: RecurringKind;
   description: string;
   /** Expense: a category name owned by the user. Income: Standard Income | Side Cash. */
@@ -1897,7 +1905,7 @@ async function createRecurringRule(
       materializedThrough,
     });
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('createRecurringRuleAction', error);
@@ -1949,7 +1957,7 @@ async function updateRecurringRule(
         rescheduleNextStatement(neonSql, userId, input.id, existing.materializedThrough, input.nextPaymentDate, mark, normalized.values),
       ], { isolationLevel: 'ReadCommitted' });
       if (!(result[1] as unknown[]).length) return fail('The schedule changed or a payment on or after that date still exists. Remove an accidental payment first, or reload the schedule.', 'validation', 'validation.ruleNextDateConflict');
-      revalidateAll();
+      if (input.deferPageRefresh !== true) revalidateAll();
       return { ok: true };
     }
 
@@ -1959,7 +1967,7 @@ async function updateRecurringRule(
       .set({ ...normalized.values, updatedAt: new Date().toISOString() })
       .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('updateRecurringRuleAction', error);
@@ -1973,7 +1981,7 @@ async function updateRecurringRule(
  */
 async function setRecurringRuleStatus(
   userId: string,
-  input: { id: string; status: 'active' | 'paused' },
+  input: RecurringWriteOptions & { id: string; status: 'active' | 'paused' },
 ): Promise<ActionResult> {
   try {
     if (input.status !== 'active' && input.status !== 'paused') {
@@ -2011,14 +2019,14 @@ async function setRecurringRuleStatus(
       .set(patch)
       .where(and(eq(recurringRule.userId, userId), eq(recurringRule.id, input.id)));
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('setRecurringRuleStatusAction', error);
   }
 }
 
-export interface ChargeNextRecurringInput {
+export interface ChargeNextRecurringInput extends RecurringWriteOptions {
   id: string;
   /**
    * The occurrence the person was shown and confirmed ("Charge Nov 22's
@@ -2134,7 +2142,7 @@ async function chargeNextRecurring(
       return fail('This schedule has changed, so that payment can no longer be charged. Check it and try again.', 'validation') as Extract<ActionResult, { ok: false }>;
     }
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return {
       ok: true,
       occurrenceDate: occ,
@@ -2159,7 +2167,7 @@ async function chargeNextRecurring(
 /** A schedule is hard-deleted when nothing was ever created from it; otherwise soft-deleted. */
 async function deleteRecurringRule(
   userId: string,
-  input: { id: string },
+  input: RecurringWriteOptions & { id: string },
 ): Promise<ActionResult> {
   try {
     const rows = await db
@@ -2191,7 +2199,7 @@ async function deleteRecurringRule(
       { isolationLevel: 'ReadCommitted' },
     );
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('deleteRecurringRuleAction', error);
