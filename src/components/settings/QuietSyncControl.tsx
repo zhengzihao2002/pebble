@@ -23,11 +23,27 @@ export function QuietSyncControl() {
       title={<span className="pb-quiet-title">
         <span id={id}>{q.title}</span>
         <span className="pb-quiet-beta">{q.beta}</span>
-        <InfoTooltip label={q.aboutLabel} pressOnly>
+        <InfoTooltip label={q.aboutLabel} pressOnly width={360}>
           <div className="pb-quiet-help">
-            <p>{t(q.aboutSync, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</p>
-            <p>{q.aboutBrowsing}</p>
-            <p>{q.aboutOffline}</p>
+            <div>
+              <p className="pb-quiet-help-heading">{q.aboutData}</p>
+              <dl>
+                <dt>{q.aboutSyncLabel}</dt>
+                <dd>{t(q.aboutSync, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</dd>
+                <dt>{q.aboutSavedDataLabel}</dt>
+                <dd>{q.aboutSavedData}</dd>
+              </dl>
+            </div>
+            <div>
+              <p className="pb-quiet-help-heading">{q.aboutApp}</p>
+              <dl>
+                <dt>{q.aboutDownloadLabel}</dt>
+                <dd>{q.aboutDownload}</dd>
+                <dt>{q.aboutSavedAppLabel}</dt>
+                <dd>{q.aboutSavedApp}</dd>
+              </dl>
+            </div>
+            <p className="pb-quiet-help-note">{q.aboutOffline}</p>
           </div>
         </InfoTooltip>
       </span>}

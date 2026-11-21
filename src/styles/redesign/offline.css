@@ -223,8 +223,13 @@ html[data-pb-quiet-startup="offline"] .pebble-root .pb-quiet-status-startup[data
   background: var(--pine-soft); color: var(--pine); font-size: .88em; line-height: 1.35;
 }
 .pebble-root .pb-quiet-title > button > svg { inline-size: 1.125rem; block-size: 1.125rem; }
-.pebble-root .pb-quiet-help { display: grid; gap: .55rem; }
-.pebble-root .pb-quiet-help p { margin: 0; }
+.pebble-root .pb-quiet-help { display: grid; gap: .7rem; }
+.pebble-root .pb-quiet-help > * + * { border-block-start: 1px solid var(--line); padding-block-start: .7rem; }
+.pebble-root .pb-quiet-help :is(p, dl, dd) { margin: 0; }
+.pebble-root .pb-quiet-help .pb-quiet-help-heading { margin-block-end: .4rem; font-size: 1.12em; font-weight: 650; }
+.pebble-root .pb-quiet-help dt { font-weight: 600; }
+.pebble-root .pb-quiet-help dd + dt { margin-block-start: .45rem; }
+.pebble-root .pb-quiet-help :is(dd, .pb-quiet-help-note) { color: var(--ink-soft); }
 @container content (max-width: 960px) {
   .pebble-root .pb-quiet-trigger { inline-size: 38px; padding: 0; }
   .pebble-root .pb-quiet-trigger > span { display: none; }

@@ -23,13 +23,13 @@ interface InfoTooltipProps {
   label: string;
   children: React.ReactNode;
   pressOnly?: boolean;
+  width?: number;
 }
 
-const WIDTH = 264;
 const GAP = 8;
 const EDGE = 8;
 
-export function InfoTooltip({ label, children, pressOnly = false }: InfoTooltipProps) {
+export function InfoTooltip({ label, children, pressOnly = false, width = 264 }: InfoTooltipProps) {
   const [open, setOpen] = useState(false);
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const [hoverCapable, setHoverCapable] = useState(false);
@@ -52,8 +52,8 @@ export function InfoTooltip({ label, children, pressOnly = false }: InfoTooltipP
     const r = t.getBoundingClientRect();
     const h = panelRef.current?.offsetHeight ?? 0;
 
-    let left = r.left + r.width / 2 - WIDTH / 2;
-    left = Math.max(EDGE, Math.min(left, window.innerWidth - WIDTH - EDGE));
+    const panelWidth = Math.min(width, window.innerWidth - 2 * EDGE);
+    const left = Math.max(EDGE, Math.min(r.left + (r.width - panelWidth) / 2, window.innerWidth - panelWidth - EDGE));
 
     // Flip above when there is not room below and there IS room above.
     const below = r.bottom + GAP;
@@ -62,7 +62,7 @@ export function InfoTooltip({ label, children, pressOnly = false }: InfoTooltipP
 
     // Guarded so the post-measure pass cannot loop.
     setPos((p) => (p && p.top === top && p.left === left ? p : { top, left }));
-  }, []);
+  }, [width]);
 
   // Two passes on purpose: the first places the panel so it can be measured,
   // the second corrects using its real height.
@@ -117,7 +117,8 @@ export function InfoTooltip({ label, children, pressOnly = false }: InfoTooltipP
         position: 'fixed',
         top: pos.top,
         left: pos.left,
-        width: WIDTH,
+        boxSizing: 'border-box',
+        width,
         maxWidth: `calc(100vw - ${EDGE * 2}px)`,
         maxHeight: `calc(100dvh - ${EDGE * 2}px)`,
         overflowY: 'auto',
