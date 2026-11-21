@@ -255,6 +255,7 @@ function offlinePage() {
 }
 
 function quietPage() {
+  if (self.navigator?.onLine === false) return offlinePage();
   return caches.open(STATIC).then(function (cache) { return cache.match(QUIET_URL); }).then(function (saved) {
     if (!saved) return new Response('Quiet Sync paused. Return to a saved page to sync.', { status: 503 });
     return new Response(saved.body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
@@ -624,7 +625,7 @@ function refreshQuiet(data, publish) {
       }
       await trim(PAGES, meta.pages, MAX_PAGE_ENTRIES, MAX_PAGES_BYTES, required[0]);
       saved = required.every(function (key) { return key in meta.pages; });
-      if (saved && !data.partial) {
+      if (saved) {
         meta.quiet = meta.quiet || { enabled: false };
         meta.quiet.lastSyncedAt = Date.now();
       }

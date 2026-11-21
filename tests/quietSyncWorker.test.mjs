@@ -15,6 +15,7 @@ function workerFixture() {
   let build = 'build-a';
   let revision = 'snapshot-before-write';
   let expired = false;
+  let online = true;
   let blockedPath;
   let hold;
   let now = 10_000_000;
@@ -43,6 +44,7 @@ function workerFixture() {
         requests.push(url.pathname);
         if (url.pathname === blockedPath) return basic('Unavailable', { status: 503 });
         if (url.pathname === '/quiet-sync.html') return basic('<main>Saved pages only</main>');
+        if (url.pathname === '/offline.html') return basic('<main>Offline fallback</main>');
         if (url.pathname.endsWith('.ico') || url.pathname.endsWith('.png') || url.pathname.endsWith('.json') || url.pathname.endsWith('.html')) {
           return basic('static');
         }
@@ -60,6 +62,7 @@ function workerFixture() {
       },
       self: {
         location: workerURL,
+        navigator: { get onLine() { return online; } },
         skipWaiting: async () => {},
         clients: { claim: async () => {}, get: async () => ({ url: new URL('/dashboard', origin).href }) },
         addEventListener(type, fn) { handles.set(type, fn); },
@@ -90,6 +93,7 @@ function workerFixture() {
     useRevision(next) { revision = next; },
     useUser(next) { workerUser = next; },
     expire() { expired = true; },
+    disconnect() { online = false; },
     block(path) { blockedPath = path; },
     holdNext(path) {
       let started, release;
@@ -191,7 +195,7 @@ test('a saved goal becomes available in local browsing even if a related Insight
   assert.deepEqual(worker.requests, []);
 });
 
-test('refreshes are shared, only complete batches update their timestamp, and partial batches leave it alone', async () => {
+test('refreshes are shared and successful full and partial batches update their timestamp', async () => {
   const worker = workerFixture();
   const first = await save(worker);
   worker.advance(60_000);
@@ -205,13 +209,13 @@ test('refreshes are shared, only complete batches update their timestamp, and pa
   worker.advance(60_000);
   const partial = await worker.message({ type: 'QUIET_REFRESH', user, pages: ['/dashboard'], partial: true });
   assert.equal(partial.ok, true);
-  assert.equal(partial.lastSyncedAt, one.lastSyncedAt);
+  assert.ok(partial.lastSyncedAt > one.lastSyncedAt);
 
   worker.useBuild('build-b');
   worker.block('/reports');
   const failed = await worker.message(full);
   assert.equal(failed.ok, false);
-  assert.equal(failed.lastSyncedAt, one.lastSyncedAt);
+  assert.equal(failed.lastSyncedAt, partial.lastSyncedAt);
   assert.match(await (await worker.fetch('/dashboard')).text(), /build-a/);
   worker.block(undefined);
   const ready = await worker.message(full);
@@ -298,4 +302,15 @@ test('different accounts and expired authentication clear saved pages and the pa
   const expired = await worker.message({ type: 'QUIET_REFRESH', user, pages });
   assert.equal(expired.authExpired, true);
   assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).ok, false);
+});
+
+test('a disconnected browser keeps the ordinary offline fallback while Quiet Sync is enabled', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  worker.requests.length = 0;
+  worker.disconnect();
+  assert.match(await (await worker.fetch('/dashboard')).text(), /snapshot-before-write/);
+  assert.match(await (await worker.fetch('/insights')).text(), /Offline fallback/);
+  assert.equal(await worker.fetch('/transactions', { method: 'POST' }), undefined);
+  assert.deepEqual(worker.requests, []);
 });

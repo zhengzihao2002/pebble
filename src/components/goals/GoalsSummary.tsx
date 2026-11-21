@@ -9,7 +9,7 @@ import { SectionHeader } from '@/components/kit/SectionHeader';
 import { GoalsAllocationBar, type AllocationSlice } from './GoalsAllocationBar';
 
 interface GoalsSummaryProps {
-  /** The server-side dictionary (goals/page.tsx resolves the locale). */
+  /** The dictionary for the current display language. */
   d: Dictionary;
   goals: Goal[];
   /** computeCurrentBalances(...).total - the dashboard's figure, never recomputed here. */
@@ -21,21 +21,7 @@ interface GoalsSummaryProps {
   overAllocated: boolean;
 }
 
-/**
- * "Your money, allocated" - the Goals page's hero. A SERVER component (no
- * 'use client'), so its text still comes from the dictionary the page
- * resolved, as it always has; only the interactive ribbon is a client piece.
- *
- * It opens with the real balance as the one display figure, then the two
- * halves of it - set aside for goals and unallocated - and a ribbon that
- * splits the balance into each goal's share plus what is free. The blurb that
- * used to lead the card now sits behind the (i) next to the title: same words,
- * less to read before the numbers.
- *
- * All three figures are computed by the page exactly as before (stable keys,
- * formatCurrency pinned to en-US, money in .font-mono-tab / .pb-money so
- * privacy mode blurs it).
- */
+// Shared allocation display for the personal Goals page and Partner View.
 export function GoalsSummary({ d, goals, total, allocated, unallocated, overAllocated }: GoalsSummaryProps) {
   const ux = d.ux.goals;
   const { whole, cents } = splitCents(formatCurrency(total));

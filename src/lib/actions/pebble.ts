@@ -17,6 +17,7 @@ import {
   userInNeonAuth,
 } from '@/db/schema';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
+import { mapGoalRow } from '@/lib/data/mappers';
 import { getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getRecurringRuleById, hasAnyTransactions, getAccounts } from '@/lib/data/queries';
 import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { estimateAnnualIncomeTrailing12, type AnnualIncomeEstimate } from '@/lib/analysis/annualIncome';
@@ -30,6 +31,7 @@ import { cleanupCutoff, MAX_CLEANUP_DESCRIPTION, MAX_CLEANUP_ROWS, type CleanupS
 import { patchCurrentAnnualBudgets } from '@/lib/budgets/annualData';
 import { getSessionLocations, type SessionLocation } from '@/lib/data/sessionLocation';
 import type {
+  Goal,
   PaymentMethod,
   RecurringEndMode,
   RecurringFrequency,
@@ -464,7 +466,7 @@ export interface AddGoalActionInput {
   deferPageRefresh?: boolean;
 }
 
-async function addGoal(userId: string, input: AddGoalActionInput): Promise<ActionResult> {
+async function addGoal(userId: string, input: AddGoalActionInput): Promise<{ ok: true; createdGoal: Goal } | ActionFailure> {
   try {
     if (!input.name.trim()) {
       return fail('A goal needs a name.', 'validation', 'validation.goalNameRequired');
@@ -482,7 +484,7 @@ async function addGoal(userId: string, input: AddGoalActionInput): Promise<Actio
       return fail('Target date must be a valid date.', 'validation', 'validation.goalDateInvalid');
     }
 
-    await db.insert(goal).values({
+    const [created] = await db.insert(goal).values({
       id: generateId(),
       userId,
       name: input.name.trim(),
@@ -491,10 +493,10 @@ async function addGoal(userId: string, input: AddGoalActionInput): Promise<Actio
       targetDate: input.date.trim(),
       iconKey: input.iconKey,
       color: input.color,
-    });
+    }).returning();
 
     if (input.deferPageRefresh !== true) revalidateAll();
-    return { ok: true };
+    return { ok: true, createdGoal: mapGoalRow(created) };
   } catch (error) {
     return handleUnexpected('addGoalAction', error);
   }

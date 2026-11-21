@@ -91,3 +91,5 @@ export function orderGoals(goals: Goal[], dismissedIds: readonly string[] = []) 
 export function progressOf(goal: Pick<Goal, 'current' | 'target'>): number {
   return goal.target > 0 ? goal.current / goal.target : 0;
 }
+
+export const GOAL_CREATED_EVENT = 'pebble:goal-created';

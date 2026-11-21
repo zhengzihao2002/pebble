@@ -71,7 +71,8 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
       setProblem('unavailable');
       return false;
     }
-    setLastSyncedAt(state.lastSyncedAt ?? null);
+    const syncedAt = state.lastSyncedAt;
+    if (syncedAt != null) setLastSyncedAt(previous => Math.max(previous ?? 0, syncedAt));
     return state.ok;
   }, []);
 

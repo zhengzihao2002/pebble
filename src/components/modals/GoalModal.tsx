@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CalendarDays, Check, Trash2 } from 'lucide-react';
-import { addGoalAction, deleteGoalAction, updateGoalAction } from '@/lib/actions/pebble';
+import { addGoalAction, deleteGoalAction, updateGoalAction, type ActionResult } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
@@ -20,7 +20,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { ProgressRing } from '@/components/kit/ProgressRing';
-import { timeToTarget } from '@/components/goals/goalMath';
+import { GOAL_CREATED_EVENT, timeToTarget } from '@/components/goals/goalMath';
 import { useGoalsToday } from '@/components/goals/useGoalsToday';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
@@ -93,7 +93,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       name: name.trim(), target: Number(target), current: current ? Number(current) : 0,
       date: date.trim(), iconKey, color, deferPageRefresh,
     };
-    const result = goal
+    const result: ActionResult & { createdGoal?: Goal } = goal
       ? await callAction(() => updateGoalAction({ ...payload, id: goal.id }))
       : await callAction(() => addGoalAction(payload));
 
@@ -105,7 +105,12 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
       return;
     }
 
-    const refresh = refreshAfterSave('goal', { refreshCurrent: deferPageRefresh });
+    const updatedInPlace = deferPageRefresh && result.createdGoal !== undefined &&
+      !document.dispatchEvent(new CustomEvent<Goal>(GOAL_CREATED_EVENT, {
+        detail: result.createdGoal,
+        cancelable: true,
+      }));
+    const refresh = refreshAfterSave('goal', { refreshCurrent: deferPageRefresh && !updatedInPlace });
     // Fires on the CROSSING, not the state: checking only whether the goal is
     // now complete would replay the sound on every later edit of an already
     // finished goal. A new goal created already at target counts - the
@@ -116,7 +121,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
     // Only the crossing makes a sound. An ordinary goal save is silent.
     if (wasIncomplete && nowComplete) playEventSound('goalReached');
     setSaved({ name: payload.name, target: payload.target });
-    // Show the confirmed save while Quiet Sync prepares live navigation.
+    // Show the confirmed save while Quiet Sync queues the cache update.
     // Keep the form protected from dismissal until the handoff settles.
     try {
       await refresh;
