@@ -123,8 +123,7 @@ export function CategoryManagerCard() {
   // to createCategoryAction/updateCategoryAction pass through untranslated.
   // iconKey and color are looked-up values, never labels.
   const { d, t, locale } = useTranslation();
-  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
-  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
+  const { enabled: readsPaused } = useQuietSync();
   const { readReference } = useOfflineQueue();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);

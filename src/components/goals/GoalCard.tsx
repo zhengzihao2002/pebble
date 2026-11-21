@@ -17,6 +17,7 @@ import { isReached, monthlyPace, timeToTarget } from './goalMath';
 
 interface GoalCardProps {
   goal: Goal;
+  unallocated?: number;
   /** Zone-aware 'YYYY-MM-DD' from the page, or null for the first frame
       (and when omitted): the countdown and monthly pace wait for it. */
   today?: string | null;
@@ -35,7 +36,7 @@ interface GoalCardProps {
 // how long until the target date and, while the goal is unfinished, roughly
 // what a month it needs to make it. A reached goal gets a soft wash of its
 // colour and a quiet success chip instead of a dimmed pill.
-export function GoalCard({ goal, today = null, index = 0, onDismiss }: GoalCardProps) {
+export function GoalCard({ goal, today = null, index = 0, onDismiss, unallocated }: GoalCardProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const partner = usePartnerView();
@@ -132,7 +133,7 @@ export function GoalCard({ goal, today = null, index = 0, onDismiss }: GoalCardP
         transform) and overflow: hidden would otherwise make it the
         containing block of the fixed overlay and clip the dialog. */}
     {editing && <GoalModal goal={goal} onClose={() => setEditing(false)} />}
-    {adding && <AddToGoalModal goal={goal} onClose={() => setAdding(false)} />}
+    {adding && <AddToGoalModal goal={goal} unallocated={unallocated} onClose={() => setAdding(false)} />}
     </>
   );
 }

@@ -1,5 +1,8 @@
 'use client';
 
+import { useOfflineQueue } from '@/components/offline/OfflineProvider';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { AmountInput } from '@/components/shared/AmountInput';
 import { useEffect, useMemo, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -70,6 +73,8 @@ const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, to
  */
 export function TransferModal({ onClose, initialFromId, balances }: TransferModalProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterSave } = useQuietSync();
+  const { readReference } = useOfflineQueue();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountError, setAccountError] = useState<string | null>(null);
@@ -91,7 +96,12 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
 
   useEffect(() => {
     let cancelled = false;
-    callAction(getAccountsAction, d.addTxn.accountsFailed).then((result) => {
+    const quiet = quietSyncIsPaused();
+    const accountsRequest = quiet ? readReference().then(snapshot => snapshot
+      ? { ok: true as const, accounts: snapshot.accounts }
+      : { ok: false as const, error: d.ux.offline.quietSync.needsSync })
+      : callAction(getAccountsAction, d.addTxn.accountsFailed);
+    void accountsRequest.then((result) => {
       if (cancelled) return;
       if (!result.ok) { setAccountError(translateActionError(d, locale, result)); return; }
       setAccounts(result.accounts);
@@ -157,7 +167,9 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
     setSaving(true);
     setError(null);
 
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => createTransferAction({
+      deferPageRefresh,
       fromAccountId: fromId,
       toAccountId: toId,
       amount: Number(amount),
@@ -165,6 +177,7 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
       date,
     }));
 
+    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the confirmation only ever follows a write the

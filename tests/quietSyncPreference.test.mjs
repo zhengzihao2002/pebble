@@ -56,13 +56,11 @@ test('Quiet Sync defaults off and keeps its preference on this device for the sa
   first.writeQuietPreference('first', { enabled: true });
   const nextPage = mount('first');
   assert.equal(nextPage.quietSyncIsPaused(), true);
-  nextPage.writeQuietPreference('first', { liveUntil: now + nextPage.QUIET_SYNC_LIVE_PERIOD });
-  assert.equal(mount('first').quietSyncIsPaused(), false);
+  nextPage.writeQuietPreference('first', { liveUntil: now + 1 });
+  assert.equal(mount('first').quietSyncIsPaused(), true);
   assert.equal(mount('second').quietSyncIsEnabled(), false);
   nextPage.writeQuietPreference('first', { enabled: false });
   assert.equal(mount('first').quietSyncIsEnabled(), false);
-  assert.equal(first.quietSyncDue(now, now - first.QUIET_SYNC_INTERVAL, now - first.QUIET_SYNC_RETRY_INTERVAL), true);
-  assert.equal(first.quietSyncDue(now, now - first.QUIET_SYNC_INTERVAL, now), false);
 });
 
 test('cached HTML paints the document owner’s Quiet Sync status before hydration', () => {
@@ -88,8 +86,23 @@ test('cached HTML paints the document owner’s Quiet Sync status before hydrati
     return attrs.get('data-pb-quiet-startup');
   };
   assert.equal(boot('paused'), 'paused');
-  assert.equal(boot('live'), 'live');
+  assert.equal(boot('live'), 'paused');
   assert.equal(boot('paused', false), 'offline');
   assert.equal(boot('off'), undefined);
   assert.equal(boot('other'), undefined);
+});
+
+
+test('automatic sync is confined to a fresh launch and sign-in', () => {
+  const cjs = { exports: {} };
+  vm.runInNewContext(source, { module: cjs, exports: cjs.exports, URL });
+  const detect = cjs.exports.isQuietSyncLaunch;
+  const origin = 'https://pebble.example';
+  assert.equal(detect({ type: 'navigate' }, '', origin), true);
+  assert.equal(detect({ type: 'navigate' }, 'https://elsewhere.example/', origin), true);
+  assert.equal(detect({ type: 'navigate' }, origin + '/auth/sign-in', origin), true);
+  assert.equal(detect({ type: 'navigate' }, origin + '/goals', origin), false);
+  assert.equal(detect({ type: 'reload' }, '', origin), false);
+  assert.equal(detect({ type: 'back_forward' }, '', origin), false);
+  assert.equal(detect(undefined, '', origin), false);
 });

@@ -1,7 +1,3 @@
-export const QUIET_SYNC_INTERVAL = 8 * 60 * 60 * 1000;
-export const QUIET_SYNC_LIVE_PERIOD = 20 * 60 * 1000;
-export const QUIET_SYNC_SAVE_PERIOD = 2 * 60 * 1000;
-export const QUIET_SYNC_RETRY_INTERVAL = 30 * 60 * 1000;
 export const QUIET_SYNC_PAGES = [
   '/dashboard', '/accounts', '/transactions', '/reports', '/analysis',
   '/insights', '/budgets', '/goals', '/scheduled', '/settings',
@@ -9,17 +5,15 @@ export const QUIET_SYNC_PAGES = [
 
 interface QuietPreference {
   enabled: boolean;
-  liveUntil: number;
-  attemptedAt: number;
 }
 
-const DEFAULT: QuietPreference = { enabled: false, liveUntil: 0, attemptedAt: 0 };
+const DEFAULT: QuietPreference = { enabled: false };
 const prefix = 'pebble-quiet-sync:v1:';
 const changeEvent = 'pebble:quiet-sync-change';
 
 /** Runs in the cached HTML before the header is parsed. The script element
  * carries the authenticated document owner, so preferences never cross accounts. */
-export const QUIET_SYNC_HEADER_PREINIT = `try{var owner=document.currentScript.getAttribute('data-pb-quiet-owner');var prefs=owner&&JSON.parse(localStorage.getItem(${JSON.stringify(prefix)}+owner)||'null');if(prefs&&prefs.enabled===true){var status=navigator.onLine===false?'offline':prefs.liveUntil>Date.now()?'live':'paused';document.documentElement.setAttribute('data-pb-quiet-startup',status);}}catch(err){}`;
+export const QUIET_SYNC_HEADER_PREINIT = `try{var owner=document.currentScript.getAttribute('data-pb-quiet-owner');var prefs=owner&&JSON.parse(localStorage.getItem(${JSON.stringify(prefix)}+owner)||'null');if(prefs&&prefs.enabled===true){var status=navigator.onLine===false?'offline':'paused';document.documentElement.setAttribute('data-pb-quiet-startup',status);}}catch(err){}`;
 
 function readOwner() {
   if (typeof document === 'undefined') return undefined;
@@ -32,8 +26,6 @@ export function readQuietPreference(user = readOwner()): QuietPreference {
     const value = JSON.parse(localStorage.getItem(prefix + user) ?? 'null');
     return {
       enabled: value?.enabled === true,
-      liveUntil: typeof value?.liveUntil === 'number' ? value.liveUntil : 0,
-      attemptedAt: typeof value?.attemptedAt === 'number' ? value.attemptedAt : 0,
     };
   } catch { return DEFAULT; }
 }
@@ -57,8 +49,7 @@ export function subscribeQuietPreference(listener: () => void) {
 }
 
 export function quietSyncIsPaused() {
-  const { enabled, liveUntil } = readQuietPreference();
-  return enabled && liveUntil <= Date.now();
+  return quietSyncIsEnabled();
 }
 
 export function quietSyncIsEnabled() {
@@ -70,29 +61,45 @@ export function navigateQuietly(href: string) {
   if (!quietSyncIsPaused()) return false;
   const url = new URL(href, window.location.href);
   if (url.origin !== location.origin || url.pathname === location.pathname && url.search === location.search) return false;
+  try { sessionStorage.setItem('pebble-quiet-route', url.pathname + url.search); } catch { /* Referrer still distinguishes in-app navigation. */ }
   window.location.assign(url.href);
   return true;
 }
 
-export function quietSyncDue(now: number, lastSyncedAt: number | null, attemptedAt: number) {
-  return now >= (lastSyncedAt ?? 0) + QUIET_SYNC_INTERVAL && now >= attemptedAt + QUIET_SYNC_RETRY_INTERVAL;
+export function isQuietSyncLaunch(navigation: Pick<PerformanceNavigationTiming, 'type'> | undefined, referrer: string, origin: string) {
+  if (navigation?.type !== 'navigate') return false;
+  try {
+    if (referrer && new URL(referrer).origin === origin) {
+      return /^\/auth(?:\/|$)/.test(new URL(referrer).pathname);
+    }
+  } catch { return false; }
+  return true;
+}
+
+export function takeQuietNavigationMarker(route: string) {
+  try {
+    const pending = sessionStorage.getItem('pebble-quiet-route');
+    sessionStorage.removeItem('pebble-quiet-route');
+    return pending === route;
+  } catch { return false; }
 }
 
 export interface QuietWorkerStatus {
   ok: boolean;
   enabled: boolean;
-  liveUntil: number | null;
+  liveUntil?: number | null;
   lastSyncedAt: number | null;
   available: string[];
+  refreshed?: string[];
   build?: string | null;
   authExpired?: boolean;
 }
 
 type QuietCommand = { user: string } & (
-  | { type: 'QUIET_STATUS' }
+  | { type: 'QUIET_STATUS'; onDemand: true }
   | { type: 'QUIET_INVALIDATE' }
-  | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: number; keepLonger?: boolean }
-  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean; saveWindowStarted?: boolean }
+  | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: 0 }
+  | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean }
 );
 
 export function activeQuietWorker(services: ServiceWorkerContainer): Promise<ServiceWorker | null> {

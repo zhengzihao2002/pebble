@@ -16,8 +16,7 @@ import { partnerError } from './partnerError';
 export function PartnerInbox() {
   const { d, t, locale } = useTranslation();
   const x = d.partner.inbox;
-  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
-  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
+  const { enabled: readsPaused } = useQuietSync();
   const [items, setItems] = useState<PartnerInboxItem[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);

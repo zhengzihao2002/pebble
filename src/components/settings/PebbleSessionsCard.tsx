@@ -32,9 +32,9 @@ interface ListedSession {
  * persisted or logged by this component.
  */
 export function PebbleSessionsCard() {
-  const { enabled, status } = useQuietSync();
+  const { enabled } = useQuietSync();
   const { d } = useTranslation();
-  if (enabled && status !== 'live') return (
+  if (enabled) return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{d.sessions.title}</h3>
       <p className="pb-settings-quiet">{d.ux.offline.quietSync.needsLive}</p>

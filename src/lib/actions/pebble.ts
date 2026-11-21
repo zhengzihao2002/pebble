@@ -676,6 +676,7 @@ async function loadSessionLocations(userId: string): Promise<SessionLocationsRes
 async function modifyBudgets(
   userId: string,
   budgets: Record<string, number>,
+  deferPageRefresh = false,
 ): Promise<ActionResult> {
   try {
     const entries = Object.entries(budgets);
@@ -697,7 +698,7 @@ async function modifyBudgets(
     }
 
     if (await patchCurrentAnnualBudgets(userId, budgets)) {
-      revalidateAll();
+      if (deferPageRefresh !== true) revalidateAll();
       return { ok: true };
     }
 
@@ -718,7 +719,7 @@ async function modifyBudgets(
         });
     }
 
-    revalidateAll();
+    if (deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('modifyBudgetsAction', error);
@@ -1564,6 +1565,7 @@ async function createBalanceAdjustment(
     delta: number;
     description: string;
     date: string;
+    deferPageRefresh?: boolean;
   },
 ): Promise<ActionResult> {
   try {
@@ -1604,7 +1606,7 @@ async function createBalanceAdjustment(
       amount: input.delta,
     });
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('createBalanceAdjustmentAction', error);
@@ -2379,7 +2381,7 @@ export const deleteTransactionAction = withSessionUser(deleteTransaction);
  */
 async function createTransfer(
   userId: string,
-  input: { fromAccountId: string; toAccountId: string; amount: number; description: string; date: string },
+  input: { fromAccountId: string; toAccountId: string; amount: number; description: string; date: string; deferPageRefresh?: boolean },
 ): Promise<ActionResult> {
   try {
     if (input.fromAccountId === input.toAccountId) {
@@ -2438,7 +2440,7 @@ async function createTransfer(
       }),
     ]);
 
-    revalidateAll();
+    if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('createTransferAction', error);
@@ -2994,7 +2996,7 @@ type CreditCardPayoffResult = { ok: true; amount: number; remainingBalance: numb
  */
 async function payCreditCard(
   userId: string,
-  input: { fromAccountId: string; toAccountId: string; transactionIds: string[] },
+  input: { fromAccountId: string; toAccountId: string; transactionIds: string[]; deferPageRefresh?: boolean },
 ): Promise<CreditCardPayoffResult> {
   try {
     if (!input || typeof input.fromAccountId !== 'string' || typeof input.toAccountId !== 'string'
@@ -3059,8 +3061,10 @@ async function payCreditCard(
     ], { isolationLevel: 'ReadCommitted' });
     const [paid] = results[2] as { amount: string; remaining_balance: string }[];
     if (!paid) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
-    revalidateAll();
-    revalidatePath('/accounts', 'page');
+    if (input.deferPageRefresh !== true) {
+      revalidateAll();
+      revalidatePath('/accounts', 'page');
+    }
     return { ok: true, amount: Number(paid.amount), remainingBalance: Number(paid.remaining_balance) };
   } catch (error) {
     return handleUnexpected('payCreditCardAction', error);

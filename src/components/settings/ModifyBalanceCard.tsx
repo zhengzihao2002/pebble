@@ -1,5 +1,7 @@
 'use client';
 
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { SETTING_TARGETS } from './settingsTargets';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
@@ -57,6 +59,7 @@ const bigDollarStyle: React.CSSProperties = { position: 'absolute', left: 14, to
  */
 export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalanceCardProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterSave } = useQuietSync();
   // Account NAMES are user data and are never translated. Only active
   // accounts are adjustable: a closed one is settled at zero permanently.
   // Credit cards are never adjusted: their balance is their charges.
@@ -111,13 +114,16 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
     // Read at submit time, not held in state. An adjustment is always dated
     // today, and a value captured at mount would still be yesterday's on a
     // card left open past midnight.
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => createBalanceAdjustmentAction({
+      deferPageRefresh,
       accountId,
       delta,
       description,
       date: todayDateString(),
     }));
 
+    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
 

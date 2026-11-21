@@ -39,7 +39,7 @@ function noSubscribe(): () => void {
  * add-goal tile stays the last slot of the in-progress grid (and spans the
  * row, titled, when there are no goals at all).
  */
-export function GoalsView({ goals }: { goals: Goal[] }) {
+export function GoalsView({ goals, unallocated }: { goals: Goal[]; unallocated?: number }) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const partner = usePartnerView();
@@ -101,11 +101,11 @@ export function GoalsView({ goals }: { goals: Goal[] }) {
       )}
 
       {view === 'timeline' && visible.length > 0 ? (
-        <GoalTimeline goals={visible} today={today} onDismiss={dismiss} />
+        <GoalTimeline goals={visible} today={today} onDismiss={dismiss} unallocated={unallocated} />
       ) : (
         <>
           <div className="goals-grid pb-goals-grid">
-            {inProgress.map((g, i) => <GoalCard key={g.id} goal={g} today={today} index={i} />)}
+            {inProgress.map((g, i) => <GoalCard key={g.id} goal={g} today={today} index={i} unallocated={unallocated} />)}
             {(!partner || partner.data.permissions.addPersonalGoals) && <AddGoalTile empty={empty}
               onAdd={() => partner ? partner.openEditor({ kind: 'goal' }) : setAdding(true)} />}
             {empty && partner && !partner.data.permissions.addPersonalGoals && <p className="card pb-partner-card pb-partner-note">{d.partner.noShared}</p>}

@@ -1,5 +1,7 @@
 'use client';
 
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -49,6 +51,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
   today?: string;
 }) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterSave } = useQuietSync();
   const x = d.ux.accounts;
   const [today] = useState(() => {
     if (todayProp) return todayProp;
@@ -126,11 +129,14 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
     const accountText = options.find((o) => o.value === from)?.label ?? '';
     setPaying(true);
     setError(null);
+    const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => payCreditCardAction({
+      deferPageRefresh,
       fromAccountId: card.id,
       toAccountId: from,
       transactionIds: picked.map((c) => c.id),
     }));
+    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setPaying(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the confirmation follows a confirmed move only.

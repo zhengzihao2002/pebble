@@ -1,5 +1,7 @@
 'use client';
 
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { modifyBudgetsAction } from '@/lib/actions/pebble';
@@ -24,6 +26,7 @@ export const budgetIconBtn: React.CSSProperties = {
  */
 export function InlineBudgetEditor({ name, initial, onClose }: { name: string; initial: string; onClose: () => void }) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterSave } = useQuietSync();
   const [value, setValue] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +38,9 @@ export function InlineBudgetEditor({ name, initial, onClose }: { name: string; i
     if (value.trim() === '' || !Number.isFinite(amount) || amount < 0) return;
     setSaving(true);
     setError(null);
-    const result = await callAction(() => modifyBudgetsAction({ [name]: amount }));
+    const deferPageRefresh = quietSyncIsPaused();
+    const result = await callAction(() => modifyBudgetsAction({ [name]: amount }, deferPageRefresh));
+    if (result.ok) await refreshAfterSave('budget', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); return; }
     onClose();

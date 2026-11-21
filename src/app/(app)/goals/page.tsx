@@ -69,7 +69,7 @@ export default async function GoalsPage() {
         d={d} goals={goals} total={balances.total}
         allocated={allocated} unallocated={unallocated} overAllocated={overAllocated}
       />
-      <GoalsView goals={goals} />
+      <GoalsView goals={goals} unallocated={unallocated} />
     </div>
   );
 }

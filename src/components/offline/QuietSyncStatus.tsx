@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowDownToLine, Pause, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { ArrowDownToLine, Pause, RefreshCw, WifiOff } from 'lucide-react';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useQuietSync } from './QuietSyncProvider';
@@ -10,14 +10,13 @@ const statusIcons = {
   paused: Pause,
   preparing: ArrowDownToLine,
   syncing: RefreshCw,
-  live: Wifi,
   offline: WifiOff,
 } as const;
-const startupStatuses = ['paused', 'live', 'offline'] as const;
+const startupStatuses = ['paused', 'offline'] as const;
 
 export function QuietSyncStatus() {
   const { d, t, locale } = useTranslation();
-  const { enabled, preferenceReady, status, syncNow, goOnline, liveUntil, lastSyncedAt, problem } = useQuietSync();
+  const { enabled, preferenceReady, status, syncNow, lastSyncedAt, problem } = useQuietSync();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -87,11 +86,6 @@ export function QuietSyncStatus() {
           </p>
           <p className="pb-quiet-panel-detail">{q.detail[status]}</p>
           {problem && <p className="pb-quiet-problem">{q.problem[problem]}</p>}
-          {status === 'live' && liveUntil !== null && (
-            <p className="pb-quiet-panel-meta">
-              {t(q.onlineUntil, { time: new Intl.DateTimeFormat(INTL_LOCALE[locale], { timeStyle: 'short' }).format(liveUntil) })}
-            </p>
-          )}
           {lastSyncedAt !== null && (
             <p className="pb-quiet-panel-meta">
               {t(q.lastSynced, {
@@ -102,9 +96,6 @@ export function QuietSyncStatus() {
           <div className="pb-quiet-actions">
             <button type="button" className="btn-primary" onClick={syncNow} disabled={offline || status === 'syncing'}>
               <RefreshCw size={15} aria-hidden="true" />{q.syncNow}
-            </button>
-            <button type="button" className="pill" onClick={goOnline} disabled={offline}>
-              <Wifi size={15} aria-hidden="true" />{q.stayOnline}
             </button>
           </div>
         </div>

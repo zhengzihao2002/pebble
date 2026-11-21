@@ -55,8 +55,6 @@ var KNOWN = [PAGES, STATIC, META];
 var OFFLINE_URL = '/offline.html';
 var QUIET_URL = '/quiet-sync.html';
 var PRECACHE = [OFFLINE_URL, QUIET_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
-var QUIET_LIVE_MS = 20 * 60 * 1000;
-var QUIET_SAVE_MS = 2 * 60 * 1000;
 var QUIET_PRIMARY = ['/dashboard', '/accounts', '/transactions', '/reports', '/analysis', '/insights', '/budgets', '/goals', '/scheduled', '/settings'];
 
 // How long a visited page waits for the network before the saved copy is
@@ -119,7 +117,7 @@ function readMeta() {
 }
 
 function quietPaused(meta) {
-  return !!(meta.user && meta.quiet && meta.quiet.enabled && !(meta.quiet.liveUntil > Date.now()));
+  return !!(meta.user && meta.quiet?.enabled);
 }
 
 function quietStatus(meta, user) {
@@ -127,8 +125,8 @@ function quietStatus(meta, user) {
   var quiet = valid && meta.quiet;
   return {
     ok: valid,
-    enabled: !!(quiet && quiet.enabled),
-    liveUntil: quiet && quiet.liveUntil > Date.now() ? quiet.liveUntil : null,
+    enabled: !!quiet?.enabled,
+    liveUntil: null,
     lastSyncedAt: quiet && quiet.lastSyncedAt || null,
     build: valid && meta.build || null,
     available: valid ? Object.keys(meta.pages || {}).map(function (key) {
@@ -140,20 +138,9 @@ function quietStatus(meta, user) {
 
 function setQuietPolicy(data) {
   return withMeta(function (meta) {
-    if (meta.user !== data.user) return;
-    var now = Date.now();
-    if (data.afterSave === true) {
-      if (!meta.quiet?.enabled) return;
-      meta.quiet.liveUntil = Math.max(meta.quiet.liveUntil || 0, now + QUIET_SAVE_MS);
-      return;
-    }
-    if (data.keepLonger === true && !meta.quiet?.enabled) return;
-    var enabled = data.enabled === true;
-    var requested = enabled && typeof data.liveUntil === 'number' && data.liveUntil > now ? Math.min(data.liveUntil, now + QUIET_LIVE_MS) : 0;
-    var existing = enabled && data.keepLonger === true && meta.quiet?.enabled && meta.quiet.liveUntil > now ? meta.quiet.liveUntil : 0;
+    if (meta.user !== data.user || data.afterSave === true || data.keepLonger === true) return;
     meta.quiet = {
-      enabled: enabled,
-      liveUntil: Math.max(requested, existing) || null,
+      enabled: data.enabled === true,
       lastSyncedAt: meta.quiet && meta.quiet.lastSyncedAt || null,
     };
   }).then(readMeta).then(function (meta) { return quietStatus(meta, data.user); });
@@ -294,7 +281,7 @@ function quietNavigation(url, user) {
   });
 }
 
-function handleNavigation(event, stayOnline) {
+function handleNavigation(event) {
   var request = event.request;
   var url = new URL(request.url);
 
@@ -330,14 +317,8 @@ function handleNavigation(event, stayOnline) {
     return cache.match(key, { ignoreVary: true });
   }).then(function (saved) {
     if (!saved) return network.catch(offlinePage);
-    // During an online window, a slow response can still contain a change
-    // just saved on the server. Prefer it over an older local copy.
-    var preferred = network;
-    if (!stayOnline) {
-      var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(null); }, NAV_TIMEOUT_MS); });
-      preferred = Promise.race([network, timeout]);
-    }
-    return preferred.then(function (res) {
+    var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(null); }, NAV_TIMEOUT_MS); });
+    return Promise.race([network, timeout]).then(function (res) {
       // Slow: show the saved copy; the network response still refreshes it.
       if (!res) return saved;
       // The server is failing: the saved copy beats an error page.
@@ -740,7 +721,12 @@ self.addEventListener('message', function (event) {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'WARMED' });
     }));
   } else if (data.type === 'QUIET_STATUS') {
-    event.waitUntil(readMeta().then(function (meta) { reply(quietStatus(meta, data.user)); }));
+    event.waitUntil(readMeta().then(function (meta) {
+      var status = quietStatus(meta, data.user);
+      // Older clients consult status before running their idle timer. Leave
+      // their explicit sync and cache policy intact while suppressing that timer.
+      reply(data.onDemand === true ? status : Object.assign(status, { enabled: false }));
+    }));
   } else if (data.type === 'QUIET_POLICY') {
     event.waitUntil(setQuietPolicy(data).then(reply, function () { reply({ ok: false }); }));
   } else if (data.type === 'QUIET_INVALIDATE') {
@@ -752,17 +738,9 @@ self.addEventListener('message', function (event) {
       return caches.delete(PAGES);
     }).then(readMeta).then(function (meta) { reply(quietStatus(meta, data.user)); }, function () { reply({ ok: false }); }));
   } else if (data.type === 'QUIET_REFRESH') {
-    // Cached 4.52 pages confirm writes with a partial refresh alone. Open
-    // their save window too so the next reload can load the current app.
-    var legacySave = data.afterWrite === true && data.partial === true && data.saveWindowStarted !== true;
-    var refreshPages = function () {
-      var refresh = enqueueQuietRefresh(data);
-      if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
-      return refresh.then(reply);
-    };
-    event.waitUntil(legacySave
-      ? setQuietPolicy({ user: data.user, afterSave: true }).then(refreshPages, function () { reply({ ok: false }); })
-      : refreshPages());
+    var refresh = enqueueQuietRefresh(data);
+    if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
+    event.waitUntil(refresh.then(reply));
   } else if (data.type === 'QUIET_SYNC_FALLBACK') {
     event.waitUntil(readMeta().then(function (meta) {
       if (!meta.user || !meta.quiet?.enabled || !event.source?.url) return { ok: false };
@@ -772,13 +750,7 @@ self.addEventListener('message', function (event) {
       var pages = [...new Set([url.pathname + url.search, ...QUIET_PRIMARY.map(function (path) { return base + path; })])];
       return enqueueQuietRefresh({ user: meta.user, pages: pages, required: pages });
     }).then(reply, function () { reply({ ok: false }); }));
-  } else if (data.type === 'QUIET_RESUME_FALLBACK') {
-    var changed = false;
-    event.waitUntil(withMeta(function (meta) {
-      if (!meta.user || !meta.quiet?.enabled) return;
-      meta.quiet.liveUntil = Date.now() + QUIET_LIVE_MS;
-      changed = true;
-    }).then(function () { reply({ ok: changed }); }, function () { reply({ ok: false }); }));
+
   }
 });
 
@@ -806,7 +778,7 @@ self.addEventListener('fetch', function (event) {
 
   event.respondWith(readMeta().then(function (meta) {
     if (!quietPaused(meta)) {
-      return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event, meta.quiet?.enabled) : fetch(request);
+      return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event) : fetch(request);
     }
     if (request.mode === 'navigate') return quietNavigation(url, meta.user);
     if (path.indexOf('/api/auth/') === 0 && event.clientId) {

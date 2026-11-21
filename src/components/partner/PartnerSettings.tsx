@@ -27,8 +27,7 @@ type PermissionTab = (typeof PERMISSION_TABS)[number];
 export function PartnerSettings() {
   const { d, t, locale } = useTranslation();
   const x = d.partner;
-  const { enabled: quietSyncEnabled, status: syncStatus } = useQuietSync();
-  const readsPaused = quietSyncEnabled && syncStatus !== 'live';
+  const { enabled: readsPaused } = useQuietSync();
   const [settings, setSettings] = useState<PartnerSettingsData | null>(null);
   const [invite, setInvite] = useState<{ code: string; expires: string } | null>(null);
   const [enteredCode, setEnteredCode] = useState('');

@@ -51,10 +51,11 @@ function addDaysYmd(ymd: string, days: number): string {
  * Rings are ratios of money, so they blur in privacy mode (pb-chart-fill);
  * every amount wears .font-mono-tab. Goal names are user data.
  */
-export function GoalTimeline({ goals, today, onDismiss }: {
+export function GoalTimeline({ goals, today, onDismiss, unallocated }: {
   goals: Goal[];
   today: string | null;
   onDismiss: (goal: Goal) => void;
+  unallocated?: number;
 }) {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [adding, setAdding] = useState<Goal | null>(null);
@@ -72,7 +73,7 @@ export function GoalTimeline({ goals, today, onDismiss }: {
       <TimelineWide goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
       <TimelineNarrow goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
       {editing && <GoalModal goal={editing} onClose={() => setEditing(null)} />}
-      {adding && <AddToGoalModal goal={adding} onClose={() => setAdding(null)} />}
+      {adding && <AddToGoalModal goal={adding} unallocated={unallocated} onClose={() => setAdding(null)} />}
     </>
   );
 }

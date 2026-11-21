@@ -21,6 +21,7 @@ import { translateActionError } from '@/lib/i18n/actionErrors';
 
 interface AddToGoalModalProps {
   goal: Goal;
+  unallocated?: number;
   onClose: () => void;
 }
 
@@ -41,11 +42,11 @@ function parseAmountCents(raw: string): number | null {
 /**
  * Add to a goal without rewriting its total.
  *
- * Every figure here is FRESH - loaded when the modal opens, never taken from
- * the page - and the server re-checks on save, refusing anything past the
+ * The modal loads current figures when online and uses the saved page while
+ * Quiet Sync is enabled. The server re-checks on save, refusing anything past the
  * target or beyond Unallocated, race-safely (addToGoal in pebble.ts).
  */
-export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
+export function AddToGoalModal({ goal, onClose, unallocated }: AddToGoalModalProps) {
   const { d, t, locale } = useTranslation();
   const { refreshAfterSave } = useQuietSync();
   const Icon = resolveGoalIcon(goal.iconKey);
@@ -70,6 +71,12 @@ export function AddToGoalModal({ goal, onClose }: AddToGoalModalProps) {
   const loadSummary = async () => {
     setLoading(true);
     setLoadError(null);
+    if (quietSyncIsPaused()) {
+      if (unallocated === undefined) setLoadError(d.ux.offline.quietSync.needsSync);
+      else setAvailableCents(Math.max(0, toCents(unallocated)));
+      setLoading(false);
+      return;
+    }
     const result = await callAction(getAllocationSummaryAction, d.addToGoal.loadFailed);
     if (!result.ok) {
       setLoadError(translateActionError(d, locale, result));
