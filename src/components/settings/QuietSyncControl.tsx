@@ -20,8 +20,9 @@ export function QuietSyncControl() {
     <SettingsRow
       id={SETTING_TARGETS.quietSync}
       icon={RefreshCw}
-      title={<>
-        <span id={id}>{q.title}</span> <span className="pb-quiet-beta">{q.beta}</span>
+      title={<span className="pb-quiet-title">
+        <span id={id}>{q.title}</span>
+        <span className="pb-quiet-beta">{q.beta}</span>
         <InfoTooltip label={q.aboutLabel} pressOnly>
           <div className="pb-quiet-help">
             <p>{t(q.aboutSync, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</p>
@@ -29,7 +30,7 @@ export function QuietSyncControl() {
             <p>{q.aboutOffline}</p>
           </div>
         </InfoTooltip>
-      </>}
+      </span>}
       hint={<>{q.settingHint}{problem && <span className="pb-quiet-problem" role="status">{q.problem[problem]}</span>}</>}
       layout="side"
     >

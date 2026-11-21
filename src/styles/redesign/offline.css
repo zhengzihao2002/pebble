@@ -215,10 +215,14 @@ html[data-pb-quiet-startup="offline"] .pebble-root .pb-quiet-status-startup[data
   flex: 1 1 auto; min-height: 44px; padding: .45rem .65rem; font-size: .78rem;
 }
 .pebble-root .pb-quiet-actions > button:disabled { opacity: .55; cursor: not-allowed; }
-.pebble-root .pb-quiet-beta {
-  display: inline-block; margin-inline-start: .2rem; padding: .08rem .35rem; border-radius: .3rem;
-  background: var(--pine-soft); color: var(--pine); font-size: .68em; line-height: 1.5; vertical-align: .08em;
+.pebble-root .pb-quiet-title {
+  display: flex; flex-wrap: wrap; align-items: center; column-gap: .35rem;
 }
+.pebble-root .pb-quiet-beta {
+  padding: .1rem .4rem; border-radius: .35rem;
+  background: var(--pine-soft); color: var(--pine); font-size: .88em; line-height: 1.35;
+}
+.pebble-root .pb-quiet-title > button > svg { inline-size: 1.125rem; block-size: 1.125rem; }
 .pebble-root .pb-quiet-help { display: grid; gap: .55rem; }
 .pebble-root .pb-quiet-help p { margin: 0; }
 @container content (max-width: 960px) {
