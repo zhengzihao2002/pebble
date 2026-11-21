@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { getAccountsAction, getCategoriesAction } from '@/lib/actions/pebble';
+import { getAccountsAction, getCategoriesAction, refreshQuietViewAction } from '@/lib/actions/pebble';
 import { callAction } from '@/lib/actions/callAction';
 import { BUILD_ID } from '@/lib/offline/buildId';
 import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnectivity } from '@/lib/offline/connectivity';
@@ -129,15 +129,17 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   }, [userId]);
 
   const download = useCallback(async (afterWrite = false) => {
+    const route = activeRoute();
     if (!(await isServerReachable())) return false;
     await tellWorkerWho(userId);
     const hasPrimaryRoute = QUIET_SYNC_PAGES.includes(location.pathname);
     const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
-    const [result] = await Promise.all([
+    const [result, viewResult] = await Promise.all([
       quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
+      afterWrite && hasPrimaryRoute && route === activeRoute() ? callAction(refreshQuietViewAction) : undefined,
       refreshReference(),
     ]);
-    if (receiveStatus(result)) return true;
+    if (receiveStatus(result) && viewResult?.ok !== false) return true;
     if (result && !result.authExpired) setProblem('incomplete');
     return false;
   }, [receiveStatus, refreshReference, userId]);
@@ -185,7 +187,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   useEffect(() => {
     if (!writePending || busy.current) return;
     setWritePending(false);
-    if (enabled) void sync(true, true);
+    if (enabled) void sync(false, true);
   }, [enabled, preparing, sync, syncing, writePending]);
 
   useEffect(() => {
@@ -231,18 +233,22 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     setProblem(null);
     await new Promise<void>(queued => {
       // Register the refresh before allowing another navigation. Only the
-      // worker's explicit download goes to the server. Navigation stays local.
+      // downloads and current-view action go to the server. Navigation stays local.
+      const snapshot = quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued);
+      const view = options?.refreshCurrent !== false && !readOffline() && pages.includes(route)
+        ? callAction(refreshQuietViewAction)
+        : undefined;
       void Promise.all([
-        quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued),
+        snapshot,
+        view,
         refreshReference(),
-      ]).then(([result]) => {
+      ]).then(([result, viewResult]) => {
         queued();
         if (!readQuietPreference(userId).enabled) return;
-        if (receiveStatus(result)) {
-          if (options?.refreshCurrent !== false && activeRoute() === route && result?.refreshed?.some(url =>
-            new URL(url).pathname === pathname,
-          )) setReloadRoute(route);
-        } else if (result && !result.authExpired) setProblem('incomplete');
+        const downloaded = receiveStatus(result);
+        if ((result && !result.authExpired && !downloaded) || (viewResult?.ok === false && activeRoute() === route)) {
+          setProblem('incomplete');
+        }
       }).catch(() => {
         queued();
         setProblem('incomplete');

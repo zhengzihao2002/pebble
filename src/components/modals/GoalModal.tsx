@@ -29,6 +29,7 @@ import type { Goal } from '@/types';
 
 interface GoalModalProps {
   onClose: () => void;
+  onQuietDelete?: (id: string) => void;
   // Absent means "add"; present means "edit that goal". One form rather than
   // two near-identical ones, so validation and layout cannot drift apart.
   goal?: Goal;
@@ -42,7 +43,7 @@ type Mode = 'form' | 'confirmDelete';
  * goal's name is user data. The target date is a type="date" input, so its
  * value stays 'YYYY-MM-DD' whatever the browser's picker displays.
  */
-export function GoalModal({ onClose, goal }: GoalModalProps) {
+export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
   const { d, t, locale } = useTranslation();
   const { refreshAfterSave } = useQuietSync();
   const isEdit = goal !== undefined;
@@ -132,26 +133,27 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
   };
 
   // Set once a delete succeeds; the dialog then closes itself.
-  const [deleted, setDeleted] = useState(false);
+  const [deleted, setDeleted] = useState<'local' | 'server' | null>(null);
 
   const handleDelete = async () => {
-    if (!goal || saving) return;
+    if (!goal || saving || deleted) return;
     setSaving(true);
     setSaveError(null);
     const deferPageRefresh = quietSyncIsPaused();
     const result = await callAction(() => deleteGoalAction({ id: goal.id, deferPageRefresh }));
-    if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh });
+    const removeInPlace = deferPageRefresh && onQuietDelete !== undefined;
+    if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh && !removeInPlace });
     setSaving(false);
     if (!result.ok) { setSaveError(translateActionError(d, locale, result)); setSaveErrorKind(result.kind); return; }
-    // Quiet: no confirmation for a delete. The dialog closes from the next
-    // settled render (CloseSoon below): a close() timed from here could run
-    // while the frame still read busy, and was then silently ignored - the
-    // dialog stayed open over a deleted row.
-    setDeleted(true);
+    // CloseSoon waits until the dialog has committed busy=false.
+    setDeleted(removeInPlace ? 'local' : 'server');
   };
 
   return (
-    <ModalFrame onClose={onClose} busy={saving} labelledBy="goal-modal-title" maxWidth={440}>
+    <ModalFrame onClose={() => {
+      onClose();
+      if (deleted === 'local' && goal) onQuietDelete?.(goal.id);
+    }} busy={saving} labelledBy="goal-modal-title" maxWidth={440}>
       {(close) => (
       <>
         {deleted && !saving && <CloseSoon close={close} />}
@@ -190,7 +192,7 @@ export function GoalModal({ onClose, goal }: GoalModalProps) {
               <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete()} busy={saving} />
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} disabled={saving} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.goalModal.keepIt}</button>
-                <button type="button" onClick={() => void handleDelete()} disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving ? 0.6 : 1 }}>
+                <button type="button" onClick={() => void handleDelete()} disabled={saving || deleted !== null} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving || deleted ? 0.6 : 1 }}>
                   {saving ? d.goalModal.deleting : d.goalModal.delete}
                 </button>
               </div>

@@ -36,12 +36,13 @@ export function GhostAccountMode({ account, disabled = false }: { account: Accou
   const save = async (close: () => void) => {
     if (busy) return;
     setBusy(true); setError(null);
-    const result = await callAction(() => setAccountGhostAction(account.id, !ghost));
+    const quiet = quietSyncIsEnabled();
+    const result = await callAction(() => setAccountGhostAction(account.id, !ghost, quiet));
     setBusy(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); return; }
     close();
     notifyAccountScopeChanged(account.id, !ghost);
-    if (!quietSyncIsEnabled()) router.refresh();
+    if (!quiet) router.refresh();
   };
   return <>
     <button type="button" className={`pill pb-ghost-mode-button${ghost ? ' is-active' : ''}`} disabled={disabled} onClick={() => { setError(null); setOpenMode(account.isGhost === true); setOpen(true); }} aria-label={`${label} · ${account.name}`}>

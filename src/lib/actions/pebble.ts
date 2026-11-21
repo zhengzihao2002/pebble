@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { refresh, revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db, neonSql } from '@/db';
@@ -2224,6 +2224,13 @@ async function deleteRecurringRule(
 
 export const addTransactionAction = withSessionUser(addTransaction);
 
+// Carry the current route's data in the action response. Ordinary GETs stay
+// cache-only in Quiet Sync, including navigation and prefetch requests.
+export const refreshQuietViewAction = withSessionUser(async () => {
+  refresh();
+  return { ok: true as const };
+});
+
 /**
  * Imports up to 500 parsed bank rows, each with its own account. WRITE PATH,
  * inserts only. Everything is checked first (nothing written if any row
@@ -3559,7 +3566,7 @@ async function deletePebbleAccount(userId: string, input: { confirmEmail: string
 
 export const deletePebbleAccountAction = withSessionUser(deletePebbleAccount);
 /** Ghost mode is reversible visibility/calculation isolation, not account freezing. */
-async function setAccountGhost(userId: string, accountId: string, enabled: boolean): Promise<ActionResult> {
+async function setAccountGhost(userId: string, accountId: string, enabled: boolean, deferPageRefresh = false): Promise<ActionResult> {
   if (typeof enabled !== 'boolean') return fail('Choose whether ghost mode is on or off.');
   try {
     const results = await neonSql.transaction([
@@ -3581,7 +3588,7 @@ async function setAccountGhost(userId: string, accountId: string, enabled: boole
     if (!Array.isArray(updated) || updated.length !== 1) {
       return fail('That account no longer exists.', 'validation', 'notFound.account');
     }
-    revalidateAll();
+    if (deferPageRefresh !== true) revalidateAll();
     return { ok: true };
   } catch (error) {
     return handleUnexpected('setAccountGhostAction', error);

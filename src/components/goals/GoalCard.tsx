@@ -24,6 +24,7 @@ interface GoalCardProps {
   /** Stagger index for the entrance. */
   index?: number;
   onDismiss?: (goal: Goal) => void;
+  onQuietDelete?: (id: string) => void;
 }
 
 // A client component so each card can own its own edit modal. The goals page
@@ -36,7 +37,7 @@ interface GoalCardProps {
 // how long until the target date and, while the goal is unfinished, roughly
 // what a month it needs to make it. A reached goal gets a soft wash of its
 // colour and a quiet success chip instead of a dimmed pill.
-export function GoalCard({ goal, today = null, index = 0, onDismiss, unallocated }: GoalCardProps) {
+export function GoalCard({ goal, today = null, index = 0, onDismiss, unallocated, onQuietDelete }: GoalCardProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.goals;
   const partner = usePartnerView();
@@ -61,7 +62,7 @@ export function GoalCard({ goal, today = null, index = 0, onDismiss, unallocated
 
   return (
     <>
-    <article
+    <article data-goal-id={goal.id}
       className={`card pb-goal-card pb-rise${reached ? ' is-reached' : ''}`}
       style={{ ['--pb-goal' as string]: goal.color, ['--pb-i' as string]: Math.min(index, 8) }}
     >
@@ -132,7 +133,7 @@ export function GoalCard({ goal, today = null, index = 0, onDismiss, unallocated
     {/* The dialogs sit OUTSIDE the article: its entrance animation (a
         transform) and overflow: hidden would otherwise make it the
         containing block of the fixed overlay and clip the dialog. */}
-    {editing && <GoalModal goal={goal} onClose={() => setEditing(false)} />}
+    {editing && <GoalModal goal={goal} onQuietDelete={onQuietDelete} onClose={() => setEditing(false)} />}
     {adding && <AddToGoalModal goal={goal} unallocated={unallocated} onClose={() => setAdding(false)} />}
     </>
   );

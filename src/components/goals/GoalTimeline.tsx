@@ -51,11 +51,12 @@ function addDaysYmd(ymd: string, days: number): string {
  * Rings are ratios of money, so they blur in privacy mode (pb-chart-fill);
  * every amount wears .font-mono-tab. Goal names are user data.
  */
-export function GoalTimeline({ goals, today, onDismiss, unallocated }: {
+export function GoalTimeline({ goals, today, onDismiss, unallocated, onQuietDelete }: {
   goals: Goal[];
   today: string | null;
   onDismiss: (goal: Goal) => void;
   unallocated?: number;
+  onQuietDelete?: (id: string) => void;
 }) {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [adding, setAdding] = useState<Goal | null>(null);
@@ -72,7 +73,7 @@ export function GoalTimeline({ goals, today, onDismiss, unallocated }: {
     <>
       <TimelineWide goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
       <TimelineNarrow goals={goals} today={today} onEdit={setEditing} onAdd={setAdding} onDismiss={onDismiss} />
-      {editing && <GoalModal goal={editing} onClose={() => setEditing(null)} />}
+      {editing && <GoalModal goal={editing} onQuietDelete={onQuietDelete} onClose={() => setEditing(null)} />}
       {adding && <AddToGoalModal goal={adding} unallocated={unallocated} onClose={() => setAdding(null)} />}
     </>
   );
@@ -195,7 +196,7 @@ function TimelineWide({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
           const active = selected?.id === goal.id;
           return (
             <div
-              key={goal.id}
+              key={goal.id} data-goal-id={goal.id}
               className={`pb-goals-tl-mark${flip ? ' is-flip' : ''}${active ? ' is-active' : ''}`}
               style={{ left: `${frac * 100}%`, height: lane * LANE_H + BASE_H + size / 2, ['--pb-goal' as string]: goal.color, ['--pb-ring' as string]: `${size}px` }}
             >
@@ -225,7 +226,7 @@ function TimelineWide({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
       {undated.length > 0 && (
         <div className="pb-goals-tl-undated">
           {undated.map((g) => (
-            <button key={g.id} type="button" className="pill" aria-pressed={selected?.id === g.id} onClick={() => setSelectedId(g.id)}>
+            <button key={g.id} data-goal-id={g.id} type="button" className="pill" aria-pressed={selected?.id === g.id} onClick={() => setSelectedId(g.id)}>
               <span className="pb-donut-dot" style={{ backgroundColor: g.color }} aria-hidden="true" />{g.name}
             </button>
           ))}
@@ -233,7 +234,7 @@ function TimelineWide({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
       )}
 
       {selected && (
-        <div className="pb-goals-tl-detail goal-step" key={selected.id} aria-live="polite">
+        <div className="pb-goals-tl-detail goal-step" key={selected.id} data-goal-id={selected.id} aria-live="polite">
           <GoalRing goal={selected} size={56} />
           <GoalFacts goal={selected} today={today} />
           <div className="pb-goals-tl-actions">
@@ -346,7 +347,7 @@ function TimelineNarrow({ goals, today, onEdit, onAdd, onDismiss }: PartProps) {
               {group.goals.map((g) => {
                 const reached = isReached(g);
                 return (
-                  <li key={g.id} className="pb-goals-tl-row" style={{ ['--pb-goal' as string]: g.color }}>
+                  <li key={g.id} data-goal-id={g.id} className="pb-goals-tl-row" style={{ ['--pb-goal' as string]: g.color }}>
                     <span className="pb-goals-tl-vdot" aria-hidden="true" />
                     <button
                       type="button" className="pb-goals-tl-rowbtn"
