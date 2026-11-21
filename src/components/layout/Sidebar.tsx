@@ -6,6 +6,7 @@ import { PebbleMark } from '@/components/brand/PebbleMark';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { useResolvedDark } from '@/lib/useResolvedDark';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
+import release from '@/lib/releaseSnapshot.json';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { NAV_GROUPS, navItems } from './navItems';
@@ -80,6 +81,7 @@ export function Sidebar() {
           <div style={{ fontSize: '0.85rem', minWidth: 0 }}>
             <div className="pb-sidebar-profile-name" style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
             <div className="pb-sidebar-profile-email" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>
+            <div className="pb-sidebar-profile-version">{locale === 'zh' ? '版本' : 'Version'} {release.version}</div>
           </div>
         </div>
       </div>

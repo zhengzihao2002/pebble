@@ -214,7 +214,7 @@ html[data-pb-quiet-startup="offline"] .pebble-root .pb-quiet-status-startup[data
   display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
   flex: 1 1 auto; min-height: 44px; padding: .45rem .65rem; font-size: .78rem;
 }
-.pebble-root .pb-quiet-actions > button:disabled { opacity: .55; cursor: not-allowed; }
+.pebble-root .pb-quiet-actions > button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .pebble-root .pb-quiet-title {
   display: flex; flex-wrap: wrap; align-items: center; column-gap: .35rem;
 }

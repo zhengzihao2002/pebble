@@ -472,6 +472,7 @@
 .pebble-root .pb-sidebar-profile { flex: none; min-height: 3.25rem; }
 .pebble-root .pb-sidebar-profile-name { height: 1.25rem; line-height: 1.25rem; }
 .pebble-root .pb-sidebar-profile-email { height: 1rem; line-height: 1rem; }
+.pebble-root .pb-sidebar-profile-version { margin-block-start: .15rem; color: var(--ink-soft); font-size: .68rem; line-height: 1rem; white-space: nowrap; }
 
 /* One text line box for anchors and buttons; SVGs share its visual center. */
 .pebble-root .pebble-sidebar .nav-btn { line-height: 1.25rem; align-items: center; }

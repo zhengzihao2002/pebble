@@ -62,6 +62,7 @@ export function QuietSyncStatus() {
   const label = `${q.title} · ${q.status[status]}`;
   const StatusIcon = statusIcons[status];
   const offline = status === 'offline';
+  const syncUnavailable = status !== 'paused';
 
   return (
     <div
@@ -88,14 +89,14 @@ export function QuietSyncStatus() {
           <p className="pb-quiet-panel-detail">{q.detail[status]}</p>
           {problem && <p className="pb-quiet-problem">{q.problem[problem]}</p>}
           {lastSyncedAt !== null && (
-            <p className="pb-quiet-panel-meta">
+            <p className="pb-quiet-panel-meta" aria-live="polite">
               {t(q.lastSynced, {
-                time: new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: 'medium', timeStyle: 'short' }).format(lastSyncedAt),
+                time: new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: 'medium', timeStyle: 'medium' }).format(lastSyncedAt),
               })}
             </p>
           )}
           <div className="pb-quiet-actions">
-            <button type="button" className="btn-primary" onClick={syncNow} disabled={offline || status === 'syncing'}>
+            <button type="button" className="btn-primary" aria-disabled={syncUnavailable} onClick={() => { if (!syncUnavailable) syncNow(); }}>
               <RefreshCw size={15} aria-hidden="true" />{q.syncNow}
             </button>
           </div>

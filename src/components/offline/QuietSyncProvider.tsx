@@ -139,12 +139,16 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     await tellWorkerWho(userId);
     const onSavedView = isSavedView(location.pathname);
     const required = [...new Set([...(onSavedView ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
-    const [result, viewResult] = await Promise.all([
-      quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
+    const [{ result, downloaded }, viewResult] = await Promise.all([
+      quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite })
+        .then(result => ({ result, downloaded: receiveStatus(result) })),
       refreshView && onSavedView ? callAction(refreshQuietViewAction) : undefined,
       refreshReference(),
     ]);
-    if (receiveStatus(result) && viewResult?.ok !== false) return true;
+    // A new deployment can replace the saved pages even when the currently
+    // running build cannot apply its server action response in place.
+    const newerBuildSaved = result?.build && result.build !== BUILD_ID;
+    if (downloaded && (viewResult?.ok !== false || newerBuildSaved)) return true;
     if (result && !result.authExpired) setProblem('incomplete');
     return false;
   }, [receiveStatus, refreshReference, userId]);
@@ -259,7 +263,8 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     await new Promise<void>(queued => {
       // Register the refresh before allowing another navigation. Only the
       // downloads and current-view action go to the server. Navigation stays local.
-      const snapshot = quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued);
+      const snapshot = quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued)
+        .then(result => ({ result, downloaded: readQuietPreference(userId).enabled && receiveStatus(result) }));
       const view = options?.refreshCurrent !== false && !readOffline() && pages.includes(route)
         ? callAction(refreshQuietViewAction)
         : undefined;
@@ -267,11 +272,11 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
         snapshot,
         view,
         refreshReference(),
-      ]).then(([result, viewResult]) => {
+      ]).then(([{ result, downloaded }, viewResult]) => {
         queued();
         if (!readQuietPreference(userId).enabled) return;
-        const downloaded = receiveStatus(result);
-        if ((result && !result.authExpired && !downloaded) || (viewResult?.ok === false && activeRoute() === route)) {
+        const newerBuildSaved = downloaded && result?.build && result.build !== BUILD_ID;
+        if ((result && !result.authExpired && !downloaded) || (viewResult?.ok === false && !newerBuildSaved && activeRoute() === route)) {
           setProblem('incomplete');
         }
       }).catch(() => {
