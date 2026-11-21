@@ -39,7 +39,6 @@ function activeRoute() {
 }
 
 const savedView = { goal: '/goals', schedule: '/scheduled', transaction: '/transactions', budget: '/budgets' } as const;
-const goalViews = [savedView.goal, '/dashboard', '/insights'];
 
 export function QuietSyncProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const [enabled, setEnabledState] = useState(false);
@@ -118,28 +117,30 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     };
   }, [reconcile, showPreference]);
 
-  const download = useCallback(async (afterWrite = false) => {
-    if (!(await isServerReachable())) return false;
-    await tellWorkerWho(userId);
-    const hasPrimaryRoute = QUIET_SYNC_PAGES.includes(location.pathname);
-    const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
-    // The transaction form shares the ordinary offline reference snapshot.
-    // Refresh it only as part of an intentional Quiet Sync.
-    const reference = Promise.all([
+  const refreshReference = useCallback(() => {
+    // Quiet Sync and the offline transaction form share this reference snapshot.
+    return Promise.all([
       callAction(getAccountsAction), callAction(getCategoriesAction),
     ]).then(([accounts, categories]) =>
       accounts.ok && categories.ok
         ? saveSnapshot({ userId, accounts: accounts.accounts, categories: categories.categories, savedAt: Date.now() }).catch(() => {})
         : undefined,
     );
+  }, [userId]);
+
+  const download = useCallback(async (afterWrite = false) => {
+    if (!(await isServerReachable())) return false;
+    await tellWorkerWho(userId);
+    const hasPrimaryRoute = QUIET_SYNC_PAGES.includes(location.pathname);
+    const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
     const [result] = await Promise.all([
       quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
-      reference,
+      refreshReference(),
     ]);
     if (receiveStatus(result)) return true;
     if (result && !result.authExpired) setProblem('incomplete');
     return false;
-  }, [receiveStatus, userId]);
+  }, [receiveStatus, refreshReference, userId]);
 
   const sync = useCallback(async (reload: boolean, afterWrite = false) => {
     if (busy.current) return;
@@ -220,21 +221,20 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     const route = activeRoute();
     const primary = savedView[kind];
     const pathname = location.pathname;
-    const related = kind === 'goal' ? goalViews : QUIET_SYNC_PAGES;
+    const required = [...new Set([primary, ...QUIET_SYNC_PAGES])];
     const pages = [...new Set([
-      primary,
-      ...(related.includes(pathname) ? [route] : []),
-      ...related,
-      ...(kind !== 'goal' && pathname === '/budgets/plan' ? [route] : []),
+      ...required,
+      ...(required.includes(pathname) || pathname === '/budgets/plan' ? [route] : []),
     ])];
     setSaveSyncs(count => count + 1);
     setProblem(null);
     await new Promise<void>(queued => {
       // Register the refresh before allowing another navigation. Only the
       // worker's explicit download goes to the server. Navigation stays local.
-      void quietWorkerCommand({
-        type: 'QUIET_REFRESH', user: userId, pages, required: [primary], build: BUILD_ID, partial: true, afterWrite: true,
-      }, queued).then(result => {
+      void Promise.all([
+        quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued),
+        refreshReference(),
+      ]).then(([result]) => {
         queued();
         if (!readQuietPreference(userId).enabled) return;
         if (receiveStatus(result)) {
@@ -247,7 +247,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
         setProblem('incomplete');
       }).finally(() => setSaveSyncs(count => count - 1));
     });
-  }, [receiveStatus, userId]);
+  }, [receiveStatus, refreshReference, userId]);
 
   const status = offline ? 'offline' : preparing ? 'preparing' : syncing || saveSyncs ? 'syncing' : 'paused';
   return (
