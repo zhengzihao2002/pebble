@@ -25,6 +25,7 @@
   }
   button { border-color: var(--accent); }
   button[disabled] { cursor: default; opacity: .6; }
+  [hidden] { display: none; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #status { margin: .75rem 0 0; }
   #status:empty { display: none; }
@@ -37,6 +38,7 @@
   <div class="actions">
     <a id="dashboard" href="/dashboard">Open saved Dashboard</a>
     <button id="sync" type="button">Sync now</button>
+    <a id="open" hidden>Open synced page</a>
   </div>
   <p id="status" role="status" aria-live="polite"></p>
 </main>
@@ -45,6 +47,7 @@
     var cookie = (document.cookie.match(/(?:^|; )pebble-lang=([^;]+)/) || [])[1];
     var zh = cookie === 'zh' || (!cookie && /^zh/i.test(navigator.language || ''));
     var sync = document.getElementById('sync');
+    var open = document.getElementById('open');
     var status = document.getElementById('status');
     if (zh) {
       document.documentElement.lang = 'zh-CN';
@@ -53,6 +56,7 @@
       document.getElementById('description').textContent = '此页面尚未保存在本机。请打开已保存的页面，或立即同步下载。部分页面需要在设置中关闭轻量同步。';
       document.getElementById('dashboard').textContent = '打开已保存的概览';
       sync.textContent = '立即同步';
+      open.textContent = '打开已同步的页面';
     }
     function request() {
       var worker = navigator.serviceWorker && navigator.serviceWorker.controller;
@@ -69,8 +73,13 @@
         clearTimeout(timeout);
         channel.port1.close();
         if (event.data && event.data.authExpired) location.replace('/auth/sign-in');
-        else if (event.data && event.data.ok) location.replace(location.href);
-        else fail();
+        else if (event.data && event.data.ok) {
+          open.href = location.href;
+          open.hidden = false;
+          if (document.activeElement === sync) open.focus();
+          sync.hidden = true;
+          status.textContent = zh ? '同步完成。' : 'Sync complete.';
+        } else fail();
       };
       worker.postMessage({ type: 'QUIET_SYNC_FALLBACK' }, [channel.port2]);
     }

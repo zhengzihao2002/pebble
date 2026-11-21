@@ -255,6 +255,20 @@ test('a write refresh waits behind a pre-write sync, gates affected reads, and r
   assert.deepEqual(worker.requests, ['/reports', '/reports']);
 });
 
+test('a full sync replaces stale query variants without enabling network navigation', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  await worker.message({ type: 'QUIET_REFRESH', user, pages: ['/reports?period=month'], partial: true });
+  worker.useRevision('manually-synced');
+  worker.requests.length = 0;
+
+  const result = await worker.message({ type: 'QUIET_REFRESH', user, pages });
+  assert.equal(result.ok, true);
+  assert.equal(result.available.includes('/reports?period=month'), false);
+  assert.match(await (await worker.fetch('/reports?period=month')).text(), /manually-synced/);
+  assert.deepEqual(worker.requests, pages);
+});
+
 test('a cached page waits for successive writes on its path and resumes when a write refresh fails', async () => {
   const worker = workerFixture();
   await save(worker);

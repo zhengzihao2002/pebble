@@ -612,9 +612,9 @@ function refreshQuiet(data, publish) {
         await cache.put(doc.key, new Response(doc.buf, { headers: { 'content-type': doc.contentType } }));
         meta.pages[doc.key] = { size: doc.buf.byteLength, at: at++ };
       }
-      if (data.afterWrite) {
-        // Query variants can outlive the underlying record. If the base
-        // page was refreshed, let older variants use that fresh snapshot.
+      if (!data.partial || data.afterWrite) {
+        // When the base page is refreshed, older query variants should use
+        // the fresh snapshot instead of keeping data from a previous sync.
         var freshKeys = new Set(matching.map(function (doc) { return doc.key; }));
         for (var existing of Object.keys(meta.pages)) {
           var url = new URL(existing);

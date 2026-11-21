@@ -46,7 +46,6 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [saveSyncs, setSaveSyncs] = useState(0);
-  const [reloadRoute, setReloadRoute] = useState<string | null>(null);
   const checkedLaunch = useRef(false);
   const [preparing, setPreparing] = useState(false);
   const [writePending, setWritePending] = useState(false);
@@ -128,15 +127,15 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     );
   }, [userId]);
 
-  const download = useCallback(async (afterWrite = false) => {
-    const route = activeRoute();
+  const download = useCallback(async ({ refreshView = false, afterWrite = false } = {}) => {
     if (!(await isServerReachable())) return false;
     await tellWorkerWho(userId);
-    const hasPrimaryRoute = QUIET_SYNC_PAGES.includes(location.pathname);
-    const required = [...new Set([...(hasPrimaryRoute ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
+    const pathname = location.pathname;
+    const onSavedView = QUIET_SYNC_PAGES.includes(pathname) || pathname === '/budgets/plan';
+    const required = [...new Set([...(onSavedView ? [activeRoute()] : []), ...QUIET_SYNC_PAGES])];
     const [result, viewResult] = await Promise.all([
       quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite }),
-      afterWrite && hasPrimaryRoute && route === activeRoute() ? callAction(refreshQuietViewAction) : undefined,
+      refreshView && onSavedView ? callAction(refreshQuietViewAction) : undefined,
       refreshReference(),
     ]);
     if (receiveStatus(result) && viewResult?.ok !== false) return true;
@@ -144,14 +143,13 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     return false;
   }, [receiveStatus, refreshReference, userId]);
 
-  const sync = useCallback(async (reload: boolean, afterWrite = false) => {
+  const sync = useCallback(async ({ afterWrite = false } = {}) => {
     if (busy.current) return;
-    const route = activeRoute();
     busy.current = true;
     setSyncing(true);
     setProblem(null);
     try {
-      if (await download(afterWrite) && reload && route === activeRoute() && QUIET_SYNC_PAGES.includes(location.pathname)) setReloadRoute(route);
+      await download({ refreshView: true, afterWrite });
     } finally {
       setSyncing(false);
       busy.current = false;
@@ -187,7 +185,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
   useEffect(() => {
     if (!writePending || busy.current) return;
     setWritePending(false);
-    if (enabled) void sync(false, true);
+    if (enabled) void sync({ afterWrite: true });
   }, [enabled, preparing, sync, syncing, writePending]);
 
   useEffect(() => {
@@ -196,24 +194,9 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     if (!takeQuietNavigationMarker(activeRoute()) && enabled && !readOffline() && QUIET_SYNC_PAGES.includes(location.pathname) &&
         isQuietSyncLaunch(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined,
           document.referrer, location.origin, readQuietRestoreSignals())) {
-      void sync(true);
+      void sync();
     }
   }, [enabled, preferenceReady, sync]);
-
-  useEffect(() => {
-    if (!reloadRoute) return;
-    const reload = () => {
-      const stillHere = activeRoute() === reloadRoute;
-      if (stillHere && document.querySelector('[role="dialog"]')) return;
-      observer.disconnect();
-      setReloadRoute(null);
-      if (stillHere) location.reload();
-    };
-    const observer = new MutationObserver(reload);
-    observer.observe(document.body, { childList: true, subtree: true });
-    reload();
-    return () => observer.disconnect();
-  }, [reloadRoute]);
 
   const refreshAfterWrite = useCallback(() => {
     setWritePending(true);
@@ -261,7 +244,7 @@ export function QuietSyncProvider({ userId, children }: { userId: string; childr
     <QuietSyncContext.Provider value={{
       enabled: enabled || preparing, preferenceReady, status, problem, lastSyncedAt,
       setEnabled: next => { void setEnabled(next); },
-      syncNow: () => { void sync(true); },
+      syncNow: () => { void sync(); },
       refreshAfterWrite,
       refreshAfterSave,
     }}>
