@@ -12,7 +12,7 @@ import { loadPartnerWorkspaceAccess } from '@/lib/partnerSnapshot.server';
 import { PartnerQuietBoundary } from '@/components/partner/PartnerQuietBoundary';
 import { partnerViewPair } from '@/lib/partnerView.server';
 import { BUILD_ID } from '@/lib/offline/buildId';
-import { QUIET_SYNC_HEADER_PREINIT, QUIET_SYNC_MAX_AGE_MS } from '@/lib/offline/quietSync';
+import { QUIET_SYNC_HEADER_PREINIT, QUIET_SYNC_MAX_AGE_MS, QUIET_SYNC_RELOAD_PREINIT } from '@/lib/offline/quietSync';
 
 /**
  * Reads the pebble-lang cookie so the SERVER renders the whole app in the
@@ -55,11 +55,12 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     }}>
       <LocaleProvider locale={locale}>
         <TimeZoneOverrideProvider timeZoneOverride={timeZoneOverride}>
+          <script data-pb-quiet-owner={userId} data-pb-quiet-build={BUILD_ID} data-pb-quiet-pair={partnerPair ?? undefined}
+            dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT + QUIET_SYNC_RELOAD_PREINIT }} />
           {/* Only the owner workspace carries the user and build marker
               that allows the service worker to save this document. */}
           {partnerPair
             ? <QuietSyncProvider userId={userId} pair={partnerPair}>
-                <script data-pb-quiet-owner={userId} dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT }} />
                 <PartnerQuietBoundary pair={partnerPair} expiresAt={access?.ok ? partnerExpiresAt : 0}
                   accessVersion={access?.ok ? access.data.accessVersion : undefined}>
                   <BudgetPlanNavigationProvider>
@@ -70,7 +71,6 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
               </QuietSyncProvider>
             : <>
               <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
-              <script data-pb-quiet-owner={userId} dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT }} />
               <QuietSyncProvider userId={userId}>
                 <OfflineProvider userId={userId}>
                   <BudgetPlanNavigationProvider><AppShell>{children}</AppShell></BudgetPlanNavigationProvider>

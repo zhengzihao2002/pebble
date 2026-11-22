@@ -85,6 +85,36 @@ test('Quiet Sync can confirm a snapshot if its original message port never repli
   assert.deepEqual(await cjs.exports.quietWorkerCommand({ type: 'QUIET_REFRESH', user: 'first' }), result);
 });
 
+test('a network hard reload schedules all saved pages and an ordinary cached reload stays local', async () => {
+  const cjs = { exports: {} };
+  vm.runInNewContext(source, { module: cjs, exports: cjs.exports });
+  const commands = [];
+  const active = { postMessage(command, [port]) { commands.push(command); port.postMessage({ ok: true }); port.close(); } };
+  const simulate = ({ workerStart = 0, controller = null, enabled = true, pair = null } = {}) => {
+    const window = {};
+    vm.runInNewContext(cjs.exports.QUIET_SYNC_RELOAD_PREINIT, {
+      window, MessageChannel, setTimeout, clearTimeout,
+      document: { currentScript: { getAttribute: name => ({ 'data-pb-quiet-owner': 'first', 'data-pb-quiet-build': 'build-new', 'data-pb-quiet-pair': pair })[name] } },
+      navigator: { serviceWorker: { controller, getRegistration: async () => ({ active }) } },
+      performance: { getEntriesByType: () => [{ type: 'reload', workerStart }] },
+      localStorage: { getItem: () => JSON.stringify({ enabled }) },
+      location: { pathname: pair ? '/partner/dashboard' : '/budgets/plan', search: '?year=2026' },
+    });
+    return window.pebbleQuietReload?.result;
+  };
+  assert.equal(simulate({ workerStart: 25 }), undefined);
+  assert.equal(simulate({ controller: active }), undefined);
+  assert.equal(simulate({ enabled: false }), undefined);
+  assert.equal((await simulate()).ok, true);
+  assert.equal(commands[0].afterWrite, true);
+  assert.equal(commands[0].reloadBuild, 'build-new');
+  assert.equal(commands[0].pages.length, 11);
+  assert.equal(commands[0].pages[0], '/budgets/plan?year=2026');
+  assert.equal((await simulate({ pair: 'partner-pair' })).ok, true);
+  assert.equal(commands[1].type, 'QUIET_PARTNER_REFRESH');
+  assert.equal(commands[1].pair, 'partner-pair');
+});
+
 test('cached HTML paints the document owner’s Quiet Sync status before hydration', () => {
   const cjs = { exports: {} };
   vm.runInNewContext(source, { module: cjs, exports: cjs.exports });

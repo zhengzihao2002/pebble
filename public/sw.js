@@ -155,6 +155,7 @@ function setQuietPolicy(data) {
 function clearPartnerPages(meta) {
   partnerEpoch += 1;
   delete meta.partner;
+  delete meta.partnerReload;
   return deletePartnerCaches();
 }
 
@@ -308,11 +309,13 @@ function quietPage(partner) {
   });
 }
 
-function quietNavigation(url, user) {
+function quietNavigation(url, meta) {
   if (url.pathname === '/') return Promise.resolve(Response.redirect(self.location.origin + '/dashboard', 302));
   var key = pageKey(url);
   if (!key) return quietPage();
-  function cachedPage() {
+  var user = meta.user;
+  function cachedPage(current) {
+    if (current.quiet?.reloadBuild && current.quiet.reloadBuild !== current.build) return quietPage();
     return caches.open(PAGES).then(function (cache) {
       return cache.match(key, { ignoreVary: true }).then(function (saved) {
         if (saved || !url.search) return saved;
@@ -322,15 +325,16 @@ function quietNavigation(url, user) {
   }
   var path = new URL(key).pathname;
   var writing = pendingQuietWrite(user, path);
-  if (!writing) return cachedPage();
+  if (!writing) return cachedPage(meta);
   return waitForQuietWrites(user, path).then(readMeta).then(function (meta) {
-    return meta.user === user ? cachedPage() : quietPage();
+    return meta.user === user ? cachedPage(meta) : quietPage();
   });
 }
 
 function quietPartnerNavigation(url, meta) {
   var partner = meta.partner;
   if (!partner) return quietPage(true);
+  if (meta.partnerReload?.pair === partner.pair && meta.partnerReload.build !== partner.build) return quietPage(true);
   if (partner.expiresAt <= Date.now()) {
     return expirePartnerPages(meta.user, partner.pair).then(function () { return quietPage(true); }, function () { return quietPage(true); });
   }
@@ -610,6 +614,12 @@ function refreshQuiet(data, keepAlive) {
   var started = epoch;
   return readMeta().then(async function (before) {
     if (before.user !== data.user || started !== epoch) return quietStatus({}, data.user);
+    if (data.reloadBuild) {
+      if (!quietPaused(before)) return Object.assign(quietStatus(before, data.user), { ok: false });
+      await withMeta(function (meta) {
+        if (meta.user === data.user && started === epoch && quietPaused(meta)) meta.quiet.reloadBuild = data.reloadBuild;
+      });
+    }
     var urls = quietPageURLs(data.pages);
     var keys = Object.keys(urls);
     var required = Object.keys(quietPageURLs(data.required || data.pages));
@@ -635,7 +645,7 @@ function refreshQuiet(data, keepAlive) {
         return Object.assign(quietStatus({}, data.user), { authExpired: true });
       }
       if (required.includes(key)) {
-        if (!doc || build && doc.context.build !== build) {
+        if (!doc || build && doc.context.build !== build || data.reloadBuild && doc.context.build !== data.reloadBuild) {
           return Object.assign(quietStatus(before, data.user), { ok: false });
         }
         build = doc.context.build;
@@ -700,6 +710,7 @@ function refreshQuiet(data, keepAlive) {
       if (saved) {
         meta.quiet = meta.quiet || { enabled: false };
         meta.quiet.lastSyncedAt = Date.now();
+        delete meta.quiet.reloadBuild;
         meta.version = matching.find(function (doc) { return doc.context.version; })?.context.version || null;
       }
     });
@@ -786,6 +797,11 @@ async function refreshQuietPartner(data, keepAlive) {
     return epoch === started && partnerEpoch === partnerStarted && meta.user === user && quietPaused(meta);
   };
   if (!pair || !valid(before)) return quietPartnerStatus({}, user, pair);
+  if (data.reloadBuild) {
+    await withMeta(function (meta) {
+      if (valid(meta)) meta.partnerReload = { pair: pair, build: data.reloadBuild };
+    });
+  }
 
   var docs = [];
   var total = 0;
@@ -803,7 +819,8 @@ async function refreshQuietPartner(data, keepAlive) {
       return Object.assign(quietPartnerStatus({}, user, pair), { accessDenied: true });
     }
     total += doc?.buf?.byteLength || 0;
-    if (!doc || total > MAX_PAGES_BYTES || docs.length && docs[0].context.build !== doc.context.build) {
+    if (!doc || total > MAX_PAGES_BYTES || docs.length && docs[0].context.build !== doc.context.build ||
+        data.reloadBuild && doc.context.build !== data.reloadBuild) {
       return Object.assign(quietPartnerStatus(before, user, pair), { ok: false });
     }
     expiresAt = Math.min(expiresAt, doc.context.expiresAt);
@@ -827,6 +844,7 @@ async function refreshQuietPartner(data, keepAlive) {
     }
     var context = docs[0].context;
     meta.partner = { pair: pair, cache: cacheName, build: context.build, version: context.version, access: context.access, expiresAt: expiresAt, lastSyncedAt: Date.now() };
+    delete meta.partnerReload;
   });
   var current = await readMeta();
   var result = quietPartnerStatus(current, user, pair);
@@ -841,6 +859,7 @@ async function refreshQuietPartner(data, keepAlive) {
 }
 
 var partnerRefreshes = Promise.resolve();
+var partnerReloads = new Map();
 function notifyQuietCache(user, partner = false) {
   return self.clients.matchAll({ type: 'window' }).then(function (clients) {
     var type = partner ? 'QUIET_PARTNER_CACHE_CHANGED' : 'QUIET_CACHE_CHANGED';
@@ -859,6 +878,10 @@ function enqueueQuietPartnerRefresh(data, keepAlive) {
     return state;
   }).catch(function () { return quietPartnerStatus({}, data.user, data.pair); });
   partnerRefreshes = result;
+  if (data.reloadBuild) {
+    partnerReloads.set(data.user, result);
+    void result.then(function () { if (partnerReloads.get(data.user) === result) partnerReloads.delete(data.user); });
+  }
   return result;
 }
 
@@ -982,8 +1005,14 @@ self.addEventListener('fetch', function (event) {
       return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event) : fetch(request);
     }
     if (request.mode === 'navigate') {
-      if (/^\/partner(?:\/|$)/.test(path)) return quietPartnerNavigation(url, meta);
-      return quietNavigation(url, meta.user);
+      if (/^\/partner(?:\/|$)/.test(path)) {
+        var reload = partnerReloads.get(meta.user);
+        if (reload) return reload.then(readMeta).then(function (current) {
+          return current.user === meta.user ? quietPartnerNavigation(url, current) : quietPage(true);
+        });
+        return quietPartnerNavigation(url, meta);
+      }
+      return quietNavigation(url, meta);
     }
     if (path.indexOf('/api/auth/') === 0 && event.clientId) {
       return self.clients.get(event.clientId).then(function (client) {

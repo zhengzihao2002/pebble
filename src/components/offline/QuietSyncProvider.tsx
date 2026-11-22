@@ -10,7 +10,7 @@ import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnecti
 import { tellWorkerWho } from '@/lib/offline/serviceWorker';
 import { saveSnapshot } from '@/lib/offline/queueStore';
 import {
-  QUIET_SYNC_PAGES, isQuietSyncDue, isQuietSyncLaunch, readQuietRestoreSignals, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
+  QUIET_SYNC_PAGES, isQuietSyncDue, isQuietSyncLaunch, readQuietReloadSync, readQuietRestoreSignals, takeQuietNavigationMarker, quietWorkerCommand, readQuietPreference, subscribeQuietPreference, writeQuietPreference, type QuietWorkerStatus,
 } from '@/lib/offline/quietSync';
 
 type SaveKind = 'goal' | 'schedule' | 'transaction' | 'budget';
@@ -235,12 +235,25 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
   useEffect(() => {
     if (checkedLaunch.current || !preferenceReady) return;
     checkedLaunch.current = true;
+    const reload = enabled ? readQuietReloadSync(userId, pair) : undefined;
+    if (reload) {
+      busy.current = true;
+      setSyncing(true);
+      void reload.then(result => {
+        if (!receiveStatus(result) && result && !result.authExpired) setProblem('incomplete');
+      }).finally(() => {
+        busy.current = false;
+        setSyncing(false);
+        void checkSnapshot();
+      });
+      return;
+    }
     if (!takeQuietNavigationMarker(activeRoute()) && enabled && !readOffline() && isSavedView(location.pathname, pair) &&
         isQuietSyncLaunch(performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined,
           document.referrer, location.origin, readQuietRestoreSignals())) {
       void sync();
     }
-  }, [enabled, pair, preferenceReady, sync]);
+  }, [checkSnapshot, enabled, pair, preferenceReady, receiveStatus, sync, userId]);
 
   const canCatchUp = enabled && !offline && !syncing && saveSyncs === 0;
   useEffect(() => {

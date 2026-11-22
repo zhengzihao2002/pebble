@@ -22,6 +22,37 @@ const changeEvent = 'pebble:quiet-sync-change';
  * carries the authenticated document owner, so preferences never cross accounts. */
 export const QUIET_SYNC_HEADER_PREINIT = `try{var owner=document.currentScript.getAttribute('data-pb-quiet-owner');var prefs=owner&&JSON.parse(localStorage.getItem(${JSON.stringify(prefix)}+owner)||'null');if(prefs&&prefs.enabled===true){var status=navigator.onLine===false?'offline':'paused';document.documentElement.setAttribute('data-pb-quiet-startup',status);}}catch(err){}`;
 
+/** A hard reload bypasses the service worker for the document. Start saving
+ * the live build before React loads so subsequent navigation can wait for it. */
+export const QUIET_SYNC_RELOAD_PREINIT = `try{
+  var script=document.currentScript, owner=script.getAttribute('data-pb-quiet-owner');
+  var build=script.getAttribute('data-pb-quiet-build'), pair=script.getAttribute('data-pb-quiet-pair');
+  var nav=performance.getEntriesByType('navigation')[0], sw=navigator.serviceWorker;
+  var prefs=owner&&JSON.parse(localStorage.getItem(${JSON.stringify(prefix)}+owner)||'null');
+  if(prefs?.enabled===true&&build&&sw&&nav?.type==='reload'&&!nav.workerStart&&!sw.controller&&!window.pebbleQuietReload){
+    var primary=${JSON.stringify(QUIET_SYNC_PAGES)}, path=location.pathname;
+    var pages=primary.includes(path)||path==='/budgets/plan'?Array.from(new Set([path+location.search].concat(primary))):primary;
+    var command=pair?{type:'QUIET_PARTNER_REFRESH',user:owner,pair:pair,reloadBuild:build}:{type:'QUIET_REFRESH',user:owner,pages:pages,required:pages,build:build,afterWrite:true,reloadBuild:build};
+    window.pebbleQuietReload={owner:owner,pair:pair,result:sw.getRegistration().then(function(reg){
+      if(!reg?.active)return null;
+      return new Promise(function(resolve){
+        var channel=new MessageChannel();
+        function finish(value){clearTimeout(timeout);channel.port1.close();resolve(value);}
+        var timeout=setTimeout(function(){finish(null);},120000);
+        channel.port1.onmessage=function(event){if(typeof event.data?.ok==='boolean')finish(event.data);};
+        try{reg.active.postMessage(command,[channel.port2]);}catch(err){finish(null);}
+      });
+    }).catch(function(){return null;})};
+  }
+}catch(err){}`;
+
+export function readQuietReloadSync(user: string, pair?: string): Promise<QuietWorkerStatus | null> | undefined {
+  const reload = (window as Window & { pebbleQuietReload?: {
+    owner: string; pair: string | null; result: Promise<QuietWorkerStatus | null>;
+  } }).pebbleQuietReload;
+  if (reload?.owner === user && reload.pair === (pair ?? null)) return reload.result;
+}
+
 function readOwner() {
   if (typeof document === 'undefined') return undefined;
   return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"], meta[name="pebble-partner-session"]')?.content.split('|')[0];

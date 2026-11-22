@@ -271,6 +271,40 @@ test('a sync replies with the new build timestamp while its assets are still dow
   }
 });
 
+test('a hard refresh syncs the new build before a following normal refresh can use older pages', async () => {
+  const worker = workerFixture();
+  const first = await save(worker);
+  worker.advance(60_000);
+  worker.useBuild('build-b');
+  worker.useVersion('4.54.2');
+  const hold = worker.holdNext('/reports');
+  const sync = worker.message({ type: 'QUIET_REFRESH', user, pages, afterWrite: true, reloadBuild: 'build-b' });
+  let navigated = false;
+  const next = worker.fetch('/dashboard').then(response => { navigated = true; return response.text(); });
+  try {
+    await hold.ready;
+    assert.equal(navigated, false);
+  } finally { hold.release(); }
+  const result = await sync;
+  assert.equal(result.ok, true);
+  assert.equal(result.version, '4.54.2');
+  assert.ok(result.lastSyncedAt > first.lastSyncedAt);
+  assert.match(await next, /build-b/);
+});
+
+test('a failed new-build reload cannot silently return to an earlier saved build', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  const command = { type: 'QUIET_REFRESH', user, pages };
+  const mixed = await worker.message({ ...command, afterWrite: true, reloadBuild: 'build-b' });
+  assert.equal(mixed.ok, false);
+  worker.boot();
+  assert.match(await (await worker.fetch('/dashboard')).text(), /Saved pages only/);
+  worker.useBuild('build-b');
+  assert.equal((await worker.message(command)).ok, true);
+  assert.match(await (await worker.fetch('/dashboard')).text(), /build-b/);
+});
+
 test('a write refresh waits behind a pre-write sync, gates affected reads, and replaces stale query variants', async () => {
   const worker = workerFixture();
   await save(worker);
@@ -437,4 +471,25 @@ test('leaving Partner View or changing the saved owner removes the partner snaps
   await worker.message({ type: 'SESSION', user: 'user-b' });
   assert.equal((await worker.message({ type: 'QUIET_STATUS', user, pair })).ok, false);
   assert.ok(worker.savedCaches().every(cache => !cache.startsWith('pebble-partner-pages')));
+});
+
+test('a normal Partner View refresh waits for the new build started by a hard refresh', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  const pair = 'pair-one';
+  worker.usePartner(pair);
+  const command = { type: 'QUIET_PARTNER_REFRESH', user, pair };
+  assert.equal((await worker.message(command)).ok, true);
+  worker.useBuild('build-b');
+  const hold = worker.holdNext('/partner/reports');
+  const sync = worker.message({ ...command, reloadBuild: 'build-b' });
+  let navigated = false;
+  const next = worker.fetch('/partner/dashboard').then(response => { navigated = true; return response.text(); });
+  try {
+    await hold.ready;
+    assert.equal(navigated, false);
+  } finally { hold.release(); }
+  assert.equal((await sync).ok, true);
+  assert.match(await next, /build-b/);
+  assert.match(await (await worker.fetch('/dashboard')).text(), /build-a/);
 });
