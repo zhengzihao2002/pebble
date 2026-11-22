@@ -141,25 +141,6 @@
   padding: 0.05rem 0.45rem; border-radius: 99px; font-size: 0.72rem; font-weight: 600;
   color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
-.pebble-root .pb-goals-history { padding: 0 1rem; }
-.pebble-root .pb-goals-history-toggle {
-  display: flex; align-items: center; gap: 0.5rem; min-height: 3rem; padding: 0.65rem 0;
-  list-style: none; border-radius: 0.5rem; cursor: pointer;
-  color: var(--ink); font-size: 0.9rem; font-weight: 600;
-}
-.pebble-root .pb-goals-history-toggle::-webkit-details-marker { display: none; }
-.pebble-root .pb-goals-history-toggle .pb-goals-subhead-icon { color: var(--ink-soft); background-color: color-mix(in srgb, var(--ink) 6%, transparent); }
-.pebble-root .pb-goals-history-chevron { flex: none; margin-inline-start: auto; color: var(--ink-soft); }
-.pebble-root .pb-goals-history[open] .pb-goals-history-chevron { transform: rotate(180deg); }
-.pebble-root .pb-goals-history-note { margin: 0 0 0.8rem; font-size: 0.82rem; color: var(--ink-soft); }
-.pebble-root .pb-goals-history-list { list-style: none; margin: 0; padding: 0; }
-.pebble-root .pb-goals-history-row {
-  border-top: 1px solid var(--line); display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0;
-}
-.pebble-root .pb-goals-history-dot { flex: none; width: 0.52rem; height: 0.52rem; border-radius: 50%; }
-.pebble-root .pb-goals-history-info { flex: 1; min-width: 0; }
-.pebble-root .pb-goals-history-info > span { font-size: 0.8rem; color: var(--ink-soft); }
-
 /* ---------- Goal card ---------- */
 .pebble-root .pb-goal-card {
   position: relative; display: flex; flex-direction: column; gap: 1rem; min-width: 0;
@@ -212,7 +193,6 @@
 .pebble-root .pb-goal-done { margin-top: auto; width: 100%; min-height: 2.6rem; box-sizing: border-box; }
 .pebble-root .pb-goal-add:focus-visible,
 .pebble-root .pb-goal-dismiss:focus-visible,
-.pebble-root .pb-goals-history-toggle:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
 .pebble-root .pb-goal-complete { display: flex; align-items: center; gap: 0.5rem; margin-top: auto; }
 .pebble-root .pb-goal-complete .pb-goal-done { flex: 1; margin: 0; padding-inline: 0.45rem; }
 .pebble-root .pb-goal-dismiss {

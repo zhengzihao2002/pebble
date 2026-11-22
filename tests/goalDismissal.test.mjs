@@ -1,60 +1,47 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import vm from 'node:vm';
-import { buildSync } from 'esbuild';
+import { parse } from '@babel/parser';
+import { transformSync } from 'esbuild';
 
-const require = createRequire(import.meta.url);
-const source = buildSync({
-  stdin: { contents: `
-    export { orderGoals } from './src/components/goals/goalMath';
-    export { usePebbleStore, switchPebbleUser } from './src/store/usePebbleStore';
-  `, resolveDir: process.cwd() },
-  bundle: true, write: false, platform: 'node', format: 'cjs', packages: 'external',
-}).outputFiles[0].text;
+const source = readFileSync('src/lib/actions/pebble.ts', 'utf8');
+const ast = parse(source, { sourceType: 'module', plugins: ['typescript'] });
+const handler = ast.program.body.find(node => node.type === 'FunctionDeclaration' && node.id?.name === 'deleteGoal');
+const { code } = transformSync(source.slice(handler.start, handler.end), { loader: 'ts' });
 
-function fixture(values = new Map()) {
-  const compiled = { exports: {} };
-  const localStorage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value),
-    removeItem: (key) => values.delete(key),
-  };
-  vm.runInNewContext(source, { module: compiled, exports: compiled.exports, require, console, window: { localStorage } });
-  return { ...compiled.exports, values };
-}
-
-test('dismissal separates only achieved goals and preserves the supplied records and amounts', () => {
-  const { orderGoals } = fixture();
-  const achieved = { id: 'car', name: 'Car', date: '2026-12-01', target: 500, current: 625 };
-  const achievedVisible = { id: 'trip', name: 'Trip', date: '2027-02-01', target: 500, current: 500 };
-  const inProgress = { id: 'home', name: 'Home', date: '2027-01-01', target: 5000, current: 1000 };
-  const goals = [achieved, achievedVisible, inProgress];
-  const ordered = orderGoals(goals, ['car', 'home']);
-  assert.equal(ordered.inProgress[0], inProgress);
-  assert.equal(ordered.reached[0], achievedVisible);
-  assert.equal(ordered.dismissed[0], achieved);
-  assert.equal(ordered.dismissed.length, 1);
-  assert.deepEqual(Array.from(ordered.visible), [achievedVisible, inProgress]);
-  assert.equal(goals.reduce((sum, goal) => sum + goal.current, 0), 2125);
-  assert.equal(orderGoals(goals).reached.length, 2);
-  assert.equal(orderGoals(goals).dismissed.length, 0);
-});
-
-test('dismiss and restore persist locally for the signed-in owner and stay isolated by account', async () => {
-  const first = fixture();
-  await first.switchPebbleUser('alice');
-  first.usePebbleStore.getState().setGoalDismissed('car', true);
-  first.usePebbleStore.getState().setGoalDismissed('car', true);
-  const reload = fixture(first.values);
-  assert.deepEqual(Array.from(reload.usePebbleStore.getState().dismissedGoalIds), ['car']);
-
-  await reload.switchPebbleUser('bob');
-  assert.equal(reload.usePebbleStore.getState().dismissedGoalIds.length, 0);
-  reload.usePebbleStore.getState().setGoalDismissed('trip', true);
-  await reload.switchPebbleUser('alice');
-  reload.usePebbleStore.getState().setGoalDismissed('car', false);
-  assert.equal(fixture(reload.values).usePebbleStore.getState().dismissedGoalIds.length, 0);
-  await reload.switchPebbleUser('bob');
-  assert.deepEqual(Array.from(reload.usePebbleStore.getState().dismissedGoalIds), ['trip']);
+test('dismissing a reached goal releases its allocation and checks completion and ownership at deletion', async () => {
+  const goal = { id: 'id', userId: 'userId', currentAmount: 'currentAmount', targetAmount: 'targetAmount' };
+  let rows = [
+    { id: 'car', userId: 'owner', currentAmount: 625, targetAmount: 500 },
+    { id: 'home', userId: 'owner', currentAmount: 100, targetAmount: 500 },
+    { id: 'foreign', userId: 'other', currentAmount: 500, targetAmount: 500 },
+  ];
+  let revalidations = 0;
+  const db = { delete(table) {
+    assert.equal(table, goal);
+    return { where: predicate => ({ returning() {
+      const removed = rows.filter(predicate);
+      rows = rows.filter(row => !predicate(row));
+      return removed;
+    } }) };
+  } };
+  const deleteGoal = new Function('db', 'goal', 'and', 'eq', 'gt', 'gte', 'fail', 'revalidateAll',
+    code + '\nreturn deleteGoal')(
+      db, goal, (...predicates) => row => predicates.every(predicate => !predicate || predicate(row)),
+      (column, value) => row => row[column] === value,
+      (column, value) => row => row[column] > value,
+      (column, target) => row => row[column] >= row[target],
+      (_error, _kind, code) => ({ ok: false, code }),
+      () => { revalidations++; },
+    );
+  const dismiss = id => deleteGoal('owner', { id, reachedOnly: true });
+  assert.match(source, /export const deleteGoalAction = withSessionUser\(deleteGoal\)/);
+  assert.equal((await dismiss('home')).ok, false);
+  assert.equal((await dismiss('foreign')).ok, false);
+  assert.deepEqual(await dismiss('car'), { ok: true });
+  assert.deepEqual(rows.filter(row => row.userId === 'owner').map(row => row.currentAmount), [100]);
+  assert.equal(revalidations, 1);
+  assert.equal((await dismiss('car')).ok, false);
+  assert.deepEqual(await deleteGoal('owner', { id: 'home', deferPageRefresh: true }), { ok: true });
+  assert.equal(revalidations, 1);
 });

@@ -2,7 +2,7 @@
 
 import { refresh, revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { and, asc, desc, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db, neonSql } from '@/db';
 import {
   account,
@@ -569,17 +569,17 @@ async function updateGoal(userId: string, input: UpdateGoalActionInput): Promise
  * a soft claim on the existing balance, so removing it just returns that
  * amount to the unallocated figure.
  */
-async function deleteGoal(userId: string, input: { id: string; deferPageRefresh?: boolean }): Promise<ActionResult> {
+async function deleteGoal(userId: string, input: { id: string; deferPageRefresh?: boolean; reachedOnly?: boolean }): Promise<ActionResult> {
   try {
-    const rows = await db
-      .select({ id: goal.id })
-      .from(goal)
-      .where(and(eq(goal.userId, userId), eq(goal.id, input.id)))
-      .limit(1);
-
-    if (!rows[0]) return fail('That goal no longer exists.', 'validation', 'notFound.goal');
-
-    await db.delete(goal).where(and(eq(goal.userId, userId), eq(goal.id, input.id)));
+    const reached = input.reachedOnly === true;
+    const rows = await db.delete(goal).where(and(
+      eq(goal.userId, userId),
+      eq(goal.id, input.id),
+      reached ? and(gt(goal.targetAmount, 0), gte(goal.currentAmount, goal.targetAmount)) : undefined,
+    )).returning({ id: goal.id });
+    if (!rows[0]) return reached
+      ? fail('This goal is no longer reached or has been removed.', 'validation', 'validation.goalDismissUnavailable')
+      : fail('That goal no longer exists.', 'validation', 'notFound.goal');
 
     if (input.deferPageRefresh !== true) revalidateAll();
     return { ok: true };

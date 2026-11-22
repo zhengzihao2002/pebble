@@ -1549,6 +1549,7 @@ export const en = {
     'validation.goalSavedNonNegative': 'Saved amount cannot be negative.',
     'validation.goalDateInvalid': 'Target date must be a valid date.',
     'notFound.goal': 'That goal no longer exists.',
+    'validation.goalDismissUnavailable': 'This goal is no longer reached or has been removed.',
     'validation.goalAddAmountInvalid': 'Enter an amount greater than zero, in dollars and cents.',
     'validation.goalAlreadyFull': 'This goal has already reached its target.',
     // {amount} is a formatted dollar figure.

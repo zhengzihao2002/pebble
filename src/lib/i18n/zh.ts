@@ -1446,6 +1446,7 @@ export const zh: typeof en = {
     'validation.goalSavedNonNegative': '已存金额不能为负数。',
     'validation.goalDateInvalid': '目标日期必须是有效日期。',
     'notFound.goal': '该目标已不存在。',
+    'validation.goalDismissUnavailable': '该目标尚未达成或已被移除。',
     'validation.goalAddAmountInvalid': '请输入大于零的金额，最多保留两位小数。',
     'validation.goalAlreadyFull': '这个目标已经达成。',
     'validation.goalAddExceedsTarget': '超过了这个目标还需要的金额（{amount}）。',

@@ -44,6 +44,7 @@ export type ServerErrorCode =
   | 'validation.goalSavedNonNegative'
   | 'validation.goalDateInvalid'
   | 'notFound.goal'
+  | 'validation.goalDismissUnavailable'
   | 'validation.goalAddAmountInvalid'
   | 'validation.goalAlreadyFull'
   | 'validation.goalAddExceedsTarget'

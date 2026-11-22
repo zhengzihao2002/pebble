@@ -32,6 +32,7 @@ interface GoalModalProps {
   // Absent means "add"; present means "edit that goal". One form rather than
   // two near-identical ones, so validation and layout cannot drift apart.
   goal?: Goal;
+  dismissReached?: boolean;
 }
 
 type Mode = 'form' | 'confirmDelete';
@@ -42,12 +43,12 @@ type Mode = 'form' | 'confirmDelete';
  * goal's name is user data. The target date is a type="date" input, so its
  * value stays 'YYYY-MM-DD' whatever the browser's picker displays.
  */
-export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
+export function GoalModal({ onClose, goal, onQuietDelete, dismissReached = false }: GoalModalProps) {
   const { d, t, locale } = useTranslation();
   const { refreshAfterSave } = useQuietSync();
   const isEdit = goal !== undefined;
 
-  const [mode, setMode] = useState<Mode>('form');
+  const [mode, setMode] = useState<Mode>(dismissReached ? 'confirmDelete' : 'form');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveErrorKind, setSaveErrorKind] = useState<FailureKind | undefined>(undefined);
@@ -139,7 +140,7 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
     setSaving(true);
     setSaveError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callMutation(deleteGoalAction, { id: goal.id, deferPageRefresh });
+    const result = await callMutation(deleteGoalAction, { id: goal.id, deferPageRefresh, reachedOnly: dismissReached });
     const removeInPlace = deferPageRefresh && onQuietDelete !== undefined;
     if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh && !removeInPlace });
     setSaving(false);
@@ -161,7 +162,7 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
         <div className="pb-modal-head">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 id="goal-modal-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>
-              {isEdit ? d.goalModal.titleEdit : d.goalModal.titleAdd}
+              {dismissReached ? d.ux.goals.dismissConfirm : isEdit ? d.goalModal.titleEdit : d.goalModal.titleAdd}
             </h2>
             <ModalCloseButton onClick={close} disabled={saving} />
           </div>
@@ -180,7 +181,7 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
         ) : mode === 'confirmDelete' ? (
           <>
             <div className="pb-modal-body themed-scroll">
-              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{d.goalModal.deleteConfirm}</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>{dismissReached ? t(d.ux.goals.releaseAllocation, { amount: formatCurrency(goal?.current ?? 0) }) : d.goalModal.deleteConfirm}</p>
               <p style={{ fontSize: '0.83rem', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
                 {/* The goal's name is user data and leads the sentence in both
                     languages, so the remainder is a single key. */}
@@ -190,9 +191,9 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
             <div className="pb-modal-foot">
               <ActionError message={saveError} kind={saveErrorKind} onRetry={() => void handleDelete()} busy={saving} />
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" onClick={() => { setMode('form'); setSaveError(null); }} disabled={saving} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.goalModal.keepIt}</button>
+                <button type="button" onClick={() => { if (dismissReached) close(); else { setMode('form'); setSaveError(null); } }} disabled={saving} className="pill" style={{ flex: 1, padding: '0.6rem' }}>{d.goalModal.keepIt}</button>
                 <button type="button" onClick={() => void handleDelete()} disabled={saving || deleted !== null} className="btn-primary" style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--wine)', opacity: saving || deleted ? 0.6 : 1 }}>
-                  {saving ? d.goalModal.deleting : d.goalModal.delete}
+                  {saving ? d.goalModal.deleting : dismissReached ? d.ux.goals.dismiss : d.goalModal.delete}
                 </button>
               </div>
             </div>

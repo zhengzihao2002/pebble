@@ -67,23 +67,17 @@ export function monthlyPace(goal: Pick<Goal, 'current' | 'target' | 'date'>, tod
 /**
  * Display order: goals still in progress by soonest target date (undated
  * ones last, then by name for a stable order), and reached goals apart.
- * A dismissal never hides an unfinished goal.
  * The stored order (created_at) is unchanged; this only arranges the view.
  */
-export function orderGoals(goals: Goal[], dismissedIds: readonly string[] = []) {
+export function orderGoals(goals: Goal[]) {
   const byDate = (a: Goal, b: Goal) => {
     const da = isGoalDate(a.date) ? a.date : '9999-99-99';
     const db = isGoalDate(b.date) ? b.date : '9999-99-99';
     return da < db ? -1 : da > db ? 1 : a.name.localeCompare(b.name);
   };
-  const done = goals.filter(isReached).sort(byDate);
-  const ids = new Set(dismissedIds);
-  const dismissed = done.filter((g) => ids.has(g.id));
   return {
     inProgress: goals.filter((g) => !isReached(g)).sort(byDate),
-    reached: done.filter((g) => !ids.has(g.id)),
-    dismissed,
-    visible: dismissed.length ? goals.filter((g) => !ids.has(g.id) || !isReached(g)) : goals,
+    reached: goals.filter(isReached).sort(byDate),
   };
 }
 

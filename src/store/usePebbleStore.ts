@@ -127,8 +127,6 @@ interface PebblePrefs {
   allowTextSelect: boolean;
   // Insights' Worth knowing: ids the user marked Not useful.
   insightsDismissed: string[];
-  // Display preference for achieved goals, independent of saved allocations.
-  dismissedGoalIds: string[];
   accountSort: AccountSortMode;
   manualAccountOrder: string[];
 }
@@ -141,7 +139,6 @@ interface PebbleUIState extends PebblePrefs {
   setPrivacyOnLaunch: (value: boolean) => void;
   setAllowTextSelect: (value: boolean) => void;
   dismissInsight: (id: string) => void;
-  setGoalDismissed: (id: string, dismissed: boolean) => void;
   setAppearance: (value: Appearance) => void;
   setLocale: (value: Locale) => void;
   setTextSize: (value: number) => void;
@@ -211,7 +208,6 @@ const DEFAULT_PREFS: PebblePrefs = {
   privacyOnLaunch: false,
   allowTextSelect: false,
   insightsDismissed: [],
-  dismissedGoalIds: [],
 };
 
 // ---- Per-user storage -------------------------------------------------------
@@ -288,9 +284,6 @@ export const usePebbleStore = create<PebbleUIState>()(
       setAllowTextSelect: (value) => set({ allowTextSelect: value }),
       // Capped, newest kept, so the list cannot grow without bound.
       dismissInsight: (id) => set((state) => ({ insightsDismissed: [...(state.insightsDismissed ?? []).filter((x) => x !== id), id].slice(-200) })),
-      setGoalDismissed: (id, dismissed) => set((state) => ({
-        dismissedGoalIds: dismissed ? [...new Set([...state.dismissedGoalIds, id])] : state.dismissedGoalIds.filter((value) => value !== id),
-      })),
     }),
     {
       // Per-user key prefix - see perUserStorage. Imported, not literal: the
@@ -303,7 +296,7 @@ export const usePebbleStore = create<PebbleUIState>()(
       merge: (persisted, current) => {
         const restored = { ...((persisted ?? {}) as Partial<PebblePrefs> & Record<string, unknown>) };
         delete restored.showCardGlow;
-        if (!Array.isArray(restored.dismissedGoalIds)) delete restored.dismissedGoalIds;
+        delete restored.dismissedGoalIds;
         const merged = { ...current, ...DEFAULT_PREFS, ...restored };
         return { ...merged, numberRolling: merged.numberRolling !== false, sidebarCollapsed: merged.sidebarCollapsed === true, cardGlow: merged.cardGlow === true, softCursor: merged.softCursor === true, cursorSize: normalizeCursorSize(merged.cursorSize), textSize: normalizeTextSize(merged.textSize), themeChoice: resolveThemeChoice(merged.themeChoice), profileColor: normalizeProfileColor(merged.profileColor), ambientSettings: normalizeAmbientSettings(merged.ambientSettings) };
       },
@@ -365,7 +358,6 @@ export const usePebbleStore = create<PebbleUIState>()(
         privacyOnLaunch: state.privacyOnLaunch,
         allowTextSelect: state.allowTextSelect,
         insightsDismissed: state.insightsDismissed,
-        dismissedGoalIds: state.dismissedGoalIds,
       }),
     }
   )
