@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Upload } from 'lucide-react';
 import { GhostAccountChoice } from '@/components/shared/GhostAccountChoice';
@@ -10,7 +9,8 @@ import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { getAccountsAction, getAllocationSummaryAction, getSearchTransactionsAction, importTransactionsAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { parseCsv, parseCsvAmountCents, parseCsvDate, type DateFormat } from '@/lib/csvParse';
@@ -458,6 +458,7 @@ function ImportPreviewContents({ preview, pending }: { preview: ImportPreviewDat
 
 function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: ImportPreviewData }) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
   const x = d.ux.transactionDialogs;
   const wide = useWideImport();
   const narrow = useNarrowImport();
@@ -826,10 +827,11 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
       accountId: accOverride[r.idx],
       tag: (r.cents as number) < 0 ? (tagOverride[r.idx] ?? '').trim().slice(0, 50) : '',
     }));
-    const result = await callAction(() => importTransactionsAction({ rows: payload }));
+    const result = await callMutation(importTransactionsAction, { rows: payload });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     setDone(payload.length);
+    refreshAfterWrite();
   };
 
   // The ticked rows for the If imported pane, with the same description and
@@ -938,7 +940,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
               {loading ? <LoadingBlock label={d.common.loading} minHeight={160} /> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
                   <DropZone onFile={(f) => void onFile(f)} />
-                  <QuietSyncActionNote kind="connection" />
                   {fileError && <p role="status" style={{ fontSize: '0.8rem', color: 'var(--wine)', margin: 0 }}>{fileError}</p>}
                   {loadError && <ActionError message={loadError} onRetry={() => { if (fileRef.current) void onFile(fileRef.current); }} />}
                 </div>
@@ -1241,7 +1242,6 @@ function ImportCsvModal({ onClose, preview }: { onClose: () => void; preview?: I
                     {t(d.importCsv.importBtn, { count: selected.length })}
                   </button>
                 </div>
-                <QuietSyncActionNote kind="connection" />
               </div>
             </>
           )}

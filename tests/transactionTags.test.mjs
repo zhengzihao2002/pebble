@@ -7,7 +7,7 @@ import { transformSync } from 'esbuild';
 const { code: grouping } = transformSync(readFileSync('src/lib/transactionTags.ts', 'utf8'), { loader: 'ts', format: 'cjs' });
 const groupedModule = { exports: {} };
 new Function('module', 'exports', grouping)(groupedModule, groupedModule.exports);
-const { groupTransactionTags, MAX_TAG_NAME_LENGTH } = groupedModule.exports;
+const { groupTransactionTags, indexTaggedTransactions, MAX_TAG_NAME_LENGTH } = groupedModule.exports;
 
 const actions = readFileSync('src/lib/actions/pebble.ts', 'utf8');
 const program = parse(actions, { sourceType: 'module', plugins: ['typescript'] }).program.body;
@@ -18,6 +18,20 @@ test('tag groups count exact names and omit untagged transactions', () => {
   assert.deepEqual(groupTransactionTags([
     { tag: 'Coffee' }, { tag: 'Coffee' }, { tag: 'coffee' }, { tag: '  ' }, {},
   ]), [{ name: 'Coffee', count: 2 }, { name: 'coffee', count: 1 }]);
+});
+
+test('saved tag rows retain paid-card names and use the same date and id ordering as live rows', () => {
+  const row = { tag: 'Groceries', description: 'Market visit', category: 'Food', date: '2026-11-21', amount: 24.59, accountId: 'bank' };
+  const details = indexTaggedTransactions([
+    { ...row, id: 'a' },
+    { ...row, id: 'z', creditCardPayoff: { cardName: 'Credit' } },
+    { ...row, id: 'old', date: '2026-11-19' },
+    { ...row, id: 'p', tag: '__proto__', accountId: 'missing' },
+    { ...row, id: 'no-tag', tag: '' },
+  ], [{ id: 'bank', name: 'Debit' }]);
+  assert.deepEqual(details.Groceries.map(({ id, accountName }) => [id, accountName]), [['z', 'Credit'], ['a', 'Debit'], ['old', 'Debit']]);
+  assert.deepEqual(details.__proto__.map(({ id, accountName }) => [id, accountName]), [['p', null]]);
+  assert.deepEqual(Object.keys(details), ['Groceries', '__proto__']);
 });
 
 test('bulk rename checks its session, validates the target, and changes only the matching expense tags', async () => {

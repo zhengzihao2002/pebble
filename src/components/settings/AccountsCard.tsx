@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { SETTING_TARGETS } from './settingsTargets';
 
 import { GhostAccountMode, GhostBadge } from '@/components/accounts/GhostAccountMode';
@@ -14,7 +13,8 @@ import { SectionHeader } from '@/components/kit/SectionHeader';
 import { dueDates } from '@/lib/creditCards';
 import { useSettingsToday } from './useSettingsToday';
 import { createAccountAction, hibernateAccountAction, wakeAccountAction, setPreferredAccountAction, updateCreditCardAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
@@ -85,6 +85,7 @@ const labelStyle: React.CSSProperties = {
  * the dictionary, unlike the fixed Checking/Cash pair they replaced.
  */
 export function AccountsCard({ accounts, balancesByAccount, hasRecords }: AccountsCardProps) {
+  const { refreshAfterWrite } = useQuietSync();
   const deleteLocked = useSafetyLock('deleteAccounts');
   const { d, t, locale } = useTranslation();
   // The zone-aware today; null until hydrated, and the due chip waits.
@@ -172,7 +173,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(null);
     if (!willRefuse) setSleepOverride((m) => ({ ...m, [a.id]: target }));
     setSleepBusy(a.id);
-    const result = await callAction(() => (target === 'active' ? wakeAccountAction(a.id) : hibernateAccountAction(a.id)));
+    const result = await callMutation(target === 'active' ? wakeAccountAction : hibernateAccountAction, a.id);
     setSleepBusy(null);
     if (!result.ok) {
       setSleepOverride((m) => { const n = { ...m }; delete n[a.id]; return n; });
@@ -183,6 +184,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     }
     setSavedId(a.id);
     setSweepSkip(a.id);
+    refreshAfterWrite();
   };
   // Ids present before a create, so the new row can be found once the page
   // hands down the refreshed list.
@@ -212,25 +214,26 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setError(null);
     setSavedId(null);
     const idsBefore = new Set(accounts.map((a) => a.id));
-    const result = await callAction(() => createAccountAction({ name, kind, last4, ...(kind === 'credit' ? { creditLimit: parseMoney(limit), dueDay } : {}) }));
+    const result = await callMutation(createAccountAction, { name, kind, last4, ...(kind === 'credit' ? { creditLimit: parseMoney(limit), dueDay } : {}) });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     // Below the failure return: the new row is marked when the list refreshes.
     setRowErrorId(null);
     pendingNew.current = idsBefore;
     resetForm();
+    refreshAfterWrite();
   };
 
   const runAccountAction = async (
     accountId: string,
-    run: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>,
+    run: (id: string) => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind }>,
     feedback: 'sweep' | 'star' | 'quiet' = 'sweep',
   ) => {
     if (saving) return;
     setSaving(true);
     setError(null);
     setSavedId(null);
-    const result = await callAction(run);
+    const result = await callMutation(run, accountId);
     setSaving(false);
     setConfirmDelete(null);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setRowErrorId(accountId); return; }
@@ -239,6 +242,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSavedId(accountId);
     if (feedback !== 'sweep') setSweepSkip(accountId);
     if (feedback === 'star') setStarPop(accountId);
+    refreshAfterWrite();
   };
 
   const handleCardSave = async (a: Account) => {
@@ -246,13 +250,14 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
     setSaving(true);
     setError(null);
     setSavedId(null);
-    const result = await callAction(() => updateCreditCardAction({ id: a.id, creditLimit: parseMoney(editLimit), dueDay: editDue }));
+    const result = await callMutation(updateCreditCardAction, { id: a.id, creditLimit: parseMoney(editLimit), dueDay: editDue });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setRowErrorId(a.id); return; }
     // Below the failure return.
     setRowErrorId(null);
     setEditingCard(null);
     setSavedId(a.id);
+    refreshAfterWrite();
   };
 
   const sleepingCount = visible.filter((a) => !a.isGhost && (sleepOverride[a.id] ?? a.status) === 'hibernated').length;
@@ -354,7 +359,7 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                 {st === 'active' && !a.isGhost && (
                   <button
                     type="button"
-                    onClick={() => runAccountAction(a.id, () => setPreferredAccountAction(a.id), a.isPreferred ? 'quiet' : 'star')}
+                    onClick={() => runAccountAction(a.id, setPreferredAccountAction, a.isPreferred ? 'quiet' : 'star')}
                     className={`icon-btn pb-settings-iconbtn is-round${starPop === a.id ? ' pb-star-pop' : ''}`}
                     aria-pressed={a.isPreferred}
                     aria-label={t(a.isPreferred ? d.accounts.unpreferLabel : d.accounts.preferLabel, { name: a.name })}
@@ -458,7 +463,6 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
 
               </div>
 
-              {editingCard !== a.id && <QuietSyncActionNote kind="connection" />}
 
               {rowErrorId === a.id && error && (
                 <ActionError message={error} kind={errorKind} busy={saving} />
@@ -482,7 +486,6 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
                       {d.accounts.cardSave}
                     </button>
                   </div>
-                  <QuietSyncActionNote kind="connection" />
                 </div>
               )}
             </div>
@@ -553,7 +556,6 @@ export function AccountsCard({ accounts, balancesByAccount, hasRecords }: Accoun
               {saving ? d.common.saving : d.accounts.create}
             </button>
           </div>
-          <QuietSyncActionNote kind="connection" />
         </div>
       ) : (
         <>

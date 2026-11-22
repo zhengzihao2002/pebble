@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { SETTING_TARGETS } from './settingsTargets';
@@ -14,7 +13,7 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { DeltaChip } from '@/components/kit/DeltaChip';
 import type { Account } from '@/lib/data/mappers';
 import { createBalanceAdjustmentAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
@@ -116,13 +115,13 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
     // today, and a value captured at mount would still be yesterday's on a
     // card left open past midnight.
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => createBalanceAdjustmentAction({
+    const result = await callMutation(createBalanceAdjustmentAction, {
       deferPageRefresh,
       accountId,
       delta,
       description,
       date: todayDateString(),
-    }));
+    });
 
     if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
@@ -248,7 +247,6 @@ export function ModifyBalanceCard({ accounts, balancesByAccount }: ModifyBalance
             {saving ? d.common.saving : d.modifyBalance.record}
           </button>
         </div>
-        <QuietSyncActionNote />
       </div>
 
       {confirm && (

@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { SETTING_TARGETS } from './settingsTargets';
 
 import { useEffect, useState } from 'react';
@@ -11,7 +10,7 @@ import {
   getCategoriesAction,
   updateCategoryAction,
 } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callAuthorizedAction, callMutation } from '@/lib/actions/callAction';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
@@ -124,7 +123,7 @@ export function CategoryManagerCard() {
   // to createCategoryAction/updateCategoryAction pass through untranslated.
   // iconKey and color are looked-up values, never labels.
   const { d, t, locale } = useTranslation();
-  const { enabled: readsPaused } = useQuietSync();
+  const { enabled: readsPaused, refreshAfterWrite } = useQuietSync();
   const { readReference } = useOfflineQueue();
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,9 +155,10 @@ export function CategoryManagerCard() {
   //
   // Returns the fresh list (or null on failure) so submit() can find a newly
   // added row. A failed background refresh keeps the list already shown.
-  const load = async (): Promise<CategoryItem[] | null> => {
+  const load = async (afterMutation = false): Promise<CategoryItem[] | null> => {
     if (!loadedOnce) setLoading(true);
-    const result = await callAction(getCategoriesAction, d.categoryManager.loadFailed);
+    const result = afterMutation ? await callAuthorizedAction(getCategoriesAction)
+      : await callAction(getCategoriesAction, d.categoryManager.loadFailed);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));
       setErrorKind(result.kind);
@@ -189,6 +189,9 @@ export function CategoryManagerCard() {
         setErrorKind(undefined);
         setLoadFailed(false);
         setLoadedOnce(true);
+      } else {
+        setError(d.ux.offline.quietSync.missingLocal);
+        setLoadFailed(true);
       }
       setLoading(false);
     });
@@ -230,13 +233,14 @@ export function CategoryManagerCard() {
     setError(null);
     setSavedId(null);
     const result = wasAdding
-      ? await callAction(() => createCategoryAction(draft))
-      : await callAction(() => updateCategoryAction({ id: editedId!, ...draft }));
+      ? await callMutation(createCategoryAction, draft)
+      : await callMutation(updateCategoryAction, { id: editedId!, ...draft });
     setBusy(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
     // Below the failure return: the check only ever marks a confirmed save.
     cancel();
-    const fresh = await load();
+    const fresh = await load(true);
+    refreshAfterWrite();
     if (!fresh) return;
     const markId = wasAdding ? (fresh.find((c) => !idsBefore.has(c.id))?.id ?? null) : editedId;
     setSavedId(markId);
@@ -295,7 +299,6 @@ export function CategoryManagerCard() {
             </button>
           </div>
         )}
-        <QuietSyncActionNote kind="connection" />
       </div>
     );
   };
@@ -403,7 +406,10 @@ export function CategoryManagerCard() {
           target={deleteTarget}
           allCategories={categories}
           onClose={() => setDeleteTarget(null)}
-          onDeleted={() => { setDeleteTarget(null); load(); }}
+          onDeleted={() => {
+            setDeleteTarget(null);
+            void load(true).finally(refreshAfterWrite);
+          }}
         />
       )}
     </div>

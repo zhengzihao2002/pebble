@@ -1,3 +1,5 @@
+import type { QuietPostPermit } from './quietPost';
+
 export const QUIET_SYNC_PAGES = [
   '/dashboard', '/accounts', '/transactions', '/reports', '/analysis',
   '/insights', '/budgets', '/goals', '/scheduled', '/settings',
@@ -94,9 +96,20 @@ export function quietSyncIsEnabled() {
   return readQuietPreference().enabled;
 }
 
-export async function selectQuietPartner(pair: string | null): Promise<{ ok: true } | { ok: false; error: string; reason?: string }> {
+export async function permitQuietPost(): Promise<QuietPostPermit | undefined> {
+  if (!quietSyncIsPaused()) return;
+  const user = readOwner();
+  if (!user) throw new Error('Quiet Sync has no active user');
+  const token = crypto.randomUUID();
+  if (navigator.serviceWorker?.controller && !(await quietWorkerCommand({ type: 'QUIET_PERMIT_POST', user, token }))?.ok) {
+    throw new Error('Quiet Sync could not authorize the request');
+  }
+  return { __pebbleQuietPost: token };
+}
+
+export async function selectQuietPartner(pair: string | null, permit?: QuietPostPermit): Promise<{ ok: true } | { ok: false; error: string; reason?: string }> {
   const response = await fetch('/api/partner/quiet-view', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pair }),
+    method: 'POST', headers: { 'content-type': 'application/json', ...(permit && { 'X-Pebble-Quiet-Post': permit.__pebbleQuietPost }) }, body: JSON.stringify({ pair }),
   });
   if (!response.ok) throw new Error('Could not switch partner workspace');
   return response.json();
@@ -164,6 +177,7 @@ export interface QuietWorkerStatus {
 
 type QuietCommand = { user: string } & (
   | { type: 'QUIET_STATUS'; onDemand: true; pair?: string }
+  | { type: 'QUIET_PERMIT_POST'; token: string }
   | { type: 'QUIET_PARTNER_REFRESH'; pair: string }
   | { type: 'QUIET_PARTNER_CLEAR'; pair?: string }
   | { type: 'QUIET_INVALIDATE' }

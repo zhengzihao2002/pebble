@@ -1,5 +1,4 @@
 'use client';
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
@@ -271,7 +270,6 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
           </button>}
         </div>
       </div>
-      {!partner && !finished && <QuietSyncActionNote />}
       {/* Always rendered so the live region exists before its text does and
           the confirmation is announced; hidden while empty (scheduled.css). */}
       <p className="pb-sched-charged" role="status" aria-live="polite">{chargedText}</p>

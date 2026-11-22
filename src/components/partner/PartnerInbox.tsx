@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { SETTING_TARGETS } from '@/components/settings/settingsTargets';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { readPartnerInboxAction, readPartnerInboxItemAction } from '@/lib/actions/partner';
@@ -13,11 +13,11 @@ import type { PartnerInboxItem } from '@/lib/partner';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { partnerError } from './partnerError';
 
-export function PartnerInbox() {
+export function PartnerInbox({ saved }: { saved?: PartnerInboxItem[] } = {}) {
   const { d, t, locale } = useTranslation();
   const x = d.partner.inbox;
-  const { enabled: readsPaused } = useQuietSync();
-  const [items, setItems] = useState<PartnerInboxItem[] | null>(null);
+  const { enabled: readsPaused, refreshAfterWrite } = useQuietSync();
+  const [items, setItems] = useState<PartnerInboxItem[] | null>(saved ?? null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const request = useRef(0);
@@ -30,14 +30,18 @@ export function PartnerInbox() {
   }, [d]);
 
   useEffect(() => {
+    if (saved) setItems(saved);
+  }, [saved]);
+
+  useEffect(() => {
     const refreshOnline = () => { if (!readsPaused && !quietSyncIsPaused()) void reload(); };
-    const initialLoad = window.setTimeout(refreshOnline, 0);
+    const initialLoad = saved === undefined ? window.setTimeout(refreshOnline, 0) : undefined;
     window.addEventListener('focus', refreshOnline);
     return () => {
       window.clearTimeout(initialLoad);
       window.removeEventListener('focus', refreshOnline);
     };
-  }, [reload, readsPaused]);
+  }, [reload, readsPaused, saved]);
 
   useEffect(() => {
     if (!items?.length) return;
@@ -51,21 +55,22 @@ export function PartnerInbox() {
   const markRead = async (id: string) => {
     setBusy(id);
     setError('');
-    const result = await callAction(() => readPartnerInboxItemAction(id));
+    const result = await callMutation(readPartnerInboxItemAction, id);
     setBusy(null);
     if (!result.ok) { setError(partnerError(d, result)); return; }
     request.current++;
+    refreshAfterWrite();
     setItems(previous => previous?.filter(item => item.id !== id) ?? []);
   };
 
   return <section id={SETTING_TARGETS.partnerInbox} className="card pb-partner-card">
     <SectionHeader title={x.title} subtitle={x.hint} icon={Inbox}
       actions={items?.length ? <span className="pill">{items.length}</span> : undefined} />
-    {items === null && readsPaused && <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>}
-    {error && !readsPaused && (
+    {items === null && readsPaused && <p className="pb-partner-note">{d.ux.offline.quietSync.needsSync}</p>}
+    {error && (
       <div className="pb-partner-actions">
         <p className="pb-partner-error" role="alert">{error}</p>
-        <button className="pill" type="button" disabled={busy !== null} onClick={() => void reload()}>{d.partner.refresh}</button>
+        {!readsPaused && <button className="pill" type="button" disabled={busy !== null} onClick={() => void reload()}>{d.partner.refresh}</button>}
       </div>
     )}
     {!error && items?.length === 0 && <p className="pb-partner-note">{x.empty}</p>}

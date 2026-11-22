@@ -224,6 +224,7 @@ export function ModalFrame({ onClose, busy = false, labelledBy, maxWidth = 420, 
     };
 
     const onKey = (e: KeyboardEvent) => {
+      if (document.querySelector('.pb-quiet-confirm[open]')) return;
       if (e.key === 'Tab' && !e.defaultPrevented) {
         if (openFrames[openFrames.length - 1] === id) trapTab(e);
         return;

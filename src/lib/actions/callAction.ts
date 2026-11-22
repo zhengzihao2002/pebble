@@ -37,6 +37,9 @@ import { isServerReachable, readOffline } from '@/lib/offline/connectivity';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { usePebbleStore } from '@/store/usePebbleStore';
 import { getDictionary } from '@/lib/i18n';
+import { permitQuietPost, quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
+import type { QuietPostPermit } from '@/lib/offline/quietPost';
 
 type ActionFailure = { ok: false; error: string; kind?: FailureKind };
 
@@ -51,6 +54,27 @@ export async function callAction<T extends { ok: true } | ActionFailure>(
   run: () => Promise<T>,
   fallbackError?: string,
 ): Promise<T | ActionFailure> {
+  if (quietSyncIsPaused()) {
+    return { ok: false, error: getDictionary(usePebbleStore.getState().locale).ux.offline.quietSync.missingLocal };
+  }
+  return performAction(run, fallbackError);
+}
+
+type Result = { ok: true } | ActionFailure;
+
+export function callAuthorizedAction<T extends Result, Args extends unknown[]>(action: (...args: Args) => Promise<T>, ...args: Args) {
+  return performAction(async () => {
+    const permit = await permitQuietPost();
+    return permit ? (action as unknown as (...all: [...Args, QuietPostPermit]) => Promise<T>)(...args, permit) : action(...args);
+  });
+}
+
+export async function callMutation<T extends Result, Args extends unknown[]>(action: (...args: Args) => Promise<T>, ...args: Args): Promise<T | ActionFailure> {
+  if (!await confirmQuietDatabase()) return { ok: false, error: '' };
+  return callAuthorizedAction(action, ...args);
+}
+
+async function performAction<T extends Result>(run: () => Promise<T>, fallbackError?: string): Promise<T | ActionFailure> {
   try {
     return await run();
   } catch (err) {

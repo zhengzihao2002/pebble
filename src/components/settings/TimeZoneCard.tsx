@@ -1,12 +1,12 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useState } from 'react';
 import { Globe, Globe2 } from 'lucide-react';
 import { SettingsRow } from './SettingsRow';
 import { SETTING_TARGETS } from './settingsTargets';
 import { setTimeZoneOverrideAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
@@ -38,6 +38,7 @@ const DEVICE_SENTINEL = '__device__';
  */
 export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
   const { d, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
 
   const [deviceZone, setDeviceZone] = useState<string | null>(null);
   useEffect(() => {
@@ -72,10 +73,11 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
     setError(null);
     setSaved(false);
     const zone = selected === DEVICE_SENTINEL ? null : selected;
-    const result = await callAction(() => setTimeZoneOverrideAction(zone));
+    const result = await callMutation(setTimeZoneOverrideAction, zone);
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     setSaved(true);
+    refreshAfterWrite();
   };
 
   // A row in the Language & region group. The row is position: relative
@@ -100,7 +102,6 @@ export function TimeZoneCard({ timeZoneOverride }: TimeZoneCardProps) {
         </button>
       </div>
 
-      <QuietSyncActionNote kind="connection" />
       <ActionError message={error} kind={errorKind} onRetry={handleSave} busy={saving} style={{ marginTop: '0.75rem' }} />
       {saved && !dirty && (
         <p className="pb-settings-saved" role="status">{d.settings.timeZone.saved}</p>

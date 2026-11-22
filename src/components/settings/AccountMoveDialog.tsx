@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -12,7 +11,8 @@ import {
   moveAccountRecordsAction,
   type AccountUsage,
 } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import type { Account } from '@/lib/data/mappers';
@@ -45,6 +45,7 @@ type Mode = 'all' | 'some';
  */
 export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: AccountMoveDialogProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
 
   // Records may leave a card, never land on one.
   const destinations = allAccounts.filter((a) => a.id !== source.id && a.status === 'active' && a.kind !== 'credit');
@@ -118,17 +119,18 @@ export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: Acc
     setMoving(true);
     setError(null);
 
-    const result = await callAction(() => moveAccountRecordsAction({
+    const result = await callMutation(moveAccountRecordsAction, {
       fromAccountId: source.id,
       toAccountId: target,
       ...(mode === 'some' ? { transactionIds: [...selected] } : {}),
-    }));
+    });
 
     setMoving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
     // Below the failure return: the confirmation only ever follows a move the
     // server confirmed.
     movedRef.current = true;
+    refreshAfterWrite();
     const destinationLabel = destinationOptions.find((o) => o.value === target)?.label ?? '';
     setSuccess({
       title: d.accounts.moved,
@@ -257,7 +259,6 @@ export function AccountMoveDialog({ source, allAccounts, onClose, onMoved }: Acc
                 {moving ? d.accounts.moving : d.accounts.moveConfirm}
               </button>
             </div>
-            <QuietSyncActionNote kind="connection" />
           </div>
         )}
       </>

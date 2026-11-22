@@ -5,7 +5,6 @@ import { ArrowDownToLine, Pause, RefreshCw, WifiOff } from 'lucide-react';
 import { INTL_LOCALE } from '@/lib/i18n/locale';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useQuietSync } from './QuietSyncProvider';
-import { QuietSyncActionNote } from './QuietSyncActionNote';
 
 const statusIcons = {
   paused: Pause,
@@ -26,10 +25,10 @@ export function QuietSyncStatus() {
   useEffect(() => {
     if (!enabled || !open) return;
     const dismiss = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
+      if (!document.querySelector('.pb-quiet-confirm[open]') && event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      if (event.key !== 'Escape' || document.querySelector('.pb-quiet-confirm[open]')) return;
       setOpen(false);
       trigger.current?.focus();
     };
@@ -68,7 +67,7 @@ export function QuietSyncStatus() {
     <div
       ref={root} className="pb-quiet-status" data-status={status}
       onBlur={event => {
-        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (!document.querySelector('.pb-quiet-confirm[open]') && event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
       <span role="status" className="sr-only">{label}</span>
@@ -103,7 +102,6 @@ export function QuietSyncStatus() {
               <RefreshCw size={15} aria-hidden="true" />{q.syncNow}
             </button>
           </div>
-          {!offline && <QuietSyncActionNote />}
           {updateVersion && <div className="pb-quiet-update">
             <span role="status">{t(q.updateReady, { version: updateVersion })}</span>
             <button type="button" className="pill" onClick={() => location.reload()}>{q.openUpdate}</button>

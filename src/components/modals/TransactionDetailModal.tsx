@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { isPartnerPath } from '@/lib/partnerPaths';
 import { changeSharedTransactionAction } from '@/lib/actions/partner';
 import type { SharedTransaction } from '@/lib/partner';
@@ -27,7 +26,8 @@ import type { CategoryMeta, LedgerRecord } from '@/types';
 import { formatCurrency, formatFullDate, formatLongDate, splitCents } from '@/lib/format';
 import { deductionPct } from '@/lib/stats';
 import { deleteBalanceAdjustmentAction, deleteTransactionAction, getAllocationSummaryAction, updateTransactionAction, getAccountsAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation, callAuthorizedAction } from '@/lib/actions/callAction';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { Account } from '@/lib/data/mappers';
 import { ActionError } from '@/components/shared/ActionError';
@@ -100,6 +100,7 @@ let detailAccountGeneration = 0;
 let detailAccountsInFlight: Promise<void> | null = null;
 
 function fetchDetailAccounts(): Promise<void> {
+  if (quietSyncIsPaused()) return Promise.resolve();
   // Called bare (not through callAction) on purpose: this is a cache fill
   // nobody asked for, so it must fail SILENTLY. callAction logs every
   // transport failure to the console, which offline (or on a dropped
@@ -387,7 +388,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     setError(null);
 
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => updateTransactionAction({
+    const result = await callMutation(updateTransactionAction, {
       id: txn.id,
       type: txn.type,
       description: outgoingDescription,
@@ -403,7 +404,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
             netAmount: Number(netPay),
           }
         : {}),
-    }));
+    });
 
     if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setBusy(false);
@@ -428,7 +429,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
       const change = mode === 'tag'
         ? { kind: 'tag' as const, tag }
         : { kind: 'edit' as const, title: titleCensored ? undefined : title, date, notes: !notesCensored && (canReadNotes || replaceNotes) ? description : undefined };
-      const result = await callAction(() => changeSharedTransactionAction(sharedRow.id, sharedRow.kind, change));
+      const result = await callMutation(changeSharedTransactionAction, sharedRow.id, sharedRow.kind, change);
       setBusy(false);
       if (!result.ok) { setError(partnerError(d, result)); return; }
       shared.onSaved();
@@ -446,7 +447,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     const previousGhost = shownAccounts.find(a => a.id === txn.accountId)?.isGhost;
     const delta = (nextGhost ? 0 : nextSigned) - (previousGhost ? 0 : txn.amount);
 
-    if (delta < 0) {
+    if (delta < 0 && !quietSyncIsPaused()) {
       setBusy(true);
       setError(null);
       const summary = await callAction(getAllocationSummaryAction);
@@ -472,8 +473,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     await performSave();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (shared || busy || deleted || deleteLocked) return;
+    if (!await confirmQuietDatabase('undo')) return;
     setError(null);
     // Nothing is sent yet. The SAME delete call runs after a 5-second undo
     // window (UndoDeleteProvider in AppShell); until it lands the row and
@@ -485,8 +487,8 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
       run: async () => {
         const deferPageRefresh = quietSyncIsPaused();
         const result = type === 'adjustment'
-          ? await callAction(() => deleteBalanceAdjustmentAction({ id, deferPageRefresh }))
-          : await callAction(() => deleteTransactionAction({ id, type, deferPageRefresh }));
+          ? await callAuthorizedAction(deleteBalanceAdjustmentAction, { id, deferPageRefresh })
+          : await callAuthorizedAction(deleteTransactionAction, { id, type, deferPageRefresh });
         if (!result.ok) return translateActionError(d, locale, result);
         await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
         return null;
@@ -985,8 +987,6 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
                 </div>
               </>
             )}
-            {!shared && (mode === 'edit' || mode === 'confirmOverspend') && <QuietSyncActionNote />}
-            {mode === 'confirmDelete' && <QuietSyncActionNote kind="undo" />}
           </div>
         )}
 

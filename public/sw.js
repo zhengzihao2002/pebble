@@ -3,8 +3,8 @@
  * WHAT IT DOES. Lets the installed app (and the browser tab) OPEN without a
  * connection: pages the person has visited come back from a device cache with
  * the data they last saw, and the app's own code and fonts come from a second
- * cache. Writes are never touched here - adding a transaction offline is the
- * app's own queue (src/lib/offline), not this file.
+ * cache. Writes are never cached. Pebble queues offline transactions in the
+ * app and allows approved POSTs through while Quiet Sync is paused.
  *
  * WHAT IT NEVER DOES.
  *  - Cache anything but a GET. Server Actions are POSTs (and carry
@@ -904,6 +904,40 @@ self.addEventListener('activate', function (event) {
   );
 });
 
+var quietPostPermits = new Map();
+
+function isAuthFlow(path) {
+  return /^\/auth(?:\/|$)/.test(path) && !/^\/auth\/(?:privacy|terms)(?:\/|$)/.test(path);
+}
+
+async function allowQuietPost(event, url) {
+  var request = event.request;
+  var client = event.clientId && await self.clients.get(event.clientId);
+  if (client && isAuthFlow(new URL(client.url).pathname) && url.pathname.startsWith('/api/auth/')) return true;
+  var meta = await readMeta();
+  if (!quietPaused(meta)) return true;
+  if (request.method !== 'POST' || !client) return false;
+
+  // Leaving Partner View only clears a cookie, including from the static
+  // expired-view page. Entering checks permissions and requires a permit.
+  if (url.pathname === '/api/partner/quiet-view' && (await request.clone().json().catch(function () { return null; }))?.pair === null) return true;
+  if (!quietPostPermits.size) return false;
+
+  var token;
+  if (request.headers.has('Next-Action')) {
+    try {
+      var args = JSON.parse(await request.clone().text());
+      token = Array.isArray(args) && args.at(-1)?.__pebbleQuietPost;
+    } catch { return false; }
+  } else if (url.pathname === '/api/partner/quiet-view' || url.pathname === '/api/auth/sign-out') {
+    token = request.headers.get('X-Pebble-Quiet-Post');
+  }
+  var permit = quietPostPermits.get(token);
+  if (!permit || permit.user !== meta.user || permit.clientId !== event.clientId || permit.expiresAt <= Date.now()) return false;
+  quietPostPermits.delete(token);
+  return true;
+}
+
 self.addEventListener('message', function (event) {
   var data = event.data || {};
   var keepAlive = function (task) { event.waitUntil(task); };
@@ -919,7 +953,15 @@ self.addEventListener('message', function (event) {
       event.source.postMessage({ type: 'QUIET_REFRESH_RESULT', requestId: data.requestId, result: result });
     }
   };
-  if (data.type === 'CLEAR_CACHES') {
+  if (data.type === 'QUIET_PERMIT_POST') {
+    event.waitUntil(readMeta().then(function (meta) {
+      if (meta.user !== data.user || !event.source?.id || !/^[a-f0-9-]{36}$/.test(data.token)) return reply({ ok: false });
+      for (var [key, permit] of quietPostPermits) if (permit.expiresAt <= Date.now()) quietPostPermits.delete(key);
+      quietPostPermits.set(data.token, { user: meta.user, clientId: event.source.id, expiresAt: Date.now() + 120000 });
+      reply({ ok: true });
+    }));
+  } else if (data.type === 'CLEAR_CACHES') {
+    quietPostPermits.clear();
     event.waitUntil(clearAll().then(function () {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'CLEARED' });
     }));
@@ -980,9 +1022,14 @@ self.addEventListener('message', function (event) {
 
 self.addEventListener('fetch', function (event) {
   var request = event.request;
-  if (request.method !== 'GET') return;
   var url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (request.method !== 'GET') {
+    event.respondWith(allowQuietPost(event, url).then(function (allowed) {
+      return allowed ? fetch(request) : new Response(null, { status: 403 });
+    }));
+    return;
+  }
   var path = url.pathname;
 
   // These files never reach the database. Signed-in GETs are checked before
@@ -1018,7 +1065,7 @@ self.addEventListener('fetch', function (event) {
       return self.clients.get(event.clientId).then(function (client) {
         // Sign-in pages can complete their own session flow. An app page
         // waiting on a session hook cannot bypass its deliberate pause.
-        if (client && /^\/auth(?:\/|$)/.test(new URL(client.url).pathname)) return fetch(request);
+        if (client && isAuthFlow(new URL(client.url).pathname)) return fetch(request);
         return new Response(null, { status: 503 });
       });
     }

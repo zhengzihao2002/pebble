@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -10,7 +9,7 @@ import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { SelectField, type SelectFieldOption } from '@/components/shared/SelectField';
 import { payCreditCardAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import type { Account } from '@/lib/data/mappers';
@@ -131,12 +130,12 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
     setPaying(true);
     setError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => payCreditCardAction({
+    const result = await callMutation(payCreditCardAction, {
       deferPageRefresh,
       fromAccountId: card.id,
       toAccountId: from,
       transactionIds: picked.map((c) => c.id),
-    }));
+    });
     if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setPaying(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
@@ -268,7 +267,6 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
                 {paying ? d.accounts.payOffPaying : t(d.accounts.payOffButton, { amount: formatCurrency(total) })}
               </button>
             </div>
-            <QuietSyncActionNote />
           </div>
         )}
       </>

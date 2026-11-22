@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOut } from 'lucide-react';
 import { signOutCompletely } from '@/lib/auth/signOut';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
 import { LoadingOutline, Spinner } from '@/components/shared/Spinner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
@@ -27,6 +28,7 @@ export function SignOutButton({ className = 'nav-btn', style, iconSize = 18 }: S
   const [discard, setDiscard] = useState(false);
 
   const run = async (discardPending = discard) => {
+    if (!await confirmQuietDatabase()) return;
     setConfirmPending(false);
     setDiscard(discardPending);
     setPhase('working');

@@ -1,13 +1,13 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { ActionError } from '@/components/shared/ActionError';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { LoadingBlock } from '@/components/shared/Spinner';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { clearTransactionTagsAction, loadTaggedTransactionsAction, renameTransactionTagAction } from '@/lib/actions/pebble';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -23,16 +23,18 @@ type TagFailure = { error: string; kind?: FailureKind; code?: string; params?: R
 interface Props {
   name: string;
   tags: TransactionTagGroup[];
+  savedRows?: TaggedTransaction[];
   onClose: () => void;
   onRenamed: (name: string, count: number) => void;
   onCleared: (count: number) => void;
 }
 
-export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared }: Props) {
+export function TransactionTagDialog({ name, tags, savedRows, onClose, onRenamed, onCleared }: Props) {
   const { d, t, locale } = useTranslation();
   const labels = d.ux.settings.tags;
   const titleId = useId();
-  const [rows, setRows] = useState<TaggedTransaction[] | null>(null);
+  const [rows, setRows] = useState<TaggedTransaction[] | null>(savedRows ?? null);
+  const { refreshAfterSave } = useQuietSync();
   const [loadError, setLoadError] = useState<TagFailure | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [query, setQuery] = useState('');
@@ -52,6 +54,8 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
   }, [mode, clearSeconds]);
 
   useEffect(() => {
+    if (savedRows) return;
+    setLoadError(null);
     let active = true;
     void callAction(() => loadTaggedTransactionsAction(name)).then(result => {
       if (!active) return;
@@ -59,7 +63,7 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
       else setLoadError(result);
     });
     return () => { active = false; };
-  }, [name, refresh]);
+  }, [name, refresh, savedRows]);
 
   const matches = useMemo(() => {
     const needle = normalizeTagSearch(query);
@@ -100,18 +104,19 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
     if (busy || !newName || name === newName || newName.length > MAX_TAG_NAME_LENGTH) return;
     setBusy(true);
     setError(null);
-    const result = await callAction(() => renameTransactionTagAction(name, newName));
+    const result = await callMutation(renameTransactionTagAction, name, newName);
     setBusy(false);
     if (!result.ok) { setError(result); return; }
     onRenamed(newName, result.count);
     complete();
+    void refreshAfterSave('transaction', { refreshCurrent: false });
   };
 
   const clear = async (complete: () => void) => {
     if (busy || clearSeconds > 0 || selected.size === 0 || !rows) return;
     setBusy(true);
     setError(null);
-    const result = await callAction(() => clearTransactionTagsAction(name, [...selected]));
+    const result = await callMutation(clearTransactionTagsAction, name, [...selected]);
     setBusy(false);
     if (!result.ok) { setError(result); return; }
     const remaining = rows.filter(row => !selected.has(row.id));
@@ -121,6 +126,7 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
     setEditor('review');
     onCleared(result.count);
     if (!remaining.length) complete();
+    void refreshAfterSave('transaction', { refreshCurrent: false });
   };
 
   return (
@@ -203,7 +209,6 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
                   {busy ? labels.saving : labels.renameAll}
                 </button>
               </div>
-              <QuietSyncActionNote kind="connection" />
             </form>
           )}
           {mode === 'clear' && (
@@ -216,7 +221,6 @@ export function TransactionTagDialog({ name, tags, onClose, onRenamed, onCleared
                   {busy ? labels.clearing : clearSeconds > 0 ? t(labels.clearCountdown, { seconds: clearSeconds }) : labels.confirmClear}
                 </button>
               </div>
-              <QuietSyncActionNote kind="connection" />
             </div>
           )}
         </div>}

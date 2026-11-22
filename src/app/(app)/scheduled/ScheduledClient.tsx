@@ -5,7 +5,7 @@ import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { setRecurringRuleStatusAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
@@ -81,11 +81,11 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
     setError(null);
     setFailedRule(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => setRecurringRuleStatusAction({
+    const result = await callMutation(setRecurringRuleStatusAction, {
       id: rule.id,
       status: rule.status === 'active' ? 'paused' : 'active',
       deferPageRefresh,
-    }));
+    });
     if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setBusyId(null);
     if (!result.ok) {

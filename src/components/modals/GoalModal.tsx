@@ -1,10 +1,9 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { CalendarDays, Check, Trash2 } from 'lucide-react';
 import { addGoalAction, deleteGoalAction, updateGoalAction, type ActionResult } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingOverlay } from '@/components/shared/Spinner';
@@ -96,8 +95,8 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
       date: date.trim(), iconKey, color, deferPageRefresh,
     };
     const result: ActionResult & { createdGoal?: Goal } = goal
-      ? await callAction(() => updateGoalAction({ ...payload, id: goal.id }))
-      : await callAction(() => addGoalAction(payload));
+      ? await callMutation(updateGoalAction, { ...payload, id: goal.id })
+      : await callMutation(addGoalAction, payload);
 
     if (!result.ok) {
       setSaving(false);
@@ -140,7 +139,7 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
     setSaving(true);
     setSaveError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => deleteGoalAction({ id: goal.id, deferPageRefresh }));
+    const result = await callMutation(deleteGoalAction, { id: goal.id, deferPageRefresh });
     const removeInPlace = deferPageRefresh && onQuietDelete !== undefined;
     if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh && !removeInPlace });
     setSaving(false);
@@ -196,7 +195,6 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
                   {saving ? d.goalModal.deleting : d.goalModal.delete}
                 </button>
               </div>
-              <QuietSyncActionNote />
             </div>
           </>
         ) : (
@@ -338,7 +336,6 @@ export function GoalModal({ onClose, goal, onQuietDelete }: GoalModalProps) {
                   {saving ? d.common.saving : isEdit ? d.goalModal.saveChanges : d.goalModal.titleAdd}
                 </button>
               </div>
-              <QuietSyncActionNote />
             </div>
           </>
         )}

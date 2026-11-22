@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { Goal } from '@/types';
@@ -9,7 +8,7 @@ import { resolveGoalIcon } from '@/lib/data/icons';
 import { addToGoalAction, getAllocationSummaryAction } from '@/lib/actions/pebble';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
@@ -116,7 +115,7 @@ export function AddToGoalModal({ goal, onClose, unallocated }: AddToGoalModalPro
     setSaving(true);
     setError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => addToGoalAction({ id: goal.id, amount: amountCents / 100, deferPageRefresh }));
+    const result = await callMutation(addToGoalAction, { id: goal.id, amount: amountCents / 100, deferPageRefresh });
     if (result.ok) await refreshAfterSave('goal', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
@@ -255,7 +254,6 @@ export function AddToGoalModal({ goal, onClose, unallocated }: AddToGoalModalPro
                   {t(d.addToGoal.confirm, { amount: money(amountCents) })}
                 </button>
               </div>
-              <QuietSyncActionNote />
             </div>
           )}
 

@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/getSessionUser';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { ServerErrorCode } from '@/lib/actions/errorCodes';
+import { isQuietPostPermit } from '@/lib/offline/quietPost';
 
 /**
  * Shared failure shape. Every action result type in pebble.ts already
@@ -41,6 +42,7 @@ export function withSessionUser<TArgs extends unknown[], TResult>(
   options?: { partnerView?: boolean },
 ): (...args: TArgs) => Promise<TResult | AuthFailure> {
   return async (...args: TArgs): Promise<TResult | AuthFailure> => {
+    if (isQuietPostPermit(args.at(-1))) args.pop();
     let userId: string;
 
     try {

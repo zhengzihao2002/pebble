@@ -4,7 +4,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { ArrowLeftRight, Copy, KeyRound, Shield, UsersRound } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { LoadingBlock } from '@/components/shared/Spinner';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callAuthorizedAction, callMutation } from '@/lib/actions/callAction';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
 import { QUIET_SYNC_MAX_AGE_HOURS, quietSyncIsPaused, quietWorkerCommand, selectQuietPartner } from '@/lib/offline/quietSync';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
@@ -27,12 +28,12 @@ import { partnerError } from './partnerError';
 const PERMISSION_TABS = ['view', 'add', 'edit'] as const;
 type PermissionTab = (typeof PERMISSION_TABS)[number];
 
-export function PartnerSettings() {
+export function PartnerSettings({ saved }: { saved?: PartnerSettingsData } = {}) {
   const { d, t, locale } = useTranslation();
   const x = d.partner;
   const { id } = useCurrentUser();
-  const { enabled: readsPaused } = useQuietSync();
-  const [settings, setSettings] = useState<PartnerSettingsData | null>(null);
+  const { enabled: readsPaused, refreshAfterWrite } = useQuietSync();
+  const [settings, setSettings] = useState<PartnerSettingsData | null>(saved ?? null);
   const [invite, setInvite] = useState<{ code: string; expires: string } | null>(null);
   const [enteredCode, setEnteredCode] = useState('');
   const matchCode = parsePartnerMatchCode(enteredCode);
@@ -43,14 +44,16 @@ export function PartnerSettings() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState<{ error: string; reason?: string } | null>(null);
 
-  const reload = useCallback((showFailure = false) => callAction(readPartnerSettingsAction).then(result => {
+  const reload = useCallback((showFailure = false, afterMutation = false) => (afterMutation
+    ? callAuthorizedAction(readPartnerSettingsAction) : callAction(readPartnerSettingsAction)).then(result => {
     if (result.ok) setSettings(result.data);
     else if (showFailure) setError(result);
   }), []);
 
   useEffect(() => {
-    if (!readsPaused && !quietSyncIsPaused()) void reload(true);
-  }, [reload, readsPaused]);
+    if (saved) setSettings(saved);
+    else if (!readsPaused && !quietSyncIsPaused()) void reload(true);
+  }, [reload, readsPaused, saved]);
 
   const displayedInvite = invite?.expires ?? settings?.inviteExpires;
   useEffect(() => {
@@ -75,43 +78,46 @@ export function PartnerSettings() {
     setBusy(true);
     setError(null);
     setStatus('');
-    const result = await callAction(action);
+    const result = await action();
     setBusy(false);
-    if (!result.ok) { setError(result); return null; }
+    if (!result.ok) { if (result.error) setError(result); return null; }
     return result;
   };
 
   const generate = async () => {
-    const result = await run<{ ok: true; code: string; expires: string }>(createPartnerInviteAction);
+    const result = await run<{ ok: true; code: string; expires: string }>(() => callMutation(createPartnerInviteAction));
     if (result) {
       setCopied(false);
       setInvite({ code: result.code, expires: result.expires });
+      refreshAfterWrite();
     }
   };
 
   const accept = async () => {
     if (!matchCode || busy) return;
-    if (await run(() => acceptPartnerInviteAction(matchCode.code))) {
+    if (await run(() => callMutation(acceptPartnerInviteAction, matchCode.code))) {
       setEnteredCode('');
       setInvite(null);
-      await reload(true);
+      await reload(true, true);
+      refreshAfterWrite();
     }
   };
 
   const switchView = async (leave: boolean) => {
     const pair = settings?.pairId ?? '';
     const quiet = quietSyncIsPaused();
+    if (!leave && !await confirmQuietDatabase()) return;
     if (await run(async () => {
       if (leave) {
-        const result = await (quiet ? selectQuietPartner(null) : leavePartnerViewAction());
+        const result = await (quiet ? callAuthorizedAction(selectQuietPartner, null) : callAction(leavePartnerViewAction));
         if (result.ok && quiet) await quietWorkerCommand({ type: 'QUIET_PARTNER_CLEAR', user: id });
         return result;
       }
-      const result = await (quiet ? selectQuietPartner(pair) : enterPartnerViewAction(pair));
+      const result = await (quiet ? callAuthorizedAction(selectQuietPartner, pair) : callAction(() => enterPartnerViewAction(pair)));
       if (!result.ok || !quiet) return result;
       const saved = await quietWorkerCommand({ type: 'QUIET_PARTNER_REFRESH', user: id, pair });
       if (saved?.ok) return result;
-      await selectQuietPartner(null);
+      await callAuthorizedAction(selectQuietPartner, null);
       return { ok: false as const, error: x.savedViewDownloadFailed };
     })) {
       // Drop the previous workspace's client state at the mode boundary.
@@ -120,9 +126,10 @@ export function PartnerSettings() {
   };
 
   const revoke = async () => {
-    if (await run(revokePartnerInviteAction)) {
+    if (await run(() => callMutation(revokePartnerInviteAction))) {
       setInvite(null);
-      await reload(true);
+      await reload(true, true);
+      refreshAfterWrite();
     }
   };
 
@@ -136,13 +143,7 @@ export function PartnerSettings() {
       {settings === null ? (
         readsPaused ? <>
           <SectionHeader icon={UsersRound} title={x.title} />
-          <p className="pb-partner-note">{x.loadQuietHelp}</p>
-          {error && <p role="alert">{partnerError(d, error)}</p>}
-          <button type="button" className="pill" disabled={busy} onClick={() => void run(async () => {
-            const result = await readPartnerSettingsAction();
-            if (result.ok) setSettings(result.data);
-            return result;
-          })}>{x.loadQuiet}</button>
+          <p className="pb-partner-note">{d.ux.offline.quietSync.needsSync}</p>
         </> : error ? <><p role="alert">{partnerError(d, error)}</p><button type="button" className="pill" onClick={() => void reload(true)}>{x.refresh}</button></> : <LoadingBlock minHeight={90} />
       ) : partnerName ? (
         <>
@@ -162,13 +163,14 @@ export function PartnerSettings() {
               <ArrowLeftRight size={16} aria-hidden="true" />{settings.viewingPartner ? x.returnOwn : x.viewPartner}
             </button>
             <button type="button" className="pill" disabled={busy} onClick={() => setDisconnect(true)}>{x.unpair}</button>
-            {waitingForPartner && <button type="button" className="link-btn" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
+            {waitingForPartner && !readsPaused && <button type="button" className="link-btn" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
           </div>
           <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories, settings.censoredWords])} settings={settings}
             section={permissionTab} onSection={setPermissionTab} busy={busy} save={async (permissions, categoryIds, words) => {
-              if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds, words))) {
+              if (await run(() => callMutation(savePartnerPermissionsAction, settings.pairId ?? '', permissions, categoryIds, words))) {
                 setStatus(x.saved);
-                await reload(true);
+                await reload(true, true);
+                refreshAfterWrite();
               }
             }} />
         </>
@@ -202,13 +204,13 @@ export function PartnerSettings() {
               required autoComplete="off" autoCapitalize="none" spellCheck={false} />
             <button type="submit" className="pill active" disabled={busy || !matchCode}>{x.pair}</button>
           </form>
-          <button type="button" className="link-btn pb-partner-refresh" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>
+          {!readsPaused && <button type="button" className="link-btn pb-partner-refresh" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
         </>
       )}
       {error && settings && !disconnect && <p className="pb-partner-error" role="alert">{partnerError(d, error)}</p>}
       <div className="pb-partner-note" role="status">{status}</div>
       {disconnect && partnerName && settings?.pairId && <PartnerDisconnectDialog name={partnerName} pairId={settings.pairId} onClose={() => setDisconnect(false)}
-        onUnpaired={() => { setInvite(null); setPermissionTab('view'); void reload(true); }} />}
+        onUnpaired={() => { setInvite(null); setPermissionTab('view'); void reload(true, true); refreshAfterWrite(); }} />}
     </section>
   );
 }

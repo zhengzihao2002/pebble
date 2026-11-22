@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ArrowLeftRight, UsersRound } from 'lucide-react';
 import { leavePartnerViewAction } from '@/lib/actions/partner';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callAuthorizedAction } from '@/lib/actions/callAction';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { isPartnerSection } from '@/lib/partnerPaths';
@@ -22,7 +22,7 @@ export function PartnerViewBar({ name, pathname }: { name: string | null; pathna
     setLeaving(true);
     setFailed(false);
     const quiet = quietSyncIsPaused() || readQuietPreference(id).enabled;
-    const result = await callAction(quiet ? () => selectQuietPartner(null) : leavePartnerViewAction);
+    const result = await (quiet ? callAuthorizedAction(selectQuietPartner, null) : callAction(leavePartnerViewAction));
     if (result.ok) {
       if (quiet) await quietWorkerCommand({ type: 'QUIET_PARTNER_CLEAR', user: id });
       window.location.replace(pathname !== '/settings' && isPartnerSection(pathname.slice(1)) ? pathname : '/settings#settings-partner');

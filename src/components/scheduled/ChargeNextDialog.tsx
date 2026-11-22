@@ -1,11 +1,10 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDownRight, ArrowUpRight, CalendarCheck } from 'lucide-react';
 import { chargeNextRecurringAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
@@ -71,16 +70,13 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
     setSaving(true);
     setError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(
-      () => chargeNextRecurringAction({
+    const result = await callMutation(chargeNextRecurringAction, {
         id: rule.id,
         expectedOccurrence: plan.occurrenceDate,
         textDateBasis: textDateBasis ?? 'processed',
         expectedTransactionDate: plan.transactionDate,
         deferPageRefresh,
-      }),
-      x.chargeFailed,
-    );
+      });
     if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
@@ -94,7 +90,7 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
       // A refused (stale) charge writes nothing, so nothing revalidated: the
       // cards behind this dialog still show the old Next line. Fetch the
       // current schedules so they are right when the dialog is closed.
-      if (stale) router.refresh();
+      if (stale && !quietSyncIsPaused()) router.refresh();
       return;
     }
     onCharged(rule, result);
@@ -167,7 +163,6 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
                 {saving ? x.chargeCharging : x.chargeConfirm}
               </button>
             </div>
-            <QuietSyncActionNote />
           </div>
         </>
       )}

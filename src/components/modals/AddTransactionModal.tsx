@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { readOffline } from '@/lib/offline/connectivity';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { AmountInput } from '@/components/shared/AmountInput';
@@ -16,7 +15,7 @@ import type { CategoryItem, Account } from '@/lib/data/mappers';
 import { addTransactionAction, getAllocationSummaryAction, getCategoriesAction, getAccountsAction, getFrequentCategoriesAction } from '@/lib/actions/pebble';
 import { Skeleton } from '@/components/kit/Skeleton';
 import { isQuickPicksStale, readQuickPicks, refreshQuickPicks, resolveQuickCategories } from '@/lib/quickPicks';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
@@ -338,7 +337,7 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
         : { ok: false as const, error: d.ux.offline.storageUnavailable, kind: 'network' as const };
     } else {
       const deferPageRefresh = quietSyncIsPaused();
-      result = await callAction(() => addTransactionAction({ ...payload, clientId, deferPageRefresh }));
+      result = await callMutation(addTransactionAction, { ...payload, clientId, deferPageRefresh });
       if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
       // A NETWORK-class failure - the request never got an answer - is the one
       // case that is not an error to show: keep the entry on the device and
@@ -778,7 +777,6 @@ export function AddTransactionModal({ onClose }: AddTransactionModalProps) {
                 {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.addTxn.title}
               </button>
             )}
-            {!offlineQueue.offline && <QuietSyncActionNote />}
           </div>
         )}
       </>

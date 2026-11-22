@@ -250,18 +250,12 @@ html[data-pb-quiet-startup="offline"] .pebble-root .pb-quiet-status-startup[data
   .pebble-root .pb-quiet-status[data-status="syncing"] .pb-quiet-status-icon { animation: none; }
 }
 
-.pebble-root .pb-quiet-action-note {
-  display: block;
-  margin: 0.25rem 0 0;
-  color: var(--ink-soft);
-  font-size: 0.75rem;
-  line-height: 1.4;
-  text-align: center;
+.pb-quiet-confirm {
+  margin: auto; width: min(100% - 2rem, 25rem); padding: 1.3rem; border: 1px solid var(--line, #83948e);
+  border-radius: 1rem; background: var(--mist, Canvas); color: var(--ink, CanvasText); box-shadow: var(--shadow);
 }
-
-.pebble-root .pb-modal-foot > .pb-quiet-action-note { margin-top: -0.3rem; }
-
-.pebble-root .pb-ghost-dialog .pb-modal-foot:has(.pb-quiet-action-note) { flex-wrap: wrap; }
-
-.pebble-root .pb-ghost-dialog .pb-modal-foot > .pb-quiet-action-note,
-.pebble-root .pb-annual-footer > .pb-quiet-action-note { flex-basis: 100%; }
+.pb-quiet-confirm::backdrop { background: rgb(12 20 24 / .5); }
+.pb-quiet-confirm h2 { font-size: 1.1rem; }
+.pb-quiet-confirm p { margin-block: .5rem 1rem; color: var(--ink-soft, CanvasText); }
+.pb-quiet-confirm form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.pb-quiet-confirm button { min-height: 44px; }

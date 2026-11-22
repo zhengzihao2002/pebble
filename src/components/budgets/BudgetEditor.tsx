@@ -1,12 +1,11 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { modifyBudgetsAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { formatCurrency } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -40,7 +39,7 @@ export function InlineBudgetEditor({ name, initial, onClose }: { name: string; i
     setSaving(true);
     setError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => modifyBudgetsAction({ [name]: amount }, deferPageRefresh));
+    const result = await callMutation(modifyBudgetsAction, { [name]: amount }, deferPageRefresh);
     if (result.ok) await refreshAfterSave('budget', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); return; }
@@ -67,7 +66,6 @@ export function InlineBudgetEditor({ name, initial, onClose }: { name: string; i
         <button type="button" className="icon-btn" onClick={() => void save()} disabled={saving} aria-label={d.budgetEdit.save} title={d.budgetEdit.save} style={{ ...budgetIconBtn, color: 'var(--pine)' }}><Check size={18} /></button>
         <button type="button" className="icon-btn" onClick={cancel} disabled={saving} aria-label={d.budgetEdit.cancel} title={d.budgetEdit.cancel} style={budgetIconBtn}><X size={18} /></button>
       </span>
-      <QuietSyncActionNote />
       {Number.isFinite(amount) && amount > 0 && (
         <span className="font-mono-tab" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>
           {t(d.budgetModal.estMonthlyLabel, { amount: formatCurrency(amount / 12) })}

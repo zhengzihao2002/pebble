@@ -32,7 +32,8 @@ import { CategoryManagerCard } from '@/components/settings/CategoryManagerCard';
 import { PartnerInbox } from '@/components/partner/PartnerInbox';
 import { PartnerSettings } from '@/components/partner/PartnerSettings';
 import { TransactionTagsCard } from '@/components/settings/TransactionTagsCard';
-import type { TransactionTagGroup } from '@/lib/transactionTags';
+import type { TaggedTransaction, TransactionTagGroup } from '@/lib/transactionTags';
+import type { PartnerInboxItem, PartnerSettingsData } from '@/lib/partner';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
@@ -52,6 +53,9 @@ interface SettingsClientProps {
   /** accountId -> true when the account has records that could be moved. */
   hasRecords: Record<string, boolean>;
   transactionTags: TransactionTagGroup[];
+  taggedTransactions?: Record<string, TaggedTransaction[]>;
+  savedPartnerSettings?: PartnerSettingsData;
+  savedPartnerInbox?: PartnerInboxItem[];
   adjustmentCleanup: AdjustmentCleanupGroup[];
   cleanupSources: (CleanupSource & { accountId: string })[];
 }
@@ -87,7 +91,7 @@ const SECTION_IDS = {
 // data and come from Postgres. Every card is props-only; this component owns
 // all store reads.
 export function SettingsClient({
-  timeZoneOverride, accounts, balancesByAccount, hasRecords, transactionTags, adjustmentCleanup, cleanupSources,
+  timeZoneOverride, accounts, balancesByAccount, hasRecords, transactionTags, taggedTransactions, savedPartnerSettings, savedPartnerInbox, adjustmentCleanup, cleanupSources,
 }: SettingsClientProps) {
   const { d } = useTranslation();
   const textSize = usePebbleStore((s) => s.textSize);
@@ -154,7 +158,7 @@ export function SettingsClient({
       cards: (
         <>
           <CategoryManagerCard />
-          <TransactionTagsCard tags={transactionTags} />
+          <TransactionTagsCard tags={transactionTags} details={taggedTransactions} />
         </>
       ),
     },
@@ -232,7 +236,7 @@ export function SettingsClient({
       title: d.partner.title,
       short: d.partner.short,
       hint: d.partner.subtitle,
-      cards: <><PartnerSettings /><PartnerInbox /></>,
+      cards: <><PartnerSettings saved={savedPartnerSettings} /><PartnerInbox saved={savedPartnerInbox} /></>,
     },
     {
       id: SECTION_IDS.account,

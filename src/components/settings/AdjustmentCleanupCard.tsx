@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useId, useState } from 'react';
 import { Layers, ChevronRight } from 'lucide-react';
 import type { Account } from '@/lib/data/mappers';
@@ -8,7 +7,8 @@ import { formatCurrency, formatLongDate } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { adjustmentCleanupGroup, MAX_CLEANUP_DESCRIPTION, MAX_CLEANUP_ROWS, type AdjustmentCleanupGroup, type CleanupSource } from '@/lib/adjustmentCleanup';
 import { applyAdjustmentCleanupAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callMutation } from '@/lib/actions/callAction';
 import { translateActionError } from '@/lib/i18n/actionErrors';
 import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
@@ -23,6 +23,7 @@ export function AdjustmentCleanupCard({ groups, sources, accounts }: {
   accounts: Account[];
 }) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
   const x = d.ux.settings.adjustmentCleanup;
   const locked = useSafetyLock('deleteTransactions');
   const titleId = useId();
@@ -79,6 +80,7 @@ export function AdjustmentCleanupCard({ groups, sources, accounts }: {
                   const ids = group.rows.filter(row => group.total === 0 || row.id !== group.id).map(row => row.id);
                   setApplied(previous => [...previous, ...ids]);
                   setLastRemoved(count);
+                  refreshAfterWrite();
                   complete();
                 }}>
                 {reviewGroups && reviewGroups.length > 1 && (
@@ -158,9 +160,9 @@ function CleanupReview({ group, accountName, locked, manual, busy, onBusy, onClo
     if (!canApply) return;
     onBusy(true);
     setError('');
-    const result = await callAction(() => applyAdjustmentCleanupAction({
+    const result = await callMutation(applyAdjustmentCleanupAction, {
       accountId: group.accountId, retainedId: group.id, sources: group.rows, description, confirmed, manual,
-    }));
+    });
     onBusy(false);
     if (result.ok) onApplied(result.removed);
     else setError(translateActionError(d, locale, result));
@@ -210,7 +212,6 @@ function CleanupReview({ group, accountName, locked, manual, busy, onBusy, onClo
         <button type="button" className="btn-primary" onClick={() => void submit()} disabled={!canApply}>
           {busy ? d.common.saving : removesAll ? x.remove : x.combine}
         </button>
-        <QuietSyncActionNote kind="connection" />
       </div>
     </>
   );

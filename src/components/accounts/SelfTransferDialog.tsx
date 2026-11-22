@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useState } from 'react';
 import { LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -8,7 +7,8 @@ import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { ActionError } from '@/components/shared/ActionError';
 import { deleteSelfTransfersAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import type { Account } from '@/lib/data/mappers';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -37,6 +37,7 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
   onClose: () => void;
 }) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(pairs.map((p) => p.groupId)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +64,11 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
     if (busy || picked.length === 0 || done) return;
     setBusy(true);
     setError(null);
-    const result = await callAction(() => deleteSelfTransfersAction({ groupIds: picked.map((p) => p.groupId) }));
+    const result = await callMutation(deleteSelfTransfersAction, { groupIds: picked.map((p) => p.groupId) });
     setBusy(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); return; }
     setDone(true);
+    refreshAfterWrite();
   };
 
   return (
@@ -158,7 +160,6 @@ export function SelfTransferDialog({ pairs, accounts, balances, onClose }: {
                 {picked.length === 1 ? d.accountsPage.selfDeleteOne : t(d.accountsPage.selfDelete, { count: picked.length })}
               </button>
             </div>
-            <QuietSyncActionNote kind="connection" />
           </div>
         )}
       </>

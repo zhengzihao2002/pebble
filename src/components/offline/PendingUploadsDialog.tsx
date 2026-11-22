@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { createElement, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Check, Clock, RefreshCw, WifiOff } from 'lucide-react';
@@ -131,7 +130,6 @@ export function PendingUploadsDialog() {
                   </button>
                 )}
               </div>
-              {q.items.length > 0 && !q.offline && <QuietSyncActionNote />}
             </div>
           )}
         </>
@@ -206,7 +204,6 @@ function PendingRow({ item, confirming, onAskRemove, onCancelRemove, onRemove, o
         )}
       </div>
 
-      {state.status === 'failed' && !confirming && !q.offline && <QuietSyncActionNote />}
 
       {state.status === 'failed' && state.reason && (
         // The server's reason, in the app's language. A refusal with no code

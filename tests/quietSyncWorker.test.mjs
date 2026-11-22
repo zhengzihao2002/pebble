@@ -119,10 +119,12 @@ function workerFixture() {
     install() { return fire('install'); },
     message(data, onMessage, onClientMessage) {
       return fire('message', { data: data.type === 'QUIET_STATUS' ? { onDemand: true, ...data } : data, onMessage,
-        source: onClientMessage ? { postMessage: onClientMessage } : undefined });
+        source: { id: 'tab', postMessage: onClientMessage ?? (() => {}) } });
     },
-    fetch(path, { mode = 'navigate', method = 'GET' } = {}) {
-      return fire('fetch', { request: { url: new URL(path, origin).href, mode, method, headers: new Headers() }, clientId: 'tab' });
+    fetch(path, { mode = 'navigate', method = 'GET', headers, body, clientId = 'tab' } = {}) {
+      const request = { url: new URL(path, origin).href, mode, method, headers: new Headers(headers) };
+      request.clone = () => new Request(request.url, { method, headers, body });
+      return fire('fetch', { request, clientId });
     },
   };
 }
@@ -154,7 +156,7 @@ test('paused GET, RSC, and account lookups stay local even after a worker restar
   }
   assert.equal((await worker.fetch('/reports?_rsc=1', { mode: 'cors' })).type, 'error');
   assert.equal((await worker.fetch('/api/auth/get-session', { mode: 'cors' })).status, 503);
-  assert.equal(await worker.fetch('/transactions', { method: 'POST' }), undefined);
+  assert.equal((await worker.fetch('/transactions', { method: 'POST' })).status, 403);
   await worker.message({ type: 'WARM', pages: ['/settings'] });
   assert.deepEqual(worker.requests, []);
 });
@@ -405,8 +407,26 @@ test('a disconnected browser keeps the ordinary offline fallback while Quiet Syn
   worker.disconnect();
   assert.match(await (await worker.fetch('/dashboard')).text(), /snapshot-before-write/);
   assert.match(await (await worker.fetch('/insights')).text(), /Offline fallback/);
-  assert.equal(await worker.fetch('/transactions', { method: 'POST' }), undefined);
+  assert.equal((await worker.fetch('/transactions', { method: 'POST' })).status, 403);
   assert.deepEqual(worker.requests, []);
+});
+
+test('paused Next actions require a fresh permit from the initiating tab', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  worker.requests.length = 0;
+  const token = '12345678-1234-4321-8123-123456789abc';
+  const action = { method: 'POST', headers: { 'Next-Action': 'fixture' }, body: JSON.stringify(['tag', { __pebbleQuietPost: token }]) };
+  assert.equal((await worker.fetch('/settings', action)).status, 403);
+  assert.deepEqual(await worker.message({ type: 'QUIET_PERMIT_POST', user, token }), { ok: true });
+  assert.equal((await worker.fetch('/settings', { ...action, clientId: 'other-tab' })).status, 403);
+  assert.deepEqual(worker.requests, []);
+  assert.equal((await worker.fetch('/settings', action)).status, 200);
+  assert.equal((await worker.fetch('/settings', action)).status, 403);
+  assert.deepEqual(worker.requests, ['/settings']);
+
+  await worker.message({ type: 'QUIET_POLICY', user, enabled: false });
+  assert.equal((await worker.fetch('/settings', { method: 'POST', headers: action.headers })).status, 200);
 });
 
 test('Partner View stays local until its eight-hour deadline, then deletes the saved pages', async () => {

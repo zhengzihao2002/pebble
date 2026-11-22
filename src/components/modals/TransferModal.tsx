@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
@@ -14,7 +13,7 @@ import { ModalFrame } from '@/components/shared/ModalFrame';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { SaveSuccess } from '@/components/shared/SaveSuccess';
 import { createTransferAction, getAccountsAction } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { NoAccountsNotice } from '@/components/shared/NoAccountsNotice';
@@ -169,14 +168,14 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
     setError(null);
 
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => createTransferAction({
+    const result = await callMutation(createTransferAction, {
       deferPageRefresh,
       fromAccountId: fromId,
       toAccountId: toId,
       amount: Number(amount),
       description: composeDescription(title, description),
       date,
-    }));
+    });
 
     if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
@@ -323,7 +322,6 @@ export function TransferModal({ onClose, initialFromId, balances }: TransferModa
             >
               {saving ? <><Spinner size={14} /> {d.common.saving}</> : d.transfer.submit}
             </button>
-            <QuietSyncActionNote />
           </div>
         )}
       </>

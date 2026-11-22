@@ -7,6 +7,7 @@ import { ChevronLeft, Shield, User } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PebbleSessionsCard } from '@/components/settings/PebbleSessionsCard';
 import { useNavGlass } from '@/components/layout/useNavGlass';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 
 // Auth views resolve the session in the browser. Avoid server/client markup
 // differences while preloading both account panels together.
@@ -29,6 +30,7 @@ const TABS = [
  * page preview. Real hrefs retain refresh, Back/Forward and open-in-new-tab. */
 export function AccountViewClient({ path }: { path: string }) {
   const { d } = useTranslation();
+  const { enabled, preferenceReady } = useQuietSync();
   const pathname = usePathname();
   const active = pathname === '/account/settings' ? 'settings'
     : pathname === '/account/security' ? 'security' : path;
@@ -60,7 +62,7 @@ export function AccountViewClient({ path }: { path: string }) {
           })}
         </div>
       </nav>
-      {primary ? <>
+      {!preferenceReady ? <PendingPanel /> : enabled ? <p className="pb-settings-quiet">{d.ux.offline.quietSync.needsLive}</p> : primary ? <>
         <div data-account-panel="settings" hidden={active !== 'settings'} inert={active !== 'settings'}>
           <AccountView path="settings" hideNav />
         </div>

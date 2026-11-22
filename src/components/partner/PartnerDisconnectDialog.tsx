@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { ModalFrame } from '@/components/shared/ModalFrame';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import { unpairPartnerAction } from '@/lib/actions/partner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { QUIET_SYNC_MAX_AGE_HOURS } from '@/lib/offline/quietSync';
@@ -37,7 +37,7 @@ export function PartnerDisconnectDialog({ name, pairId, onClose, onUnpaired }: {
           <button type="button" className="pill pb-settings-danger" disabled={busy} onClick={async () => {
             setBusy(true);
             setError('');
-            const result = await callAction(() => unpairPartnerAction(pairId));
+            const result = await callMutation(unpairPartnerAction, pairId);
             setBusy(false);
             if (!result.ok) { setError(partnerError(d, result)); return; }
             complete();

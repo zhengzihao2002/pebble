@@ -3,7 +3,7 @@
 import { useId, useRef, useState } from 'react';
 import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import { ModalFrame } from '@/components/shared/ModalFrame';
-import { callAction } from '@/lib/actions/callAction';
+import { callMutation } from '@/lib/actions/callAction';
 import { createSharedRecordAction } from '@/lib/actions/partner';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -68,7 +68,7 @@ export function PartnerCreateDialog({ editor, data, onClose, onCreated }: {
     }
     setBusy(true);
     setError('');
-    const result = await callAction(() => createSharedRecordAction(entry));
+    const result = await callMutation(createSharedRecordAction, entry);
     setBusy(false);
     if (!result.ok) { setError(partnerError(d, result)); return; }
     onCreated();

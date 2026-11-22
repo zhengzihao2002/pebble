@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { getAccountsAction, getCategoriesAction, refreshQuietViewAction } from '@/lib/actions/pebble';
 import { refreshQuietPartnerViewAction } from '@/lib/actions/partner';
-import { callAction } from '@/lib/actions/callAction';
+import { callAuthorizedAction } from '@/lib/actions/callAction';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
 import { BUILD_ID } from '@/lib/offline/buildId';
 import release from '@/lib/releaseSnapshot.json';
 import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnectivity } from '@/lib/offline/connectivity';
@@ -158,7 +159,7 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
   const refreshReference = useCallback(() => {
     // Quiet Sync and the offline transaction form share this reference snapshot.
     return Promise.all([
-      callAction(getAccountsAction), callAction(getCategoriesAction),
+      callAuthorizedAction(getAccountsAction), callAuthorizedAction(getCategoriesAction),
     ]).then(([accounts, categories]) =>
       accounts.ok && categories.ok
         ? saveSnapshot({ userId, accounts: accounts.accounts, categories: categories.categories, savedAt: Date.now() }).catch(() => {})
@@ -175,7 +176,7 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
       quietWorkerCommand(pair ? { type: 'QUIET_PARTNER_REFRESH', user: userId, pair }
         : { type: 'QUIET_REFRESH', user: userId, pages: required, required, build: BUILD_ID, afterWrite })
         .then(result => ({ result, downloaded: receiveStatus(result) })),
-      refreshView && onSavedView ? (pair ? callAction(refreshQuietPartnerViewAction) : callAction(refreshQuietViewAction)) : undefined,
+      refreshView && onSavedView ? (pair ? callAuthorizedAction(refreshQuietPartnerViewAction) : callAuthorizedAction(refreshQuietViewAction)) : undefined,
       pair ? undefined : refreshReference(),
     ]);
     // A new deployment can replace the saved pages even when the currently
@@ -313,7 +314,7 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
       const snapshot = quietWorkerCommand({ type: 'QUIET_REFRESH', user: userId, pages, required, build: BUILD_ID, afterWrite: true }, queued)
         .then(result => ({ result, downloaded: readQuietPreference(userId).enabled && receiveStatus(result) }));
       const view = options?.refreshCurrent !== false && !readOffline() && pages.includes(route)
-        ? callAction(refreshQuietViewAction)
+        ? callAuthorizedAction(refreshQuietViewAction)
         : undefined;
       void Promise.all([
         snapshot,
@@ -338,8 +339,10 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
   return (
     <QuietSyncContext.Provider value={{
       enabled: enabled || preparing, preferenceReady, status, problem, lastSyncedAt, updateVersion, partnerExpiresAt, partnerAccessVersion,
-      setEnabled: next => { void setEnabled(next); },
-      syncNow: () => { void sync(); },
+      setEnabled: next => {
+        void confirmQuietDatabase(next ? 'enable' : 'disable').then(confirmed => { if (confirmed) void setEnabled(next); });
+      },
+      syncNow: () => { void confirmQuietDatabase().then(confirmed => { if (confirmed) void sync(); }); },
       checkSnapshot,
       refreshAfterWrite,
       refreshAfterSave,

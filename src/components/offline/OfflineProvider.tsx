@@ -4,7 +4,8 @@ import { createContext, startTransition, useCallback, useContext, useEffect, use
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { addTransactionAction, getAccountsAction, getCategoriesAction, type AddTransactionActionInput } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callAuthorizedAction } from '@/lib/actions/callAction';
+import { confirmQuietDatabase } from '@/lib/offline/confirmQuietDatabase';
 import type { Account, CategoryItem } from '@/lib/data/mappers';
 import { isServerReachable, readOffline, subscribeConnectivity, onlineServerSnapshot } from '@/lib/offline/connectivity';
 import {
@@ -294,6 +295,7 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
 
   const runUploads = useCallback(async (wanted: QueuedTransaction[]) => {
     if (runningRef.current || wanted.length === 0) return;
+    if (!await confirmQuietDatabase() || runningRef.current) return;
     runningRef.current = true;
     setRunning(true);
     setBanner(null);
@@ -310,9 +312,9 @@ export function OfflineProvider({ userId, warmPaths = DEFAULT_WARM_PATHS, childr
       // The SAME client id every time: if an earlier attempt committed but its
       // answer was lost, the server recognises it and reports success instead
       // of inserting a second copy.
-      const outcome = await callAction(() => addTransactionAction({
+      const outcome = await callAuthorizedAction(addTransactionAction, {
         ...item.payload, clientId: item.clientId, deferPageRefresh,
-      } as AddTransactionActionInput));
+      } as AddTransactionActionInput);
       if (outcome.ok) {
         done += 1;
         setStatus(item.clientId, { status: 'done' });

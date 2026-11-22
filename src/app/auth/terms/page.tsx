@@ -5,22 +5,10 @@ import { resolveUserLocale } from '@/lib/i18n/serverLocale';
 import { TERMS_OF_USE } from '@/lib/legal/termsOfUse';
 import { AuthLanguageToggle } from '../[path]/AuthLanguageToggle';
 import { PebbleMark } from '@/components/brand/PebbleMark';
-import { auth } from '@/lib/auth/server';
+import { cookies } from 'next/headers';
+import { NEON_AUTH_SESSION_COOKIE_NAME } from '@neondatabase/auth/server';
 
 export const metadata: Metadata = { title: 'Terms of Use · Pebble' };
-
-/**
- * Whether someone is signed in, for the back link only. Never throws: any
- * failure reads as signed out, which just shows the sign-in link.
- */
-async function isSignedIn(): Promise<boolean> {
-  try {
-    const result = await auth.getSession();
-    return !result.error && typeof result.data?.user?.id === 'string' && result.data.user.id.length > 0;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * The Terms of Use. Under /auth/ on purpose: the sign-in guard (proxy.ts)
@@ -33,7 +21,8 @@ export default async function TermsPage() {
   // static probe before cookie/session helpers can catch its dynamic signal.
   await connection();
   const locale = await resolveUserLocale();
-  const signedIn = await isSignedIn();
+  // This only picks a back link. The protected app verifies the session when opened.
+  const signedIn = (await cookies()).has(NEON_AUTH_SESSION_COOKIE_NAME);
   const notice = TERMS_OF_USE[locale === 'zh' ? 'zh' : 'en'];
 
   return (

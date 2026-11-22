@@ -4,13 +4,13 @@ import { useMemo, useState } from 'react';
 import { ChevronRight, Search, Tag } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { normalizeTagSearch, type TransactionTagGroup } from '@/lib/transactionTags';
+import { normalizeTagSearch, type TaggedTransaction, type TransactionTagGroup } from '@/lib/transactionTags';
 import { SETTING_TARGETS } from './settingsTargets';
 import { TransactionTagDialog } from './TransactionTagDialog';
 
 const PAGE_SIZE = 8;
 
-export function TransactionTagsCard({ tags }: { tags: TransactionTagGroup[] }) {
+export function TransactionTagsCard({ tags, details }: { tags: TransactionTagGroup[]; details?: Record<string, TaggedTransaction[]> }) {
   const { d, t, locale } = useTranslation();
   const labels = d.ux.settings.tags;
   const [query, setQuery] = useState('');
@@ -60,7 +60,7 @@ export function TransactionTagsCard({ tags }: { tags: TransactionTagGroup[] }) {
       )}
       <div role="status" className="pb-settings-tag-status">{status}</div>
       {activeTag !== null && (
-        <TransactionTagDialog name={activeTag} tags={tags} onClose={() => setActiveTag(null)}
+        <TransactionTagDialog name={activeTag} tags={tags} savedRows={details && Object.hasOwn(details, activeTag) ? details[activeTag] : undefined} onClose={() => setActiveTag(null)}
           onRenamed={(name, count) => {
             if (query && count) setQuery(name);
             setStatus(count ? t(labels.renamed, { name, usage: usage(count) }) : labels.noLongerUsed);

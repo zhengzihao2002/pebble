@@ -3,6 +3,7 @@ import { authClient } from './client';
 import { clearAllSnapshots } from '@/lib/offline/queueStore';
 import { clearAllQuickPicks } from '@/lib/quickPicks';
 import { clearOfflineCaches } from '@/lib/offline/serviceWorker';
+import { permitQuietPost } from '@/lib/offline/quietSync';
 
 /**
  * The one sign-out path. Every sign-out button calls this.
@@ -28,7 +29,8 @@ export async function signOutCompletely(beforeLeaving?: () => Promise<void>): Pr
   try {
     // The client reports HTTP failures as { error } rather than throwing, so
     // both shapes count as failure.
-    const result: unknown = await authClient.signOut();
+    const permit = await permitQuietPost();
+    const result: unknown = await authClient.signOut(permit ? { fetchOptions: { headers: { 'X-Pebble-Quiet-Post': permit.__pebbleQuietPost } } } : undefined);
     if (result && typeof result === 'object' && (result as { error?: unknown }).error) return false;
   } catch {
     return false;

@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
 import { ModalFrame } from '@/components/shared/ModalFrame';
@@ -12,7 +11,7 @@ import {
   type CategoryDeletePlan,
   type CategoryUsage,
 } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import type { CategoryItem } from '@/lib/data/mappers';
@@ -148,7 +147,7 @@ export function CategoryDeleteDialog({
         : { mode: 'individual', assignments };
     }
 
-    const result = await callAction(() => deleteCategoryAction({ id: target.id, plan }));
+    const result = await callMutation(deleteCategoryAction, { id: target.id, plan });
     setDeleting(false);
     if (!result.ok) { setError(translateActionError(d, locale, result)); setErrorKind(result.kind); setLoadFailed(false); return; }
     // Below the failure return. No celebration: CloseSoon plays the normal
@@ -267,7 +266,6 @@ export function CategoryDeleteDialog({
               {deleting ? d.recurring.deleting : d.categoryDelete.confirm}
             </button>
           </div>
-          <QuietSyncActionNote kind="connection" />
         </div>
 
         {deleted && <CloseSoon close={close} />}

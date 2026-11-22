@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, ArrowRightLeft, Trash2 } from 'lucide-react';
 import {
@@ -10,7 +9,8 @@ import {
   moveAndDeleteAccountAction,
   type AccountDeletionPreview,
 } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { ActionError } from '@/components/shared/ActionError';
 import { LoadingBlock, LoadingOverlay } from '@/components/shared/Spinner';
@@ -50,6 +50,7 @@ const COUNTDOWN_SECONDS = 10;
  */
 export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDeleteDialogProps) {
   const { d, t, locale } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
   // Records may leave a card, never land on one.
   const destinations = allAccounts.filter((a) => a.id !== account.id && a.status === 'active' && a.kind !== 'credit');
 
@@ -102,7 +103,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
   const run = async (call: () => Promise<{ ok: true } | { ok: false; error: string; kind?: FailureKind; code?: string }>) => {
     setBusy(true);
     setError(null);
-    const result = await callAction(call);
+    const result = await call();
     setBusy(false);
     if (!result.ok) {
       setError(translateActionError(d, locale, result));
@@ -115,6 +116,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
     }
     // Below the failure return: the confirmation only follows a confirmed delete.
     setStep('done');
+    refreshAfterWrite();
   };
 
   const countsLine = preview
@@ -291,7 +293,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
             {step === 'empty' && (
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={close} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.cancel}</button>
-                <button type="button" onClick={() => void run(() => deleteAccountAction(account.id))} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: busy ? 0.6 : 1 }}>
+                <button type="button" onClick={() => void run(() => callMutation(deleteAccountAction, account.id))} disabled={busy} className="btn-primary" style={{ flex: 1, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: busy ? 0.6 : 1 }}>
                   {d.accounts.confirmDelete}
                 </button>
               </div>
@@ -306,7 +308,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
                 <button type="button" onClick={backToChoose} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
                 <button
                   type="button" disabled={!target || busy}
-                  onClick={() => void run(() => moveAndDeleteAccountAction({ accountId: account.id, toAccountId: target, expectedRecordCount: preview.recordTotal }))}
+                  onClick={() => void run(() => callMutation(moveAndDeleteAccountAction, { accountId: account.id, toAccountId: target, expectedRecordCount: preview.recordTotal }))}
                   className="btn-primary" style={{ flex: 1.3, padding: '0.65rem', opacity: target && !busy ? 1 : 0.6 }}
                 >
                   {d.accounts.moveAndDelete}
@@ -319,7 +321,7 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
                 <button type="button" onClick={backToChoose} disabled={busy} className="pill" style={{ flex: 1, padding: '0.65rem' }}>{d.accounts.back}</button>
                 <button
                   type="button" disabled={!canDestroy}
-                  onClick={() => void run(() => deleteAccountWithRecordsAction({ accountId: account.id, confirmName: typed, expectedRecordCount: preview.recordTotal }))}
+                  onClick={() => void run(() => callMutation(deleteAccountWithRecordsAction, { accountId: account.id, confirmName: typed, expectedRecordCount: preview.recordTotal }))}
                   className="btn-primary"
                   style={{ flex: 1.4, padding: '0.65rem', backgroundColor: 'var(--wine)', opacity: canDestroy ? 1 : 0.55 }}
                 >
@@ -327,7 +329,6 @@ export function AccountDeleteDialog({ account, allAccounts, onClose }: AccountDe
                 </button>
               </div>
             )}
-            {step !== 'choose' && <QuietSyncActionNote kind="connection" />}
           </div>
         )}
       </>

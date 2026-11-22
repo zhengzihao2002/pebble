@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowDownRight, ArrowUpRight, Sparkles, Trash2 } from 'lucide-react';
 import {
@@ -10,7 +9,7 @@ import {
   getAccountsAction,
   updateRecurringRuleAction,
 } from '@/lib/actions/pebble';
-import { callAction } from '@/lib/actions/callAction';
+import { callAction, callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { useOfflineQueue } from '@/components/offline/OfflineProvider';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
@@ -353,8 +352,8 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     };
 
     const result = rule
-      ? await callAction(() => updateRecurringRuleAction({ ...payload, id: rule.id, ...(nextPaymentOverride ? { nextPaymentDate: nextPaymentOverride } : {}) }))
-      : await callAction(() => createRecurringRuleAction({ ...payload, backfill: showBackfill && backfill }));
+      ? await callMutation(updateRecurringRuleAction, { ...payload, id: rule.id, ...(nextPaymentOverride ? { nextPaymentDate: nextPaymentOverride } : {}) })
+      : await callMutation(createRecurringRuleAction, { ...payload, backfill: showBackfill && backfill });
 
     if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setSaving(false);
@@ -374,7 +373,7 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
     setSaving(true);
     setSaveError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callAction(() => deleteRecurringRuleAction({ id: rule.id, deferPageRefresh }));
+    const result = await callMutation(deleteRecurringRuleAction, { id: rule.id, deferPageRefresh });
     if (result.ok) await refreshAfterSave('schedule', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
@@ -473,7 +472,6 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   {saving ? d.recurring.deleting : d.recurring.delete}
                 </button>
               </div>
-              <QuietSyncActionNote />
             </div>
           </>
         ) : (
@@ -697,7 +695,6 @@ export function RecurringRuleModal({ onClose, rule, prefill: rawPrefill }: Recur
                   {saving ? d.common.saving : isEdit ? d.recurring.saveChanges : isIncome ? d.recurring.addIncomeSchedule : d.recurring.addPaymentSchedule}
                 </button>
               </div>
-              <QuietSyncActionNote />
             </div>
           </>
         )}

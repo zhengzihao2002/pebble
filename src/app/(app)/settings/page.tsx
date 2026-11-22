@@ -7,7 +7,8 @@ import { cleanupCutoff, findAdjustmentCleanupGroups } from '@/lib/adjustmentClea
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import { todayInZone } from '@/lib/recurring/occurrences';
-import { groupTransactionTags } from '@/lib/transactionTags';
+import { groupTransactionTags, indexTaggedTransactions } from '@/lib/transactionTags';
+import { readPartnerInboxAction, readPartnerSettingsAction } from '@/lib/actions/partner';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
   // Never throws - a failure is logged and retried on the next load.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, adjustments, timeZoneOverride, accounts, rules, timeZone] = await Promise.all([
+  const [expenses, income, adjustments, timeZoneOverride, accounts, rules, timeZone, partnerSettings, partnerInbox] = await Promise.all([
     getExpenses(userId, { includeGhost: true }),
     getIncome(userId, { includeGhost: true }),
     getBalanceAdjustments(userId, { includeGhost: true }),
@@ -27,6 +28,8 @@ export default async function SettingsPage() {
     getAccounts(userId, { includeGhost: true }),
     getRecurringRules(userId, { includeGhost: true }),
     resolveUserTimeZone(userId),
+    readPartnerSettingsAction(),
+    readPartnerInboxAction(),
   ]);
 
   const transactions = mergeTransactions(expenses, income);
@@ -52,6 +55,9 @@ export default async function SettingsPage() {
       balancesByAccount={balances.byAccount}
       hasRecords={hasRecords}
       transactionTags={groupTransactionTags(expenses)}
+      taggedTransactions={indexTaggedTransactions(expenses, accounts)}
+      savedPartnerSettings={partnerSettings.ok ? partnerSettings.data : undefined}
+      savedPartnerInbox={partnerInbox.ok ? partnerInbox.items : undefined}
       adjustmentCleanup={findAdjustmentCleanupGroups(
         adjustments, cleanupCutoff(today), new Set(accounts.map(a => a.id)),
       )}

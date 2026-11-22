@@ -1,6 +1,5 @@
 'use client';
 
-import { QuietSyncActionNote } from '@/components/offline/QuietSyncActionNote';
 import { RollingAmount, RollingMoneyText } from '@/components/shared/RollingAmount';
 import { useEffect, useMemo, useState } from 'react';
 import Link from '@/components/loading/PendingLink';
@@ -11,7 +10,9 @@ import type { RecurringRule, Transaction } from '@/types';
 import type { AnnualPlannerData, AnnualPlan } from '@/lib/budgets/annualTypes';
 import { recommendAnnualBudgets } from '@/lib/budgets/recommendations';
 import { saveAnnualPlanAction, cancelAnnualPlanAction } from '@/lib/actions/annualBudgets';
-import { callAction } from '@/lib/actions/callAction';
+import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { callMutation } from '@/lib/actions/callAction';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
 import { resolveCategoryIcon } from '@/lib/data/icons';
@@ -43,6 +44,7 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
   data: AnnualPlannerData; categories: CategoryItem[]; transactions: Transaction[]; today: string; recurringRules?: RecurringRule[];
 }) {
   const { d, t } = useTranslation();
+  const { refreshAfterWrite } = useQuietSync();
   const x = d.ux.annualBudgets;
   const router = useRouter();
   const year = data.year + 1;
@@ -95,8 +97,8 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
     // Keep the editable snapshot aligned with today's category IDs. Historical
     // snapshots may still contain deleted categories, and new ones start at zero.
     const currentBase = Object.fromEntries(categories.map(c => [c.id, baseAmounts[c.id] ?? 0]));
-    const result = await callAction(() => saveAnnualPlanAction({ year, timeZone: data.timeZone, state: 'scheduled',
-      revision: savedPlan?.revision ?? null, amounts, baseAmounts: currentBase }));
+    const result = await callMutation(saveAnnualPlanAction, { year, timeZone: data.timeZone, state: 'scheduled',
+      revision: savedPlan?.revision ?? null, amounts, baseAmounts: currentBase });
     setSaving(false); setReview(null);
     if (!result.ok) {
       const reason = 'reason' in result ? result.reason : null;
@@ -107,12 +109,13 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
     setSavedPlan(result.plan);
     if (result.plan) { setValues(amountStrings(categories, result.plan.amounts)); setBaseAmounts(result.plan.baseAmounts); }
     setNotice(x.savedSchedule);
-    router.refresh();
+    refreshAfterWrite();
+    if (!quietSyncIsPaused()) router.refresh();
   };
   const cancel = async () => {
     if (saving || !savedPlan || !checkYear()) return;
     setSaving(true); setError(null); setNotice(null);
-    const result = await callAction(() => cancelAnnualPlanAction(year, savedPlan.revision));
+    const result = await callMutation(cancelAnnualPlanAction, year, savedPlan.revision);
     setSaving(false); setReview(null);
     if (!result.ok) {
       const reason = 'reason' in result ? result.reason : null;
@@ -121,7 +124,10 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
       return;
     }
     setSavedPlan(result.plan); setValues(amountStrings(categories, result.plan?.amounts ?? data.currentAmounts));
-    setBaseAmounts(result.plan?.baseAmounts ?? data.currentAmounts); setNotice(x.canceled); router.refresh();
+    setBaseAmounts(result.plan?.baseAmounts ?? data.currentAmounts);
+    setNotice(x.canceled);
+    refreshAfterWrite();
+    if (!quietSyncIsPaused()) router.refresh();
   };
 
 
@@ -177,11 +183,11 @@ export function AnnualPlannerClient({ data, categories, transactions, today, rec
         })}
       </fieldset>
       <div className="pb-annual-feedback" aria-live="polite">{error && <p className="pb-annual-error" role="alert">{error}</p>}{notice && <p className="pb-annual-success"><Check size={16} />{notice}</p>}{reloadNeeded && <button type="button" className="pill" onClick={() => window.location.reload()}>{x.reload}</button>}</div>
-      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{x.cancelTitle}</h3><p>{x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void cancel()}>{saving ? x.saving : x.confirmCancel}</button></div><QuietSyncActionNote kind="connection" /></div></section>}
+      {review && <section className="card pb-annual-review" aria-labelledby="pb-annual-review-title"><CalendarCheck size={24} /><div><h3 id="pb-annual-review-title">{x.cancelTitle}</h3><p>{x.cancelNote}</p><div className="pb-annual-review-actions"><button type="button" className="pill" disabled={saving} onClick={() => setReview(null)}>{x.backToEdit}</button><button type="button" className="btn-primary" disabled={saving || reloadNeeded} onClick={() => void cancel()}>{saving ? x.saving : x.confirmCancel}</button></div></div></section>}
       <footer className="pb-annual-footer"><div><span>{dirty ? x.unsaved : savedPlan ? t(savedPlan.state === 'scheduled' ? x.scheduled : x.draft, { year: String(year) }) : t(x.starts, { year: String(year) })}</span><small>{t(x.saveHint, { year: String(year) })}</small></div><div className="pb-annual-footer-actions">
         {savedPlan?.state === 'scheduled' && <button type="button" className="pill" disabled={saving || reloadNeeded || !data.available} onClick={() => { setReview('cancel'); setError(null); }}>{x.cancelSchedule}</button>}
         <button type="button" className="btn-primary" disabled={saving || reloadNeeded || !data.available || categories.length === 0 || (savedPlan?.state === 'scheduled' && !dirty)} onClick={() => void save()}>{saving ? x.saving : x.savePlan}</button>
-      </div><QuietSyncActionNote kind="connection" /></footer>
+      </div></footer>
     </div>
   );
 }
