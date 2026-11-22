@@ -13,6 +13,7 @@ function workerFixture() {
   const requests = [];
   let workerUser = 'user-a';
   let build = 'build-a';
+  let asset = '';
   let revision = 'snapshot-before-write';
   let expired = false;
   let online = true;
@@ -51,7 +52,9 @@ function workerFixture() {
         if (expired) return Object.defineProperties(basic('Sign in'), {
           redirected: { value: true }, url: { value: new URL('/auth/sign-in', origin).href },
         });
-        const response = basic(`<meta name="pebble-session" content="${workerUser}|${build}"><main>${url.pathname} ${build} ${revision}</main>`);
+        const response = url.pathname.startsWith('/_next/static/')
+          ? new Response('fixture asset', { headers: { 'content-type': 'application/javascript' } })
+          : basic(`<meta name="pebble-session" content="${workerUser}|${build}"><main>${url.pathname} ${build} ${revision} ${asset}</main>`);
         if (hold?.path === url.pathname) {
           const next = hold;
           hold = undefined;
@@ -80,7 +83,7 @@ function workerFixture() {
       };
       handles.get(type)(event);
       const result = await response;
-      await Promise.all(waits);
+      for (const wait of waits) await wait;
       return type === 'message' && reply ? JSON.parse(JSON.stringify(reply)) : result;
     };
   }
@@ -90,6 +93,7 @@ function workerFixture() {
     boot() { fire = boot(); },
     advance(ms) { now += ms; },
     useBuild(next) { build = next; },
+    useAsset(path) { asset = path; },
     useRevision(next) { revision = next; },
     useUser(next) { workerUser = next; },
     expire() { expired = true; },
@@ -223,6 +227,30 @@ test('refreshes are shared and successful full and partial batches update their 
   assert.equal(ready.build, 'build-b');
   assert.match(await (await worker.fetch('/dashboard')).text(), /build-b/);
   assert.match(await (await worker.fetch('/reports')).text(), /build-b/);
+});
+
+test('a sync replies with the new build timestamp while its assets are still downloading', async () => {
+  const worker = workerFixture();
+  const first = await save(worker);
+  worker.advance(60_000);
+  worker.useBuild('build-b');
+  const asset = '/_next/static/chunks/build-b.js';
+  worker.useAsset(asset);
+  const hold = worker.holdNext(asset);
+  let reply;
+  const sync = worker.message({ type: 'QUIET_REFRESH', user, pages }, response => { reply = response; });
+
+  try {
+    await hold.ready;
+    await worker.message({ type: 'QUIET_STATUS', user });
+    assert.equal(reply?.ok, true);
+    assert.equal(reply.build, 'build-b');
+    assert.ok(reply.lastSyncedAt > first.lastSyncedAt);
+    assert.match(await (await worker.fetch('/reports')).text(), /build-b/);
+  } finally {
+    hold.release();
+    await sync;
+  }
 });
 
 test('a write refresh waits behind a pre-write sync, gates affected reads, and replaces stale query variants', async () => {

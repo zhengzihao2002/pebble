@@ -85,9 +85,9 @@ export function Sidebar() {
           <div style={{ fontSize: '0.85rem', minWidth: 0 }}>
             <div className="pb-sidebar-profile-name" style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
             <div className="pb-sidebar-profile-email" style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</div>
-            <div className="pb-sidebar-profile-version">{locale === 'zh' ? '版本' : 'Version'} {release.version}</div>
           </div>
         </div>
+        <div className="pb-sidebar-version">{locale === 'zh' ? '版本' : 'Version'} {release.version}</div>
       </div>
     </aside>
   );

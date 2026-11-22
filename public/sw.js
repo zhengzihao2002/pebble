@@ -535,7 +535,7 @@ function readQuietDocument(url, key, user) {
   }).catch(function () { return null; }).finally(function () { clearTimeout(timeout); });
 }
 
-function refreshQuiet(data, publish) {
+function refreshQuiet(data, keepAlive) {
   var started = epoch;
   return readMeta().then(async function (before) {
     if (before.user !== data.user || started !== epoch) return quietStatus({}, data.user);
@@ -591,7 +591,7 @@ function refreshQuiet(data, publish) {
       return refreshQuiet({
         user: data.user, pages: [...new Set([...(data.pages || []), ...primary])], required: primary,
         afterWrite: data.afterWrite,
-      }, publish);
+      }, keepAlive);
     }
     var matching = Array.from(docs.values()).filter(function (doc) { return doc.context.build === build; });
 
@@ -630,21 +630,25 @@ function refreshQuiet(data, publish) {
         meta.quiet.lastSyncedAt = Date.now();
       }
     });
-    publish();
-    if (saved) {
-      var assets = new Set();
-      for (var doc of matching) assetsIn(new TextDecoder().decode(doc.buf)).forEach(function (path) { assets.add(path); });
-      for (var asset of assets) await warmAsset(asset);
-    }
     var current = await readMeta();
-    return Object.assign(quietStatus(current, data.user), {
+    var result = Object.assign(quietStatus(current, data.user), {
       ok: saved && current.user === data.user && current.build === build && started === epoch,
       refreshed: matching.map(function (doc) { return doc.key; }).filter(function (key) { return key in (current.pages || {}); }),
     });
+    if (result.ok) {
+      // Report the committed snapshot immediately. Static downloads for a
+      // new build can continue independently of the sync reply.
+      keepAlive((async function () {
+        var assets = new Set();
+        for (var doc of matching) assetsIn(new TextDecoder().decode(doc.buf)).forEach(function (path) { assets.add(path); });
+        for (var asset of assets) await warmAsset(asset);
+      })());
+    }
+    return result;
   });
 }
 
-function enqueueQuietRefresh(data) {
+function enqueueQuietRefresh(data, keepAlive) {
   var shared = !data.partial && !data.afterWrite;
   if (shared && quietFull.has(data.user)) {
     var existing = quietFull.get(data.user);
@@ -654,7 +658,7 @@ function enqueueQuietRefresh(data) {
     return existing.then(function (result) {
       var required = Object.keys(quietPageURLs(data.required || data.pages));
       if (!result.ok || required.every(function (key) { return result.refreshed.includes(key); })) return result;
-      return enqueueQuietRefresh(data);
+      return enqueueQuietRefresh(data, keepAlive);
     });
   }
   var resolvePublication;
@@ -672,7 +676,7 @@ function enqueueQuietRefresh(data) {
     resolvePublication();
     resolvePublication = null;
   }
-  var result = quietRefreshChain.then(function () { return refreshQuiet(data, publish); }).catch(function () {
+  var result = quietRefreshChain.then(function () { return refreshQuiet(data, keepAlive); }).catch(function () {
     return readMeta().then(function (meta) { return Object.assign(quietStatus(meta, data.user), { ok: false }); });
   });
   // A page batch is done when its cache writes are durable. Asset warming
@@ -707,6 +711,7 @@ self.addEventListener('activate', function (event) {
 
 self.addEventListener('message', function (event) {
   var data = event.data || {};
+  var keepAlive = function (task) { event.waitUntil(task); };
   var reply = function (result) {
     if (event.ports && event.ports[0]) event.ports[0].postMessage(result);
     else if (event.source && event.source.postMessage) event.source.postMessage(result);
@@ -739,7 +744,7 @@ self.addEventListener('message', function (event) {
       return caches.delete(PAGES);
     }).then(readMeta).then(function (meta) { reply(quietStatus(meta, data.user)); }, function () { reply({ ok: false }); }));
   } else if (data.type === 'QUIET_REFRESH') {
-    var refresh = enqueueQuietRefresh(data);
+    var refresh = enqueueQuietRefresh(data, keepAlive);
     if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
     event.waitUntil(refresh.then(reply));
   } else if (data.type === 'QUIET_SYNC_FALLBACK') {
@@ -749,7 +754,7 @@ self.addEventListener('message', function (event) {
       if (url.origin !== self.location.origin || !pageKey(url)) return { ok: false };
       var base = DEV ? '/pb-preview' : '';
       var pages = [...new Set([url.pathname + url.search, ...QUIET_PRIMARY.map(function (path) { return base + path; })])];
-      return enqueueQuietRefresh({ user: meta.user, pages: pages, required: pages });
+      return enqueueQuietRefresh({ user: meta.user, pages: pages, required: pages }, keepAlive);
     }).then(reply, function () { reply({ ok: false }); }));
 
   }

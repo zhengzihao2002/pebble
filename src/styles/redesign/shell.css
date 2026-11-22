@@ -472,7 +472,10 @@
 .pebble-root .pb-sidebar-profile { flex: none; min-height: 3.25rem; }
 .pebble-root .pb-sidebar-profile-name { height: 1.25rem; line-height: 1.25rem; }
 .pebble-root .pb-sidebar-profile-email { height: 1rem; line-height: 1rem; }
-.pebble-root .pb-sidebar-profile-version { margin-block-start: .15rem; color: var(--ink-soft); font-size: .68rem; line-height: 1rem; white-space: nowrap; }
+.pebble-root .pb-sidebar-version {
+  padding-inline-start: var(--pb-sidebar-rail, .5rem); color: var(--ink-soft);
+  font-size: .68rem; line-height: 1rem; white-space: nowrap; overflow: hidden; transition: opacity 100ms ease;
+}
 
 /* One text line box for anchors and buttons; SVGs share its visual center. */
 .pebble-root .pebble-sidebar .nav-btn { line-height: 1.25rem; align-items: center; }
@@ -548,7 +551,7 @@ html:not(.pebble-dark) .pebble-root .pebble-sidebar .pb-sidebar-theme > .pb-side
   .pebble-root .pb-sidebar-avatar { justify-self: center; }
   .pebble-root .pb-sidebar-profile > div:last-child { overflow: hidden; transition: opacity 100ms ease; }
   html[data-pb-sidebar-collapsed] .pebble-root .pebble-sidebar { width: 4.75rem; padding-inline: .5rem; }
-  html[data-pb-sidebar-collapsed] .pebble-root .pebble-sidebar :is(.nav-label, .pb-shell-side-cap, .pb-sidebar-profile > div:last-child) { opacity: 0; pointer-events: none; }
+  html[data-pb-sidebar-collapsed] .pebble-root .pebble-sidebar :is(.nav-label, .pb-shell-side-cap, .pb-sidebar-version, .pb-sidebar-profile > div:last-child) { opacity: 0; pointer-events: none; }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-brand { height: 5.35rem; }
   html[data-pb-sidebar-collapsed] .pebble-root .pb-sidebar-brand > .pb-sidebar-collapse {
     top: 3.1rem; left: .75rem;
