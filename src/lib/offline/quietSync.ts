@@ -4,9 +4,10 @@ export const QUIET_SYNC_PAGES = [
 ];
 
 export const QUIET_SYNC_MAX_AGE_HOURS = 8;
+export const QUIET_SYNC_MAX_AGE_MS = QUIET_SYNC_MAX_AGE_HOURS * 60 * 60 * 1000;
 
 export function isQuietSyncDue(lastSyncedAt: number | null, now: number) {
-  return lastSyncedAt === null || now - lastSyncedAt >= QUIET_SYNC_MAX_AGE_HOURS * 60 * 60 * 1000;
+  return lastSyncedAt === null || now - lastSyncedAt >= QUIET_SYNC_MAX_AGE_MS;
 }
 
 interface QuietPreference {
@@ -23,7 +24,7 @@ export const QUIET_SYNC_HEADER_PREINIT = `try{var owner=document.currentScript.g
 
 function readOwner() {
   if (typeof document === 'undefined') return undefined;
-  return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"]')?.content.split('|')[0];
+  return document.querySelector<HTMLMetaElement>('meta[name="pebble-session"], meta[name="pebble-partner-session"]')?.content.split('|')[0];
 }
 
 export function readQuietPreference(user = readOwner()): QuietPreference {
@@ -60,6 +61,14 @@ export function quietSyncIsPaused() {
 
 export function quietSyncIsEnabled() {
   return readQuietPreference().enabled;
+}
+
+export async function selectQuietPartner(pair: string | null): Promise<{ ok: true } | { ok: false; error: string; reason?: string }> {
+  const response = await fetch('/api/partner/quiet-view', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pair }),
+  });
+  if (!response.ok) throw new Error('Could not switch partner workspace');
+  return response.json();
 }
 
 /** HTML snapshots travel independently of Next's page-specific RSC tree. */
@@ -116,10 +125,15 @@ export interface QuietWorkerStatus {
   refreshed?: string[];
   build?: string | null;
   authExpired?: boolean;
+  accessDenied?: boolean;
+  expiresAt?: number;
+  accessVersion?: string | null;
 }
 
 type QuietCommand = { user: string } & (
-  | { type: 'QUIET_STATUS'; onDemand: true }
+  | { type: 'QUIET_STATUS'; onDemand: true; pair?: string }
+  | { type: 'QUIET_PARTNER_REFRESH'; pair: string }
+  | { type: 'QUIET_PARTNER_CLEAR'; pair?: string }
   | { type: 'QUIET_INVALIDATE' }
   | { type: 'QUIET_POLICY'; enabled: boolean; liveUntil: 0 }
   | { type: 'QUIET_REFRESH'; pages: string[]; required: string[]; build: string; partial?: boolean; afterWrite?: boolean }
@@ -153,7 +167,7 @@ export async function quietWorkerCommand(command: QuietCommand, onQueued?: () =>
       channel.port1.close();
       resolve(result);
     };
-    const timeout = window.setTimeout(() => finish(null), command.type === 'QUIET_REFRESH' ? 120_000 : 6000);
+    const timeout = window.setTimeout(() => finish(null), command.type === 'QUIET_REFRESH' || command.type === 'QUIET_PARTNER_REFRESH' ? 120_000 : 6000);
     channel.port1.onmessage = event => {
       if (event.data?.queued === true) onQueued?.();
       else finish(event.data && typeof event.data.ok === 'boolean' ? event.data : null);

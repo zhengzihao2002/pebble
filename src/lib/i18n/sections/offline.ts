@@ -81,7 +81,7 @@ export const offlineEn = {
     aboutDownload: 'A successful sync downloads it for the next page load. A hard refresh can load it directly.',
     aboutSavedAppLabel: 'Uses the downloaded version',
     aboutSavedApp: 'Page switches and normal refreshes open the latest copy on this device, including any new version saved by a sync.',
-    aboutOffline: 'Offline transactions still use the upload queue. This setting is off by default and applies only to this device. Turn it off to restore live browsing.',
+    aboutOffline: 'Saved Partner Views expire {hours} hours after permissions are checked. Offline transactions still use the upload queue. Quiet Sync applies only to this device and is off by default.',
     status: {
       paused: 'Sync paused',
       preparing: 'Preparing',
@@ -174,7 +174,7 @@ export const offlineZh: typeof offlineEn = {
     aboutDownload: '同步成功后会下载最新版，供下次载入页面时使用。强制刷新可直接载入最新版。',
     aboutSavedAppLabel: '使用已下载的版本',
     aboutSavedApp: '切换页面或普通刷新时会载入本机最近下载的版本，包括同步时下载的新版。',
-    aboutOffline: '离线交易仍会进入上传队列。此设置默认关闭，仅在本机生效。关闭后恢复实时浏览。',
+    aboutOffline: '已保存的伙伴视图在检查权限后 {hours} 小时失效。离线交易仍会进入上传队列。轻量同步默认关闭，仅在本机生效。',
     status: {
       paused: '同步已暂停',
       preparing: '正在准备',

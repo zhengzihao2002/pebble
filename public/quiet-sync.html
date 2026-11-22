@@ -49,14 +49,40 @@
     var sync = document.getElementById('sync');
     var open = document.getElementById('open');
     var status = document.getElementById('status');
+    var dashboard = document.getElementById('dashboard');
+    var partner = /^\/partner(?:\/|$)/.test(location.pathname);
     if (zh) {
       document.documentElement.lang = 'zh-CN';
       document.title = 'Pebble · 按需同步';
       document.getElementById('title').textContent = '按需同步已暂停';
       document.getElementById('description').textContent = '此页面尚未保存在本机。请打开已保存的页面，或立即同步下载。部分页面需要在设置中关闭轻量同步。';
-      document.getElementById('dashboard').textContent = '打开已保存的概览';
+      dashboard.textContent = '打开已保存的概览';
       sync.textContent = '立即同步';
       open.textContent = '打开已同步的页面';
+    }
+    if (partner) {
+      document.getElementById('title').textContent = zh ? '已保存的伙伴视图不可用' : 'Saved Partner View is unavailable';
+      document.getElementById('description').textContent = zh ? '请同步以检查当前访问权限。' : 'Sync to check your current access and download a fresh copy.';
+      dashboard.textContent = zh ? '返回我的空间' : 'Back to my view';
+      dashboard.href = '/settings#settings-partner';
+      dashboard.addEventListener('click', function (event) {
+        event.preventDefault();
+        fetch('/api/partner/quiet-view', {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"pair":null}',
+        }).then(function (response) {
+          if (!response.ok) throw new Error();
+          navigator.serviceWorker?.controller?.postMessage({ type: 'QUIET_PARTNER_CLEAR' });
+          location.assign(dashboard.href);
+        }).catch(function () { status.textContent = zh ? '请联网后返回自己的空间。' : 'Connect to return to your own view.'; });
+      });
+      var scrollSync = function (event) {
+        if (!event.isTrusted || !navigator.onLine || sync.disabled || sync.hidden) return;
+        window.removeEventListener('wheel', scrollSync);
+        window.removeEventListener('touchmove', scrollSync);
+        request();
+      };
+      window.addEventListener('wheel', scrollSync, { passive: true });
+      window.addEventListener('touchmove', scrollSync, { passive: true });
     }
     function request() {
       var worker = navigator.serviceWorker && navigator.serviceWorker.controller;

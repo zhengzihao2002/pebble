@@ -7,9 +7,12 @@ import { callAction } from '@/lib/actions/callAction';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { partnerDisplayName } from '@/lib/partnerDisplay';
 import { isPartnerSection } from '@/lib/partnerPaths';
+import { useCurrentUser } from '@/lib/auth/useCurrentUser';
+import { quietSyncIsPaused, quietWorkerCommand, readQuietPreference, selectQuietPartner } from '@/lib/offline/quietSync';
 
 export function PartnerViewBar({ name, pathname }: { name: string | null; pathname: string }) {
   const { d } = useTranslation();
+  const { id } = useCurrentUser();
   const [leaving, setLeaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const x = d.partner;
@@ -18,8 +21,12 @@ export function PartnerViewBar({ name, pathname }: { name: string | null; pathna
   const leave = async () => {
     setLeaving(true);
     setFailed(false);
-    const result = await callAction(leavePartnerViewAction);
-    if (result.ok) window.location.replace(pathname !== '/settings' && isPartnerSection(pathname.slice(1)) ? pathname : '/settings#settings-partner');
+    const quiet = quietSyncIsPaused() || readQuietPreference(id).enabled;
+    const result = await callAction(quiet ? () => selectQuietPartner(null) : leavePartnerViewAction);
+    if (result.ok) {
+      if (quiet) await quietWorkerCommand({ type: 'QUIET_PARTNER_CLEAR', user: id });
+      window.location.replace(pathname !== '/settings' && isPartnerSection(pathname.slice(1)) ? pathname : '/settings#settings-partner');
+    }
     else { setFailed(true); setLeaving(false); }
   };
 

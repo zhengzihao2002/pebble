@@ -9,9 +9,10 @@ import { OfflineProvider } from '@/components/offline/OfflineProvider';
 import { QuietSyncProvider } from '@/components/offline/QuietSyncProvider';
 import { BudgetPlanNavigationProvider } from '@/components/budgets/BudgetPlanNavigation';
 import { loadPartnerWorkspaceAccess } from '@/lib/partnerSnapshot.server';
+import { PartnerQuietBoundary } from '@/components/partner/PartnerQuietBoundary';
 import { partnerViewPair } from '@/lib/partnerView.server';
 import { BUILD_ID } from '@/lib/offline/buildId';
-import { QUIET_SYNC_HEADER_PREINIT } from '@/lib/offline/quietSync';
+import { QUIET_SYNC_HEADER_PREINIT, QUIET_SYNC_MAX_AGE_MS } from '@/lib/offline/quietSync';
 
 /**
  * Reads the pebble-lang cookie so the SERVER renders the whole app in the
@@ -44,6 +45,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     partnerViewPair(userId),
   ]);
 
+  const partnerExpiresAt = Date.now() + QUIET_SYNC_MAX_AGE_MS;
   const access = partnerPair ? await loadPartnerWorkspaceAccess() : null;
 
   return (
@@ -56,10 +58,16 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
           {/* Only the owner workspace carries the user and build marker
               that allows the service worker to save this document. */}
           {partnerPair
-            ? <BudgetPlanNavigationProvider>
-                <AppShell key={partnerPair}
-                  partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
-              </BudgetPlanNavigationProvider>
+            ? <QuietSyncProvider userId={userId} pair={partnerPair}>
+                <script data-pb-quiet-owner={userId} dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT }} />
+                <PartnerQuietBoundary pair={partnerPair} expiresAt={access?.ok ? partnerExpiresAt : 0}
+                  accessVersion={access?.ok ? access.data.accessVersion : undefined}>
+                  <BudgetPlanNavigationProvider>
+                    <AppShell key={partnerPair}
+                      partnerAccess={access?.ok ? access.data : undefined} viewerId={userId}>{children}</AppShell>
+                  </BudgetPlanNavigationProvider>
+                </PartnerQuietBoundary>
+              </QuietSyncProvider>
             : <>
               <meta name="pebble-session" content={`${userId}|${BUILD_ID}`} />
               <script data-pb-quiet-owner={userId} dangerouslySetInnerHTML={{ __html: QUIET_SYNC_HEADER_PREINIT }} />

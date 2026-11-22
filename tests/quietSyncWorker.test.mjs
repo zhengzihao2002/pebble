@@ -14,6 +14,8 @@ function workerFixture() {
   let workerUser = 'user-a';
   let build = 'build-a';
   let asset = '';
+  let partnerPair;
+  let partnerAccess = 'open';
   let revision = 'snapshot-before-write';
   let expired = false;
   let online = true;
@@ -52,9 +54,12 @@ function workerFixture() {
         if (expired) return Object.defineProperties(basic('Sign in'), {
           redirected: { value: true }, url: { value: new URL('/auth/sign-in', origin).href },
         });
+        const marker = url.pathname.startsWith('/partner/')
+          ? partnerPair && partnerAccess && `<meta name="pebble-partner-session" content="${workerUser}|${partnerPair}|${build}|${partnerAccess}|${now + 8 * 60 * 60 * 1000}">`
+          : `<meta name="pebble-session" content="${workerUser}|${build}">`;
         const response = url.pathname.startsWith('/_next/static/')
           ? new Response('fixture asset', { headers: { 'content-type': 'application/javascript' } })
-          : basic(`<meta name="pebble-session" content="${workerUser}|${build}"><main>${url.pathname} ${build} ${revision} ${asset}</main>`);
+          : basic(`${marker || ''}<main>${url.pathname} ${build} ${revision} ${asset}</main>`);
         if (hold?.path === url.pathname) {
           const next = hold;
           hold = undefined;
@@ -67,7 +72,7 @@ function workerFixture() {
         location: workerURL,
         navigator: { get onLine() { return online; } },
         skipWaiting: async () => {},
-        clients: { claim: async () => {}, get: async () => ({ url: new URL('/dashboard', origin).href }) },
+        clients: { claim: async () => {}, matchAll: async () => [], get: async () => ({ url: new URL('/dashboard', origin).href }) },
         addEventListener(type, fn) { handles.set(type, fn); },
       },
     });
@@ -94,10 +99,13 @@ function workerFixture() {
     advance(ms) { now += ms; },
     useBuild(next) { build = next; },
     useAsset(path) { asset = path; },
+    usePartner(pair, access = 'open') { partnerPair = pair; partnerAccess = access; },
     useRevision(next) { revision = next; },
     useUser(next) { workerUser = next; },
     expire() { expired = true; },
     disconnect() { online = false; },
+    connect() { online = true; },
+    savedCaches() { return [...entries.keys()]; },
     block(path) { blockedPath = path; },
     holdNext(path) {
       let started, release;
@@ -355,4 +363,68 @@ test('a disconnected browser keeps the ordinary offline fallback while Quiet Syn
   assert.match(await (await worker.fetch('/insights')).text(), /Offline fallback/);
   assert.equal(await worker.fetch('/transactions', { method: 'POST' }), undefined);
   assert.deepEqual(worker.requests, []);
+});
+
+test('Partner View stays local until its eight-hour deadline, then deletes the saved pages', async () => {
+  const worker = workerFixture();
+  const own = await save(worker);
+  const pair = 'pair-one';
+  worker.usePartner(pair);
+  worker.useRevision('shared-spending');
+  worker.advance(200);
+  const saved = await worker.message({ type: 'QUIET_PARTNER_REFRESH', user, pair });
+  assert.equal(saved.ok, true);
+  assert.equal(saved.available.length, 10);
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user })).lastSyncedAt, own.lastSyncedAt);
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user, pair: 'pair-two' })).ok, false);
+  worker.boot();
+  worker.disconnect();
+  worker.requests.length = 0;
+  worker.advance(8 * 60 * 60 * 1000 - 1);
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /shared-spending/);
+  assert.match(await (await worker.fetch('/reports')).text(), /snapshot-before-write/);
+  worker.advance(1);
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /Saved pages only/);
+  assert.ok(worker.savedCaches().every(cache => !cache.startsWith('pebble-partner-pages')));
+  assert.deepEqual(worker.requests, []);
+
+  worker.connect();
+  worker.useRevision('fresh-shared-spending');
+  assert.equal((await worker.message({ type: 'QUIET_PARTNER_REFRESH', user, pair })).ok, true);
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /fresh-shared-spending/);
+});
+
+test('partner sync replaces restricted data and drops access when the pairing is revoked', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  const pair = 'pair-one';
+  const sync = { type: 'QUIET_PARTNER_REFRESH', user, pair };
+  worker.usePartner(pair);
+  worker.useRevision('before-restriction');
+  assert.equal((await worker.message(sync)).ok, true);
+  worker.advance(1000);
+  worker.usePartner(pair, 'restricted');
+  worker.useRevision('filtered-view');
+  assert.equal((await worker.message(sync)).ok, true);
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /filtered-view/);
+  worker.usePartner(pair, null);
+  assert.equal((await worker.message(sync)).accessDenied, true);
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /Saved pages only/);
+  assert.ok(worker.savedCaches().every(cache => !cache.startsWith('pebble-partner-pages')));
+  assert.match(await (await worker.fetch('/reports')).text(), /snapshot-before-write/);
+});
+
+test('leaving Partner View or changing the saved owner removes the partner snapshots', async () => {
+  const worker = workerFixture();
+  await save(worker);
+  const pair = 'pair-one';
+  worker.usePartner(pair);
+  const sync = { type: 'QUIET_PARTNER_REFRESH', user, pair };
+  assert.equal((await worker.message(sync)).ok, true);
+  await worker.message({ type: 'QUIET_PARTNER_CLEAR', user });
+  assert.match(await (await worker.fetch('/partner/reports')).text(), /Saved pages only/);
+  assert.equal((await worker.message(sync)).ok, true);
+  await worker.message({ type: 'SESSION', user: 'user-b' });
+  assert.equal((await worker.message({ type: 'QUIET_STATUS', user, pair })).ok, false);
+  assert.ok(worker.savedCaches().every(cache => !cache.startsWith('pebble-partner-pages')));
 });

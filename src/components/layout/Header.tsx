@@ -304,7 +304,7 @@ export function Header({ partner, onAddTransactionClick, onAddGoalClick, onAddSc
               )}
             </div>
           )}
-          {!partner && <QuietSyncStatus key={pathname} />}
+          <QuietSyncStatus key={pathname} />
         </div>
       </div>
       {/* Only present while offline or while transactions wait to upload. */}

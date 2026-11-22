@@ -5,7 +5,7 @@ import { rankTopPlaces, shareTopPlaces } from '@/lib/topPlaces';
 import { FALLBACK_TIME_ZONE, isValidTimeZone } from '@/lib/time/timeZone';
 
 import { createHash, createHmac, randomInt, randomUUID } from 'node:crypto';
-import { revalidatePath } from 'next/cache';
+import { refresh, revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { neonSql } from '@/db';
 import { withSessionUser } from '@/lib/actions/withSessionUser';
@@ -192,13 +192,16 @@ async function unpair(userId: string, pairId: string) {
   });
 }
 
-async function enterPartner(userId: string, pairId: string) {
+async function enterPartner(userId: string, pairId: string, quiet = false) {
   if (!validId(pairId)) return failure('invalid');
   return run(async () => {
     const rows = await neonSql`SELECT 1 FROM public.pebble_partner_scope WHERE viewer_id = ${userId}::uuid AND pair_id = ${pairId}::uuid`;
     if (!rows.length) return failure('pendingPermissions');
     (await cookies()).set(PARTNER_VIEW_COOKIE, userId + ':' + pairId, {
-      httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 8 * 60 * 60,
+      httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/',
+      // The cookie selects a workspace. Queries continue checking the current
+      // scope, and Quiet Sync enforces a separate deadline on the saved data.
+      ...(quiet === true ? {} : { maxAge: 8 * 60 * 60 }),
     });
     return success;
   });
@@ -779,9 +782,14 @@ export const revokePartnerInviteAction = withSessionUser(revokeInvite);
 export const acceptPartnerInviteAction = withSessionUser(acceptInvite);
 export const savePartnerPermissionsAction = withSessionUser(savePermissions);
 export const unpairPartnerAction = withSessionUser(unpair);
-export const enterPartnerViewAction = withSessionUser(enterPartner);
+export const enterPartnerViewAction = withSessionUser(enterPartner, { partnerView: true });
 export const leavePartnerViewAction = withSessionUser(leavePartner, { partnerView: true });
 export const readPartnerWorkspaceAccessAction = withSessionUser(userId => run(() => readWorkspaceAccess(userId)), { partnerView: true });
+export const refreshQuietPartnerViewAction = withSessionUser(async userId => {
+  const access = await run(() => readWorkspaceAccess(userId));
+  if (access.ok) refresh();
+  return access;
+}, { partnerView: true });
 export const readPartnerWorkspaceAction = withSessionUser((userId, includePlaces?: boolean) => run(() => readWorkspace(userId, includePlaces === true)), { partnerView: true });
 export const createSharedRecordAction = withSessionUser(createSharedRecord, { partnerView: true });
 export const changeSharedTransactionAction = withSessionUser(changeSharedTransaction, { partnerView: true });

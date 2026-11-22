@@ -50,12 +50,15 @@ var VERSION = 'v2';
 var PAGES = 'pebble-pages-' + VERSION;
 var STATIC = 'pebble-static-' + VERSION;
 var META = 'pebble-meta-' + VERSION;
-var KNOWN = [PAGES, STATIC, META];
+var PARTNER_PAGES = 'pebble-partner-pages-v1';
+var PARTNER_PAGES_NEXT = 'pebble-partner-pages-next-v1';
+var KNOWN = [PAGES, STATIC, META, PARTNER_PAGES, PARTNER_PAGES_NEXT];
 
 var OFFLINE_URL = '/offline.html';
 var QUIET_URL = '/quiet-sync.html';
 var PRECACHE = [OFFLINE_URL, QUIET_URL, '/manifest.json', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 var QUIET_PRIMARY = ['/dashboard', '/accounts', '/transactions', '/reports', '/analysis', '/insights', '/budgets', '/goals', '/scheduled', '/settings'];
+var PARTNER_PRIMARY = QUIET_PRIMARY.map(function (path) { return '/partner' + path; });
 
 // How long a visited page waits for the network before the saved copy is
 // shown (the network response still updates the saved copy afterwards).
@@ -89,6 +92,7 @@ var metaChain = Promise.resolve();
 // Bumped by every clear. A page fetch that began before a clear and finishes
 // after it must not write itself back (a sign-out would be undone).
 var epoch = 0;
+var partnerEpoch = 0;
 
 // Serialised: several stores finish at once (a warm-up fetches many files),
 // and each rewrites the same small index.
@@ -143,7 +147,26 @@ function setQuietPolicy(data) {
       enabled: data.enabled === true,
       lastSyncedAt: meta.quiet && meta.quiet.lastSyncedAt || null,
     };
+    if (!meta.quiet.enabled) return clearPartnerPages(meta);
   }).then(readMeta).then(function (meta) { return quietStatus(meta, data.user); });
+}
+
+function clearPartnerPages(meta) {
+  partnerEpoch += 1;
+  delete meta.partner;
+  return deletePartnerCaches();
+}
+
+function deletePartnerCaches() {
+  return Promise.all([caches.delete(PARTNER_PAGES), caches.delete(PARTNER_PAGES_NEXT)]);
+}
+
+function expirePartnerPages(user, pair) {
+  return withMeta(function (meta) {
+    if (meta.user !== user || meta.partner?.pair !== pair || !meta.partner.cache || meta.partner.expiresAt > Date.now()) return;
+    delete meta.partner.cache;
+    return deletePartnerCaches();
+  });
 }
 
 // Evicts the oldest entries until both limits hold. `keep` is the entry just
@@ -180,12 +203,22 @@ function isCacheablePage(res) {
 // ("userId|buildId") written by the signed-in layout. Looked for in the first
 // 256 KB only (it sits in the document head).
 var CTX_RE = /<meta\b[^>]*\bname="pebble-session"[^>]*\bcontent="([^"]*)"|<meta\b[^>]*\bcontent="([^"]*)"[^>]*\bname="pebble-session"/;
+var PARTNER_CTX_RE = /<meta\b[^>]*\bname="pebble-partner-session"[^>]*\bcontent="([^"]*)"|<meta\b[^>]*\bcontent="([^"]*)"[^>]*\bname="pebble-partner-session"/;
 
 function readContext(buf) {
   var head = new TextDecoder().decode(buf.byteLength > 262144 ? buf.slice(0, 262144) : buf);
   var m = CTX_RE.exec(head);
   var parts = m ? (m[1] || m[2] || '').split('|') : [];
   return parts.length === 2 && parts[0] && parts[1] ? { user: parts[0], build: parts[1] } : null;
+}
+
+function readPartnerContext(buf) {
+  var head = new TextDecoder().decode(buf.slice(0, 262144));
+  var m = PARTNER_CTX_RE.exec(head);
+  var parts = m ? (m[1] || m[2] || '').split('|') : [];
+  var expiresAt = Number(parts[4]);
+  return parts.length === 5 && parts.every(Boolean) && Number.isSafeInteger(expiresAt) && expiresAt > Date.now()
+    ? { user: parts[0], pair: parts[1], build: parts[2], access: parts[3], expiresAt: expiresAt } : null;
 }
 
 // Reads the body once to learn its size, then stores a plain copy (only
@@ -211,7 +244,11 @@ function storePage(key, res, started) {
       }).then(function (cache) {
         return cache.put(key, new Response(buf, { status: 200, headers: headers }));
       }).then(function () {
-        if (meta.user && meta.user !== ctx.user) delete meta.quiet;
+        if (meta.user && meta.user !== ctx.user) {
+          delete meta.quiet;
+          return clearPartnerPages(meta);
+        }
+      }).then(function () {
         meta.user = ctx.user;
         meta.build = ctx.build;
         meta.pages[key] = { size: buf.byteLength, at: Date.now() };
@@ -254,8 +291,8 @@ function offlinePage() {
   });
 }
 
-function quietPage() {
-  if (self.navigator?.onLine === false) return offlinePage();
+function quietPage(partner) {
+  if (!partner && self.navigator?.onLine === false) return offlinePage();
   return caches.open(STATIC).then(function (cache) { return cache.match(QUIET_URL); }).then(function (saved) {
     if (!saved) return new Response('Quiet Sync paused. Return to a saved page to sync.', { status: 503 });
     return new Response(saved.body, { headers: { 'content-type': 'text/html; charset=utf-8' } });
@@ -280,6 +317,28 @@ function quietNavigation(url, user) {
   return waitForQuietWrites(user, path).then(readMeta).then(function (meta) {
     return meta.user === user ? cachedPage() : quietPage();
   });
+}
+
+function quietPartnerNavigation(url, meta) {
+  var partner = meta.partner;
+  if (!partner) return quietPage(true);
+  if (partner.expiresAt <= Date.now()) {
+    return expirePartnerPages(meta.user, partner.pair).then(function () { return quietPage(true); }, function () { return quietPage(true); });
+  }
+  if (!partner.cache) return quietPage(true);
+  var path = url.pathname === '/partner' ? '/partner/dashboard' : url.pathname;
+  if (!PARTNER_PRIMARY.includes(path)) return quietPage(true);
+  var started = epoch;
+  var partnerStarted = partnerEpoch;
+  return caches.open(partner.cache).then(function (cache) {
+    return cache.match(url.origin + path);
+  }).then(async function (saved) {
+    if (!saved || started !== epoch || partnerStarted !== partnerEpoch || partner.expiresAt <= Date.now()) return quietPage(true);
+    var latest = await readMeta();
+    return quietPaused(latest) && latest.user === meta.user && latest.partner?.pair === partner.pair &&
+      latest.partner?.cache === partner.cache && latest.partner.expiresAt === partner.expiresAt && partner.expiresAt > Date.now()
+      ? saved : quietPage(true);
+  }, function () { return quietPage(true); });
 }
 
 function handleNavigation(event) {
@@ -414,7 +473,7 @@ function clearPrivate() {
     delete meta.user;
     delete meta.build;
     delete meta.quiet;
-    return caches.delete(PAGES);
+    return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
   });
 }
 
@@ -427,7 +486,7 @@ function adoptUser(user) {
       delete meta.build;
       delete meta.quiet;
       meta.user = user;
-      return caches.delete(PAGES);
+      return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
     }
     if (!meta.user) meta.user = user;
   });
@@ -519,17 +578,18 @@ function quietPageURLs(paths) {
   return urls;
 }
 
-function readQuietDocument(url, key, user) {
+function readQuietDocument(url, key, user, pair) {
   var controller = new AbortController();
   var timeout = setTimeout(function () { controller.abort(); }, 10000);
   return fetch(url, {
     headers: { accept: 'text/html' }, cache: 'no-store', credentials: 'same-origin', signal: controller.signal,
   }).then(function (res) {
     if (res.redirected && res.url && /^\/auth(?:\/|$)/.test(new URL(res.url).pathname)) return { authExpired: true };
-    if (!isCacheablePage(res)) return null;
+    if (!isCacheablePage(res)) return pair && (res.redirected || res.status === 403 || res.status === 404) ? { accessDenied: true } : null;
     return res.arrayBuffer().then(function (buf) {
-      var ctx = buf.byteLength <= MAX_ONE_PAGE_BYTES && readContext(buf);
-      if (!ctx || ctx.user !== user) return null;
+      if (buf.byteLength > MAX_ONE_PAGE_BYTES) return null;
+      var ctx = pair ? readPartnerContext(buf) : readContext(buf);
+      if (!ctx || ctx.user !== user || pair && ctx.pair !== pair) return pair ? { accessDenied: true } : null;
       return { key: key, context: ctx, buf: buf, contentType: res.headers.get('content-type') || 'text/html; charset=utf-8' };
     });
   }).catch(function () { return null; }).finally(function () { clearTimeout(timeout); });
@@ -558,7 +618,7 @@ function refreshQuiet(data, keepAlive) {
           delete meta.user;
           delete meta.build;
           delete meta.quiet;
-          return caches.delete(PAGES);
+          return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
         });
         return Object.assign(quietStatus({}, data.user), { authExpired: true });
       }
@@ -690,6 +750,102 @@ function enqueueQuietRefresh(data, keepAlive) {
   return result;
 }
 
+function quietPartnerStatus(meta, user, pair) {
+  var valid = meta.user === user && meta.partner?.pair === pair;
+  return Object.assign(quietStatus(meta, user), {
+    ok: valid,
+    available: valid && meta.partner.expiresAt > Date.now() ? PARTNER_PRIMARY : [],
+    lastSyncedAt: valid ? meta.partner.lastSyncedAt : null,
+    expiresAt: valid ? meta.partner.expiresAt : 0,
+    build: valid ? meta.partner.build : null,
+    accessVersion: valid ? meta.partner.access : null,
+  });
+}
+
+async function refreshQuietPartner(data, keepAlive) {
+  var before = await readMeta();
+  var started = epoch;
+  var partnerStarted = partnerEpoch;
+  var { user, pair } = data;
+  var valid = function (meta) {
+    return epoch === started && partnerEpoch === partnerStarted && meta.user === user && quietPaused(meta);
+  };
+  if (!pair || !valid(before)) return quietPartnerStatus({}, user, pair);
+
+  var docs = [];
+  var total = 0;
+  var expiresAt = Infinity;
+  for (var path of PARTNER_PRIMARY) {
+    var key = self.location.origin + path;
+    var doc = await readQuietDocument(key, key, user, pair);
+    if (!valid(before)) return quietPartnerStatus({}, user, pair);
+    if (doc?.authExpired) {
+      await clearPrivate();
+      return Object.assign(quietPartnerStatus({}, user, pair), { authExpired: true });
+    }
+    if (doc?.accessDenied || doc && docs.length && docs[0].context.access !== doc.context.access) {
+      await withMeta(function (meta) { if (valid(meta)) return clearPartnerPages(meta); });
+      return Object.assign(quietPartnerStatus({}, user, pair), { accessDenied: true });
+    }
+    total += doc?.buf?.byteLength || 0;
+    if (!doc || total > MAX_PAGES_BYTES || docs.length && docs[0].context.build !== doc.context.build) {
+      return Object.assign(quietPartnerStatus(before, user, pair), { ok: false });
+    }
+    expiresAt = Math.min(expiresAt, doc.context.expiresAt);
+    docs.push(doc);
+  }
+
+  var oldCache;
+  await withMeta(async function (meta) {
+    if (!valid(meta) || expiresAt <= Date.now()) return;
+    oldCache = meta.partner?.cache;
+    var cacheName = oldCache === PARTNER_PAGES ? PARTNER_PAGES_NEXT : PARTNER_PAGES;
+    await caches.delete(cacheName);
+    var cache = await caches.open(cacheName);
+    try {
+      for (var doc of docs) {
+        await cache.put(doc.key, new Response(doc.buf, { headers: { 'content-type': doc.contentType } }));
+      }
+    } catch (error) {
+      await caches.delete(cacheName);
+      throw error;
+    }
+    var context = docs[0].context;
+    meta.partner = { pair: pair, cache: cacheName, build: context.build, access: context.access, expiresAt: expiresAt, lastSyncedAt: Date.now() };
+  });
+  var current = await readMeta();
+  var result = quietPartnerStatus(current, user, pair);
+  if (!valid(current) || result.expiresAt !== expiresAt) return Object.assign(result, { ok: false });
+  if (oldCache) await caches.delete(oldCache).catch(function () {});
+  keepAlive((async function () {
+    var assets = new Set();
+    for (var doc of docs) assetsIn(new TextDecoder().decode(doc.buf)).forEach(function (path) { assets.add(path); });
+    for (var asset of assets) await warmAsset(asset);
+  })());
+  return result;
+}
+
+var partnerRefreshes = Promise.resolve();
+function notifyPartnerCache(user) {
+  return self.clients.matchAll({ type: 'window' }).then(function (clients) {
+    clients.forEach(function (client) { client.postMessage({ type: 'QUIET_PARTNER_CACHE_CHANGED', user: user }); });
+  });
+}
+
+function enqueueQuietPartnerRefresh(data, keepAlive) {
+  var started = epoch;
+  var partnerStarted = partnerEpoch;
+  var result = partnerRefreshes.then(function () {
+    if (started !== epoch || partnerStarted !== partnerEpoch) return quietPartnerStatus({}, data.user, data.pair);
+    return refreshQuietPartner(data, keepAlive);
+  }).then(function (state) {
+    if (state.ok || state.accessDenied) keepAlive(notifyPartnerCache(data.user));
+    return state;
+  }).catch(function () { return quietPartnerStatus({}, data.user, data.pair); });
+  partnerRefreshes = result;
+  return result;
+}
+
 /* ---- lifecycle -------------------------------------------------------------- */
 
 self.addEventListener('install', function (event) {
@@ -727,8 +883,8 @@ self.addEventListener('message', function (event) {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'WARMED' });
     }));
   } else if (data.type === 'QUIET_STATUS') {
-    event.waitUntil(readMeta().then(function (meta) {
-      var status = quietStatus(meta, data.user);
+    event.waitUntil((data.pair ? expirePartnerPages(data.user, data.pair) : Promise.resolve()).then(readMeta).then(function (meta) {
+      var status = data.pair ? quietPartnerStatus(meta, data.user, data.pair) : quietStatus(meta, data.user);
       // Older clients consult status before running their idle timer. Leave
       // their explicit sync and cache policy intact while suppressing that timer.
       reply(data.onDemand === true ? status : Object.assign(status, { enabled: false }));
@@ -747,11 +903,26 @@ self.addEventListener('message', function (event) {
     var refresh = enqueueQuietRefresh(data, keepAlive);
     if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
     event.waitUntil(refresh.then(reply));
+  } else if (data.type === 'QUIET_PARTNER_REFRESH') {
+    event.waitUntil(enqueueQuietPartnerRefresh(data, keepAlive).then(reply));
+  } else if (data.type === 'QUIET_PARTNER_CLEAR') {
+    var fallbackExit = event.source?.url && new URL(event.source.url).origin === self.location.origin &&
+      /^\/partner(?:\/|$)/.test(new URL(event.source.url).pathname);
+    event.waitUntil(withMeta(function (meta) {
+      if ((meta.user === data.user || !data.user && fallbackExit) && (!data.pair || !meta.partner || meta.partner.pair === data.pair)) return clearPartnerPages(meta);
+    }).then(readMeta).then(function (meta) {
+      reply(quietStatus(meta, data.user));
+      if (meta.user) return notifyPartnerCache(meta.user);
+    }));
   } else if (data.type === 'QUIET_SYNC_FALLBACK') {
     event.waitUntil(readMeta().then(function (meta) {
       if (!meta.user || !meta.quiet?.enabled || !event.source?.url) return { ok: false };
       var url = new URL(event.source.url);
-      if (url.origin !== self.location.origin || !pageKey(url)) return { ok: false };
+      if (url.origin !== self.location.origin) return { ok: false };
+      if ((url.pathname === '/partner' || PARTNER_PRIMARY.includes(url.pathname)) && meta.partner?.pair) {
+        return enqueueQuietPartnerRefresh({ user: meta.user, pair: meta.partner.pair }, keepAlive);
+      }
+      if (!pageKey(url)) return { ok: false };
       var base = DEV ? '/pb-preview' : '';
       var pages = [...new Set([url.pathname + url.search, ...QUIET_PRIMARY.map(function (path) { return base + path; })])];
       return enqueueQuietRefresh({ user: meta.user, pages: pages, required: pages }, keepAlive);
@@ -786,7 +957,10 @@ self.addEventListener('fetch', function (event) {
     if (!quietPaused(meta)) {
       return request.mode === 'navigate' && path.indexOf('/api/') !== 0 ? handleNavigation(event) : fetch(request);
     }
-    if (request.mode === 'navigate') return quietNavigation(url, meta.user);
+    if (request.mode === 'navigate') {
+      if (/^\/partner(?:\/|$)/.test(path)) return quietPartnerNavigation(url, meta);
+      return quietNavigation(url, meta.user);
+    }
     if (path.indexOf('/api/auth/') === 0 && event.clientId) {
       return self.clients.get(event.clientId).then(function (client) {
         // Sign-in pages can complete their own session flow. An app page

@@ -8,6 +8,7 @@ import { HTML_LANG, LOCALE_COOKIE } from '@/lib/i18n';
 import { usePebbleStore, switchPebbleUser } from '@/store/usePebbleStore';
 import { useCurrentUser } from '@/lib/auth/useCurrentUser';
 import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { LEGACY_STORAGE_KEY, WELCOME_PENDING_KEY } from '@/store/storageKeys';
 import { playEventSound } from '@/lib/sound/useSound';
 import { NavigationContent } from '@/components/loading/NavigationContent';
@@ -41,6 +42,7 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   viewerId?: string;
 }) {
   const router = useRouter();
+  const { enabled: quietEnabled, refreshAfterWrite } = useQuietSync();
   const locale = usePebbleStore((s) => s.locale);
   const privacyOn = usePebbleStore((s) => s.privacyOn);
   // Text selection is off unless the user turned it on (exactly true only).
@@ -167,6 +169,10 @@ export function AppShell({ children, partnerAccess, viewerId }: {
   }, []);
   const pathname = usePathname();
   const partnerView = isPartnerPath(pathname);
+  const refreshPartner = () => {
+    if (quietEnabled) refreshAfterWrite();
+    else router.refresh();
+  };
   const [workspace, setWorkspace] = useState<{ pathname: string; data: PartnerWorkspaceData } | null>(null);
   const partnerData = workspace?.pathname === pathname ? workspace.data : undefined;
   const registerPartnerWorkspace = useCallback((pathname: string, data: PartnerWorkspaceData) => {
@@ -592,12 +598,12 @@ export function AppShell({ children, partnerAccess, viewerId }: {
         <TransactionDetailModal txn={paletteTxn.txn} categoryMeta={paletteTxn.categoryMeta} onClose={() => setPaletteTxn(null)} />
       )}
       {partnerView && partnerData && partnerEditor && <PartnerCreateDialog editor={partnerEditor} data={partnerData}
-        onClose={() => setPartnerEditor(null)} onCreated={() => router.refresh()} />}
+        onClose={() => setPartnerEditor(null)} onCreated={refreshPartner} />}
       {partnerView && partnerData && partnerTransaction && (partnerRow || partnerAdjustment) && (
         <TransactionDetailModal txn={partnerAdjustment ?? partnerTransaction.txn}
           categoryMeta={buildCategoryMeta(partnerData.categories, {})} accounts={partnerAccounts(partnerData)}
           ledgerEntry={partnerTransaction.entry} onClose={() => setPartnerTransaction(null)}
-          shared={{ row: partnerRow, showAccount: partnerData.permissions.accounts === true, onSaved: () => router.refresh() }} />
+          shared={{ row: partnerRow, showAccount: partnerData.permissions.accounts === true, onSaved: refreshPartner }} />
       )}
       {!partnerView && welcome && <WelcomeOverlay onDone={closeWelcome} />}
       </UndoDeleteProvider>

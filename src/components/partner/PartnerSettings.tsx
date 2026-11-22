@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeftRight, Copy, KeyRound, Shield, UsersRound } from 'lucide-react';
 import { SectionHeader } from '@/components/kit/SectionHeader';
 import { LoadingBlock } from '@/components/shared/Spinner';
 import { callAction } from '@/lib/actions/callAction';
-import { quietSyncIsPaused } from '@/lib/offline/quietSync';
+import { QUIET_SYNC_MAX_AGE_HOURS, quietSyncIsPaused, quietWorkerCommand, selectQuietPartner } from '@/lib/offline/quietSync';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
+import { useCurrentUser } from '@/lib/auth/useCurrentUser';
+import { ModalFrame } from '@/components/shared/ModalFrame';
+import { ModalCloseButton } from '@/components/shared/ModalCloseButton';
 import {
   acceptPartnerInviteAction, createPartnerInviteAction, enterPartnerViewAction, leavePartnerViewAction, readPartnerSettingsAction,
   revokePartnerInviteAction, savePartnerPermissionsAction,
@@ -27,6 +30,7 @@ type PermissionTab = (typeof PERMISSION_TABS)[number];
 export function PartnerSettings() {
   const { d, t, locale } = useTranslation();
   const x = d.partner;
+  const { id } = useCurrentUser();
   const { enabled: readsPaused } = useQuietSync();
   const [settings, setSettings] = useState<PartnerSettingsData | null>(null);
   const [invite, setInvite] = useState<{ code: string; expires: string } | null>(null);
@@ -95,8 +99,21 @@ export function PartnerSettings() {
   };
 
   const switchView = async (leave: boolean) => {
-    if (!leave && quietSyncIsPaused()) return;
-    if (await run(leave ? leavePartnerViewAction : () => enterPartnerViewAction(settings?.pairId ?? ''))) {
+    const pair = settings?.pairId ?? '';
+    const quiet = quietSyncIsPaused();
+    if (await run(async () => {
+      if (leave) {
+        const result = await (quiet ? selectQuietPartner(null) : leavePartnerViewAction());
+        if (result.ok && quiet) await quietWorkerCommand({ type: 'QUIET_PARTNER_CLEAR', user: id });
+        return result;
+      }
+      const result = await (quiet ? selectQuietPartner(pair) : enterPartnerViewAction(pair));
+      if (!result.ok || !quiet) return result;
+      const saved = await quietWorkerCommand({ type: 'QUIET_PARTNER_REFRESH', user: id, pair });
+      if (saved?.ok) return result;
+      await selectQuietPartner(null);
+      return { ok: false as const, error: x.savedViewDownloadFailed };
+    })) {
       // Drop the previous workspace's client state at the mode boundary.
       window.location.assign(new URL(leave ? '/settings#settings-partner' : '/partner/dashboard', window.location.origin));
     }
@@ -119,7 +136,13 @@ export function PartnerSettings() {
       {settings === null ? (
         readsPaused ? <>
           <SectionHeader icon={UsersRound} title={x.title} />
-          <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>
+          <p className="pb-partner-note">{x.loadQuietHelp}</p>
+          {error && <p role="alert">{partnerError(d, error)}</p>}
+          <button type="button" className="pill" disabled={busy} onClick={() => void run(async () => {
+            const result = await readPartnerSettingsAction();
+            if (result.ok) setSettings(result.data);
+            return result;
+          })}>{x.loadQuiet}</button>
         </> : error ? <><p role="alert">{partnerError(d, error)}</p><button type="button" className="pill" onClick={() => void reload(true)}>{x.refresh}</button></> : <LoadingBlock minHeight={90} />
       ) : partnerName ? (
         <>
@@ -134,14 +157,13 @@ export function PartnerSettings() {
             </div>
           )}
           <div className="pb-partner-actions">
-            <button type="button" disabled={busy || (!settings.viewingPartner && (readsPaused || !settings.configured || !settings.partnerConfigured))}
+            <button type="button" disabled={busy || (!settings.viewingPartner && (!settings.configured || !settings.partnerConfigured))}
               className="pill active" onClick={() => void switchView(settings.viewingPartner)}>
               <ArrowLeftRight size={16} aria-hidden="true" />{settings.viewingPartner ? x.returnOwn : x.viewPartner}
             </button>
             <button type="button" className="pill" disabled={busy} onClick={() => setDisconnect(true)}>{x.unpair}</button>
             {waitingForPartner && <button type="button" className="link-btn" disabled={busy} onClick={() => void reload(true)}>{x.refresh}</button>}
           </div>
-          {readsPaused && !settings.viewingPartner && <p className="pb-partner-note">{d.ux.offline.quietSync.needsLive}</p>}
           <SharingPermissions key={JSON.stringify([settings.pairId, settings.permissions, settings.sharedCategories, settings.censoredWords])} settings={settings}
             section={permissionTab} onSection={setPermissionTab} busy={busy} save={async (permissions, categoryIds, words) => {
               if (await run(() => savePartnerPermissionsAction(settings.pairId ?? '', permissions, categoryIds, words))) {
@@ -198,12 +220,14 @@ function SharingPermissions({ settings, section, onSection, busy, save }: {
   busy: boolean;
   save: (permissions: PartnerPermissions, categoryIds: string[], words?: string[]) => Promise<void>;
 }) {
-  const { d } = useTranslation();
+  const { d, t } = useTranslation();
   const x = d.partner;
   const [permissions, setPermissions] = useState(settings.permissions);
   const [categoryIds, setCategoryIds] = useState(() => new Set(settings.sharedCategories));
   const savedWords = settings.censoredWords ?? [];
   const [wordsDraft, setWordsDraft] = useState(() => savedWords.join('\n'));
+  const [warningOpen, setWarningOpen] = useState(false);
+  const warningTitle = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -228,9 +252,33 @@ function SharingPermissions({ settings, section, onSection, busy, save }: {
   const dirty = wordsChanged || PARTNER_PERMISSIONS.some(key => Boolean(permissions[key]) !== Boolean(settings.permissions[key]))
     || categoryIds.size !== settings.sharedCategories.length || settings.sharedCategories.some(id => !categoryIds.has(id));
   const locked = busy || settings.viewingPartner;
+  const restrictsAccess = PARTNER_PERMISSIONS.some(key => settings.permissions[key] === true && permissions[key] !== true)
+    || settings.sharedCategories.some(id => !categoryIds.has(id))
+    || words?.some(word => !savedWords.includes(word));
+  const saveChanges = () => {
+    if (!locked && words) void save(permissions, [...categoryIds], wordsChanged ? words : undefined);
+  };
   return (
-    <form className="pb-partner-permissions" onSubmit={event => { event.preventDefault(); if (!locked && words) void save(permissions, [...categoryIds], wordsChanged ? words : undefined); }}>
+    <form className="pb-partner-permissions" onSubmit={event => {
+      event.preventDefault();
+      if (locked || !words || !dirty) return;
+      if (restrictsAccess) setWarningOpen(true);
+      else saveChanges();
+    }}>
       <SectionHeader title={x.privacy} subtitle={x.privacyHelp} icon={Shield} />
+      {warningOpen && <ModalFrame onClose={() => setWarningOpen(false)} labelledBy={warningTitle}>
+        {(close, complete) => <>
+          <div className="pb-modal-head pb-partner-modal-head">
+            <h2 id={warningTitle}>{x.restrictTitle}</h2>
+            <ModalCloseButton onClick={close} />
+          </div>
+          <div className="pb-modal-body"><p>{t(x.savedPermissionWarning, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</p></div>
+          <div className="pb-modal-foot pb-partner-modal-actions">
+            <button className="pill" type="button" onClick={close}>{x.cancel}</button>
+            <button className="pill active" type="button" disabled={locked} onClick={() => { complete(); saveChanges(); }}>{x.savePermissions}</button>
+          </div>
+        </>}
+      </ModalFrame>}
       {settings.viewingPartner && <p className="pb-partner-note">{x.errors.settingsOwnOnly}</p>}
       <div className="pb-partner-permission-panel" data-active={section}>
         <div className="pb-partner-permission-switch" role="group" aria-label={x.privacy}>

@@ -6,6 +6,7 @@ import { ModalFrame } from '@/components/shared/ModalFrame';
 import { callAction } from '@/lib/actions/callAction';
 import { unpairPartnerAction } from '@/lib/actions/partner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { QUIET_SYNC_MAX_AGE_HOURS } from '@/lib/offline/quietSync';
 import { partnerError } from './partnerError';
 
 export function PartnerDisconnectDialog({ name, pairId, onClose, onUnpaired }: {
@@ -28,6 +29,7 @@ export function PartnerDisconnectDialog({ name, pairId, onClose, onUnpaired }: {
         </div>
         <div className="pb-modal-body">
           <p>{x.disconnectHelp}</p>
+          <p>{t(x.savedPermissionWarning, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</p>
           {error && <p className="pb-partner-error" role="alert">{error}</p>}
         </div>
         <div className="pb-modal-foot pb-partner-modal-actions">

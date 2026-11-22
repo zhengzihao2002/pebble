@@ -197,3 +197,7 @@
   min-height: 5rem;
   resize: vertical;
 }
+.pebble-root .pb-partner-expired {
+  display: grid; place-items: center; min-height: 100dvh; padding: 1.25rem;
+}
+.pebble-root .pb-partner-expired > section { width: min(100%, 30rem); }

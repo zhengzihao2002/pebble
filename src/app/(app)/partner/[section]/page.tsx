@@ -25,6 +25,8 @@ import { ReportsClient } from '../../reports/ReportsClient';
 import { AnalysisClient } from '../../analysis/AnalysisClient';
 import { InsightsClient } from '../../insights/InsightsClient';
 import { getUpcomingSchedule, SCHEDULE_PREVIEW_DAYS } from '@/lib/recurring/preview';
+import { BUILD_ID } from '@/lib/offline/buildId';
+import { QUIET_SYNC_MAX_AGE_MS } from '@/lib/offline/quietSync';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,16 +36,20 @@ function Restricted({ title, body }: { title: string; body: string }) {
 }
 
 export default async function PartnerSectionPage({ params }: { params: Promise<{ section: string }> }) {
+  const expiresAt = Date.now() + QUIET_SYNC_MAX_AGE_MS;
   const { section } = await params;
   if (!isPartnerSection(section)) notFound();
-  const [snapshot, locale] = await Promise.all([loadPartnerSnapshot(section === 'insights'), resolveUserLocale()]);
+  const [snapshot, locale, viewerId] = await Promise.all([loadPartnerSnapshot(section === 'insights'), resolveUserLocale(), getSessionUserIdOrRedirect()]);
   const d = getDictionary(locale);
   if (!snapshot.ok) return <Restricted title={d.partner.title} body={d.partner.viewUnavailable} />;
-  if (section === 'settings') return <Restricted title={d.nav.settings} body={d.partner.settingsRestricted} />;
-
-  return <PartnerWorkspaceScope key={snapshot.data.accessVersion} data={snapshot.data} pathname={`/partner/${section}`}>
-    {await renderSection(section, snapshot.data, d)}
-  </PartnerWorkspaceScope>;
+  return <>
+    <meta name="pebble-partner-session" content={`${viewerId}|${snapshot.data.pairId}|${BUILD_ID}|${snapshot.data.accessVersion}|${expiresAt}`} />
+    {section === 'settings'
+      ? <Restricted title={d.nav.settings} body={d.partner.settingsRestricted} />
+      : <PartnerWorkspaceScope key={snapshot.data.accessVersion} data={snapshot.data} pathname={`/partner/${section}`}>
+          {await renderSection(section, snapshot.data, d)}
+        </PartnerWorkspaceScope>}
+  </>;
 }
 
 async function renderSection(section: PartnerSection, data: PartnerWorkspaceData, d: Dictionary) {

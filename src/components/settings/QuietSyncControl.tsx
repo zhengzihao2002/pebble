@@ -43,7 +43,7 @@ export function QuietSyncControl() {
                 <dd>{q.aboutSavedApp}</dd>
               </dl>
             </div>
-            <p className="pb-quiet-help-note">{q.aboutOffline}</p>
+            <p className="pb-quiet-help-note">{t(q.aboutOffline, { hours: QUIET_SYNC_MAX_AGE_HOURS })}</p>
           </div>
         </InfoTooltip>
       </span>}
