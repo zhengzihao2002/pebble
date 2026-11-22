@@ -133,6 +133,7 @@ function quietStatus(meta, user) {
     liveUntil: null,
     lastSyncedAt: quiet && quiet.lastSyncedAt || null,
     build: valid && meta.build || null,
+    version: valid && meta.version || null,
     available: valid ? Object.keys(meta.pages || {}).map(function (key) {
       var url = new URL(key);
       return url.pathname + url.search;
@@ -204,12 +205,19 @@ function isCacheablePage(res) {
 // 256 KB only (it sits in the document head).
 var CTX_RE = /<meta\b[^>]*\bname="pebble-session"[^>]*\bcontent="([^"]*)"|<meta\b[^>]*\bcontent="([^"]*)"[^>]*\bname="pebble-session"/;
 var PARTNER_CTX_RE = /<meta\b[^>]*\bname="pebble-partner-session"[^>]*\bcontent="([^"]*)"|<meta\b[^>]*\bcontent="([^"]*)"[^>]*\bname="pebble-partner-session"/;
+var RELEASE_RE = /<meta\b[^>]*\bname="pebble-release"[^>]*\bcontent="([^"]*)"|<meta\b[^>]*\bcontent="([^"]*)"[^>]*\bname="pebble-release"/;
+
+function readRelease(head) {
+  var match = RELEASE_RE.exec(head);
+  var release = match && (match[1] || match[2]);
+  return /^\d+\.\d+\.\d+$/.test(release) ? release : null;
+}
 
 function readContext(buf) {
   var head = new TextDecoder().decode(buf.byteLength > 262144 ? buf.slice(0, 262144) : buf);
   var m = CTX_RE.exec(head);
   var parts = m ? (m[1] || m[2] || '').split('|') : [];
-  return parts.length === 2 && parts[0] && parts[1] ? { user: parts[0], build: parts[1] } : null;
+  return parts.length === 2 && parts[0] && parts[1] ? { user: parts[0], build: parts[1], version: readRelease(head) } : null;
 }
 
 function readPartnerContext(buf) {
@@ -218,7 +226,7 @@ function readPartnerContext(buf) {
   var parts = m ? (m[1] || m[2] || '').split('|') : [];
   var expiresAt = Number(parts[4]);
   return parts.length === 5 && parts.every(Boolean) && Number.isSafeInteger(expiresAt) && expiresAt > Date.now()
-    ? { user: parts[0], pair: parts[1], build: parts[2], access: parts[3], expiresAt: expiresAt } : null;
+    ? { user: parts[0], pair: parts[1], build: parts[2], access: parts[3], expiresAt: expiresAt, version: readRelease(head) } : null;
 }
 
 // Reads the body once to learn its size, then stores a plain copy (only
@@ -251,6 +259,7 @@ function storePage(key, res, started) {
       }).then(function () {
         meta.user = ctx.user;
         meta.build = ctx.build;
+        meta.version = ctx.version;
         meta.pages[key] = { size: buf.byteLength, at: Date.now() };
         return trim(PAGES, meta.pages, MAX_PAGE_ENTRIES, MAX_PAGES_BYTES, key);
       });
@@ -472,6 +481,7 @@ function clearPrivate() {
     meta.pages = {};
     delete meta.user;
     delete meta.build;
+    delete meta.version;
     delete meta.quiet;
     return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
   });
@@ -484,6 +494,7 @@ function adoptUser(user) {
       epoch += 1;
       meta.pages = {};
       delete meta.build;
+      delete meta.version;
       delete meta.quiet;
       meta.user = user;
       return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
@@ -617,6 +628,7 @@ function refreshQuiet(data, keepAlive) {
           meta.pages = {};
           delete meta.user;
           delete meta.build;
+          delete meta.version;
           delete meta.quiet;
           return Promise.all([caches.delete(PAGES), clearPartnerPages(meta)]);
         });
@@ -688,6 +700,7 @@ function refreshQuiet(data, keepAlive) {
       if (saved) {
         meta.quiet = meta.quiet || { enabled: false };
         meta.quiet.lastSyncedAt = Date.now();
+        meta.version = matching.find(function (doc) { return doc.context.version; })?.context.version || null;
       }
     });
     var current = await readMeta();
@@ -696,6 +709,7 @@ function refreshQuiet(data, keepAlive) {
       refreshed: matching.map(function (doc) { return doc.key; }).filter(function (key) { return key in (current.pages || {}); }),
     });
     if (result.ok) {
+      keepAlive(notifyQuietCache(data.user));
       // Report the committed snapshot immediately. Static downloads for a
       // new build can continue independently of the sync reply.
       keepAlive((async function () {
@@ -758,6 +772,7 @@ function quietPartnerStatus(meta, user, pair) {
     lastSyncedAt: valid ? meta.partner.lastSyncedAt : null,
     expiresAt: valid ? meta.partner.expiresAt : 0,
     build: valid ? meta.partner.build : null,
+    version: valid ? meta.partner.version : null,
     accessVersion: valid ? meta.partner.access : null,
   });
 }
@@ -811,7 +826,7 @@ async function refreshQuietPartner(data, keepAlive) {
       throw error;
     }
     var context = docs[0].context;
-    meta.partner = { pair: pair, cache: cacheName, build: context.build, access: context.access, expiresAt: expiresAt, lastSyncedAt: Date.now() };
+    meta.partner = { pair: pair, cache: cacheName, build: context.build, version: context.version, access: context.access, expiresAt: expiresAt, lastSyncedAt: Date.now() };
   });
   var current = await readMeta();
   var result = quietPartnerStatus(current, user, pair);
@@ -826,10 +841,11 @@ async function refreshQuietPartner(data, keepAlive) {
 }
 
 var partnerRefreshes = Promise.resolve();
-function notifyPartnerCache(user) {
+function notifyQuietCache(user, partner = false) {
   return self.clients.matchAll({ type: 'window' }).then(function (clients) {
-    clients.forEach(function (client) { client.postMessage({ type: 'QUIET_PARTNER_CACHE_CHANGED', user: user }); });
-  });
+    var type = partner ? 'QUIET_PARTNER_CACHE_CHANGED' : 'QUIET_CACHE_CHANGED';
+    clients.forEach(function (client) { client.postMessage({ type: type, user: user }); });
+  }).catch(function () {});
 }
 
 function enqueueQuietPartnerRefresh(data, keepAlive) {
@@ -839,7 +855,7 @@ function enqueueQuietPartnerRefresh(data, keepAlive) {
     if (started !== epoch || partnerStarted !== partnerEpoch) return quietPartnerStatus({}, data.user, data.pair);
     return refreshQuietPartner(data, keepAlive);
   }).then(function (state) {
-    if (state.ok || state.accessDenied) keepAlive(notifyPartnerCache(data.user));
+    if (state.ok || state.accessDenied) keepAlive(notifyQuietCache(data.user, true));
     return state;
   }).catch(function () { return quietPartnerStatus({}, data.user, data.pair); });
   partnerRefreshes = result;
@@ -872,6 +888,14 @@ self.addEventListener('message', function (event) {
     if (event.ports && event.ports[0]) event.ports[0].postMessage(result);
     else if (event.source && event.source.postMessage) event.source.postMessage(result);
   };
+  var replyToRefresh = function (result) {
+    reply(result);
+    // A cache commit can outlive its original message port. Return the same
+    // confirmation to the requesting tab over the worker's client channel.
+    if (Number.isSafeInteger(data.requestId) && event.source?.postMessage) {
+      event.source.postMessage({ type: 'QUIET_REFRESH_RESULT', requestId: data.requestId, result: result });
+    }
+  };
   if (data.type === 'CLEAR_CACHES') {
     event.waitUntil(clearAll().then(function () {
       if (event.source && event.source.postMessage) event.source.postMessage({ type: 'CLEARED' });
@@ -902,9 +926,9 @@ self.addEventListener('message', function (event) {
   } else if (data.type === 'QUIET_REFRESH') {
     var refresh = enqueueQuietRefresh(data, keepAlive);
     if (data.afterWrite && event.ports?.[0]) event.ports[0].postMessage({ queued: true });
-    event.waitUntil(refresh.then(reply));
+    event.waitUntil(refresh.then(replyToRefresh));
   } else if (data.type === 'QUIET_PARTNER_REFRESH') {
-    event.waitUntil(enqueueQuietPartnerRefresh(data, keepAlive).then(reply));
+    event.waitUntil(enqueueQuietPartnerRefresh(data, keepAlive).then(replyToRefresh));
   } else if (data.type === 'QUIET_PARTNER_CLEAR') {
     var fallbackExit = event.source?.url && new URL(event.source.url).origin === self.location.origin &&
       /^\/partner(?:\/|$)/.test(new URL(event.source.url).pathname);
@@ -912,7 +936,7 @@ self.addEventListener('message', function (event) {
       if ((meta.user === data.user || !data.user && fallbackExit) && (!data.pair || !meta.partner || meta.partner.pair === data.pair)) return clearPartnerPages(meta);
     }).then(readMeta).then(function (meta) {
       reply(quietStatus(meta, data.user));
-      if (meta.user) return notifyPartnerCache(meta.user);
+      if (meta.user) return notifyQuietCache(meta.user, true);
     }));
   } else if (data.type === 'QUIET_SYNC_FALLBACK') {
     event.waitUntil(readMeta().then(function (meta) {

@@ -5,6 +5,7 @@ import { getAccountsAction, getCategoriesAction, refreshQuietViewAction } from '
 import { refreshQuietPartnerViewAction } from '@/lib/actions/partner';
 import { callAction } from '@/lib/actions/callAction';
 import { BUILD_ID } from '@/lib/offline/buildId';
+import release from '@/lib/releaseSnapshot.json';
 import { isServerReachable, onlineServerSnapshot, readOffline, subscribeConnectivity } from '@/lib/offline/connectivity';
 import { tellWorkerWho } from '@/lib/offline/serviceWorker';
 import { saveSnapshot } from '@/lib/offline/queueStore';
@@ -20,17 +21,19 @@ export interface QuietSyncApi {
   status: 'paused' | 'syncing' | 'offline' | 'preparing';
   problem: 'unavailable' | 'incomplete' | null;
   lastSyncedAt: number | null;
+  updateVersion: string | null;
   partnerExpiresAt?: number;
   partnerAccessVersion?: string | null;
   setEnabled(enabled: boolean): void;
   syncNow(): void;
+  checkSnapshot(): Promise<void>;
   refreshAfterWrite(): void;
   refreshAfterSave(kind: SaveKind, options?: { refreshCurrent: boolean }): Promise<void>;
 }
 
 const QuietSyncContext = createContext<QuietSyncApi>({
-  enabled: false, preferenceReady: true, status: 'paused', problem: null, lastSyncedAt: null,
-  setEnabled() {}, syncNow() {}, refreshAfterWrite() {}, async refreshAfterSave() {},
+  enabled: false, preferenceReady: true, status: 'paused', problem: null, lastSyncedAt: null, updateVersion: null,
+  setEnabled() {}, syncNow() {}, async checkSnapshot() {}, refreshAfterWrite() {}, async refreshAfterSave() {},
 });
 
 export function useQuietSync() {
@@ -53,7 +56,8 @@ function isSavedView(pathname: string, pair?: string) {
 export function QuietSyncProvider({ userId, pair, children }: { userId: string; pair?: string; children: ReactNode }) {
   const [enabled, setEnabledState] = useState(false);
   const [preferenceReady, setPreferenceReady] = useState(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [snapshot, setSnapshot] = useState<{ at: number; version: string | null }>();
+  const lastSyncedAt = snapshot?.at ?? null;
   const [partnerExpiresAt, setPartnerExpiresAt] = useState<number>();
   const [partnerAccessVersion, setPartnerAccessVersion] = useState<string | null>();
   const [syncing, setSyncing] = useState(false);
@@ -83,11 +87,23 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
       return false;
     }
     const syncedAt = state.lastSyncedAt;
-    if (syncedAt != null) setLastSyncedAt(previous => Math.max(previous ?? 0, syncedAt));
+    if (syncedAt != null) {
+      setSnapshot(previous => {
+        const version = state.version ?? (previous?.at === syncedAt ? previous.version : null);
+        if (previous && (previous.at > syncedAt || previous.at === syncedAt && previous.version === version)) return previous;
+        return { at: syncedAt, version };
+      });
+    }
     if (state.expiresAt !== undefined) setPartnerExpiresAt(state.expiresAt);
     if (state.accessVersion !== undefined) setPartnerAccessVersion(state.accessVersion);
     return state.ok;
   }, []);
+
+  const checkSnapshot = useCallback(async () => {
+    if (!readQuietPreference(userId).enabled) return;
+    const state = await quietWorkerCommand({ type: 'QUIET_STATUS', user: userId, onDemand: true, pair });
+    if (state && readQuietPreference(userId).enabled) receiveStatus(state);
+  }, [pair, receiveStatus, userId]);
 
   const reconcile = useCallback(async () => {
     if (busy.current) return;
@@ -120,13 +136,14 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
   useEffect(() => {
     void reconcile();
     const controllers = navigator.serviceWorker;
-    const onController = () => { void reconcile(); };
+    const onController = () => { void (busy.current ? checkSnapshot() : reconcile()); };
     const onVisible = () => { if (!document.hidden) void reconcile(); };
-    const onPartnerCache = (event: MessageEvent) => {
-      if (pair && event.data?.type === 'QUIET_PARTNER_CACHE_CHANGED' && event.data.user === userId) void reconcile();
+    const onSnapshot = (event: MessageEvent) => {
+      const expected = pair ? 'QUIET_PARTNER_CACHE_CHANGED' : 'QUIET_CACHE_CHANGED';
+      if (event.data?.type === expected && event.data.user === userId) void checkSnapshot();
     };
     controllers?.addEventListener('controllerchange', onController);
-    if (pair) controllers?.addEventListener('message', onPartnerCache);
+    controllers?.addEventListener('message', onSnapshot);
     document.addEventListener('visibilitychange', onVisible);
     const stop = subscribeQuietPreference(showPreference);
     return () => {
@@ -134,9 +151,9 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
       stop();
       document.removeEventListener('visibilitychange', onVisible);
       controllers?.removeEventListener('controllerchange', onController);
-      if (pair) controllers?.removeEventListener('message', onPartnerCache);
+      controllers?.removeEventListener('message', onSnapshot);
     };
-  }, [pair, reconcile, showPreference, userId]);
+  }, [checkSnapshot, pair, reconcile, showPreference, userId]);
 
   const refreshReference = useCallback(() => {
     // Quiet Sync and the offline transaction form share this reference snapshot.
@@ -179,8 +196,9 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
     } finally {
       setSyncing(false);
       busy.current = false;
+      void checkSnapshot();
     }
-  }, [download]);
+  }, [checkSnapshot, download]);
 
   const setEnabled = useCallback(async (next: boolean) => {
     if (busy.current) return;
@@ -303,11 +321,13 @@ export function QuietSyncProvider({ userId, pair, children }: { userId: string; 
   }, [receiveStatus, refreshReference, userId]);
 
   const status = offline ? 'offline' : preparing ? 'preparing' : syncing || saveSyncs ? 'syncing' : 'paused';
+  const updateVersion = enabled && snapshot?.version && snapshot.version !== release.version ? snapshot.version : null;
   return (
     <QuietSyncContext.Provider value={{
-      enabled: enabled || preparing, preferenceReady, status, problem, lastSyncedAt, partnerExpiresAt, partnerAccessVersion,
+      enabled: enabled || preparing, preferenceReady, status, problem, lastSyncedAt, updateVersion, partnerExpiresAt, partnerAccessVersion,
       setEnabled: next => { void setEnabled(next); },
       syncNow: () => { void sync(); },
+      checkSnapshot,
       refreshAfterWrite,
       refreshAfterSave,
     }}>

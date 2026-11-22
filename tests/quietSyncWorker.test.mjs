@@ -13,6 +13,7 @@ function workerFixture() {
   const requests = [];
   let workerUser = 'user-a';
   let build = 'build-a';
+  let version = '4.54.0';
   let asset = '';
   let partnerPair;
   let partnerAccess = 'open';
@@ -59,7 +60,7 @@ function workerFixture() {
           : `<meta name="pebble-session" content="${workerUser}|${build}">`;
         const response = url.pathname.startsWith('/_next/static/')
           ? new Response('fixture asset', { headers: { 'content-type': 'application/javascript' } })
-          : basic(`${marker || ''}<main>${url.pathname} ${build} ${revision} ${asset}</main>`);
+          : basic(`<meta content="${version}" name="pebble-release">${marker || ''}<main>${url.pathname} ${build} ${revision} ${asset}</main>`);
         if (hold?.path === url.pathname) {
           const next = hold;
           hold = undefined;
@@ -98,6 +99,7 @@ function workerFixture() {
     boot() { fire = boot(); },
     advance(ms) { now += ms; },
     useBuild(next) { build = next; },
+    useVersion(next) { version = next; },
     useAsset(path) { asset = path; },
     usePartner(pair, access = 'open') { partnerPair = pair; partnerAccess = access; },
     useRevision(next) { revision = next; },
@@ -115,8 +117,9 @@ function workerFixture() {
       return { ready, release };
     },
     install() { return fire('install'); },
-    message(data, onMessage) {
-      return fire('message', { data: data.type === 'QUIET_STATUS' ? { onDemand: true, ...data } : data, onMessage });
+    message(data, onMessage, onClientMessage) {
+      return fire('message', { data: data.type === 'QUIET_STATUS' ? { onDemand: true, ...data } : data, onMessage,
+        source: onClientMessage ? { postMessage: onClientMessage } : undefined });
     },
     fetch(path, { mode = 'navigate', method = 'GET' } = {}) {
       return fire('fetch', { request: { url: new URL(path, origin).href, mode, method, headers: new Headers() }, clientId: 'tab' });
@@ -242,17 +245,24 @@ test('a sync replies with the new build timestamp while its assets are still dow
   const first = await save(worker);
   worker.advance(60_000);
   worker.useBuild('build-b');
+  worker.useVersion('4.54.1');
   const asset = '/_next/static/chunks/build-b.js';
   worker.useAsset(asset);
   const hold = worker.holdNext(asset);
   let reply;
-  const sync = worker.message({ type: 'QUIET_REFRESH', user, pages }, response => { reply = response; });
+  let clientReply;
+  const sync = worker.message({ type: 'QUIET_REFRESH', user, pages, requestId: 9 }, response => { reply = response; }, response => { clientReply = response; });
 
   try {
     await hold.ready;
-    await worker.message({ type: 'QUIET_STATUS', user });
+    const persisted = await worker.message({ type: 'QUIET_STATUS', user });
     assert.equal(reply?.ok, true);
     assert.equal(reply.build, 'build-b');
+    assert.equal(reply.version, '4.54.1');
+    assert.equal(persisted.version, reply.version);
+    assert.equal(persisted.lastSyncedAt, reply.lastSyncedAt);
+    assert.equal(clientReply?.requestId, 9);
+    assert.equal(clientReply.result.lastSyncedAt, reply.lastSyncedAt);
     assert.ok(reply.lastSyncedAt > first.lastSyncedAt);
     assert.match(await (await worker.fetch('/reports')).text(), /build-b/);
   } finally {

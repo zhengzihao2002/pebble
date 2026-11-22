@@ -124,6 +124,7 @@ export interface QuietWorkerStatus {
   available: string[];
   refreshed?: string[];
   build?: string | null;
+  version?: string | null;
   authExpired?: boolean;
   accessDenied?: boolean;
   expiresAt?: number;
@@ -155,6 +156,8 @@ export function activeQuietWorker(services: ServiceWorkerContainer): Promise<Ser
   });
 }
 
+let refreshRequestId = 0;
+
 export async function quietWorkerCommand(command: QuietCommand, onQueued?: () => void): Promise<QuietWorkerStatus | null> {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) return null;
   const services = navigator.serviceWorker;
@@ -162,17 +165,27 @@ export async function quietWorkerCommand(command: QuietCommand, onQueued?: () =>
   if (!worker) return null;
   return new Promise(resolve => {
     const channel = new MessageChannel();
+    const refresh = command.type === 'QUIET_REFRESH' || command.type === 'QUIET_PARTNER_REFRESH';
+    const requestId = refresh ? ++refreshRequestId : undefined;
+    const receive = (event: MessageEvent) => {
+      if (event.data?.type === 'QUIET_REFRESH_RESULT' && event.data.requestId === requestId &&
+          typeof event.data.result?.ok === 'boolean') {
+        finish(event.data.result);
+      }
+    };
     const finish = (result: QuietWorkerStatus | null) => {
       clearTimeout(timeout);
       channel.port1.close();
+      if (refresh) services.removeEventListener?.('message', receive);
       resolve(result);
     };
-    const timeout = window.setTimeout(() => finish(null), command.type === 'QUIET_REFRESH' || command.type === 'QUIET_PARTNER_REFRESH' ? 120_000 : 6000);
+    const timeout = window.setTimeout(() => finish(null), refresh ? 120_000 : 6000);
     channel.port1.onmessage = event => {
       if (event.data?.queued === true) onQueued?.();
       else finish(event.data && typeof event.data.ok === 'boolean' ? event.data : null);
     };
-    try { worker.postMessage(command, [channel.port2]); }
+    if (refresh) services.addEventListener?.('message', receive);
+    try { worker.postMessage(refresh ? { ...command, requestId } : command, [channel.port2]); }
     catch { finish(null); }
   });
 }

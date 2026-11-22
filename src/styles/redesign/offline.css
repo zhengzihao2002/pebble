@@ -215,6 +215,10 @@ html[data-pb-quiet-startup="offline"] .pebble-root .pb-quiet-status-startup[data
   flex: 1 1 auto; min-height: 44px; padding: .45rem .65rem; font-size: .78rem;
 }
 .pebble-root .pb-quiet-actions > button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.pebble-root .pb-quiet-update {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .45rem;
+  padding-block-start: .55rem; border-block-start: 1px solid var(--line); color: var(--pine); font-size: .76rem;
+}
 .pebble-root .pb-quiet-title {
   display: flex; flex-wrap: wrap; align-items: center; column-gap: .35rem;
 }

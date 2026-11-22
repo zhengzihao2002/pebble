@@ -31,6 +31,7 @@ import "@/styles/redesign/brand-icons.css";
 import { PebbleAuthUIProvider } from "@/components/providers/PebbleAuthUIProvider";
 import { PREINIT_PREFERENCES_SCRIPT } from "@/lib/preinitPreferences";
 import { HtmlPreferenceSync } from "@/components/providers/HtmlPreferenceSync";
+import release from "@/lib/releaseSnapshot.json";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -74,6 +75,7 @@ export const metadata: Metadata = {
   title: "Pebble",
   description: "Pebble budgeting app",
   manifest: "/manifest.json",
+  other: { "pebble-release": release.version },
   // favicon.ico in app/ is linked automatically. The SVG is listed here, not
   // left as an app/icon.svg file: Next drops file-based icons whenever this
   // icons object is set, which it must be for the apple icon.

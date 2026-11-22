@@ -17,7 +17,7 @@ const startupStatuses = ['paused', 'offline'] as const;
 
 export function QuietSyncStatus() {
   const { d, t, locale } = useTranslation();
-  const { enabled, preferenceReady, status, syncNow, lastSyncedAt, problem } = useQuietSync();
+  const { enabled, preferenceReady, status, syncNow, checkSnapshot, lastSyncedAt, updateVersion, problem } = useQuietSync();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -75,7 +75,10 @@ export function QuietSyncStatus() {
       <button
         ref={trigger} type="button" className="pb-quiet-trigger" aria-label={label}
         title={label} aria-expanded={open} aria-controls={open ? panelId : undefined}
-        onClick={() => setOpen(value => !value)}
+        onClick={() => {
+          if (!open) void checkSnapshot();
+          setOpen(!open);
+        }}
       >
         <StatusIcon className="pb-quiet-status-icon" size={16} aria-hidden="true" />
         <span>{q.status[status]}</span>
@@ -101,6 +104,10 @@ export function QuietSyncStatus() {
             </button>
           </div>
           {!offline && <QuietSyncActionNote />}
+          {updateVersion && <div className="pb-quiet-update">
+            <span role="status">{t(q.updateReady, { version: updateVersion })}</span>
+            <button type="button" className="pill" onClick={() => location.reload()}>{q.openUpdate}</button>
+          </div>}
         </div>
       )}
     </div>

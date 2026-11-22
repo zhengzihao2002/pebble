@@ -102,6 +102,8 @@ export const offlineEn = {
     },
     syncNow: 'Sync now',
     lastSynced: 'Last synced {time}',
+    updateReady: 'Version {version} available',
+    openUpdate: 'Open update',
     needsSync: 'Select Sync now to update the saved data.',
     needsLive: 'Turn off Quiet Sync in Settings to load this section.',
     problem: {
@@ -195,6 +197,8 @@ export const offlineZh: typeof offlineEn = {
     },
     syncNow: '立即同步',
     lastSynced: '上次同步：{time}',
+    updateReady: '版本 {version} 已可用',
+    openUpdate: '打开新版',
     needsSync: '选择“立即同步”以更新本地数据。',
     needsLive: '在设置中关闭轻量同步，即可加载此部分。',
     problem: {

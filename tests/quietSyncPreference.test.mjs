@@ -63,6 +63,28 @@ test('Quiet Sync defaults off and keeps its preference on this device for the sa
   assert.equal(mount('first').quietSyncIsEnabled(), false);
 });
 
+test('Quiet Sync can confirm a snapshot if its original message port never replies', async () => {
+  const cjs = { exports: {} };
+  const serviceWorker = new EventTarget();
+  const result = { ok: true, lastSyncedAt: 1_800_000_000_000, version: '4.54.1' };
+  serviceWorker.controller = {
+    postMessage(command, [port]) {
+      serviceWorker.dispatchEvent(new MessageEvent('message', { data: {
+        type: 'QUIET_REFRESH_RESULT', requestId: command.requestId + 1, result: { ok: false },
+      } }));
+      serviceWorker.dispatchEvent(new MessageEvent('message', { data: {
+        type: 'QUIET_REFRESH_RESULT', requestId: command.requestId, result,
+      } }));
+      port.close();
+    },
+  };
+  vm.runInNewContext(source, {
+    module: cjs, exports: cjs.exports, MessageChannel, clearTimeout,
+    window: { setTimeout }, navigator: { serviceWorker },
+  });
+  assert.deepEqual(await cjs.exports.quietWorkerCommand({ type: 'QUIET_REFRESH', user: 'first' }), result);
+});
+
 test('cached HTML paints the document owner’s Quiet Sync status before hydration', () => {
   const cjs = { exports: {} };
   vm.runInNewContext(source, { module: cjs, exports: cjs.exports });
