@@ -3,7 +3,7 @@ export const QUIET_SYNC_PAGES = [
   '/insights', '/budgets', '/goals', '/scheduled', '/settings',
 ];
 
-export const QUIET_SYNC_MAX_AGE_HOURS = 24;
+export const QUIET_SYNC_MAX_AGE_HOURS = 8;
 
 export function isQuietSyncDue(lastSyncedAt: number | null, now: number) {
   return lastSyncedAt === null || now - lastSyncedAt >= QUIET_SYNC_MAX_AGE_HOURS * 60 * 60 * 1000;

@@ -110,13 +110,13 @@ test('automatic sync is confined to a fresh launch and sign-in', () => {
   assert.equal(detect(undefined, '', origin), false);
 });
 
-test('an active browsing catch-up is due 24 hours after the last successful sync', () => {
+test('an active browsing catch-up is due eight hours after the last successful sync', () => {
   const cjs = { exports: {} };
   vm.runInNewContext(source, { module: cjs, exports: cjs.exports });
   const lastSyncedAt = 1_800_000_000_000;
-  const day = 24 * 60 * 60 * 1000;
+  const eightHours = 8 * 60 * 60 * 1000;
   const { isQuietSyncDue } = cjs.exports;
-  assert.equal(isQuietSyncDue(lastSyncedAt, lastSyncedAt + day - 1), false);
-  assert.equal(isQuietSyncDue(lastSyncedAt, lastSyncedAt + day), true);
+  assert.equal(isQuietSyncDue(lastSyncedAt, lastSyncedAt + eightHours - 1), false);
+  assert.equal(isQuietSyncDue(lastSyncedAt, lastSyncedAt + eightHours), true);
   assert.equal(isQuietSyncDue(null, lastSyncedAt), true);
 });
