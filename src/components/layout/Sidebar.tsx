@@ -10,7 +10,7 @@ import release from '@/lib/releaseSnapshot.json';
 import { NavButton } from './NavButton';
 import { SignOutButton } from './SignOutButton';
 import { NAV_GROUPS, navItems } from './navItems';
-import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useHasMounted, useTranslation } from '@/lib/i18n/useTranslation';
 import { useNavGlass } from './useNavGlass';
 import { useSidebarMotion } from './useSidebarMotion';
 
@@ -21,6 +21,7 @@ export function Sidebar() {
   const toggleSidebar = useSidebarMotion(ref);
   const setAppearance = usePebbleStore((s) => s.setAppearance);
   const darkMode = useResolvedDark();
+  const mounted = useHasMounted();
   const { name, email, initials } = useCurrentUser();
   const { d, locale } = useTranslation();
   const setLocale = usePebbleStore(state => state.setLocale);
@@ -64,9 +65,12 @@ export function Sidebar() {
         </nav>
       )}
       <div className="pb-shell-side-foot" style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <button onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn" title={darkMode ? d.sidebar.lightMode : d.sidebar.darkMode} aria-label={darkMode ? d.sidebar.lightMode : d.sidebar.darkMode}>
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          <span className="nav-label">{darkMode ? d.sidebar.lightMode : d.sidebar.darkMode}</span>
+        <button type="button" onClick={() => setAppearance(darkMode ? 'light' : 'dark')} className="nav-btn pb-sidebar-theme"
+          title={mounted ? (darkMode ? d.sidebar.lightMode : d.sidebar.darkMode) : undefined}>
+          <Sun size={18} className="pb-sidebar-to-light" aria-hidden="true" />
+          <span className="nav-label pb-sidebar-to-light">{d.sidebar.lightMode}</span>
+          <Moon size={18} className="pb-sidebar-to-dark" aria-hidden="true" />
+          <span className="nav-label pb-sidebar-to-dark">{d.sidebar.darkMode}</span>
         </button>
         <button type="button" onClick={() => setLocale(nextLocale)} className="nav-btn"
           title={nextLanguage} aria-label={`${d.settings.language.label}: ${nextLanguage}`}>

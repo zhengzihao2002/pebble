@@ -478,6 +478,9 @@
 .pebble-root .pebble-sidebar .nav-btn { line-height: 1.25rem; align-items: center; }
 .pebble-root .pebble-sidebar .nav-btn > svg { display: block; flex-shrink: 0; align-self: center; }
 .pebble-root .pebble-sidebar .nav-label { display: block; line-height: inherit; }
+/* Match the parser-time theme before the sidebar hydrates. */
+html.pebble-dark .pebble-root .pebble-sidebar .pb-sidebar-theme > .pb-sidebar-to-dark,
+html:not(.pebble-dark) .pebble-root .pebble-sidebar .pb-sidebar-theme > .pb-sidebar-to-light { display: none; }
 .pebble-root .pebble-sidebar { --pb-sidebar-row-py: .5rem; }
 .pebble-root .pebble-sidebar :is(nav, .pb-shell-side-foot) .nav-btn {
   padding-block: var(--pb-sidebar-row-py);
