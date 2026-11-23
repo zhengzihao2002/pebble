@@ -71,9 +71,11 @@ test('one display marker per payoff follows the date and amount for each side', 
   assert.equal(markers.length, 1);
   assert.equal(markers[0].side, 'card');
   assert.equal(markers[0].amount, 80.75);
+  assert.deepEqual(Array.from(markers[0].fundingAccountIds), ['checking', 'other-bank']);
   assert.equal(fundingMarkers.length, 1);
   assert.equal(fundingMarkers[0].side, 'funding');
   assert.equal(fundingMarkers[0].amount, 70.61);
+  assert.deepEqual(Array.from(fundingMarkers[0].fundingAccountIds), ['checking']);
   assert.equal(statementPayoffs(entries, 'other-bank', '2026-11-')[0].amount, 10.14);
   assert.equal(statementPayoffs(entries, 'credit', '2026-10-').length, 0);
   assert.equal(statementPayoffs(entries, 'other-card', '2026-11-').length, 0);

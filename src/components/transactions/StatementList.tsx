@@ -79,19 +79,27 @@ export function SignedAmount({ value, className = '' }: { value: number; classNa
   );
 }
 
-export function PayoffRow({ payoff, cardName, showDate = false }: {
+export function PayoffRow({ payoff, accounts, showDate = false }: {
   payoff: StatementPayoff;
-  cardName?: string;
+  accounts: Account[];
   showDate?: boolean;
 }) {
-  const { d, locale } = useTranslation();
+  const { d, t, locale } = useTranslation();
   const x = d.ux.transactions;
   const partner = usePartnerView();
   const [open, setOpen] = useState(false);
   const Row = partner ? 'div' : 'button';
   const onCard = payoff.side === 'card';
   const date = showDate ? formatDate(payoff.date, locale) : '';
-  const note = onCard ? date : [cardName ?? payoff.cardName, date].filter(Boolean).join(' · ');
+  const accountName = (id: string) => {
+    const account = accounts.find(item => item.id === id);
+    return account?.last4 ? `${account.name} ····${account.last4}` : account?.name;
+  };
+  const cardName = accountName(payoff.cardId) ?? payoff.cardName;
+  const fundingNames = payoff.fundingAccountIds.map(accountName).filter((name): name is string => Boolean(name));
+  const funding = fundingNames.length ? new Intl.ListFormat(locale).format(fundingNames) : '';
+  const direction = onCard ? funding && t(x.payoffFrom, { account: funding }) : t(x.payoffTo, { account: cardName });
+  const note = [direction, date].filter(Boolean).join(' · ');
   return (
     <>
       <Row className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff=""
@@ -114,7 +122,7 @@ export function PayoffRow({ payoff, cardName, showDate = false }: {
           )}
         </span>
       </Row>
-      {open && !partner && <PayoffDetailDialog payoff={payoff} cardName={cardName ?? payoff.cardName} onClose={() => setOpen(false)} />}
+      {open && !partner && <PayoffDetailDialog payoff={payoff} cardName={cardName} funding={funding} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -169,7 +177,7 @@ export function DayGroups({ groups, mode, accounts, categoryMeta, onOpenDetail, 
             </div>
             {g.items.map((item) => item.kind === 'payoff' ? (
               <PayoffRow key={`payoff-${item.id}`} payoff={item.payoff}
-                cardName={accounts.find(account => account.id === item.payoff.cardId)?.name}
+                accounts={accounts}
               />
             ) : (
               <StatementRow

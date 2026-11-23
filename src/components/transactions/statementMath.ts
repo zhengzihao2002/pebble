@@ -20,21 +20,26 @@ export function isCardShadow(record: LedgerRecord, accountId: string | null): bo
 export interface StatementPayoff extends CreditCardPayoff {
   side: 'card' | 'funding';
   amount: number;
+  fundingAccountIds: string[];
 }
 
 /** One display marker per payment, scoped to the side of the selected account. */
 export function statementPayoffs(entries: StatementEntry[], accountId: string, monthPrefix: string): StatementPayoff[] {
-  const payoffs = new Map<string, StatementPayoff>();
+  const payoffs = new Map<string, Omit<StatementPayoff, 'fundingAccountIds'> & { fundingAccountIds: Set<string> }>();
   for (const { record } of entries) {
     if (record.type !== 'expense') continue;
     const payoff = record.creditCardPayoff;
     if (!payoff?.date.startsWith(monthPrefix)) continue;
     const side = payoff.cardId === accountId ? 'card' : record.accountId === accountId ? 'funding' : null;
     if (!side) continue;
-    const amount = (payoffs.get(payoff.id)?.amount ?? 0) + cents(Math.abs(record.amount));
-    payoffs.set(payoff.id, { ...payoff, side, amount });
+    const marker = payoffs.get(payoff.id) ?? { ...payoff, side, amount: 0, fundingAccountIds: new Set<string>() };
+    marker.amount += cents(Math.abs(record.amount));
+    marker.fundingAccountIds.add(record.accountId);
+    payoffs.set(payoff.id, marker);
   }
-  return [...payoffs.values()].map(payoff => ({ ...payoff, amount: payoff.amount / 100 }));
+  return [...payoffs.values()].map(payoff => ({
+    ...payoff, amount: payoff.amount / 100, fundingAccountIds: [...payoff.fundingAccountIds],
+  }));
 }
 
 /** 'YYYY-MM-01' and the first day of the following month, for range checks. */

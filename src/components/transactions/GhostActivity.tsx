@@ -43,7 +43,7 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
     </header>
     {items.length === 0 ? <p className="pb-txn-ghost-empty" data-pb-period-body>{zh ? '当前月份及筛选条件下没有幽灵流水。' : 'No ghost activity matches this month and these filters.'}</p> :
       <div className="pb-txn-ghost-rows" data-pb-period-body>{items.map(item => {
-        if (item.kind === 'payoff') return <PayoffRow key={`payoff-${item.id}`} payoff={item.payoff} cardName={names.get(item.payoff.cardId)} showDate />;
+        if (item.kind === 'payoff') return <PayoffRow key={`payoff-${item.id}`} payoff={item.payoff} accounts={accounts} showDate />;
         const { record } = item.entry;
         const Icon = record.type === 'adjustment' ? SlidersHorizontal : record.amount >= 0 ? ArrowUpRight : ArrowDownRight;
         const payoff = record.type === 'expense' ? record.creditCardPayoff : undefined;

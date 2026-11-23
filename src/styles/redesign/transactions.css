@@ -352,6 +352,10 @@
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);
 }
 .pebble-root .pb-txn-adjustment-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+/* Reserve the same space with or without the selected account's icon. */
+@container pb-txn-col (min-width: 640px) {
+  .pebble-root .pb-txn-account-select { flex: 0 0 15rem; inline-size: 15rem; }
+}
 @container pb-txn-col (max-width: 479.98px) {
   .pebble-root .pb-txn-type { width: 100%; }
   .pebble-root .pb-txn-type .pb-seg-btn { flex: 1 1 auto; padding-inline: 0.45rem; }

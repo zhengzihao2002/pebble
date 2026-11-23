@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { ArrowRightLeft, CalendarDays, CreditCard, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, CalendarDays, Trash2 } from 'lucide-react';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
 import { ActionError } from '@/components/shared/ActionError';
 import { CloseSoon } from '@/components/shared/CloseSoon';
@@ -16,9 +16,10 @@ import { quietSyncIsPaused } from '@/lib/offline/quietSync';
 import { useSafetyLock } from '@/lib/useSafetyLock';
 import type { StatementPayoff } from './statementMath';
 
-export function PayoffDetailDialog({ payoff, cardName, onClose }: {
+export function PayoffDetailDialog({ payoff, cardName, funding, onClose }: {
   payoff: StatementPayoff;
   cardName: string;
+  funding: string;
   onClose: () => void;
 }) {
   const title = useId();
@@ -69,10 +70,13 @@ export function PayoffDetailDialog({ payoff, cardName, onClose }: {
             <div className="pb-tdlg-receipt pb-tdlg-hero">
               <div className="pb-tdlg-amount font-display">{formatCurrency(onCard ? payoff.amount : -payoff.amount)}</div>
               <ul className="pb-tdlg-chips">
-                <li className="pb-tdlg-chip"><CreditCard size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{cardName}</span></li>
                 <li className="pb-tdlg-chip"><CalendarDays size={13} aria-hidden="true" /><span className="pb-tdlg-chip-text">{date}</span></li>
               </ul>
             </div>
+            <dl className="pb-tdlg-rows">
+              {funding && <div className="pb-tdlg-row"><dt>{x.payoffSource}</dt><dd>{funding}</dd></div>}
+              <div className="pb-tdlg-row"><dt>{x.payoffDestination}</dt><dd>{cardName}</dd></div>
+            </dl>
             {confirming ? (
               <div className="pb-payoff-confirm">
                 <h3>{x.deletePayoffTitle}</h3>
