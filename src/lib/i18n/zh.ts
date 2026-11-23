@@ -1414,6 +1414,7 @@ export const zh: typeof en = {
     'validation.deleteAccountEmailMismatch': '输入的邮箱与你的账户不一致。',
     'notFound.user': '找不到你的账户。',
     'validation.accountDeleteNameMismatch': '输入的名称与账户名称不一致。',
+    'validation.payoffUnavailable': '这笔还款已撤销，或原信用卡账户已不可用。',
     'validation.accountChangedSinceReview': '在你查看期间这个账户发生了变化。请查看最新内容后再试。',
     'loader.accountDeletionPreviewFailed': '无法检查这个账户。',
     'loader.sessionLocationsFailed': '无法加载会话位置。',

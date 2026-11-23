@@ -1517,6 +1517,7 @@ export const en = {
     'validation.deleteAccountEmailMismatch': 'The email you typed does not match your account.',
     'notFound.user': 'Your account could not be found.',
     'validation.accountDeleteNameMismatch': 'The name you typed does not match this account.',
+    'validation.payoffUnavailable': 'This payoff has already been undone or its original card is unavailable.',
     'validation.accountChangedSinceReview': 'This account changed while you were reviewing it. Check the updated details and try again.',
     'loader.accountDeletionPreviewFailed': "Couldn't check this account.",
     'loader.sessionLocationsFailed': "Couldn't load session locations.",

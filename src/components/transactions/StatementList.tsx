@@ -3,7 +3,7 @@ import { canSeePartnerBalances } from '@/lib/partner';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowRightLeft, CalendarX2 } from 'lucide-react';
 import type { CategoryMeta, LedgerRecord } from '@/types';
 import type { LedgerEntry } from '@/lib/stats';
@@ -13,6 +13,7 @@ import { StatementRow } from '@/components/shared/StatementRow';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { EmptyState } from '@/components/kit/EmptyState';
+import { UndoPayoffDialog } from './UndoPayoffDialog';
 import { BalanceFigure } from './BalanceFigure';
 import { balanceReader, cents, daysInMonth, groupByDay, monthBounds, type DayGroup, type StatementPayoff } from './statementMath';
 
@@ -85,29 +86,39 @@ export function PayoffRow({ payoff, cardName, showDate = false }: {
 }) {
   const { d, locale } = useTranslation();
   const x = d.ux.transactions;
+  const partner = usePartnerView();
+  const [confirmUndo, setConfirmUndo] = useState(false);
   const onCard = payoff.side === 'card';
   const date = showDate ? formatDate(payoff.date, locale) : '';
   const note = onCard ? date : [cardName ?? payoff.cardName, date].filter(Boolean).join(' · ');
   return (
-    <div className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
-      <div className="pb-txn-srow-lead">
-        <span className="pb-txn-card-payoff-icon"><ArrowRightLeft size={16} aria-hidden="true" /></span>
-        <span className="pb-txn-card-payoff-copy">
-          <span>{x.cardPayoff}</span>
-          {note && <span className="pb-txn-card-payoff-note">{note}</span>}
-        </span>
-      </div>
-      <div className="pb-txn-card-payoff-balance">
-        <span className="font-mono-tab"><RollingAmount value={formatCurrency(onCard ? payoff.amount : -payoff.amount)} /></span>
-        {onCard && (
-          <span className="pb-txn-card-payoff-note">
-            {renderTemplate(x.cardPayoffRemaining, {
-              amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(payoff.remainingBalance)} /></span>,
-            })}
+    <>
+      <div className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
+        <div className="pb-txn-srow-lead">
+          <span className="pb-txn-card-payoff-icon"><ArrowRightLeft size={16} aria-hidden="true" /></span>
+          <span className="pb-txn-card-payoff-copy">
+            <span>{x.cardPayoff}</span>
+            {note && <span className="pb-txn-card-payoff-note">{note}</span>}
           </span>
-        )}
+        </div>
+        <div className="pb-txn-card-payoff-balance">
+          <span className="font-mono-tab"><RollingAmount value={formatCurrency(onCard ? payoff.amount : -payoff.amount)} /></span>
+          {onCard && (
+            <span className="pb-txn-card-payoff-note">
+              {renderTemplate(x.cardPayoffRemaining, {
+                amount: <span className="font-mono-tab"><RollingAmount value={formatCurrency(payoff.remainingBalance)} /></span>,
+              })}
+            </span>
+          )}
+          {!partner && (
+            <button type="button" className="link-btn pb-txn-payoff-undo" onClick={() => setConfirmUndo(true)}>
+              {x.undoPayoff}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+      {confirmUndo && !partner && <UndoPayoffDialog payoff={payoff} cardName={cardName ?? payoff.cardName} onClose={() => setConfirmUndo(false)} />}
+    </>
   );
 }
 

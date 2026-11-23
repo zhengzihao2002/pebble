@@ -3082,6 +3082,46 @@ async function payCreditCard(
 
 export const payCreditCardAction = withSessionUser(payCreditCard);
 
+/** Reverse every surviving charge on the receipt, including charges moved to another funding account. */
+async function undoCreditCardPayoff(
+  userId: string,
+  input: { receiptId: string; cardId: string; deferPageRefresh?: boolean },
+): Promise<ActionResult> {
+  try {
+    if (!input || typeof input.receiptId !== 'string' || !input.receiptId || typeof input.cardId !== 'string' || !input.cardId) {
+      return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+    const { receiptId, cardId } = input;
+    const [, , restored] = await neonSql.transaction([
+      userWriteLockStatement(userId),
+      neonSql`
+        SELECT id FROM account
+        WHERE user_id = ${userId}::uuid AND id = ${cardId} AND kind = 'credit'
+        FOR UPDATE
+      `,
+      neonSql`
+        UPDATE expense e
+        SET account_id = card.id, payment_method = card.name, credit_card_payoff = NULL
+        FROM account card
+        WHERE card.user_id = ${userId}::uuid AND card.id = ${cardId} AND card.kind = 'credit'
+          AND e.user_id = card.user_id
+          AND e.credit_card_payoff->>'cardId' = card.id
+          AND e.credit_card_payoff->>'id' = ${receiptId}
+        RETURNING e.id
+      `,
+    ], { isolationLevel: 'ReadCommitted' });
+    if (!restored.length) {
+      return fail('This payoff has already been undone or its original card is unavailable.', 'validation', 'validation.payoffUnavailable');
+    }
+    if (input.deferPageRefresh !== true) revalidateAll();
+    return { ok: true };
+  } catch (error) {
+    return handleUnexpected('undoCreditCardPayoffAction', error);
+  }
+}
+
+export const undoCreditCardPayoffAction = withSessionUser(undoCreditCardPayoff);
+
 /**
  * Moves records from one account to another.
  *

@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { buildSync } from 'esbuild';
+import { buildSync, transformSync } from 'esbuild';
+import { readFileSync } from 'node:fs';
+import { parse } from '@babel/parser';
 
 const source = buildSync({
   stdin: {
@@ -139,4 +141,57 @@ test('a paid recurring purchase still suggests the original credit card for futu
   const [candidate] = detectRecurring(purchases, [], '2026-11-17');
   assert.equal(candidate?.accountId, 'credit');
   assert.equal(candidate.amount, -20);
+});
+
+
+test('undo returns the original purchases to the card and removes both payoff markers', async () => {
+  const actions = readFileSync('src/lib/actions/pebble.ts', 'utf8');
+  const ast = parse(actions, { sourceType: 'module', plugins: ['typescript'] });
+  const handler = ast.program.body.find(node => node.type === 'FunctionDeclaration' && node.id?.name === 'undoCreditCardPayoff');
+  const { code } = transformSync(actions.slice(handler.start, handler.end), { loader: 'ts' });
+  assert.match(actions, /export const undoCreditCardPayoffAction = withSessionUser\(undoCreditCardPayoff\)/);
+
+  const owner = 'owner';
+  const card = { id: 'credit', kind: 'credit', name: 'Credit', userId: owner };
+  const accounts = [card, { id: 'checking' }, { id: 'cash' }];
+  const rows = [
+    { ...expense('one', '2026-11-05', 'checking', -40, payoff).record, userId: owner },
+    { ...expense('two', '2026-11-06', 'cash', -10, payoff).record, userId: owner },
+    { ...expense('different', '2026-11-06', 'checking', -25, { ...payoff, id: 'different' }).record, userId: owner },
+    { ...expense('foreign', '2026-11-06', 'checking', -50, payoff).record, userId: 'other' },
+  ];
+  let refreshes = 0;
+  const neonSql = (strings, ...values) => ({ text: strings.join('?'), values });
+  neonSql.transaction = async ([lock, cardLock, update]) => {
+    assert.deepEqual(lock, { lock: owner });
+    assert.match(cardLock.text, /FOR UPDATE/);
+    assert.match(update.text, /UPDATE expense e\s+SET account_id = card.id, payment_method = card.name, credit_card_payoff = NULL/);
+    assert.match(update.text, /card.user_id = \?::uuid AND card.id = \? AND card.kind = 'credit'/);
+    assert.match(update.text, /e.user_id = card.user_id\s+AND e.credit_card_payoff->>'cardId' = card.id\s+AND e.credit_card_payoff->>'id' = \?/);
+    const [userId, cardId, receiptId] = update.values;
+    const restored = rows.filter(row => row.userId === userId && card.id === cardId && row.creditCardPayoff?.cardId === cardId && row.creditCardPayoff.id === receiptId);
+    for (const row of restored) Object.assign(row, { accountId: cardId, paymentMethod: card.name, creditCardPayoff: null });
+    return [[], [], restored];
+  };
+  const undo = new Function('neonSql', 'userWriteLockStatement', 'revalidateAll', 'fail', 'handleUnexpected',
+    code + '\nreturn undoCreditCardPayoff')(
+      neonSql, lock => ({ lock }), () => { refreshes++; },
+      (_message, _kind, code) => ({ ok: false, code }), (_where, error) => { throw error; },
+    );
+  const input = { receiptId: payoff.id, cardId: card.id };
+  const entries = () => rows.filter(record => record.userId === owner).map(record => ({ record }));
+  assert(statementPayoffs(entries(), 'checking', '2026-11-').some(receipt => receipt.id === payoff.id));
+  assert(statementPayoffs(entries(), 'credit', '2026-11-').some(receipt => receipt.id === payoff.id));
+  assert.deepEqual(await undo(owner, input), { ok: true });
+  for (const account of accounts) {
+    assert(!statementPayoffs(entries(), account.id, '2026-11-').some(receipt => receipt.id === payoff.id));
+  }
+  const balances = computeCurrentBalances(entries().map(({ record }) => record), accounts, []);
+  assert.deepEqual({ ...balances.byAccount }, { credit: -50, checking: -25, cash: 0 });
+  assert.deepEqual(entries().map(({ record }) => [record.id, record.amount, record.date]), [
+    ['one', -40, '2026-11-05'], ['two', -10, '2026-11-06'], ['different', -25, '2026-11-06'],
+  ]);
+  assert.equal(rows[3].creditCardPayoff, payoff);
+  assert.deepEqual(await undo(owner, input), { ok: false, code: 'validation.payoffUnavailable' });
+  assert.equal(refreshes, 1);
 });
