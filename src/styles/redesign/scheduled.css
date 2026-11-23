@@ -288,7 +288,7 @@
 }
 .pebble-root .pb-sched-rule-life { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; min-width: 0; }
 .pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; }
-.pebble-root .pb-sched-rule-actions { flex: none; display: flex; gap: 0.35rem; margin-left: auto; }
+.pebble-root .pb-sched-rule-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.35rem; margin-left: auto; }
 .pebble-root .pb-sched-act { position: relative; width: 36px; height: 36px; border-radius: 0.6rem; }
 @media (pointer: coarse) {
   /* 44px to the finger without growing the button. */

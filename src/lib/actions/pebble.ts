@@ -41,7 +41,7 @@ import { addDays, todayInZone } from '@/lib/recurring/occurrences';
 import { nextPaymentMark } from '@/lib/recurring/rescheduleNext';
 import { rescheduleNextStatement } from '@/lib/recurring/rescheduleNextSql';
 import { planChargeNext } from '@/lib/recurring/chargeNext';
-import { chargeNextStatement } from '@/lib/recurring/chargeNextSql';
+import { advanceOccurrenceStatement, chargeNextStatement } from '@/lib/recurring/chargeNextSql';
 import { resolveUserTimeZone } from '@/lib/time/serverTimeZone';
 import { FALLBACK_TIME_ZONE } from '@/lib/time/timeZone';
 import type { CategoryItem, Account } from '@/lib/data/mappers';
@@ -2179,6 +2179,40 @@ async function chargeNextRecurring(
   }
 }
 
+export type SkipNextRecurringResult =
+  | { ok: true; nextDate: string | null; finished: boolean }
+  | Extract<ActionResult, { ok: false }>;
+
+/** Advance exactly the reviewed occurrence without inserting a transaction. */
+async function skipNextRecurring(
+  userId: string,
+  input: RecurringWriteOptions & { id: string; expectedOccurrence: string },
+): Promise<SkipNextRecurringResult> {
+  const stale = () => fail('This schedule changed while you were reviewing it.', 'validation') as Extract<ActionResult, { ok: false }>;
+  try {
+    if (!input || typeof input.id !== 'string' || !input.id || input.id.length > 64
+      || typeof input.expectedOccurrence !== 'string' || !isYmd(input.expectedOccurrence)) return stale();
+    const rule = await getRecurringRuleById(userId, input.id);
+    if (!rule || rule.status === 'deleted') {
+      return fail('That scheduled payment no longer exists.', 'validation', 'notFound.recurringRule') as Extract<ActionResult, { ok: false }>;
+    }
+    const today = todayInZone((await resolveUserTimeZone(userId)) ?? FALLBACK_TIME_ZONE);
+    const plan = planChargeNext(rule, today);
+    if (!plan || plan.occurrenceDate !== input.expectedOccurrence) return stale();
+
+    const update = advanceOccurrenceStatement(neonSql, {
+      kind: rule.kind, userId, ruleId: rule.id, expected: rule,
+      newMaterializedThrough: plan.newMaterializedThrough,
+    });
+    const [, advanced] = await neonSql.transaction([userWriteLockStatement(userId), update], { isolationLevel: 'ReadCommitted' });
+    if (advanced.length !== 1) return stale();
+    if (input.deferPageRefresh !== true) revalidateAll();
+    return { ok: true, nextDate: plan.nextAfter, finished: plan.finishesRule };
+  } catch (error) {
+    return handleUnexpected('skipNextRecurringAction', error) as Extract<ActionResult, { ok: false }>;
+  }
+}
+
 /**
  * SOFT delete. The row stays, hidden everywhere and excluded from catch-up.
  *
@@ -2639,6 +2673,7 @@ export const updateRecurringRuleAction = withSessionUser(updateRecurringRule);
 export const setRecurringRuleStatusAction = withSessionUser(setRecurringRuleStatus);
 export const deleteRecurringRuleAction = withSessionUser(deleteRecurringRule);
 export const chargeNextRecurringAction = withSessionUser(chargeNextRecurring);
+export const skipNextRecurringAction = withSessionUser(skipNextRecurring);
 
 /* ------------------------------------------------------------------------
  * Accounts

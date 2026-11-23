@@ -4,7 +4,7 @@ import { Ghost } from 'lucide-react';
 import { PageSkeleton } from '@/components/loading/PageSkeleton';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { setRecurringRuleStatusAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
+import { setRecurringRuleStatusAction, type SkipNextRecurringResult } from '@/lib/actions/pebble';
 import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
@@ -60,10 +60,8 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
   // The rule whose toggle failed, so Try again repeats that exact call rather
   // than whichever rule happens to be first.
   const [failedRule, setFailedRule] = useState<RecurringRule | null>(null);
-  // "Charge next payment now": the rule and the plan it was confirmed with
-  // (frozen at open, so the occurrence shown is the one sent to the server),
-  // and the brief confirmation shown on that rule's card afterwards.
-  const [charging, setCharging] = useState<{ rule: RecurringRule; plan: ChargeNextPlan } | null>(null);
+  // Freeze the reviewed occurrence while the confirmation is open.
+  const [pendingOccurrence, setPendingOccurrence] = useState<{ rule: RecurringRule; plan: ChargeNextPlan; mode: 'charge' | 'skip' } | null>(null);
   const [chargedNote, setChargedNote] = useState<{ ruleId: string; text: string } | null>(null);
   // Coming up past its first dozen rows.
   const [expanded, setExpanded] = useState(false);
@@ -98,19 +96,19 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
     }
   };
 
-  const openCharge = (rule: RecurringRule) => {
+  const openOccurrence = (rule: RecurringRule, mode: 'charge' | 'skip') => {
     if (busyId || !today) return;
     const plan = planChargeNext(rule, today);
-    if (plan) setCharging({ rule, plan });
+    if (plan) setPendingOccurrence({ rule, plan, mode });
   };
 
   // Same revalidation as pause/resume: the action revalidates this route, so
   // the card's "Next ..." line moves on without a local update or a refresh.
-  const charged = (rule: RecurringRule, result: Extract<ChargeNextRecurringResult, { ok: true }>) => {
+  const occurrenceComplete = (rule: RecurringRule, result: Extract<SkipNextRecurringResult, { ok: true }>, mode: 'charge' | 'skip') => {
     const copy = rule.kind === 'income' ? { ...x, ...x.incomeCharge } : x;
     const text = result.nextDate && !result.finished
-      ? t(copy.chargedNext, { date: formatDate(result.nextDate, locale) })
-      : copy.chargedLast;
+      ? t(mode === 'skip' ? x.skip.skippedNext : copy.chargedNext, { date: formatDate(result.nextDate, locale) })
+      : mode === 'skip' ? x.skip.skippedLast : copy.chargedLast;
     setChargedNote({ ruleId: rule.id, text });
   };
   // The note is brief: gone after a few seconds (the card already shows the
@@ -178,7 +176,7 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
           expanded={expanded} onToggle={() => setExpanded((v) => !v)}
         />
         <ScheduleRules rules={rules} today={today} busyId={busyId} onToggle={(r) => void toggleStatus(r)} onEdit={setEditing}
-          onCharge={openCharge} chargedNote={chargedNote}
+          onOccurrence={openOccurrence} chargedNote={chargedNote}
         />
       </div>
 
@@ -193,15 +191,15 @@ export function ScheduledClient({ rules, ghostRules = [], ghostAccountNames, upc
             ? '这些计划仍会正常处理，但不会计入日历、预测或任何应用总额。'
             : 'These schedules continue processing normally. They stay outside the calendar, forecasts and all app totals.'}</p>
           <ScheduleRules ghost accountNames={ghostAccountNames} rules={ghostRules} today={today} busyId={busyId} onToggle={rule => void toggleStatus(rule)}
-            onEdit={setEditing} onCharge={openCharge} chargedNote={chargedNote} />
+            onEdit={setEditing} onOccurrence={openOccurrence} chargedNote={chargedNote} />
         </div>}
       </div>}
 
       {editing && <RecurringRuleModal rule={editing} onClose={() => setEditing(null)} />}
-      {charging && (
+      {pendingOccurrence && (
         <ChargeNextDialog
-          rule={charging.rule} plan={charging.plan}
-          onClose={() => setCharging(null)} onCharged={charged}
+          rule={pendingOccurrence.rule} plan={pendingOccurrence.plan} mode={pendingOccurrence.mode}
+          onClose={() => setPendingOccurrence(null)} onComplete={occurrenceComplete}
         />
       )}
     </div>

@@ -3,7 +3,7 @@ import { useStoredChoice } from '@/components/analysis/useStoredChoice';
 import { usePartnerView } from '@/components/partner/PartnerViewContext';
 
 import { RollingAmount } from '@/components/shared/RollingAmount';
-import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, Ghost, ChevronDown, Pause, Pencil, Play, Plus, Repeat } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarCheck, CalendarClock, Check, Ghost, ChevronDown, Pause, Pencil, Play, Plus, Repeat, SkipForward } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { descriptionTitle } from '@/lib/transactionDescription';
 import { categoryLabel } from '@/lib/i18n/enumLabels';
@@ -27,9 +27,9 @@ interface ScheduleRulesProps {
   busyId: string | null;
   onToggle: (rule: RecurringRule) => void;
   onEdit: (rule: RecurringRule) => void;
-  /** Opens the "Charge next payment now" confirmation (ScheduledClient owns it). */
-  onCharge: (rule: RecurringRule) => void;
-  /** The brief "Charged. Next payment: ..." line for the rule just charged. */
+  /** Opens the confirmation for the next occurrence. */
+  onOccurrence: (rule: RecurringRule, mode: 'charge' | 'skip') => void;
+  /** The brief confirmation for the occurrence that was recorded or skipped. */
   chargedNote: { ruleId: string; text: string } | null;
 }
 
@@ -45,9 +45,9 @@ interface ScheduleRulesProps {
  *
  * Pause / Resume and Edit behave exactly as before; ScheduledClient owns
  * them (single-flight busy guard, retry, no optimistic update). Active
- * schedules with a payment still to come also offer a quiet "Charge now".
+ * schedules with an upcoming occurrence can record it early or skip it.
  */
-export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge, chargedNote, ghost = false, accountNames }: ScheduleRulesProps) {
+export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onOccurrence, chargedNote, ghost = false, accountNames }: ScheduleRulesProps) {
   const { d, t, locale } = useTranslation();
   const partner = usePartnerView();
   const headingId = ghost ? 'pb-sched-ghost-rules-title' : 'pb-sched-rules-title';
@@ -141,7 +141,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
               {s.rules.map((rule) => (
                 <RuleTile
                   key={rule.id} isolated={ghost} accountName={accountNames?.[rule.accountId]} rule={rule} today={today} busy={busyId === rule.id} locked={busyId !== null}
-                  onToggle={onToggle} onEdit={onEdit} onCharge={onCharge}
+                  onToggle={onToggle} onEdit={onEdit} onOccurrence={onOccurrence}
                   chargedText={chargedNote?.ruleId === rule.id ? chargedNote.text : ''}
                 />
               ))}
@@ -153,7 +153,7 @@ export function ScheduleRules({ rules, today, busyId, onToggle, onEdit, onCharge
   );
 }
 
-function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, chargedText, isolated, accountName }: {
+function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onOccurrence, chargedText, isolated, accountName }: {
   rule: RecurringRule;
   isolated?: boolean;
   accountName?: string;
@@ -163,7 +163,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
   locked: boolean;
   onToggle: (rule: RecurringRule) => void;
   onEdit: (rule: RecurringRule) => void;
-  onCharge: (rule: RecurringRule) => void;
+  onOccurrence: (rule: RecurringRule, mode: 'charge' | 'skip') => void;
   chargedText: string;
 }) {
   const { d, t, locale } = useTranslation();
@@ -247,11 +247,19 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onCharge, charg
         <div className="pb-sched-rule-actions">
           {!partner && canCharge && (
             <button
-              type="button" onClick={() => onCharge(rule)} disabled={locked}
+              type="button" onClick={() => onOccurrence(rule, 'charge')} disabled={locked}
               className="pb-sched-charge-now"
               aria-label={t(x.chargeNowAria, { description: title })}
             >
               <CalendarCheck size={14} aria-hidden="true" />{x.chargeNow}
+            </button>
+          )}
+          {!partner && canCharge && (
+            <button type="button" onClick={() => onOccurrence(rule, 'skip')} disabled={locked}
+              className="pb-sched-charge-now"
+              aria-label={t(x.skip.aria, { description: title })}
+            >
+              <SkipForward size={14} aria-hidden="true" />{x.skip.button}
             </button>
           )}
           {!partner && <button

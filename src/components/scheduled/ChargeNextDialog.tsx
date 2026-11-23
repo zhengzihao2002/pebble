@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDownRight, ArrowUpRight, CalendarCheck } from 'lucide-react';
-import { chargeNextRecurringAction, type ChargeNextRecurringResult } from '@/lib/actions/pebble';
+import { chargeNextRecurringAction, skipNextRecurringAction, type SkipNextRecurringResult } from '@/lib/actions/pebble';
 import { callMutation } from '@/lib/actions/callAction';
 import type { FailureKind } from '@/lib/actions/failureKind';
 import { useQuietSync } from '@/components/offline/QuietSyncProvider';
@@ -21,40 +21,28 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ChargeNextPlan } from '@/lib/recurring/chargeNext';
 import type { RecurringRule } from '@/types';
 
-type Charged = Extract<ChargeNextRecurringResult, { ok: true }>;
+type Outcome = Extract<SkipNextRecurringResult, { ok: true }>;
 
 interface ChargeNextDialogProps {
   rule: RecurringRule;
   /** The plan the person is being shown. Frozen when the dialog opens: the
       occurrence confirmed here is the one sent as expectedOccurrence. */
   plan: ChargeNextPlan;
+  mode: 'charge' | 'skip';
   onClose: () => void;
   /** Called once the server confirms, before the dialog closes. */
-  onCharged: (rule: RecurringRule, result: Charged) => void;
+  onComplete: (rule: RecurringRule, result: Outcome, mode: 'charge' | 'skip') => void;
 }
 
-/**
- * "Charge next payment now" confirmation. Says exactly what will happen -
- * which payment, the date it is recorded on, and what the schedule becomes -
- * before anything is written (the same facts planChargeNext hands the server,
- * so the sentence cannot promise something else than the action does).
- *
- * The call is guarded server-side by expectedOccurrence: if the schedule moved
- * on since this dialog opened (another tab, an edit) the server refuses
- * instead of charging a different payment, and that refusal is shown here.
- * Because the server's write is a compare-and-set, Try again after a
- * connection failure cannot charge twice either.
- *
- * Closes from a settled render (CloseSoon) once the write has cleared busy,
- * never from the handler - see CloseSoon.
- */
-export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextDialogProps) {
+/** Review the exact occurrence before recording or skipping it. */
+export function ChargeNextDialog({ rule, plan, mode, onClose, onComplete }: ChargeNextDialogProps) {
   const { d, t, locale } = useTranslation();
   const router = useRouter();
   const { refreshAfterSave } = useQuietSync();
   const x = rule.kind === 'income' ? { ...d.ux.scheduled, ...d.ux.scheduled.incomeCharge } : d.ux.scheduled;
+  const skipping = mode === 'skip';
   const [textDateBasis, setTextDateBasis] = useState<'processed' | 'scheduled' | null>(null);
-  const needsTextDateChoice = plan.early && expandScheduledText(rule.description, plan.transactionDate) !== rule.description;
+  const needsTextDateChoice = !skipping && plan.early && expandScheduledText(rule.description, plan.transactionDate) !== rule.description;
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,30 +58,27 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
     setSaving(true);
     setError(null);
     const deferPageRefresh = quietSyncIsPaused();
-    const result = await callMutation(chargeNextRecurringAction, {
-        id: rule.id,
-        expectedOccurrence: plan.occurrenceDate,
+    const occurrence = { id: rule.id, expectedOccurrence: plan.occurrenceDate, deferPageRefresh };
+    const result = skipping ? await callMutation(skipNextRecurringAction, occurrence)
+      : await callMutation(chargeNextRecurringAction, {
+        ...occurrence,
         textDateBasis: textDateBasis ?? 'processed',
         expectedTransactionDate: plan.transactionDate,
-        deferPageRefresh,
       });
-    if (result.ok) await refreshAfterSave('transaction', { refreshCurrent: deferPageRefresh });
+    if (result.ok) await refreshAfterSave(skipping ? 'schedule' : 'transaction', { refreshCurrent: deferPageRefresh });
     setSaving(false);
     if (!result.ok) {
-      // The server's "schedule changed" refusal carries no code (the
-      // dictionaries are not this area's to extend), so it is worded here,
-      // in the person's language, rather than shown as English.
       const code = (result as { code?: string }).code;
       const stale = !code && result.kind === 'validation';
-      setError(stale ? x.chargeStale : translateActionError(d, locale, result));
+      setError(stale ? (skipping ? x.skip.stale : x.chargeStale) : translateActionError(d, locale, result));
       setErrorKind(result.kind);
-      // A refused (stale) charge writes nothing, so nothing revalidated: the
+      // A stale request writes nothing, so nothing revalidated: the
       // cards behind this dialog still show the old Next line. Fetch the
       // current schedules so they are right when the dialog is closed.
       if (stale && !quietSyncIsPaused()) router.refresh();
       return;
     }
-    onCharged(rule, result);
+    onComplete(rule, result, mode);
     setDone(true);
   };
 
@@ -102,11 +87,11 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
       {(close) => (
         <>
           {done && !saving && <CloseSoon close={close} />}
-          {saving && <LoadingOverlay label={x.chargeOverlay} />}
+          {saving && <LoadingOverlay label={skipping ? x.skip.saving : x.chargeOverlay} />}
 
           <div className="pb-modal-head">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 id="charge-next-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{x.chargeTitle}</h2>
+              <h2 id="charge-next-title" className="font-display" style={{ fontSize: '1.2rem', fontWeight: 600 }}>{skipping ? x.skip.title : x.chargeTitle}</h2>
               <ModalCloseButton onClick={close} disabled={saving} />
             </div>
           </div>
@@ -125,19 +110,19 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
               </div>
             </div>
 
-            <p className="pb-sched-charge-intro">{x.chargeIntro}</p>
+            {!skipping && <p className="pb-sched-charge-intro">{x.chargeIntro}</p>}
 
             <div className="pb-sched-charge-facts">
               <p className="pb-sched-charge-what pb-tnum">
-                <CalendarCheck size={15} aria-hidden="true" />{t(x.chargeWhat, { date: occurrence })}
+                <CalendarCheck size={15} aria-hidden="true" />{t(skipping ? x.skip.what : x.chargeWhat, { date: occurrence })}
               </p>
-              <p className="pb-tnum">
+              {!skipping && <p className="pb-tnum">
                 {plan.early ? x.chargeRecordedToday : t(x.chargeRecordedOn, { date: formatDate(plan.transactionDate, locale) })}
-              </p>
+              </p>}
               <p className="pb-tnum">
                 {plan.nextAfter && !plan.finishesRule
-                  ? t(x.chargeThenNext, { date: formatDate(plan.nextAfter, locale) })
-                  : x.chargeLast}
+                  ? t(skipping ? x.skip.next : x.chargeThenNext, { date: formatDate(plan.nextAfter, locale) })
+                  : skipping ? x.skip.last : x.chargeLast}
               </p>
             </div>
             {needsTextDateChoice && <fieldset className="pb-sched-shortcut-options" disabled={saving}>
@@ -160,7 +145,7 @@ export function ChargeNextDialog({ rule, plan, onClose, onCharged }: ChargeNextD
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={close} disabled={saving} className="pill pb-sched-charge-btn">{x.chargeCancel}</button>
               <button type="button" onClick={() => void confirm()} disabled={saving || done || (needsTextDateChoice && !textDateBasis)} className="btn-primary pb-sched-charge-btn" style={{ opacity: saving ? 0.6 : 1 }}>
-                {saving ? x.chargeCharging : x.chargeConfirm}
+                {skipping ? (saving ? x.skip.saving : x.skip.confirm) : (saving ? x.chargeCharging : x.chargeConfirm)}
               </button>
             </div>
           </div>

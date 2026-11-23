@@ -53,9 +53,9 @@ export interface ChargeNextSqlArgs {
   };
 }
 
-export function chargeNextStatement(sql: NeonQueryFunction<false, false>, a: ChargeNextSqlArgs) {
+export function advanceOccurrenceStatement(sql: NeonQueryFunction<false, false>, a: Pick<ChargeNextSqlArgs, 'userId' | 'ruleId' | 'kind' | 'newMaterializedThrough' | 'expected'>) {
   const e = a.expected;
-  const advanced = sql`UPDATE recurring_rule rr
+  return sql`UPDATE recurring_rule rr
         SET materialized_through = ${a.newMaterializedThrough}::date, updated_at = now()
       WHERE rr.id = ${a.ruleId} AND rr.user_id = ${a.userId}::uuid AND rr.status = 'active'
         AND rr.kind = ${a.kind}
@@ -66,6 +66,10 @@ export function chargeNextStatement(sql: NeonQueryFunction<false, false>, a: Cha
         AND rr.end_date IS NOT DISTINCT FROM ${e.endDate}::date
         AND EXISTS (SELECT 1 FROM account ac WHERE ac.id = rr.account_id AND ac.user_id = rr.user_id AND ac.status = 'active')
       RETURNING rr.id, rr.user_id, rr.description, rr.category, rr.tag, rr.payment_method, rr.account_id, rr.amount, rr.gross_amount`;
+}
+
+export function chargeNextStatement(sql: NeonQueryFunction<false, false>, a: ChargeNextSqlArgs) {
+  const advanced = advanceOccurrenceStatement(sql, a);
 
   // Render the description returned by the locked update, not a stale JS copy.
   // No DB function or migration: all token patterns and replacements are bound values.

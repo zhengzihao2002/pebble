@@ -51,3 +51,18 @@ test('repositioning respects clamped month ends, weekly cadence and future years
   assert.equal(nextPaymentMark({ ...spec, frequency: 'yearly' }, '2029-01-01', '2026-11-06'), '2028-12-31');
   assert.equal(nextPaymentMark(spec, '2026-11-01', '2026-11-01'), '2026-10-31');
 });
+
+test('advancing past January 1 keeps the monthly cadence and catch-up starts in February', () => {
+  const rule = { ...spec, status: 'active', materializedThrough: '2026-12-01' };
+  const today = '2026-11-23';
+  const skip = planChargeNext(rule, today);
+  assert.equal(skip.occurrenceDate, '2027-01-01');
+  assert.equal(skip.nextAfter, '2027-02-01');
+  const afterSkip = { ...rule, materializedThrough: skip.newMaterializedThrough };
+  assert.equal(planChargeNext(afterSkip, '2027-01-01').occurrenceDate, '2027-02-01');
+
+  const last = planChargeNext({ ...afterSkip, endMode: 'on', endDate: '2027-02-17' }, today);
+  assert.equal(last.nextAfter, null);
+  assert.equal(last.finishesRule, true);
+  assert.equal(last.newMaterializedThrough, '2027-02-17');
+});
