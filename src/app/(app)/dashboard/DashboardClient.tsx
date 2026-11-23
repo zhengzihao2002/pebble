@@ -297,7 +297,7 @@ export function DashboardClient({ transactions, categories, budgets, totalBalanc
       </div>
       <div className="pb-dash-area-upcoming">
         {showAmounts && (!partner || partner.data.permissions.scheduled)
-          ? <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} />
+          ? <UpcomingCard rules={rules} categoryMeta={categoryMeta} accounts={accounts} transactions={transactions} balancesByAccount={balancesByAccount} />
           : <PartnerCensoredCard className="pb-dash-card" title={d.upcomingCard.title} />}
       </div>
       <div className="pb-dash-area-where">

@@ -114,7 +114,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
           {accounts.map((a) => {
             const AccountIcon = a.kind === 'credit' ? CreditCard : a.kind === 'bank' ? Landmark : Coins;
             const value = balancesByAccount[a.id] ?? 0;
-            const owed = a.kind === 'credit' ? Math.max(0, -value) : null;
+            const owed = a.kind === 'credit' ? Math.abs(value) : null;
             const selected = selectedAccountId === a.id;
             return (
               <li key={a.id} style={{ borderTop: '1px solid var(--line)', marginTop: -1, minWidth: 0 }}>
@@ -155,7 +155,7 @@ export function TodayLedger({ currentBalance, accounts, balancesByAccount, selec
                   {/* Only the figure blurs in privacy mode; "owed" stays readable. */}
                   <span data-acc-amount="" className="pb-txn-acc-fig">
                     <span className="font-mono-tab">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={formatCurrency(owed !== null ? owed : value)} />}</span>
-                    {!censored && owed !== null && <span className="pb-txn-acc-owed">{d.accountsPage.cardOwed}</span>}
+                    {!censored && owed !== null && <span className="pb-txn-acc-owed">{value > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardOwed}</span>}
                   </span>
                   <span className="pb-txn-sr">{d.ux.transactions.showStatement}</span>
                 </button>

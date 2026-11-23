@@ -23,7 +23,7 @@ export function GhostAccounts({ accounts, balances, onOpen }: { accounts: Accoun
         <button type="button" className="pb-ghost-open" onClick={() => onOpen(account)} aria-label={`${account.name} · ${zh ? '查看账户' : 'View account'}`}>
           <div className="pb-ghost-account-top"><span className="pb-ghost-kind"><Icon size={18} aria-hidden="true" /></span><span className="pb-ghost-account-identity"><strong>{account.name}</strong><small>{account.kind === 'bank' ? d.accounts.kindBank : account.kind === 'cash' ? d.accounts.kindCash : d.accounts.kindCredit}{account.last4 && ` ····${account.last4}`}</small></span><Ghost size={25} className="pb-ghost-watermark" aria-hidden="true" /></div>
           <span className="pb-ghost-balance-label">{owed ? (zh ? '欠款' : 'Amount owed') : (zh ? '账户余额' : 'Account balance')}</span>
-          <span className="font-display pb-money pb-ghost-balance">{formatCurrency(owed ? Math.max(0, -balance) : balance)}</span>
+          <span className="font-display pb-money pb-ghost-balance">{formatCurrency(owed ? Math.abs(balance) : balance)}</span>
           <span className="pb-ghost-account-bottom"><span>{zh ? '不参与计算' : 'Excluded from calculations'}</span><ChevronRight size={16} aria-hidden="true" /></span>
         </button>
         <div className="pb-ghost-account-actions">{account.status === 'hibernated' ? <SleepingBadge /> : <span /> }<GhostAccountMode account={account} /></div>

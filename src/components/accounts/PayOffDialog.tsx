@@ -37,14 +37,15 @@ export function nextDue(dueDay: number): string {
 }
 
 /**
- * Pays selected charges from a bank or cash account. Each settled expense
- * keeps its card history on the same record that posts to the funding account.
+ * Pays selected charges from a bank or cash account. The payment is saved
+ * separately from the expenses.
  */
-export function PayOffDialog({ card, allAccounts, charges, onClose, today: todayProp }: {
+export function PayOffDialog({ card, allAccounts, charges, onClose, outstanding, today: todayProp }: {
   card: Account;
   allAccounts: Account[];
   /** Every expense currently on this card. */
   charges: ExpenseTransaction[];
+  outstanding?: number;
   onClose: () => void;
   /** Zone-aware 'YYYY-MM-DD' from the page, so due groups match its reminders.
       Optional: without it the device's day is used, as before. */
@@ -58,7 +59,7 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
     const now = new Date();
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   });
-  const status = useMemo(() => cardStatus(card, charges, today), [card, charges, today]);
+  const status = useMemo(() => cardStatus(card, charges, today, outstanding), [card, charges, today, outstanding]);
 
   const [showGhost, setShowGhost] = useState(false);
   const sources = allAccounts.filter((a) => a.status === 'active' && a.kind !== 'credit' && (showGhost || !a.isGhost));
@@ -68,15 +69,15 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
     [allAccounts, showGhost, locale],
   );
   const list = useMemo(
-    () => [...charges].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+    () => charges.filter(c => !c.creditCardPayoff).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
     [charges],
   );
 
   // The charges currently due are preselected, so a reminder's amount and the
   // Pay button agree; when nothing is due yet, every charge is.
   const [selected, setSelected] = useState<Set<string>>(() => {
-    const due = cardStatus(card, charges, today)?.dueChargeIds ?? [];
-    return new Set(due.length > 0 ? due : charges.map((c) => c.id));
+    const due = cardStatus(card, charges, today, outstanding)?.dueChargeIds ?? [];
+    return new Set(due.length > 0 ? due : list.map((c) => c.id));
   });
 
   // Charges grouped by statement, with the cut-offs cardStatus uses: overdue,
@@ -106,11 +107,11 @@ export function PayOffDialog({ card, allAccounts, charges, onClose, today: today
   // cannot change the line.
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
 
-  const owed = charges.reduce((s, c) => s + Math.abs(c.amount), 0);
+  const owed = Math.max(0, outstanding ?? list.reduce((s, c) => s + Math.abs(c.amount), 0));
   const picked = list.filter((c) => selected.has(c.id));
-  const total = picked.reduce((s, c) => s + Math.abs(c.amount), 0);
+  const total = Math.min(owed, picked.reduce((s, c) => s + Math.abs(c.amount), 0));
   const allPicked = list.length > 0 && picked.length === list.length;
-  const canPay = !!sourceAccount && picked.length > 0 && !paying;
+  const canPay = !!sourceAccount && total > 0 && !paying;
 
   const toggle = (id: string) => setSelected((prev) => {
     const next = new Set(prev);

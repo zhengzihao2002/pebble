@@ -265,7 +265,7 @@ export const expense = pgTable(
     transactionDate: date('transaction_date').notNull(),
     paymentMethod: text('payment_method').default('Checking').notNull(),
     accountId: text('account_id').notNull(),
-    /** Display-only origin and receipt retained when accountId moves to the payer. */
+    /** Link to a standalone payment, or legacy receipt metadata before backfill. */
     creditCardPayoff: jsonb('credit_card_payoff').$type<CreditCardPayoff>(),
     amount: numeric({ precision: 12, scale: 2, mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
@@ -485,6 +485,24 @@ export const category = pgTable(
     check('category_name_not_blank', sql`btrim(name) <> ''::text`),
   ],
 );
+
+/** One persisted movement between a funding account and a credit card. */
+export const creditCardPayment = pgTable('credit_card_payment', {
+  id: text().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => userInNeonAuth.id, { onDelete: 'cascade' }),
+  cardId: text('card_id').notNull().references(() => account.id),
+  fundingAccountId: text('funding_account_id').notNull().references(() => account.id),
+  paymentDate: date('payment_date').notNull(),
+  amount: numeric({ precision: 14, scale: 2, mode: 'number' }).notNull(),
+  remainingBalance: numeric('remaining_balance', { precision: 14, scale: 2, mode: 'number' }).notNull(),
+}, (table) => [
+  index('credit_card_payment_user_date_idx').on(table.userId, table.paymentDate.desc()),
+  index('credit_card_payment_card_idx').on(table.cardId),
+  index('credit_card_payment_funding_idx').on(table.fundingAccountId),
+  check('credit_card_payment_amount_check', sql`${table.amount} > 0`),
+  check('credit_card_payment_remaining_balance_check', sql`${table.remainingBalance} >= 0`),
+  check('credit_card_payment_distinct_accounts_check', sql`${table.cardId} <> ${table.fundingAccountId}`),
+]);
 
 /**
  * Manual balance corrections - "my bank says 1,240 but Pebble says 1,190".

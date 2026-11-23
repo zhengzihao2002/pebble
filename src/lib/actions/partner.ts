@@ -267,7 +267,9 @@ async function readWorkspace(userId: string, includePlaces: boolean) {
       CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN coalesce(card.name,a.name) END AS "accountName",
       CASE WHEN card.id IS NOT NULL THEN jsonb_build_object(
         'id', l.credit_card_payoff->>'id', 'cardId',card.id, 'cardName',card.name,
-        'date',l.credit_card_payoff->>'date', 'remainingBalance',l.credit_card_payoff->'remainingBalance'
+        'date',l.credit_card_payoff->>'date', 'remainingBalance',l.credit_card_payoff->'remainingBalance',
+        'fundingAccountId', (SELECT bank.id FROM public.account bank
+          WHERE bank.user_id=s.owner_id AND bank.id=l.credit_card_payoff->>'fundingAccountId' AND NOT bank.is_ghost)
       ) END AS "creditCardPayoff",
       CASE WHEN s.permissions @> '{"accounts":true}'::jsonb THEN a.id END AS "accountId",
       CASE WHEN v.visible AND s.permissions @> '{"amounts":true}'::jsonb THEN l.gross_amount::float8 END AS "grossAmount",
@@ -347,12 +349,14 @@ async function readWorkspace(userId: string, includePlaces: boolean) {
         b.transaction_date::text AS date,b.amount::float8,
         CASE WHEN s.permissions @> '{"notes":true}'::jsonb AND private_side.hidden IS NULL
           THEN b.description ELSE '' END AS description,
-        CASE WHEN private_side.hidden IS NULL THEN b.transfer_group_id END AS "transferGroupId"
+        CASE WHEN private_side.hidden IS NULL THEN b.transfer_group_id END AS "transferGroupId",
+        CASE WHEN private_side.hidden IS NULL THEN b.card_payment
+          ELSE b.card_payment - 'fundingAccountId' - 'cardId' - 'cardName' END AS "cardPayment"
       FROM public.pebble_partner_scope s
-      JOIN public.balance_adjustment b ON b.user_id=s.owner_id
+      JOIN public.pebble_balance_posting b ON b.user_id=s.owner_id
       JOIN public.account a ON a.user_id=s.owner_id AND a.id=b.account_id AND NOT a.is_ghost
       LEFT JOIN LATERAL (
-        SELECT true AS hidden FROM public.balance_adjustment other
+        SELECT true AS hidden FROM public.pebble_balance_posting other
         JOIN public.account linked ON linked.id=other.account_id AND linked.user_id=other.user_id
         WHERE other.user_id=s.owner_id AND other.transfer_group_id=b.transfer_group_id AND linked.is_ghost
         LIMIT 1

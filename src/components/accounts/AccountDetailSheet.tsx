@@ -107,7 +107,7 @@ export function AccountDetailSheet({
   const [shownCount, setShownCount] = useState(PAGE);
 
   const now = round2(days[days.length - 1]?.byAccount[account.id] ?? 0);
-  const figure = credit ? Math.max(0, -now) : now;
+  const figure = credit ? Math.abs(now) : now;
   const { whole, cents } = splitCents(formatCurrency(figure));
   const series = useMemo(() => days.map((p) => ({ date: p.date, v: round2(p.byAccount[account.id] ?? 0) })), [days, account.id]);
   const tone = series.length > 1 && series[series.length - 1].v > series[0].v + 0.004 ? 'var(--income)'
@@ -199,9 +199,9 @@ export function AccountDetailSheet({
             {censored ? <PartnerCensored balances /> : <div className="pb-accounts-detail-grid">
               <div className="pb-accounts-detail-main">
                 <div>
-                  <p className="pb-accounts-detail-label">{credit ? x.owedLabel : x.balanceLabel}</p>
+                  <p className="pb-accounts-detail-label">{credit && now <= 0 ? x.owedLabel : x.balanceLabel}</p>
                   <p className="font-display pb-money pb-accounts-detail-figure"><RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" /></p>
-                  {credit && <p className="pb-accounts-detail-sub">{f?.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>}
+                  {credit && <p className="pb-accounts-detail-sub">{f?.owes ? d.accountsPage.cardOwed : now > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardNothingOwed}</p>}
                 </div>
 
                 {f ? (

@@ -1,7 +1,7 @@
 import { getOwnWorkspaceUser } from '@/lib/partnerView.server';
 import { runRecurringCatchUp } from '@/lib/recurring/catchUp';
-import { getAccounts, getBudgets, getCategories, getExpenses, getGoals, getIncome, getRecurringRules } from '@/lib/data/queries';
-import { mergeTransactions } from '@/lib/stats';
+import { getAccounts, getBalanceAdjustments, getBudgets, getCategories, getExpenses, getGoals, getIncome, getRecurringRules } from '@/lib/data/queries';
+import { computeCurrentBalances, mergeTransactions } from '@/lib/stats';
 import { InsightsClient } from './InsightsClient';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export default async function InsightsPage() {
   // MUST complete before the reads below, or new rows surface one load late.
   await runRecurringCatchUp(userId);
 
-  const [expenses, income, categories, budgets, rules, goals, accounts] = await Promise.all([
+  const [expenses, income, categories, budgets, rules, goals, accounts, adjustments] = await Promise.all([
     getExpenses(userId),
     getIncome(userId),
     getCategories(userId),
@@ -23,11 +23,15 @@ export default async function InsightsPage() {
     getRecurringRules(userId),
     getGoals(userId),
     getAccounts(userId),
+    getBalanceAdjustments(userId),
   ]);
+
+  const transactions = mergeTransactions(expenses, income);
+  const balances = computeCurrentBalances(transactions, accounts, adjustments);
 
   return (
     <InsightsClient
-      transactions={mergeTransactions(expenses, income)}
+      transactions={transactions} balancesByAccount={balances.byAccount}
       categories={categories}
       budgets={budgets}
       rules={rules}

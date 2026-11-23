@@ -39,7 +39,7 @@ export function GhostActivity({ entries, accounts, monthPrefix, accountId, query
       <span className="pb-txn-ghost-mark"><Ghost size={22} aria-hidden="true" /></span>
       <div><h3 id="pb-txn-ghost-heading">{zh ? '幽灵流水' : 'Ghost activity'}</h3>
         <p>{zh ? '独立记录，不计入应用总额、预算、图表或洞察。' : 'A separate record, excluded from app totals, budgets, charts and insights.'}</p></div>
-      <span className="pb-txn-ghost-count pb-tnum">{visible.length}</span>
+      <span className="pb-txn-ghost-count pb-tnum">{items.length}</span>
     </header>
     {items.length === 0 ? <p className="pb-txn-ghost-empty" data-pb-period-body>{zh ? '当前月份及筛选条件下没有幽灵流水。' : 'No ghost activity matches this month and these filters.'}</p> :
       <div className="pb-txn-ghost-rows" data-pb-period-body>{items.map(item => {

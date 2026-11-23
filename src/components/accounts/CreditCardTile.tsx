@@ -24,7 +24,7 @@ export function creditFacts(a: Account, now: number, expenses: ExpenseTransactio
   const owes = owed > 0.004;
   const limit = a.creditLimit ?? 0;
   const over = limit > 0 && owed > limit + 0.004;
-  const st = cardStatus(a, expenses, today);
+  const st = cardStatus(a, expenses, today, owed);
   const isOverdue = !!st && st.overdue > 0.004;
   const dueSoon = !!st && !isOverdue && st.dueNow > 0.004 && st.daysLeft <= 3;
   return { owed, owes, limit, over, st, isOverdue, dueSoon };
@@ -250,7 +250,7 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
   const f = creditFacts(a, now, expenses, today);
   const charges = useMemo(() => expenses.filter((c) => c.accountId === a.id), [expenses, a.id]);
   const appearance = useMemo(() => creditCardAppearance(a.name, f.owed, charges), [a.name, f.owed, charges]);
-  const { whole, cents } = splitCents(formatCurrency(f.owed));
+  const { whole, cents } = splitCents(formatCurrency(Math.abs(now)));
 
   return (
     <article
@@ -279,7 +279,7 @@ export function CreditCardTile({ a, now, expenses, today, onPayOff, onOpen, inde
         </div>
         <div className="pb-accounts-cc-owed">
           <p className="font-display pb-money">{censored ? <span aria-label={d.partner.censored}>—</span> : <RollingAmount value={whole + cents} fractionClassName="pb-accounts-cents" />}</p>
-          <p className="pb-accounts-cc-owed-word">{censored || f.owes ? d.accountsPage.cardOwed : d.accountsPage.cardNothingOwed}</p>
+          <p className="pb-accounts-cc-owed-word">{censored || f.owes ? d.accountsPage.cardOwed : now > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardNothingOwed}</p>
         </div>
         <div className="pb-accounts-cc-row is-bottom">
           {a.last4 ? <span className="font-mono-tab pb-accounts-cc-num">····&nbsp;{a.last4}</span> : <span />}

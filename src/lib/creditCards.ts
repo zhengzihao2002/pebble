@@ -13,7 +13,7 @@ export function transactionDisplayAccountId(record: LedgerRecord): string {
  * covers the unpaid charges made at least STATEMENT_GRACE_DAYS before it.
  * Newer charges roll to the following due date. A charge is OVERDUE once the
  * due date that covered it has passed and it is still on the card (paying
- * off moves it to a bank account, so "still on the card" means unpaid).
+ * off links it to a payment).
  *
  * Dates are 'YYYY-MM-DD'; `today` comes from the caller (zone-aware).
  */
@@ -58,7 +58,7 @@ export interface CardStatus {
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
-export function cardStatus(card: Account, charges: ExpenseTransaction[], today: string): CardStatus | null {
+export function cardStatus(card: Account, charges: ExpenseTransaction[], today: string, outstanding?: number): CardStatus | null {
   if (card.kind !== 'credit' || !card.dueDay) return null;
   const { next, previous } = dueDates(card.dueDay, today);
   const cutNow = addDays(next, -STATEMENT_GRACE_DAYS);
@@ -68,21 +68,22 @@ export function cardStatus(card: Account, charges: ExpenseTransaction[], today: 
   let overdue = 0;
   const dueChargeIds: string[] = [];
   for (const c of charges) {
-    if (c.accountId !== card.id) continue;
+    if (c.accountId !== card.id || c.creditCardPayoff) continue;
     const a = Math.abs(c.amount);
     owed += a;
     if (c.date <= cutNow) { dueNow += a; dueChargeIds.push(c.id); }
     if (c.date <= cutPrev) overdue += a;
   }
-  return { card, owed: round(owed), next, previous, daysLeft: daysBetween(today, next), dueNow: round(dueNow), overdue: round(overdue), dueChargeIds };
+  const balance = Math.max(0, outstanding ?? owed);
+  return { card, owed: round(balance), next, previous, daysLeft: daysBetween(today, next), dueNow: round(Math.min(balance, dueNow)), overdue: round(Math.min(balance, overdue)), dueChargeIds };
 }
 
 /** Every active or hibernated credit card's status. */
-export function cardStatuses(accounts: Account[], transactions: Transaction[], today: string): CardStatus[] {
+export function cardStatuses(accounts: Account[], transactions: Transaction[], today: string, balancesByAccount?: Record<string, number>): CardStatus[] {
   const expenses = transactions.filter((x): x is ExpenseTransaction => x.type === 'expense');
   return accounts
     .filter((a) => a.kind === 'credit')
-    .map((a) => cardStatus(a, expenses, today))
+    .map((a) => cardStatus(a, expenses, today, balancesByAccount ? -(balancesByAccount[a.id] ?? 0) : undefined))
     .filter((s): s is CardStatus => s !== null);
 }
 
@@ -123,7 +124,7 @@ export function statementTimeline(card: Account, charges: ExpenseTransaction[], 
   const cutNow = addDays(next, -STATEMENT_GRACE_DAYS);
   const cutPrev = addDays(previous, -STATEMENT_GRACE_DAYS);
   const points = charges
-    .filter((c) => c.accountId === card.id)
+    .filter((c) => c.accountId === card.id && !c.creditCardPayoff)
     .map((c) => ({
       id: c.id, date: c.date, amount: round(Math.abs(c.amount)),
       state: (c.date <= cutPrev ? 'overdue' : c.date <= cutNow ? 'due' : 'next') as ChargeState,

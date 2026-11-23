@@ -12,8 +12,7 @@ import type { LucideIcon } from 'lucide-react';
  */
 export type PaymentMethod = string;
 
-/** A payoff recorded on its original expenses. All charges in one payment
- * share this receipt data. It does not represent a ledger entry. */
+/** Receipt metadata shared by linked purchases and the payment postings. */
 export interface CreditCardPayoff {
   id: string;
   cardId: string;
@@ -21,6 +20,7 @@ export interface CreditCardPayoff {
   date: string;
   /** Amount still owed immediately after this payment, including partial payoffs. */
   remainingBalance: number;
+  fundingAccountId?: string;
 }
 
 export interface ExpenseTransaction {
@@ -34,7 +34,7 @@ export interface ExpenseTransaction {
   /** The account this transaction belongs to. Balance derivation keys on this. */
   accountId: string;
   amount: number; // always negative
-  /** Account and balance still use accountId, which is the funding account after payoff. */
+  /** Settlement link. Legacy purchases stayed on the funding account until migrated. */
   creditCardPayoff?: CreditCardPayoff;
   /** Set when this row was materialized from a recurring rule. */
   recurringRuleId?: string;
@@ -73,6 +73,8 @@ export interface BalanceAdjustment {
   accountId: string;
   /** Set on both halves of a transfer; null for a standalone adjustment. */
   transferGroupId: string | null;
+  /** Derived balance posting from a standalone credit card payment. */
+  cardPayment?: CreditCardPayoff;
   amount: number; // signed - corrections go both ways
 }
 

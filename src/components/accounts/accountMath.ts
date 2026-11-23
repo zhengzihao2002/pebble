@@ -166,7 +166,7 @@ export function recordsFor(
   for (const e of expenses) {
     const paidOnCard = account.kind === 'credit' && e.accountId !== accountId && e.creditCardPayoff?.cardId === accountId;
     if (e.accountId !== accountId && !paidOnCard) continue;
-    const fundedPayoff = !!e.creditCardPayoff && e.accountId === accountId;
+    const fundedPayoff = !!e.creditCardPayoff && e.creditCardPayoff.cardId !== accountId && e.accountId === accountId;
     out.push({ kind: 'expense', id: e.id, date: e.date, amount: e.amount, description: e.description, category: e.category, paidOnCard, fundedPayoff });
   }
   for (const i of income) if (i.accountId === accountId) out.push({ kind: 'income', id: i.id, date: i.date, amount: i.amount, description: i.description, category: i.category });

@@ -36,15 +36,19 @@ function fixture() {
       return typeof value === 'function' ? (...args) => wrap(value.apply(object, args)) : value;
     } });
   } };
-  const scope = { ...operators, ...schema, db,
+  const neonSql = (strings, ...params) => {
+    queries.push({ sql: strings.join('?'), params });
+    return [];
+  };
+  const scope = { ...operators, ...schema, db, neonSql,
     mapExpenseRow: value => value, mapIncomeRow: value => value,
-    mapBalanceAdjustmentRow: value => value, mapRecurringRuleRow: value => value, mapAccountRow: value => value,
+    mapRecurringRuleRow: value => value, mapAccountRow: value => value,
   };
   const functions = vm.runInNewContext(`${compiled}\n({${names.join(',')}})`, scope);
   return { ...functions, queries };
 }
 
-for (const name of ['getExpenses', 'getIncome', 'getBalanceAdjustments', 'getRecurringRules']) {
+for (const name of ['getExpenses', 'getIncome', 'getRecurringRules']) {
   test(`${name} excludes ghost accounts by default and requires explicit raw scope`, async () => {
     const f = fixture();
     await f[name]('owner');
@@ -60,6 +64,16 @@ for (const name of ['getExpenses', 'getIncome', 'getBalanceAdjustments', 'getRec
     if (name === 'getRecurringRules') assert(raw.params.includes('deleted'), 'Raw visibility still excludes deleted rules');
   });
 }
+
+test('balance postings are owner scoped and only include ghost accounts on request', async () => {
+  const f = fixture();
+  await f.getBalanceAdjustments('owner');
+  assert.match(f.queries[0].sql, /pebble_balance_posting/);
+  assert.match(f.queries[0].sql, /b.user_id=\?::uuid AND \(\? OR NOT a.is_ghost\)/);
+  assert.deepEqual(f.queries[0].params, ['owner', false]);
+  await f.getBalanceAdjustments('owner', { includeGhost: true });
+  assert.deepEqual(f.queries[1].params, ['owner', true]);
+});
 
 test('ghost schedules still materialize into their own accounts through the catch-up query', async () => {
   const f = fixture();

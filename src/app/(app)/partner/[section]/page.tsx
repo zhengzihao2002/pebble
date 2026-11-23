@@ -92,7 +92,7 @@ async function renderSection(section: PartnerSection, data: PartnerWorkspaceData
     case 'analysis':
       return <AnalysisClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} totalBalance={balances.total} />;
     case 'insights':
-      return <InsightsClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} goals={goals} accounts={accounts} />;
+      return <InsightsClient transactions={ledger} categories={categories} budgets={budgets} rules={rules} goals={goals} accounts={accounts} balancesByAccount={showBalances ? balances.byAccount : undefined} />;
     case 'budgets':
     case 'scheduled': {
       const userId = await getSessionUserIdOrRedirect();

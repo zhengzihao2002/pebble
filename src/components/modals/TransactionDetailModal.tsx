@@ -260,14 +260,15 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
 
   const creditCardPayoff = txn.type === 'expense' ? txn.creditCardPayoff : undefined;
   const hasPayoff = !!creditCardPayoff;
+  const standalonePayoff = creditCardPayoff?.cardId === txn.accountId;
   const accountOptions = useMemo<SelectFieldOption[]>(
     () => accounts.filter(a =>
-      (!hasPayoff || a.kind !== 'credit') && (!a.isGhost || showGhost || a.id === txn.accountId),
+      (standalonePayoff ? a.id === txn.accountId : !hasPayoff || a.kind !== 'credit') && (!a.isGhost || showGhost || a.id === txn.accountId),
     ).map((a) => ({
       value: a.id,
       label: ghostAccountLabel(a.last4 ? `${a.name} ····${a.last4}` : a.name, a.isGhost, locale),
     })),
-    [accounts, showGhost, txn.accountId, locale, hasPayoff],
+    [accounts, showGhost, txn.accountId, locale, hasPayoff, standalonePayoff],
   );
 
   // Adjustments are view-and-delete only: there is nothing meaningful to
@@ -530,7 +531,9 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     // the label changes - the underlying value/comparison is untouched.
     ...(hasPayoff ? [
       { key: 'method', label: x.chargedTo, value: chargedCardName },
-      { key: 'funding', label: x.paidFrom, value: accountDisplay || '—' },
+      { key: 'funding', label: x.paidFrom, value: (standalonePayoff
+        ? (accountsProp ?? shownAccounts).find(a => a.id === creditCardPayoff?.fundingAccountId)?.name
+        : accountDisplay) || '—' },
     ] : [
       { key: 'method', label: isIncome ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod, value: accountDisplay || '—' },
     ]),
@@ -569,7 +572,7 @@ function TransactionDetailContent({ txn, onClose, categoryMeta, ledgerEntry, acc
     </div>
   );
 
-  const accountLabelText = hasPayoff ? x.paidFrom : txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod;
+  const accountLabelText = hasPayoff && !standalonePayoff ? x.paidFrom : txn.type === 'income' ? d.txnDetail.rowDepositedTo : d.txnDetail.rowPaymentMethod;
 
   // ---- Receipt (view mode) -----------------------------------------------
   // The figure is formatCurrency's own output split at the decimal point, so

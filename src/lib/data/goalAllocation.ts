@@ -33,7 +33,7 @@ export async function addToGoalGuarded(userId: string, goalId: string, amount: s
               + (SELECT COALESCE(SUM(i.net_amount), 0) FROM income i
                    JOIN account a ON a.id = i.account_id AND a.user_id = ${userId}::uuid
                   WHERE i.user_id = ${userId}::uuid AND NOT a.is_ghost)
-              + (SELECT COALESCE(SUM(b.amount), 0) FROM balance_adjustment b
+              + (SELECT COALESCE(SUM(b.amount), 0) FROM pebble_balance_posting b
                    JOIN account a ON a.id = b.account_id AND a.user_id = ${userId}::uuid
                   WHERE b.user_id = ${userId}::uuid AND NOT a.is_ghost)
               - (SELECT COALESCE(SUM(x.current_amount), 0) FROM goal x

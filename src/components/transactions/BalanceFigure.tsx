@@ -15,7 +15,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
  */
 export function BalanceFigure({ value, owed = false, className = '' }: { value: number; owed?: boolean; className?: string }) {
   const { d } = useTranslation();
-  const fig = <span className={`font-mono-tab${className ? ` ${className}` : ''}`}><RollingAmount value={formatCurrency(owed ? Math.max(0, -value) : value)} /></span>;
+  const fig = <span className={`font-mono-tab${className ? ` ${className}` : ''}`}><RollingAmount value={formatCurrency(owed ? Math.abs(value) : value)} /></span>;
   if (!owed) return fig;
-  return <>{fig}{' '}<span className="pb-txn-owed">{d.accountsPage.cardOwed}</span></>;
+  return <>{fig}{' '}<span className="pb-txn-owed">{value > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardOwed}</span></>;
 }

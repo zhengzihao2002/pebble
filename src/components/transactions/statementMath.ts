@@ -27,9 +27,20 @@ export interface StatementPayoff extends CreditCardPayoff {
 export function statementPayoffs(entries: StatementEntry[], accountId: string, monthPrefix: string): StatementPayoff[] {
   const payoffs = new Map<string, Omit<StatementPayoff, 'fundingAccountIds'> & { fundingAccountIds: Set<string> }>();
   for (const { record } of entries) {
+    if (record.type === 'adjustment') {
+      const payoff = record.cardPayment;
+      if (!payoff?.cardId || record.accountId !== accountId || !record.date.startsWith(monthPrefix)) continue;
+      payoffs.set(payoff.id, {
+        ...payoff, side: accountId === payoff.cardId ? 'card' : 'funding', amount: cents(Math.abs(record.amount)),
+        fundingAccountIds: new Set(payoff.fundingAccountId ? [payoff.fundingAccountId] : []),
+      });
+      continue;
+    }
     if (record.type !== 'expense') continue;
     const payoff = record.creditCardPayoff;
-    if (!payoff?.date.startsWith(monthPrefix)) continue;
+    // Standalone payments own their amount. Only old, unmigrated receipts
+    // still derive their display marker from the paid purchases.
+    if (!payoff?.date.startsWith(monthPrefix) || payoff.fundingAccountId || record.accountId === payoff.cardId) continue;
     const side = payoff.cardId === accountId ? 'card' : record.accountId === accountId ? 'funding' : null;
     if (!side) continue;
     const marker = payoffs.get(payoff.id) ?? { ...payoff, side, amount: 0, fundingAccountIds: new Set<string>() };
@@ -188,7 +199,7 @@ export function groupByDay(
   for (const entry of entries) {
     const { record } = entry;
     const group = groupFor(record.date);
-    group.items.push({ kind: 'record', id: entry.transId, entry });
+    if (record.type !== 'adjustment' || !record.cardPayment) group.items.push({ kind: 'record', id: entry.transId, entry });
     if (ghostIds?.has(record.accountId)) continue;
     if (!isCardShadow(record, lensAccountId)) group.endBalance ??= read(entry);
     if (record.type !== 'adjustment') {
@@ -204,7 +215,7 @@ export function groupByDay(
       if (items.some((item) => item.kind === 'payoff')) items.sort((a, b) => compareSameDayIds(b.id, a.id));
     }
   }
-  return [...groups.values()].sort((a, b) => b.date.localeCompare(a.date));
+  return [...groups.values()].filter(group => group.items.length > 0).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export interface DayPoint {

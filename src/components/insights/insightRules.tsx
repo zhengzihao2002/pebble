@@ -65,6 +65,7 @@ export interface BuildInsightsArgs {
   rules: RecurringRule[];
   goals: Goal[];
   accounts: Account[];
+  balancesByAccount?: Record<string, number>;
   today: string;
   d: Dictionary;
   t: (template: string, vars?: Record<string, string | number>) => string;
@@ -86,7 +87,7 @@ export interface BuildInsightsArgs {
  * bring back every note a person had dismissed.
  */
 export function buildInsights({
-  transactions, rules, goals, accounts, today, d, t, locale, onOpen, onCreateSchedule, onPayOff,
+  transactions, rules, goals, accounts, balancesByAccount, today, d, t, locale, onOpen, onCreateSchedule, onPayOff,
 }: BuildInsightsArgs): Insight[] {
   const tag = locale === 'zh' ? 'zh-CN' : 'en-US';
   const todayN = dayNum(today);
@@ -330,7 +331,7 @@ export function buildInsights({
   // date and level, so dismissing the 7-day reminder leaves the later ones.
   // Overdue and due-within-a-day are urgent; the 3- and 7-day notes are a look.
   const cardNotes: Insight[] = [];
-  for (const s of cardStatuses(accounts, transactions, today)) {
+  for (const s of cardStatuses(accounts, transactions, today, balancesByAccount)) {
     const lvl = reminderLevel(s);
     if (!lvl) continue;
     const name = chip(s.card.last4 ? `${s.card.name} ····${s.card.last4}` : s.card.name);

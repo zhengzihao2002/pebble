@@ -169,7 +169,9 @@ test('undo returns the original purchases to the card and removes both payoff ma
     assert.match(cardLock.text, /FOR UPDATE/);
     assert.match(update.text, /UPDATE expense e\s+SET account_id = card.id, payment_method = card.name, credit_card_payoff = NULL/);
     assert.match(update.text, /card.user_id = \?::uuid AND card.id = \? AND card.kind = 'credit'/);
-    assert.match(update.text, /e.user_id = card.user_id\s+AND e.credit_card_payoff->>'cardId' = card.id\s+AND e.credit_card_payoff->>'id' = \?/);
+    assert.match(update.text, /DELETE FROM credit_card_payment\s+WHERE user_id = \?::uuid AND card_id = \? AND id = \?/);
+    assert.match(update.text, /NOT EXISTS \(SELECT 1 FROM deleted\)/);
+    assert.match(update.text, /e.user_id = card.user_id AND e.account_id <> card.id\s+AND e.credit_card_payoff->>'cardId' = card.id\s+AND e.credit_card_payoff->>'id' = \?/);
     const [userId, cardId, receiptId] = update.values;
     const restored = rows.filter(row => row.userId === userId && card.id === cardId && row.creditCardPayoff?.cardId === cardId && row.creditCardPayoff.id === receiptId);
     for (const row of restored) Object.assign(row, { accountId: cardId, paymentMethod: card.name, creditCardPayoff: null });
@@ -196,4 +198,32 @@ test('undo returns the original purchases to the card and removes both payoff ma
   assert.equal(rows[3].creditCardPayoff, payoff);
   assert.deepEqual(await undo(owner, input), { ok: false, code: 'validation.payoffUnavailable' });
   assert.equal(refreshes, 1);
+});
+
+
+test('standalone payoff stays on both account statements after the last linked purchase is deleted', () => {
+  const payment = { ...payoff, fundingAccountId: 'checking' };
+  const purchase = expense('purchase', '2026-11-06', 'credit', -50, payment).record;
+  const adjustments = [
+    { id: 'payment-card', type: 'adjustment', accountId: 'credit', date: payment.date, amount: 50, cardPayment: payment },
+    { id: 'payment-funding', type: 'adjustment', accountId: 'checking', date: payment.date, amount: -50, cardPayment: payment },
+  ];
+  const accounts = [{ id: 'checking' }, { id: 'credit' }];
+  for (const expenses of [[purchase], []]) {
+    const balance = computeCurrentBalances(expenses, accounts, adjustments).byAccount;
+    assert.equal(balance.checking, -50);
+    assert.equal(balance.credit, expenses.length ? 0 : 50);
+    const entries = [...expenses, ...adjustments].map(record => ({ record, transId: record.id }));
+    for (const account of accounts) {
+      const receipts = statementPayoffs(entries, account.id, '2026-11-');
+      assert.equal(receipts.length, 1);
+      assert.equal(receipts[0].amount, 50);
+      const accountEntries = entries.filter(entry => entry.record.accountId === account.id);
+      const days = groupByDay(accountEntries, () => balance[account.id], account.id, receipts);
+      assert.equal(days[0].items[0].kind, 'payoff');
+      assert.equal(days[0].items.length, 1);
+      assert.equal(days[0].endBalance, balance[account.id]);
+      assert.equal(days[0].hasFlows, false);
+    }
+  }
 });

@@ -35,6 +35,7 @@ interface UpcomingCardProps {
   /** For credit card payment reminders. */
   accounts?: Account[];
   transactions?: Transaction[];
+  balancesByAccount?: Record<string, number>;
 }
 
 /**
@@ -53,7 +54,7 @@ interface UpcomingCardProps {
  * narrows the agenda to it. The agenda is grouped by day. Card reminders stay
  * pinned first as their own group.
  */
-export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions = [] }: UpcomingCardProps) {
+export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions = [], balancesByAccount }: UpcomingCardProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.dashboard;
   const timeZoneOverride = useTimeZoneOverride();
@@ -80,7 +81,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
     ymd === today ? d.upcomingCard.today : ymd === tomorrow ? d.upcomingCard.tomorrow : formatDate(ymd, locale);
 
   // Credit card payments due within 7 days, or missed - pinned above scheduled items.
-  const cardRows = today ? cardStatuses(accounts, transactions, today).filter((s) => reminderLevel(s) !== null) : [];
+  const cardRows = today ? cardStatuses(accounts, transactions, today, balancesByAccount).filter((s) => reminderLevel(s) !== null) : [];
   const chargesOf = (id: string) => transactions.filter((x): x is ExpenseTransaction => x.type === 'expense' && x.accountId === id);
 
   // The rail: one cell per day, today first.
@@ -281,7 +282,7 @@ export function UpcomingCard({ rules, categoryMeta, accounts = [], transactions 
         </>
       )}
       {payOff && (
-        <PayOffDialog card={payOff} allAccounts={accounts} charges={chargesOf(payOff.id)} onClose={() => setPayOff(null)} />
+        <PayOffDialog card={payOff} allAccounts={accounts} charges={chargesOf(payOff.id)} outstanding={balancesByAccount ? -(balancesByAccount[payOff.id] ?? 0) : undefined} onClose={() => setPayOff(null)} />
       )}
     </section>
   );

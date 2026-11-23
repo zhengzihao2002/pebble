@@ -224,7 +224,7 @@ export function TransactionsClient({
     () => accountHistory.filter((entry) => entry.record.date.startsWith(monthPrefix)),
     [accountHistory, monthPrefix],
   );
-  const statementCount = statementEntries.length;
+  const statementCount = statementEntries.filter(({ record }) => record.type !== 'adjustment' || !record.cardPayment).length;
   const statementTransactions = useMemo(
     () => statementEntries.filter(({ record }) => !ghostIds.has(record.accountId)),
     [statementEntries, ghostIds],
@@ -248,7 +248,7 @@ export function TransactionsClient({
 
   // A credit card's statement reads as what it owes, like the Today ledger.
   const lensIsCard = lensAccount?.kind === 'credit';
-  const balanceText = (v: number) => formatCurrency(lensIsCard ? Math.max(0, -v) : v);
+  const balanceText = (v: number) => formatCurrency(lensIsCard ? Math.abs(v) : v);
 
   const canGoOlder = selectedMonthIndex < monthOptions.length - 1;
   const canGoNewer = selectedMonthIndex > 0;
@@ -323,7 +323,7 @@ export function TransactionsClient({
     if (!searching) return [];
     return accountHistory.filter((e) => {
       const r = e.record;
-      if (!r.date.startsWith(monthPrefix)) return false;
+      if (!r.date.startsWith(monthPrefix) || (r.type === 'adjustment' && r.cardPayment)) return false;
       if (typeFilter !== 'all' && r.type !== typeFilter) return false;
       if (q === '') return true;
       if (partner && !allowsPartnerSearch(q)) return false;
@@ -477,8 +477,8 @@ export function TransactionsClient({
           {/* Exactly five tiles, in this order: the tier layout counts them.
               Closing has its own icon now, so it no longer looks like Opening. */}
           <div className="stat-tabs stat-tabs-five">
-            <StatTab icon={Wallet} label={d.transactions.openingBalance} value={balanceText(openingBalance)} sublabel={lensIsCard ? d.accountsPage.cardOwed : undefined} color="var(--ink-soft)" />
-            <StatTab icon={CalendarCheck} label={d.transactions.closingBalance} value={balanceText(closingBalance)} sublabel={lensIsCard ? d.accountsPage.cardOwed : undefined} color="var(--pine)" />
+            <StatTab icon={Wallet} label={d.transactions.openingBalance} value={balanceText(openingBalance)} sublabel={lensIsCard ? (openingBalance > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardOwed) : undefined} color="var(--ink-soft)" />
+            <StatTab icon={CalendarCheck} label={d.transactions.closingBalance} value={balanceText(closingBalance)} sublabel={lensIsCard ? (closingBalance > 0 ? d.accountsPage.cardCredit : d.accountsPage.cardOwed) : undefined} color="var(--pine)" />
             <StatTab icon={ArrowUpRight} label={d.transactions.deposits} value={formatCurrency(totalDeposits)} color="var(--income)" />
             <StatTab icon={ArrowDownRight} label={d.transactions.withdrawals} value={formatCurrency(totalWithdrawals)} color="var(--expense)" />
             <StatTab

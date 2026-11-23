@@ -1,10 +1,9 @@
 import 'server-only';
 
 import { and, asc, desc, eq, isNull, ne, or, lt, notExists, type AnyColumn } from 'drizzle-orm';
-import { db } from '@/db';
+import { db, neonSql } from '@/db';
 import { getEffectiveAnnualBudgets } from '@/lib/budgets/annualData';
 import {
-  balanceAdjustment,
   budget,
   category,
   expense,
@@ -29,7 +28,6 @@ import {
 } from '@/data/seed';
 import { generateId } from '@/lib/ids';
 import {
-  mapBalanceAdjustmentRow,
   mapBudgetRows,
   mapCategoryRow,
   type CategoryItem,
@@ -243,13 +241,17 @@ function sortCategoriesByName(items: CategoryItem[]): CategoryItem[] {
  * statement ledger or a balance total - never by Reports.
  */
 export async function getBalanceAdjustments(userId: string, scope: AccountReadScope = {}): Promise<BalanceAdjustment[]> {
-  const rows = await db
-    .select()
-    .from(balanceAdjustment)
-    .where(and(eq(balanceAdjustment.userId, userId), scope.includeGhost ? undefined : withoutGhost(userId, balanceAdjustment.accountId)))
-    .orderBy(desc(balanceAdjustment.transactionDate), desc(balanceAdjustment.id));
-
-  return rows.map(mapBalanceAdjustmentRow);
+  const rows = await neonSql`
+    SELECT b.id, 'adjustment' AS type, b.description, b.transaction_date::text AS date,
+      b.payment_method AS "paymentMethod", b.account_id AS "accountId",
+      b.transfer_group_id AS "transferGroupId", b.amount::float8,
+      b.card_payment AS "cardPayment"
+    FROM public.pebble_balance_posting b
+    JOIN public.account a ON a.user_id=b.user_id AND a.id=b.account_id
+    WHERE b.user_id=${userId}::uuid AND (${scope.includeGhost === true} OR NOT a.is_ghost)
+    ORDER BY b.transaction_date DESC, b.id DESC
+  `;
+  return rows as BalanceAdjustment[];
 }
 
 /** Whether the account has any recorded transaction at all. */

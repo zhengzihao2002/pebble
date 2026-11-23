@@ -253,6 +253,17 @@ interface CardFacts {
  * accounts are simply absent, so callers test with `.has()` / `.get()`.
  * Two small queries; nothing runs when no card is involved.
  */
+async function accountHasCardPayments(userId: string, accountId: string): Promise<boolean> {
+  const rows = await neonSql`
+    SELECT id FROM credit_card_payment
+    WHERE user_id = ${userId}::uuid AND (card_id = ${accountId} OR funding_account_id = ${accountId})
+    LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+const ACCOUNT_HAS_CARD_PAYMENTS = 'This account has recorded credit card payments. Keep the account to preserve its payment history.';
+
 async function loadCards(userId: string, ids: string[]): Promise<Map<string, CardFacts>> {
   const out = new Map<string, CardFacts>();
   const wanted = ids.filter((id) => typeof id === 'string' && id !== '');
@@ -262,12 +273,15 @@ async function loadCards(userId: string, ids: string[]): Promise<Map<string, Car
     .from(account)
     .where(and(eq(account.userId, userId), inArray(account.id, wanted), eq(account.kind, 'credit')));
   if (cards.length === 0) return out;
-  const sums = await db
-    .select({ accountId: expense.accountId, total: sql<string>`coalesce(sum(${expense.amount}), 0)` })
-    .from(expense)
-    .where(and(eq(expense.userId, userId), inArray(expense.accountId, cards.map((c) => c.id))))
-    .groupBy(expense.accountId);
-  const owedBy = new Map(sums.map((s) => [s.accountId, -Number(s.total)]));
+  const sums = await neonSql`
+    SELECT a.id, -(
+      coalesce((SELECT sum(e.amount) FROM expense e WHERE e.user_id = a.user_id AND e.account_id = a.id), 0)
+      + coalesce((SELECT sum(b.amount) FROM pebble_balance_posting b WHERE b.user_id = a.user_id AND b.account_id = a.id), 0)
+    ) AS owed
+    FROM account a
+    WHERE a.user_id = ${userId}::uuid AND a.id IN (SELECT jsonb_array_elements_text(${JSON.stringify(cards.map(c => c.id))}::jsonb))
+  `;
+  const owedBy = new Map(sums.map(row => [row.id as string, Number(row.owed)]));
   for (const c of cards) out.set(c.id, { creditLimit: Number(c.creditLimit ?? 0), owed: owedBy.get(c.id) ?? 0 });
   return out;
 }
@@ -1323,13 +1337,19 @@ async function updateTransaction(
   try {
     const table = input.type === 'expense' ? expense : income;
     const rows = await db
-      .select({ id: table.id, date: table.transactionDate, accountId: table.accountId })
+      .select({ id: table.id, date: table.transactionDate, accountId: table.accountId,
+        standalone: input.type === 'expense'
+          ? sql<boolean>`coalesce(${expense.creditCardPayoff}->>'cardId' = ${expense.accountId}, false)`
+          : sql<boolean>`false` })
       .from(table)
       .where(and(eq(table.userId, userId), eq(table.id, input.id)))
       .limit(1);
 
     const current = rows[0];
     if (!current) return fail('That transaction no longer exists.', 'validation', 'notFound.transaction');
+    if (current.standalone && input.accountId !== current.accountId) {
+      return fail('A paid purchase stays on its original card.', 'validation', 'validation.paidPurchaseAccountLocked');
+    }
 
     // The account the row currently sits on, and the one being requested.
     // Both matter: a CLOSED account freezes the amount and the account itself,
@@ -1427,6 +1447,7 @@ async function updateTransaction(
         const oldCharge = Math.abs(Number(old[0]?.amount ?? 0));
         const newCharge = input.amount !== undefined ? Math.abs(input.amount) : oldCharge;
         const already = current.accountId === targetAccount.id ? oldCharge : 0;
+        if (current.standalone && newCharge > oldCharge) patch.creditCardPayoff = null;
         if (overLimit(editCard, newCharge - already)) {
           return fail('This would take the card over its credit limit.', 'validation', 'validation.creditOverLimit');
         }
@@ -1436,11 +1457,10 @@ async function updateTransaction(
         .where(and(
           eq(expense.userId, userId),
           eq(expense.id, input.id),
-          // A stale edit cannot move a concurrently settled charge back onto its card.
           eq(expense.accountId, current.accountId),
-          // The funding account on a settled purchase can be corrected to another
-          // funding account while preserving the original card and payoff.
-          editCard ? isNull(expense.creditCardPayoff) : undefined,
+          // A selection can settle the charge while this edit is open.
+          current.accountId !== targetAccount.id ? sql`NOT coalesce(${expense.creditCardPayoff}->>'cardId' = ${expense.accountId}, false)` : undefined,
+          editCard && current.accountId !== targetAccount.id ? isNull(expense.creditCardPayoff) : undefined,
         ))
         .returning({ id: expense.id });
       if (!updated) return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
@@ -2903,6 +2923,10 @@ async function deleteAccount(userId: string, accountId: string): Promise<ActionR
       return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
     }
 
+    if (await accountHasCardPayments(userId, accountId)) {
+      return fail(ACCOUNT_HAS_CARD_PAYMENTS, 'validation', 'validation.accountHasCardPayments');
+    }
+
     const [expenses, incomeRows, adjustments, rules] = await Promise.all([
       db.select({ id: expense.id }).from(expense).where(and(eq(expense.userId, userId), eq(expense.accountId, accountId))).limit(1),
       db.select({ id: income.id }).from(income).where(and(eq(income.userId, userId), eq(income.accountId, accountId))).limit(1),
@@ -2998,11 +3022,7 @@ export const getSearchTransactionsAction = withSessionUser(loadSearchTransaction
 
 type CreditCardPayoffResult = { ok: true; amount: number; remainingBalance: number } | ActionFailure;
 
-/**
- * The selected charges move to the funding account exactly once. A receipt
- * shared by those same rows keeps their original card and the remaining debt
- * at payoff, without adding a second expense or a balance adjustment.
- */
+/** Record an immutable payment and link the selected charges without moving them. */
 async function payCreditCard(
   userId: string,
   input: { fromAccountId: string; toAccountId: string; transactionIds: string[]; deferPageRefresh?: boolean },
@@ -3043,29 +3063,33 @@ async function payCreditCard(
           JOIN requested r ON e.id = r.id
           WHERE e.user_id = ${userId}::uuid AND e.credit_card_payoff IS NULL
           ORDER BY e.id FOR UPDATE OF e
-        ), ready AS MATERIALIZED (
-          SELECT a.*, (
-            SELECT coalesce(-sum(e.amount), 0)
-            FROM expense e
-            WHERE e.user_id = ${userId}::uuid AND e.account_id = a.card_id
-              AND NOT EXISTS (SELECT 1 FROM picked WHERE picked.id = e.id)
-          ) AS remaining_balance
+        ), totals AS MATERIALIZED (
+          SELECT a.*,
+            -(SELECT coalesce(sum(e.amount), 0) FROM expense e
+              WHERE e.user_id = ${userId}::uuid AND e.account_id = a.card_id)
+            -(SELECT coalesce(sum(b.amount), 0) FROM pebble_balance_posting b
+              WHERE b.user_id = ${userId}::uuid AND b.account_id = a.card_id) AS owed,
+            -(SELECT sum(e.amount) FROM expense e JOIN picked p ON p.id = e.id) AS selected_amount
           FROM accounts a
           WHERE (SELECT count(*) FROM picked) = ${ids.length}
         ), paid AS (
+          INSERT INTO credit_card_payment (id, user_id, card_id, funding_account_id, payment_date, amount, remaining_balance)
+          SELECT ${receiptId}, ${userId}::uuid, card_id, payer_id, ${date}::date,
+            least(owed, selected_amount), greatest(0, owed - selected_amount)
+          FROM totals WHERE owed > 0 AND selected_amount > 0
+          RETURNING *
+        ), linked AS (
           UPDATE expense e
-          SET account_id = r.payer_id,
-              payment_method = r.payer_name,
-              credit_card_payoff = jsonb_build_object(
-                'id', ${receiptId}::text, 'cardId', r.card_id, 'cardName', r.card_name,
-                'date', ${date}::date, 'remainingBalance', r.remaining_balance
-              )
-          FROM ready r, picked p
+          SET credit_card_payoff = jsonb_build_object(
+            'id', r.id, 'cardId', r.card_id, 'cardName', a.card_name, 'fundingAccountId', r.funding_account_id,
+            'date', r.payment_date, 'remainingBalance', r.remaining_balance
+          )
+          FROM paid r JOIN accounts a ON a.card_id = r.card_id CROSS JOIN picked p
           WHERE e.user_id = ${userId}::uuid AND e.id = p.id
-          RETURNING e.amount
+          RETURNING e.id
         )
-        SELECT -sum(paid.amount) AS amount, (SELECT remaining_balance FROM ready) AS remaining_balance
-        FROM paid HAVING count(*) > 0
+        SELECT amount, remaining_balance FROM paid
+        WHERE (SELECT count(*) FROM linked) = ${ids.length}
       `,
     ], { isolationLevel: 'ReadCommitted' });
     const [paid] = results[2] as { amount: string; remaining_balance: string }[];
@@ -3082,7 +3106,7 @@ async function payCreditCard(
 
 export const payCreditCardAction = withSessionUser(payCreditCard);
 
-/** Reverse every surviving charge on the receipt, including charges moved to another funding account. */
+/** Reverse the recorded payment. Older receipts still work until backfilled. */
 async function undoCreditCardPayoff(
   userId: string,
   input: { receiptId: string; cardId: string; deferPageRefresh?: boolean },
@@ -3095,19 +3119,32 @@ async function undoCreditCardPayoff(
     const [, , restored] = await neonSql.transaction([
       userWriteLockStatement(userId),
       neonSql`
-        SELECT id FROM account
-        WHERE user_id = ${userId}::uuid AND id = ${cardId} AND kind = 'credit'
+        SELECT id FROM account WHERE user_id = ${userId}::uuid AND id = ${cardId} AND kind = 'credit'
         FOR UPDATE
       `,
       neonSql`
-        UPDATE expense e
-        SET account_id = card.id, payment_method = card.name, credit_card_payoff = NULL
-        FROM account card
-        WHERE card.user_id = ${userId}::uuid AND card.id = ${cardId} AND card.kind = 'credit'
-          AND e.user_id = card.user_id
-          AND e.credit_card_payoff->>'cardId' = card.id
-          AND e.credit_card_payoff->>'id' = ${receiptId}
-        RETURNING e.id
+        WITH deleted AS (
+          DELETE FROM credit_card_payment
+          WHERE user_id = ${userId}::uuid AND card_id = ${cardId} AND id = ${receiptId}
+          RETURNING id
+        ), unlinked AS (
+          UPDATE expense e SET credit_card_payoff = NULL
+          FROM deleted p
+          WHERE e.user_id = ${userId}::uuid AND e.credit_card_payoff->>'id' = p.id
+            AND e.credit_card_payoff->>'cardId' = ${cardId}
+          RETURNING e.id
+        ), legacy AS (
+          UPDATE expense e
+          SET account_id = card.id, payment_method = card.name, credit_card_payoff = NULL
+          FROM account card
+          WHERE NOT EXISTS (SELECT 1 FROM deleted)
+            AND card.user_id = ${userId}::uuid AND card.id = ${cardId} AND card.kind = 'credit'
+            AND e.user_id = card.user_id AND e.account_id <> card.id
+            AND e.credit_card_payoff->>'cardId' = card.id
+            AND e.credit_card_payoff->>'id' = ${receiptId}
+          RETURNING e.id
+        )
+        SELECT id FROM deleted UNION ALL SELECT id FROM legacy
       `,
     ], { isolationLevel: 'ReadCommitted' });
     if (!restored.length) {
@@ -3166,6 +3203,10 @@ async function moveAccountRecords(
     }
     if ((await loadCards(userId, [destination.id])).has(destination.id)) {
       return fail("Records can't be moved onto a credit card.", 'validation', 'validation.creditNoMoveIn');
+    }
+
+    if (await accountHasCardPayments(userId, source.id)) {
+      return fail(ACCOUNT_HAS_CARD_PAYMENTS, 'validation', 'validation.accountHasCardPayments');
     }
 
     // A partial move names transaction ids; a full move takes everything,
@@ -3309,6 +3350,9 @@ export type AccountDeletionPreviewResult =
  */
 async function loadAccountDeletionPreview(userId: string, accountId: string): Promise<AccountDeletionPreviewResult> {
   try {
+    if (await accountHasCardPayments(userId, accountId)) {
+      return fail(ACCOUNT_HAS_CARD_PAYMENTS, 'validation', 'validation.accountHasCardPayments');
+    }
     const [accts, exp, inc, adj, rules, goals] = await Promise.all([
       db.select({ id: account.id, name: account.name, isGhost: account.isGhost }).from(account).where(eq(account.userId, userId)),
       db.select({ accountId: expense.accountId, amount: expense.amount }).from(expense).where(eq(expense.userId, userId)),
@@ -3444,6 +3488,10 @@ async function deleteAccountWithRecords(
     if (target.isDefault) {
       return fail('The default Checking and Cash accounts cannot be deleted.', 'validation', 'validation.accountDefaultCannotClose');
     }
+    if (await accountHasCardPayments(userId, target.id)) {
+      return fail(ACCOUNT_HAS_CARD_PAYMENTS, 'validation', 'validation.accountHasCardPayments');
+    }
+
     // Deleting a card's records would erase real spending. Pay it off first.
     const delCard = (await loadCards(userId, [target.id])).get(target.id);
     if (delCard && delCard.owed > 0.004) {
@@ -3516,6 +3564,10 @@ async function moveAndDeleteAccount(
     }
     if (!Number.isInteger(input.expectedRecordCount) || input.expectedRecordCount < 0) {
       return fail(ACCOUNT_CHANGED, 'validation', 'validation.accountChangedSinceReview');
+    }
+
+    if (await accountHasCardPayments(userId, source.id)) {
+      return fail(ACCOUNT_HAS_CARD_PAYMENTS, 'validation', 'validation.accountHasCardPayments');
     }
 
     const from = source.id;

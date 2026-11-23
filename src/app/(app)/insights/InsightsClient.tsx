@@ -36,6 +36,7 @@ export interface InsightsClientProps {
   rules: RecurringRule[];
   goals: Goal[];
   accounts: Account[];
+  balancesByAccount?: Record<string, number>;
 }
 
 /** Stagger index for the cards' rise-in. */
@@ -56,7 +57,7 @@ const rise = (i: number) => ({ ['--pb-i' as string]: i }) as CSSProperties;
  * The notes (Worth knowing) are computed once here and shown in two places
  * by group; their PayOff dialog moved up here with them.
  */
-export function InsightsClient({ transactions, categories, budgets, rules, goals, accounts }: InsightsClientProps) {
+export function InsightsClient({ transactions, categories, budgets, rules, goals, accounts, balancesByAccount }: InsightsClientProps) {
   const { d, t, locale } = useTranslation();
   const ux = d.ux.insights;
   const partner = usePartnerView();
@@ -85,10 +86,10 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
   const notes = useDismissQueue(dismiss);
 
   const items = useMemo(() => (today === null ? null : !showNotes ? [] : buildInsights({
-    transactions, rules, goals, accounts, today, d, t, locale,
+    transactions, rules, goals, accounts, balancesByAccount, today, d, t, locale,
     onOpen: openTransaction, onCreateSchedule: setPrefill, onPayOff: setPayOff,
   }).map(item => partner ? { ...item, action: undefined } : item)),
-  [today, transactions, rules, goals, accounts, d, t, locale, showNotes, openTransaction, partner]);
+  [today, transactions, rules, goals, accounts, balancesByAccount, d, t, locale, showNotes, openTransaction, partner]);
   const shown = items === null ? null : items.filter((i) => partner || !(dismissed ?? []).includes(i.id));
   const attention = shown === null ? null : shown.filter((i) => i.group !== 'good');
   const good = shown === null ? [] : shown.filter((i) => i.group === 'good');
@@ -141,7 +142,7 @@ export function InsightsClient({ transactions, categories, budgets, rules, goals
       {!partner && prefill && <RecurringRuleModal prefill={prefill} onClose={() => setPrefill(null)} />}
       {!partner && payOff && (
         <PayOffDialog
-          card={payOff} allAccounts={accounts}
+          card={payOff} allAccounts={accounts} outstanding={balancesByAccount ? -(balancesByAccount[payOff.id] ?? 0) : undefined}
           charges={transactions.filter((x): x is Extract<Transaction, { type: 'expense' }> => x.type === 'expense' && x.accountId === payOff.id)}
           onClose={() => setPayOff(null)}
         />

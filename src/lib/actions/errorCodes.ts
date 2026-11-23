@@ -124,6 +124,8 @@ export type ServerErrorCode =
   | 'validation.transferAmountPositive'
   | 'validation.transferInactiveAccount'
   | 'validation.accountDeleteNameMismatch'
+  | 'validation.paidPurchaseAccountLocked'
+  | 'validation.accountHasCardPayments'
   | 'validation.payoffUnavailable'
   | 'validation.accountChangedSinceReview'
   | 'loader.accountDeletionPreviewFailed'

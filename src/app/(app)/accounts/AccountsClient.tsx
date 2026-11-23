@@ -204,6 +204,7 @@ export function AccountsClient({ expenses: allExpenses, income: allIncome, adjus
         <PayOffDialog
           card={payOffCard} allAccounts={allAccounts}
           charges={allExpenses.filter((x) => x.accountId === payOffCard.id)}
+          outstanding={-(balanceNow[payOffCard.id] ?? ghostBalances[payOffCard.id] ?? 0)}
           today={today ?? undefined}
           onClose={() => setPayOffCard(null)}
         />
