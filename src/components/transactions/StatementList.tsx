@@ -13,7 +13,7 @@ import { StatementRow } from '@/components/shared/StatementRow';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { renderTemplate } from '@/lib/i18n/RichText';
 import { EmptyState } from '@/components/kit/EmptyState';
-import { UndoPayoffDialog } from './UndoPayoffDialog';
+import { PayoffDetailDialog } from './PayoffDetailDialog';
 import { BalanceFigure } from './BalanceFigure';
 import { balanceReader, cents, daysInMonth, groupByDay, monthBounds, type DayGroup, type StatementPayoff } from './statementMath';
 
@@ -87,21 +87,23 @@ export function PayoffRow({ payoff, cardName, showDate = false }: {
   const { d, locale } = useTranslation();
   const x = d.ux.transactions;
   const partner = usePartnerView();
-  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [open, setOpen] = useState(false);
+  const Row = partner ? 'div' : 'button';
   const onCard = payoff.side === 'card';
   const date = showDate ? formatDate(payoff.date, locale) : '';
   const note = onCard ? date : [cardName ?? payoff.cardName, date].filter(Boolean).join(' · ');
   return (
     <>
-      <div className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff="">
-        <div className="pb-txn-srow-lead">
+      <Row className="pb-txn-srow-main pb-txn-card-payoff" data-credit-payoff=""
+        {...(!partner && { type: 'button' as const, 'aria-haspopup': 'dialog' as const, onClick: () => setOpen(true) })}>
+        <span className="pb-txn-srow-lead">
           <span className="pb-txn-card-payoff-icon"><ArrowRightLeft size={16} aria-hidden="true" /></span>
           <span className="pb-txn-card-payoff-copy">
             <span>{x.cardPayoff}</span>
             {note && <span className="pb-txn-card-payoff-note">{note}</span>}
           </span>
-        </div>
-        <div className="pb-txn-card-payoff-balance">
+        </span>
+        <span className="pb-txn-card-payoff-balance">
           <span className="font-mono-tab"><RollingAmount value={formatCurrency(onCard ? payoff.amount : -payoff.amount)} /></span>
           {onCard && (
             <span className="pb-txn-card-payoff-note">
@@ -110,14 +112,9 @@ export function PayoffRow({ payoff, cardName, showDate = false }: {
               })}
             </span>
           )}
-          {!partner && (
-            <button type="button" className="link-btn pb-txn-payoff-undo" onClick={() => setConfirmUndo(true)}>
-              {x.undoPayoff}
-            </button>
-          )}
-        </div>
-      </div>
-      {confirmUndo && !partner && <UndoPayoffDialog payoff={payoff} cardName={cardName ?? payoff.cardName} onClose={() => setConfirmUndo(false)} />}
+        </span>
+      </Row>
+      {open && !partner && <PayoffDetailDialog payoff={payoff} cardName={cardName ?? payoff.cardName} onClose={() => setOpen(false)} />}
     </>
   );
 }

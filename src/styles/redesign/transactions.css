@@ -453,11 +453,9 @@
   font-size: 0.72rem;
   font-weight: 400;
 }
-.pebble-root .pb-txn-payoff-undo {
-  align-self: flex-end;
-  min-height: 2rem;
-  font-size: 0.75rem;
-}
+.pebble-root button.pb-txn-card-payoff { width: 100%; text-align: start; cursor: pointer; }
+.pebble-root button.pb-txn-card-payoff:hover { background-color: color-mix(in srgb, var(--pine) 9%, var(--paper)); }
+.pebble-root button.pb-txn-card-payoff:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; }
 .pebble-root .pb-txn-srow-main[role="button"]:focus-visible { outline: 2px solid var(--pine); outline-offset: -2px; border-radius: 0.6rem; }
 .pebble-root .pb-txn-srow-lead { display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 0; }
 .pebble-root .pb-txn-srow-acct,
