@@ -311,7 +311,6 @@
 @container pb-txn-col (min-width: 640px) {
   .pebble-root .pb-txn-bar {
     position: sticky; top: var(--pb-header-h); z-index: 6;
-    flex-direction: row; flex-wrap: wrap; align-items: center;
     background-color: transparent; isolation: isolate;
   }
   .pebble-root .pb-txn-bar::before {
@@ -323,8 +322,7 @@
     .pebble-root .pb-txn-bar::before { background-color: var(--mist); }
   }
 }
-.pebble-root .pb-txn-search { position: relative; flex: none; min-width: 0; }
-@container pb-txn-col (min-width: 640px) { .pebble-root .pb-txn-search { flex: 1 1 15rem; } }
+.pebble-root .pb-txn-search { position: relative; min-width: 0; }
 .pebble-root .pb-txn-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); pointer-events: none; }
 .pebble-root #pb-txn-search {
   width: 100%; box-sizing: border-box; padding: 0.65rem 2.6rem 0.65rem 2.3rem;
@@ -352,9 +350,14 @@
   color: var(--pine); background-color: color-mix(in srgb, var(--pine) 10%, transparent);
 }
 .pebble-root .pb-txn-adjustment-link:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
-/* Reserve the same space with or without the selected account's icon. */
-@container pb-txn-col (min-width: 640px) {
-  .pebble-root .pb-txn-account-select { flex: 0 0 15rem; inline-size: 15rem; }
+/* The search and filters share a row once the statement column has room for both. */
+@container pb-txn-col (min-width: 43rem) {
+  .pebble-root .pb-txn-bar {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  }
+  .pebble-root .pb-txn-filters { flex-wrap: nowrap; }
+  .pebble-root .pb-txn-account-select { flex: none; inline-size: clamp(10rem, 27cqi, 15rem); }
+  .pebble-root .pb-txn-bar > .pb-txn-ghost-toggle { grid-column: 1 / -1; }
 }
 @container pb-txn-col (max-width: 479.98px) {
   .pebble-root .pb-txn-type { width: 100%; }
