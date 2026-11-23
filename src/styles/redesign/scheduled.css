@@ -283,32 +283,38 @@
 .pebble-root .pb-sched-rule-amt { font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
 .pebble-root .pb-sched-rule-approx { font-size: 0.7rem; color: var(--ink-soft); white-space: nowrap; }
 .pebble-root .pb-sched-rule-foot {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0;
-  padding-top: 0.5rem; border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  gap: 0.5rem 0.75rem; min-width: 0; padding-top: 0.5rem; border-top: 1px solid var(--line);
 }
 .pebble-root .pb-sched-rule-life { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; min-width: 0; }
-.pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; }
-.pebble-root .pb-sched-rule-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.35rem; margin-left: auto; }
-.pebble-root .pb-sched-act { position: relative; width: 36px; height: 36px; border-radius: 0.6rem; }
-@media (pointer: coarse) {
-  /* 44px to the finger without growing the button. */
-  .pebble-root .pb-sched-act::after { content: ''; position: absolute; inset: -4px; }
+.pebble-root .pb-sched-life { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; color: var(--ink-soft); }
+.pebble-root .pb-sched-life > svg { flex: none; }
+.pebble-root .pb-sched-rule-management { display: flex; gap: 0.25rem; justify-self: end; }
+.pebble-root .pb-sched-act { width: 36px; height: 36px; border-radius: 0.6rem; }
+.pebble-root .pb-sched-occurrence-actions {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 0.5rem;
 }
-/* Charge now: a quiet text action beside the icon buttons - soft border, no
-   fill, so it never competes with the schedule itself. 36px tall (44px to the
-   finger via ::after on touch, like .pb-sched-act). */
-.pebble-root .pb-sched-charge-now {
-  position: relative; display: inline-flex; align-items: center; gap: 0.35rem;
-  height: 36px; padding: 0 0.8rem; border-radius: 0.6rem; white-space: nowrap;
+.pebble-root .pb-sched-occurrence-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  min-height: 36px; min-width: 0; padding: 0.35rem 0.55rem; border-radius: 0.6rem;
   border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
-  font: inherit; font-size: 0.78rem; font-weight: 500; cursor: pointer;
+  font: inherit; font-size: 0.78rem; font-weight: 600; line-height: 1.25; cursor: pointer;
   transition: background-color var(--pb-dur-micro) var(--pb-ease-out), color var(--pb-dur-micro) var(--pb-ease-out);
 }
-.pebble-root .pb-sched-charge-now:hover:not(:disabled) { color: var(--ink); background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
-.pebble-root .pb-sched-charge-now:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
-.pebble-root .pb-sched-charge-now:disabled { opacity: 0.5; cursor: default; }
+.pebble-root .pb-sched-occurrence-btn > svg { flex: none; }
+.pebble-root .pb-sched-occurrence-btn.is-charge {
+  color: var(--pine); border-color: color-mix(in srgb, var(--pine) 24%, var(--line));
+  background: color-mix(in srgb, var(--pine) 10%, transparent);
+}
+.pebble-root .pb-sched-occurrence-btn:hover:not(:disabled) { color: var(--ink); background-color: color-mix(in srgb, var(--pine) 15%, transparent); }
+.pebble-root .pb-sched-occurrence-btn:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.pebble-root .pb-sched-occurrence-btn:disabled { opacity: 0.5; cursor: default; }
+@container pb-sched-rules (max-width: 17rem) {
+  .pebble-root .pb-sched-occurrence-btn > svg { display: none; }
+}
 @media (pointer: coarse) {
-  .pebble-root .pb-sched-charge-now::after { content: ''; position: absolute; inset: -4px; }
+  .pebble-root .pb-sched-act { width: 44px; height: 44px; }
+  .pebble-root .pb-sched-occurrence-btn { min-height: 44px; }
 }
 /* The brief "Charged. Next payment: ..." line under the card; nothing while empty. */
 .pebble-root .pb-sched-charged {

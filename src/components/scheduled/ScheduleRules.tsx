@@ -183,7 +183,8 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onOccurrence, c
   // next occurrence (planChargeNext is the same rule the server applies).
   // Needs the zone-aware today, so it appears after mount, never in the
   // server render.
-  const canCharge = today !== null && planChargeNext(rule, today) !== null;
+  const canAdvance = !partner && today !== null && planChargeNext(rule, today) !== null;
+  const canEdit = !partner || (partner.data.permissions.editScheduled && !partner.data.scheduled.find(row => row.id === rule.id)?.titleCensored);
   const inN = next && today ? daysBetween(today, next) : null;
   const when = next
     ? `${formatDate(next, locale)}${inN === 0 ? ` · ${d.upcomingCard.today}` : inN === 1 ? ` · ${d.upcomingCard.tomorrow}` : inN !== null && inN > 1 ? ` · ${t(x.inDays, { count: inN })}` : ''}`
@@ -244,24 +245,7 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onOccurrence, c
             <span className="pb-sched-life pb-tnum"><CalendarClock size={13} aria-hidden="true" />{t(x.nextOn, { date: when })}</span>
           )}
         </div>
-        <div className="pb-sched-rule-actions">
-          {!partner && canCharge && (
-            <button
-              type="button" onClick={() => onOccurrence(rule, 'charge')} disabled={locked}
-              className="pb-sched-charge-now"
-              aria-label={t(x.chargeNowAria, { description: title })}
-            >
-              <CalendarCheck size={14} aria-hidden="true" />{x.chargeNow}
-            </button>
-          )}
-          {!partner && canCharge && (
-            <button type="button" onClick={() => onOccurrence(rule, 'skip')} disabled={locked}
-              className="pb-sched-charge-now"
-              aria-label={t(x.skip.aria, { description: title })}
-            >
-              <SkipForward size={14} aria-hidden="true" />{x.skip.button}
-            </button>
-          )}
+        {canEdit && <div className="pb-sched-rule-management">
           {!partner && <button
             type="button" onClick={() => onToggle(rule)} disabled={busy || finished}
             className="icon-btn pb-sched-act"
@@ -269,14 +253,30 @@ function RuleTile({ rule, today, busy, locked, onToggle, onEdit, onOccurrence, c
           >
             {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
           </button>}
-          {(!partner || (partner.data.permissions.editScheduled && !partner.data.scheduled.find(row => row.id === rule.id)?.titleCensored)) && <button
+          <button
             type="button" onClick={() => partner ? partner.openEditor({ kind: 'scheduleEdit', id: rule.id, name: title }) : onEdit(rule)}
             className="icon-btn pb-sched-act"
             aria-label={t(d.scheduled.editAria, { description: title })}
           >
             <Pencil size={14} aria-hidden="true" />
-          </button>}
-        </div>
+          </button>
+        </div>}
+        {canAdvance && <div className="pb-sched-occurrence-actions">
+          <button
+            type="button" onClick={() => onOccurrence(rule, 'charge')} disabled={locked}
+            className="pb-sched-occurrence-btn is-charge"
+            aria-label={t(x.chargeNowAria, { description: title })}
+          >
+            <CalendarCheck size={15} aria-hidden="true" />{x.chargeNow}
+          </button>
+          <button
+            type="button" onClick={() => onOccurrence(rule, 'skip')} disabled={locked}
+            className="pb-sched-occurrence-btn"
+            aria-label={t(x.skip.aria, { description: title })}
+          >
+            <SkipForward size={15} aria-hidden="true" />{x.skip.button}
+          </button>
+        </div>}
       </div>
       {/* Always rendered so the live region exists before its text does and
           the confirmation is announced; hidden while empty (scheduled.css). */}
