@@ -38,6 +38,7 @@ export const SETTING_TARGETS = {
   quietSync: 'pb-set-quiet-sync',
   sounds: 'pb-set-sounds',
   locks: 'pb-set-locks',
+  backup: 'pb-set-backup',
   pebbleAccount: 'pb-set-pebble-account',
   profileColor: 'pb-set-profile-color',
 } as const;

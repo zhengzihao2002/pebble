@@ -904,3 +904,16 @@
 .pebble-root .pb-profile-swatch:has(input:focus-visible) .pb-profile-swatch-sample {
   outline: 2px solid var(--pb-avatar-accent); outline-offset: 2px;
 }
+
+/* Settings backup card. */
+.pebble-root .pb-set-backup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.6rem; }
+.pebble-root .pb-set-backup-actions .btn-primary,
+.pebble-root .pb-set-backup-actions .pill { min-height: 40px; padding: 0.5rem 1rem; }
+.pebble-root .pb-set-backup-actions .btn-primary:disabled { opacity: 0.45; cursor: default; }
+.pebble-root .pb-set-backup-status { flex: 1 1 12rem; margin: 0; font-size: 0.83rem; color: var(--ink-soft); }
+.pebble-root .pb-set-backup-status:empty { display: none; }
+.pebble-root .pb-set-backup-code {
+  display: block; margin-top: 0.6rem; resize: vertical; min-height: 4.5rem;
+  font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.78rem; line-height: 1.45;
+  word-break: break-all;
+}

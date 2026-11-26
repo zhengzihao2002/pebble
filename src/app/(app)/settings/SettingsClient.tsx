@@ -37,6 +37,7 @@ import type { PartnerInboxItem, PartnerSettingsData } from '@/lib/partner';
 import { SoundSettingsCard } from '@/components/settings/SoundSettingsCard';
 import { PebbleAccountCard } from '@/components/settings/PebbleAccountCard';
 import { SafetyLocksControl } from '@/components/settings/SafetyLocksControl';
+import { SettingsBackupCard } from '@/components/settings/SettingsBackupCard';
 import { SettingsJumpBar, SettingsSectionNav } from '@/components/settings/SettingsSectionNav';
 import { SettingsOverview } from '@/components/settings/SettingsOverview';
 import { useSectionJump } from '@/components/settings/useSectionJump';
@@ -247,6 +248,7 @@ export function SettingsClient({
       cards: (
         <>
           <SafetyLocksControl />
+          <SettingsBackupCard />
           <PebbleAccountCard />
         </>
       ),

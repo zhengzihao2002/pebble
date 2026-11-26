@@ -73,6 +73,7 @@ function settingsEntries(d: Dictionary): SettingsSearchEntry[] {
       ['censor mask redact private keywords words phrases hidden titles descriptions 屏蔽词 敏感词 标题 描述']),
     entry('partnerInbox', d.partner.inbox.title, d.partner.title, d.partner.inbox.hint, ['guest activity notifications mark read 访客 管家 活动 通知 已读']),
     entry('locks', d.safetyLocks.title, account, d.safetyLocks.blurb, ['safety locks prevent deletion 安全锁 删除 保护']),
+    entry('backup', d.ux.settings.backup.copyTitle, account, d.ux.settings.backup.copyHint, [d.ux.settings.backup.restoreTitle, 'backup restore copy paste export import reinstall transfer settings clipboard 备份 恢复 复制 粘贴 导出 导入 重装 迁移 设置 剪贴板']),
     ...SAFETY_LOCK_KEYS.map((key): SettingsSearchEntry => ({
       id: `lock-${key}`, label: `${d.safetyLocks.title} · ${d.safetyLocks[key]}`, section: account,
       hint: d.safetyLocks.blurb, target: LOCK_SETTING_TARGETS[key], keywords: [
