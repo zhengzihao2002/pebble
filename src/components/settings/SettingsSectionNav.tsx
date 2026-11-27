@@ -74,10 +74,8 @@ interface SettingsJumpBarProps {
 
 /**
  * The phone (narrow column) counterpart of SettingsSectionNav: a sticky row
- * of short section names under the glass header. It WRAPS rather than
- * scrolling sideways - a horizontal swipe there fights the page and, near the
- * bottom edge, the iOS app switcher. CSS shows it only below the width where
- * the side nav appears.
+ * of short section names under the glass header. The row scrolls horizontally
+ * and follows the active section. CSS shows it where the side nav is hidden.
  *
  * Publishes its own height as --pb-settings-jump-h on .pb-settings, so a
  * section jumped to clears both the header and this bar (scroll-margin-top).
@@ -85,6 +83,26 @@ interface SettingsJumpBarProps {
 export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJumpBarProps) {
   const ref = useRef<HTMLElement>(null);
   const { ref: glassRef, indicatorRef } = useNavGlass<HTMLDivElement>(activeId);
+
+  useEffect(() => {
+    const row = glassRef.current;
+    const active = row?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!row || !active || !row.clientWidth) return;
+
+    const bounds = row.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    const start = bounds.left + row.clientLeft;
+    const end = start + row.clientWidth;
+    const inset = 3;
+    let delta = 0;
+    if (item.left < start + inset) delta = item.left - start - inset;
+    else if (item.right > end - inset) delta = item.right - end + inset;
+    if (!delta) return;
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Only move the tab strip. scrollIntoView would also move the Settings page.
+    row.scrollBy({ left: delta, behavior: reduce ? 'instant' : 'smooth' });
+  }, [activeId, glassRef]);
 
   useEffect(() => {
     const el = ref.current;
@@ -99,7 +117,7 @@ export function SettingsJumpBar({ items, label, activeId, onSelect }: SettingsJu
 
   return (
     <nav ref={ref} className="pb-settings-jump" aria-label={label}>
-      <div ref={glassRef} className="pb-nav-glass-host pb-settings-glass">
+      <div ref={glassRef} className="pb-nav-glass-host pb-settings-glass pb-settings-jump-scroll">
         <span ref={indicatorRef} className="pb-nav-glass-indicator" aria-hidden="true" />
       <ul className="pb-settings-jump-list">
         {items.map((item) => {
